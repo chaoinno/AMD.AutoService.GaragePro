@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:20px; padding:48px; align-items:flex-start">
+
+  <div style="width:1520px; background:#0F2440; border-radius:16px; padding:30px 34px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+    <div style="display:flex; flex-direction:column; gap:9px">
+      <span style="font-size:12px; font-weight:700; color:#8FA6C4; letter-spacing:.14em">GARAGEPRO SERVICE OPS · DESIGN AUDIT</span>
+      <span style="font-size:32px; font-weight:700; color:#fff; line-height:1.25">ตรวจสอบความครบถ้วนก่อนขัดเกลา</span>
+      <span style="font-size:14px; color:#A9BDD6; line-height:1.75; max-width:900px">ตรวจ 8 ไฟล์งานออกแบบเทียบกับวงจรงานบริการทั้ง 12 ขั้น · สรุปหน้าจอที่ออกแบบแล้ว ช่องว่างที่เหลือ ผลตรวจการใช้งาน 10 ข้อ และรายการที่แก้ไขไปแล้วในระบบออกแบบเดิม (ไม่เปลี่ยนภาษาภาพ)</span>
+    </div>
+    <div style="display:flex; gap:12px; flex:none">
+      <sc-for list="{{summary}}" as="s" hint-placeholder-count="4">
+        <div style="background:#1B3557; border-radius:11px; padding:14px 16px; display:flex; flex-direction:column; gap:4px; min-width:118px">
+          <span style="font-size:24px; font-weight:700; color:{{s.fg}}; font-family:'IBM Plex Mono',monospace; line-height:1">{{s.n}}</span>
+          <span style="font-size:11px; color:#A9BDD6; line-height:1.4">{{s.label}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:flex; flex-direction:column; gap:12px">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">1 · ตารางความครอบคลุมหน้าจอ (Screen coverage matrix)</span>
+      <span style="font-size:12.5px; color:#64748B">เรียงตามวงจรงาน · ไฟล์ที่อ้างอิงอยู่ในคอลัมน์จุดเข้า</span>
+    </div>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+      <div style="display:grid; grid-template-columns:132px 118px 88px 1.25fr 1fr 1fr 1fr 1.35fr 96px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:10.5px; font-weight:700; color:#64748B">
+        <div style="padding:10px 12px">โมดูล</div><div style="padding:10px 8px">บทบาท</div><div style="padding:10px 6px">แพลตฟอร์ม</div><div style="padding:10px 10px">หน้าจอ / สถานะ</div><div style="padding:10px 10px">การกระทำหลัก</div><div style="padding:10px 10px">จุดเข้า</div><div style="padding:10px 10px">ปลายทางเมื่อสำเร็จ</div><div style="padding:10px 10px">สถานะผิดพลาด / ว่าง / ออฟไลน์</div><div style="padding:10px 10px">ออกแบบแล้ว</div>
+      </div>
+      <sc-for list="{{matrix}}" as="r" hint-placeholder-count="34">
+        <div style="display:grid; grid-template-columns:132px 118px 88px 1.25fr 1fr 1fr 1fr 1.35fr 96px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch; background:{{r.bg}}">
+          <div style="padding:10px 12px; color:#0F2440; font-weight:700; line-height:1.45">{{r.mod}}</div>
+          <div style="padding:10px 8px; color:#475569; line-height:1.45">{{r.role}}</div>
+          <div style="padding:10px 6px"><span style="background:{{r.pBg}}; color:{{r.pFg}}; font-size:11px; font-weight:700; padding:3px 6px; border-radius:4px; white-space:nowrap">{{r.plat}}</span></div>
+          <div style="padding:10px 10px; color:#0F2440; font-weight:600; line-height:1.5">{{r.screen}}</div>
+          <div style="padding:10px 10px; color:#475569; line-height:1.5">{{r.action}}</div>
+          <div style="padding:10px 10px; color:#64748B; line-height:1.5">{{r.entry}}</div>
+          <div style="padding:10px 10px; color:#475569; line-height:1.5">{{r.dest}}</div>
+          <div style="padding:10px 10px; color:{{r.stateFg}}; line-height:1.5">{{r.states}}</div>
+          <div style="padding:10px 10px"><span style="background:{{r.dBg}}; color:{{r.dFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; white-space:nowrap">{{r.done}}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1.25fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">2 · เทียบกับวงจรงานบริการ 12 ขั้น</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:48px 1fr 118px 118px 1.4fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:10.5px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">#</div><div style="padding:10px 10px">ขั้นของวงจรงาน</div><div style="padding:10px 8px; text-align:center">มือถือ</div><div style="padding:10px 8px; text-align:center">เว็บ</div><div style="padding:10px 10px">ผลตรวจ</div>
+        </div>
+        <sc-for list="{{lifecycle}}" as="l" hint-placeholder-count="12">
+          <div style="display:grid; grid-template-columns:48px 1fr 118px 118px 1.4fr; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:center; background:{{l.bg}}">
+            <div style="padding:10px 12px; font-family:'IBM Plex Mono',monospace; color:#64748B; font-weight:700">{{l.n}}</div>
+            <div style="padding:10px 10px; color:#0F2440; font-weight:700">{{l.stage}}</div>
+            <div style="padding:10px 8px; text-align:center"><span style="background:{{l.mBg}}; color:{{l.mFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px">{{l.m}}</span></div>
+            <div style="padding:10px 8px; text-align:center"><span style="background:{{l.wBg}}; color:{{l.wFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px">{{l.w}}</span></div>
+            <div style="padding:10px 10px; color:{{l.noteFg}}; line-height:1.55">{{l.note}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">3 · ช่องว่างที่ยังเหลือ (จัดลำดับ)</span>
+      <div style="display:flex; flex-direction:column; gap:9px">
+        <sc-for list="{{gaps}}" as="g" hint-placeholder-count="8">
+          <div style="background:#fff; border:1px solid {{g.border}}; border-left:5px solid {{g.accent}}; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:6px">
+            <div style="display:flex; align-items:flex-start; gap:9px">
+              <span style="background:{{g.pBg}}; color:{{g.pFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none">{{g.pri}}</span>
+              <span style="font-size:13.5px; font-weight:700; color:#0F2440; line-height:1.45; flex:1">{{g.title}}</span>
+            </div>
+            <span style="font-size:12px; color:#475569; line-height:1.7">{{g.body}}</span>
+            <span style="font-size:11.5px; color:#64748B; line-height:1.6"><b style="color:#1B3557">ที่ต้องเพิ่ม:</b> {{g.fix}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:flex; flex-direction:column; gap:12px">
+    <span style="font-size:20px; font-weight:700; color:#0F2440">4 · ผลตรวจการใช้งาน 10 ข้อ (Heuristic review)</span>
+    <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px">
+      <sc-for list="{{heuristics}}" as="h" hint-placeholder-count="10">
+        <div style="background:#fff; border:1px solid #D4DDE8; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:9px">
+          <div style="display:flex; align-items:center; gap:10px">
+            <span style="width:24px; height:24px; border-radius:7px; background:#0F2440; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; font-family:'IBM Plex Mono',monospace">{{h.n}}</span>
+            <span style="font-size:14px; font-weight:700; color:#0F2440; flex:1">{{h.title}}</span>
+            <span style="background:{{h.sBg}}; color:{{h.sFg}}; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:5px; flex:none">{{h.score}}</span>
+          </div>
+          <span style="font-size:12px; color:#475569; line-height:1.7"><b style="color:#0B6D5E">ผ่าน:</b> {{h.good}}</span>
+          <span style="font-size:12px; color:#475569; line-height:1.7"><b style="color:#A8380A">ต้องแก้:</b> {{h.bad}}</span>
+          <span style="font-size:11.5px; color:#64748B; line-height:1.65; background:#F7F9FC; border-radius:8px; padding:9px 11px"><b style="color:#1B3557">การแก้ไข:</b> {{h.action}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">5 · เช็กลิสต์สถานะระบบและการเข้าถึง</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:1.5fr 100px 1.6fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:10.5px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">หัวข้อที่ตรวจ</div><div style="padding:10px 8px; text-align:center">ผล</div><div style="padding:10px 10px">หลักฐาน / สิ่งที่ต้องทำ</div>
+        </div>
+        <sc-for list="{{checks}}" as="c" hint-placeholder-count="16">
+          <div style="display:grid; grid-template-columns:1.5fr 100px 1.6fr; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:center; background:{{c.bg}}">
+            <div style="padding:10px 12px; color:#0F2440; font-weight:600; line-height:1.5">{{c.label}}</div>
+            <div style="padding:10px 8px; text-align:center"><span style="background:{{c.rBg}}; color:{{c.rFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:4px; white-space:nowrap">{{c.result}}</span></div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.55">{{c.note}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">6 · ก่อน / หลัง · การแก้ไขที่สำคัญที่สุด</span>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <sc-for list="{{fixes}}" as="f" hint-placeholder-count="12">
+          <div style="background:#fff; border:1px solid #D4DDE8; border-radius:12px; overflow:hidden">
+            <div style="padding:11px 14px; background:#F7F9FC; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:9px">
+              <span style="background:{{f.tagBg}}; color:{{f.tagFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none">{{f.tag}}</span>
+              <span style="font-size:12.5px; font-weight:700; color:#0F2440; flex:1; line-height:1.45">{{f.title}}</span>
+              <span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace; flex:none">{{f.file}}</span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr">
+              <div style="padding:12px 14px; border-right:1px solid #F1F4F9; display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:10px; font-weight:700; color:#A31D1D; letter-spacing:.06em">ก่อน</span>
+                <span style="font-size:11.5px; color:#475569; line-height:1.65">{{f.before}}</span>
+              </div>
+              <div style="padding:12px 14px; display:flex; flex-direction:column; gap:4px; background:#F7FCFA">
+                <span style="font-size:10px; font-weight:700; color:#0B6D5E; letter-spacing:.06em">หลัง</span>
+                <span style="font-size:11.5px; color:#0F2440; line-height:1.65; font-weight:500">{{f.after}}</span>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; background:#fff; border:1px dashed #C9D6E6; border-radius:13px; padding:20px; display:flex; flex-direction:column; gap:11px">
+    <span style="font-size:15px; font-weight:700; color:#0F2440">ข้อสรุปและลำดับงานถัดไป</span>
+    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px">
+      <div style="display:flex; flex-direction:column; gap:7px">
+        <span style="font-size:12.5px; font-weight:700; color:#0B6D5E">พร้อมใช้รีวิวกับผู้ใช้จริงได้แล้ว</span>
+        <span style="font-size:12px; color:#475569; line-height:1.75">เส้นทางหลักทั้ง 12 ขั้นเดินได้ครบทั้งสองแพลตฟอร์ม · กฎการเปลี่ยนสถานะ การอนุมัติรายบรรทัด เวอร์ชันใบเสนอราคา รับของบางส่วน และแบ่งจ่ายมีหน้าจอรองรับพร้อมสถานะไม่ปกติ</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:7px">
+        <span style="font-size:12.5px; font-weight:700; color:#8A5A00">ต้องทำก่อนส่งให้ทีมพัฒนา</span>
+        <span style="font-size:12px; color:#475569; line-height:1.75">เพิ่มหน้าจอที่ยังขาดตามตารางช่องว่าง (ส่งมอบรถ + ลายเซ็นรับรถคืน, ใบกำกับภาษีเต็มรูปกรณีนิติบุคคล, ตั้งค่าผู้ใช้และสิทธิ์) และทำสเปกโฟกัสคีย์บอร์ดกับป้าย ARIA ให้ครบทุกตารางบนเว็บ</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:7px">
+        <span style="font-size:12.5px; font-weight:700; color:#1552B3">ไม่แก้ในรอบนี้โดยเจตนา</span>
+        <span style="font-size:12px; color:#475569; line-height:1.75">ไม่เปลี่ยนภาษาภาพ สี ตัวอักษร หรือโครงหน้าเพื่อความแปลกใหม่ · การแก้ทั้งหมดใช้โทเคนและคอมโพเนนต์ชุดเดิมจากบอร์ด Design Foundation</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1620,&quot;height&quot;:1080}}">
+const P = { m:{ label:'มือถือ', bg:'#E6EFFC', fg:'#1552B3' }, w:{ label:'เว็บ', bg:'#E4E9F0', fg:'#1B3557' }, b:{ label:'ทั้งสอง', bg:'#E3F5F1', fg:'#0B6D5E' } };
+const D = {
+  yes:{ label:'ครบ', bg:'#E3F5F1', fg:'#0B6D5E' },
+  part:{ label:'บางส่วน', bg:'#FDF3E2', fg:'#8A5A00' },
+  no:{ label:'ยังไม่มี', bg:'#FBE9E9', fg:'#A31D1D' }
+};
+
+const MATRIX = [
+  ['เข้าใช้งาน','ทุกบทบาท','m','เข้าสู่ระบบพนักงาน + เลือกสาขา/กะ','เข้าสู่ระบบ','เปิดแอป','หน้าหลักตามบทบาท','รหัสผิด · ออฟไลน์ · เวอร์ชันแอปเก่า','part'],
+  ['เข้าใช้งาน','ทุกบทบาท','w','เข้าสู่ระบบ + เลือกสาขา','เข้าใช้งานสาขา','เปิดเว็บ','แดชบอร์ดตามบทบาท','รหัสผิด · ไม่มีสิทธิ์สาขา','yes'],
+  ['หน้าหลัก','หน้าร้าน / ช่าง','m','หน้าหลัก + คิวงาน + งานของฉัน','รับรถใหม่ / เปิดงาน','แถบล่าง','รายละเอียดงาน','โหลด · ไม่มีงาน · ออฟไลน์แคช · ไม่มีสิทธิ์','yes'],
+  ['ค้นหา','หน้าร้าน / ช่าง','m','ค้นหางาน (เลขงาน ทะเบียน ชื่อ เบอร์)','เปิดงานที่พบ','แถบล่าง / หน้าหลัก','รายละเอียดงาน','ไม่พบผลลัพธ์ · พิมพ์สั้นเกินไป','yes'],
+  ['สแกน QR','ช่าง','m','สแกน QR ใบสั่งซ่อม','เปิดงานที่สแกนได้','ปุ่มกลางแถบล่าง','รายละเอียดงาน','สแกนไม่พบ · กล้องไม่ได้รับอนุญาต (ยังไม่มี)','part'],
+  ['รับรถ','หน้าร้าน','m','ขั้นที่ 1–6 ของการรับรถ','ยืนยันเปิดงาน','หน้าหลัก · รับรถใหม่','สำเร็จ + QR ติดรถ','ตรวจสอบไม่ผ่าน · เลขไมล์ต่ำกว่าเดิม · ออฟไลน์ TMP · ทิ้งฉบับร่าง','yes'],
+  ['รับรถ','หน้าร้าน','m','ไม่พบลูกค้าในข้อมูลหลัก','สร้างข้อมูลชั่วคราว + คำขอเชื่อม','ขั้นค้นหาลูกค้า','ขั้นยืนยันรถ','ไม่พบ · ข้อมูลหลักอ่านอย่างเดียว','yes'],
+  ['ตรวจเช็ค','ช่าง','m','ใบตรวจ 8 หมวด 31 รายการ','ส่งผลตรวจ','งานของฉัน · ปุ่มเปิดใบตรวจ','สถานะ → รอเสนอราคา','ตรวจไม่ครบ · ไม่เกี่ยวข้องต้องมีเหตุผล · อัปโหลดล้มเหลว · ข้อมูลชนกัน','yes'],
+  ['ตรวจเช็ค','ช่าง','m','แผ่นรายละเอียดข้อบกพร่อง','บันทึกและไปรายการถัดไป','แตะ “ต้องซ่อม”','กลับไปรายการ','รูปยังไม่มี · เทียบรูปตอนรับรถ','yes'],
+  ['เสนอราคา','ธุรการ / ผู้จัดการ','w','คิวรอเสนอราคา (จัดลำดับ)','เปิดทำใบเสนอราคา','เมนูใบเสนอราคา','หน้าสร้างใบเสนอราคา','คิวว่าง · ผลตรวจค้างนาน','yes'],
+  ['เสนอราคา','ธุรการ / ผู้จัดการ','w','หน้าสร้าง 3 พาเนล + แคตตาล็อก','ส่งขออนุมัติ','คิวรอเสนอราคา','ส่งไปเครื่องหน้าร้าน','ตรวจสอบไม่ผ่าน · ของไม่พอ · รายการซ้ำ · กำไรติดลบ · แก้พร้อมกัน · ค้นไม่พบ · หมดอายุ · ยังไม่บันทึก','yes'],
+  ['เสนอราคา','ผู้จัดการ','w','ประวัติเวอร์ชันและเหตุผลราคาเปลี่ยน','เปิดดูเวอร์ชันเดิม','ป้ายเวอร์ชันบนหัวเอกสาร','ลิ้นชักประวัติ','เวอร์ชันถูกแทนที่ · ลายเซ็นผูกกับเวอร์ชัน','yes'],
+  ['อนุมัติราคา','ลูกค้า (เครื่องพนักงาน)','m','รายการแยก “ลูกค้าขอ / ช่างแนะนำ”','อนุมัติ/ไม่อนุมัติรายบรรทัด','แจ้งเตือน · งานรออนุมัติ','หน้าตรวจทาน','ยังเลือกไม่ครบ · เหตุผลที่ไม่อนุมัติ','yes'],
+  ['อนุมัติราคา','ลูกค้า (เครื่องพนักงาน)','m','ข้อความยินยอม + ลายเซ็นเต็มจอ','บันทึกการอนุมัติ','หน้าตรวจทาน','หน้ายืนยันผลอนุมัติ','ออกกลางคัน · ลบลายเซ็น · ออฟไลน์รอยืนยัน · เวอร์ชันใหม่มาแทน','yes'],
+  ['ซ่อม','ช่าง','m','งานของฉันเรียงตามความเร่งด่วน','เปิดงาน / เริ่มซ่อม','แถบล่าง','รายละเอียดงานซ่อม','ไม่มีงาน · เกินกำหนด · QC ตีกลับ','yes'],
+  ['ซ่อม','ช่าง','m','รายละเอียดงาน + จับเวลา + รูปก่อน/หลัง','ปิดรายการซ่อม','งานของฉัน','ส่ง QC','ยังไม่มีรูปก่อน/หลัง · ส่ง QC ไม่ได้ · ล็อกหลัง QC ผ่าน','yes'],
+  ['รออะไหล่','ช่าง','m','แจ้งรออะไหล่ (ของ จำนวน เหตุผล ETA)','ส่งคำขออะไหล่','ปุ่มในรายการซ่อม','สถานะ → รออะไหล่','งานที่ทำเสร็จไม่ถูกล้าง · เลือกทำงานอื่นต่อได้','yes'],
+  ['งานเพิ่มเติม','ช่าง','m','แจ้งงานที่พบเพิ่ม + ประเมินราคา','ส่งให้ออกใบเสนอราคาใหม่','ปุ่มในหน้างานซ่อม','รอลูกค้าอนุมัติ (ล็อกรายการ)','ยังไม่ถือว่าอนุมัติ · ห้ามลงมือทำ','yes'],
+  ['QC','หัวหน้ากะ','m','เช็กลิสต์ QC + ทดลองขับ + รูป','สรุปผล QC','ปุ่มส่ง QC','พร้อมส่งมอบ','สรุปไม่ได้ถ้ายังไม่ครบ · ตีกลับพร้อมความสำคัญ','yes'],
+  ['ศูนย์ซิงก์','ช่าง / หน้าร้าน','m','ศูนย์ซิงก์ข้อมูลรายงาน','ซิงก์ทั้งหมด','แถบล่าง · ลิงก์ในงาน','ซิงก์กับระบบแล้ว','บันทึกในเครื่อง · กำลังซิงก์ · ล้มเหลว+ลองใหม่ · ข้อมูลชนกัน · รหัสชั่วคราว','yes'],
+  ['ส่งมอบรถ','หน้าร้าน','m','เดินตรวจรถกับลูกค้า + ลายเซ็นรับรถคืน','ปิดงานเสร็จสมบูรณ์','พร้อมส่งมอบ','งานเสร็จสมบูรณ์','ยังไม่ชำระเงิน · ของในรถไม่ครบ','no'],
+  ['แดชบอร์ด','ผู้จัดการ','w','แดชบอร์ด 9 ตัวเลข + กระดานโรงซ่อม','กดตัวเลขเพื่อกรองคิว','เมนูแดชบอร์ด','คิวงานที่กรองแล้ว','โหลด · ข้อมูลไม่เป็นปัจจุบัน · 503 · ไม่มีสิทธิ์ · อัปเดตสด','yes'],
+  ['แดชบอร์ด','แคชเชียร์','w','หน้าแคชเชียร์ + คิวรอเก็บเงิน','เปิด POS','เมนูแดชบอร์ด','หน้ารับชำระ','เมนูถูกจำกัดตามบทบาท','yes'],
+  ['คิวงาน','ผู้จัดการ / ธุรการ','w','ตาราง + มุมมองบันทึกไว้ + บอร์ดสถานะ','เปิดรายละเอียดงาน','เมนูงานซ่อม','รายละเอียดงาน 8 แท็บ','โหลด · ไม่พบตามมุมมอง · 503 · แถวอัปเดตสด','yes'],
+  ['รายละเอียดงาน','ผู้จัดการ / ธุรการ','w','หัวเรื่องตรึง + 8 แท็บ + ไทม์ไลน์ 2 แพลตฟอร์ม','ทำการกระทำถัดไปของสถานะ','คิวงาน · ค้นหา · แจ้งเตือน','โมดูลที่เกี่ยวข้อง','เกินกำหนดจากข้อมูลจริง · ล็อกตามสถานะ','yes'],
+  ['สต็อก','ผู้จัดการ / คลัง','w','แดชบอร์ดคลัง + แคตตาล็อก + รายละเอียดอะไหล่','ปรับสต็อก / สั่งซื้อ','เมนูสต็อก','บัญชีเคลื่อนไหว · ร่าง PO','ไม่มีประวัติ · กันสต็อกติดลบ · บาร์โค้ดไม่พบ · ของซ้ำ · ยอดไม่เป็นปัจจุบัน · ไม่เห็นต้นทุน','yes'],
+  ['จัดซื้อ','ธุรการจัดซื้อ','w','คิวแนะนำสั่งซื้อ + สร้าง PO + อนุมัติ','ส่งขออนุมัติ / อนุมัติ','เมนูจัดซื้อ · แจ้งเตือนสต็อก','PO สถานะถัดไป','ร่างซ้ำ · ราคาเปลี่ยน · ไม่มีสิทธิ์อนุมัติ · เกินงบ','yes'],
+  ['รับของ','ธุรการ / คลัง','w','GRN รายบรรทัด (รับ/ชำรุด/ค้างรับ)','บันทึกรับของ','PO ที่ส่งแล้ว','รับบางส่วน → PO ยังเปิด','รับเกินต้องอนุมัติ · ของชำรุดไม่เข้าของใช้ได้ · ชนกันตอนรับ · แนบไฟล์ล้มเหลว','yes'],
+  ['POS','แคชเชียร์','w','กระทบยอดก่อนปิดงาน','ตัดสินใจส่วนต่างทุกรายการ','คิวรอชำระ','หน้ารับชำระ','มีส่วนต่าง · ทำเกิน/ไม่ได้ทำ · ล็อกจนแก้ครบ','yes'],
+  ['POS','แคชเชียร์','w','รับชำระ 4 ช่องทาง + แบ่งจ่าย','ยืนยันรับเงิน','กระทบยอด','ตรวจข้อมูลผู้รับเอกสาร','ค้างชำระ · บัตรถูกปฏิเสธ · QR หมดเวลา “กำลังตรวจสอบ” · เก็บซ้ำ · ลูกหนี้ต้องอนุมัติ','yes'],
+  ['ใบเสร็จ/ใบกำกับ','แคชเชียร์','w','เลือกประเภทเอกสาร + ตรวจข้อมูล + ตัวอย่าง','ออกเอกสาร','หลังรับเงินครบ','หน้าสำเร็จ + พิมพ์','เลขภาษี 13 หลัก · ที่อยู่ตามทะเบียน · เครื่องพิมพ์ออฟไลน์','part'],
+  ['ใบเสร็จ/ใบกำกับ','แคชเชียร์ / ผู้จัดการ','w','พิมพ์ซ้ำ / ยกเลิก / คืนเงิน + ประวัติ','ยืนยันพร้อมเหตุผล','หน้าสำเร็จ · เมนูการเงิน','บันทึกในประวัติตรวจสอบ','ต้องมีเหตุผล · แคชเชียร์ไม่มีสิทธิ์คืนเงิน','yes'],
+  ['รายงาน','ผู้จัดการ','w','6 แท็บ + เจาะลึกทุกกราฟ + ส่งออก','กรองและส่งออก','เมนูรายงาน','ไฟล์ที่ส่งออก','ไม่มีข้อมูล · ข้อมูลไม่ครบ · รีเฟรชล่าช้า · ส่งออกล้มเหลว · ข้อมูลถูกจำกัด','yes'],
+  ['ตั้งค่า','ผู้จัดการเขต','w','ผู้ใช้ สิทธิ์ ราคามาตรฐาน ภาษี','บันทึกการตั้งค่า','เมนูตั้งค่าระบบ','ค่าที่มีผลทุกสาขา','ยังไม่ออกแบบ (มีเพียงสถานะไม่มีสิทธิ์)','no']
+].map(r => ({
+  mod:r[0], role:r[1], plat:P[r[2]].label, pBg:P[r[2]].bg, pFg:P[r[2]].fg,
+  screen:r[3], action:r[4], entry:r[5], dest:r[6], states:r[7],
+  stateFg: r[8] === 'no' ? '#A31D1D' : (r[8] === 'part' ? '#8A5A00' : '#475569'),
+  done:D[r[8]].label, dBg:D[r[8]].bg, dFg:D[r[8]].fg,
+  bg: r[8] === 'no' ? '#FFFDFD' : (r[8] === 'part' ? '#FFFDF8' : '#fff')
+}));
+
+const LIFECYCLE = [
+  ['1','รับรถ','ครบ','อ้างอิง','เต็มโฟลว์ 6 ขั้นบนมือถือ · เว็บเห็นข้อมูลรับรถในแท็บภาพรวม'],
+  ['2','ตรวจเช็ค','ครบ','อ้างอิง','31 รายการ 8 หมวด + แผ่นรายละเอียด · เว็บอ่านผลได้ในแท็บตรวจเช็ค'],
+  ['3','เสนอราคา','ไม่เกี่ยวข้อง','ครบ','คิว + หน้าสร้าง 3 พาเนล + แคตตาล็อกพร้อมสต็อก + เวอร์ชัน'],
+  ['4','ลูกค้าอนุมัติรายรายการและเซ็น','ครบ','ครบ','อนุมัติรายบรรทัด + เหตุผลที่ไม่อนุมัติ + ลายเซ็น · เว็บเห็นผลและหลักฐาน'],
+  ['5','ซ่อม','ครบ','ครบ','จับเวลา รูปก่อน/หลัง งานเพิ่มเติม · เว็บเห็นความคืบหน้าและสถานะอะไหล่'],
+  ['6','รออะไหล่','ครบ','ครบ','แจ้งจากมือถือ · เว็บเห็นเหตุการณ์ สต็อก และ PO ที่เกี่ยวข้อง'],
+  ['7','QC','ครบ','ครบ','เช็กลิสต์ + ทดลองขับ + ตีกลับพร้อมความสำคัญ · เว็บเห็นผลในแท็บ QC'],
+  ['8','พร้อมส่งมอบ','ครบ','ครบ','ล็อกรายการหลัง QC ผ่าน · เว็บใช้เป็นเงื่อนไขเปิดการเรียกเก็บเงิน'],
+  ['9','POS','ไม่เกี่ยวข้อง','ครบ','กระทบยอดก่อนปิดงาน + หน้ารับชำระเน้นความแม่นยำ'],
+  ['10','ชำระเงิน','ไม่เกี่ยวข้อง','ครบ','4 ช่องทาง แบ่งจ่าย สถานะไม่แน่นอน ลูกหนี้ต้องอนุมัติ'],
+  ['11','ใบเสร็จ / ใบกำกับภาษี','ไม่เกี่ยวข้อง','บางส่วน','แยกใบเสร็จกับใบกำกับเต็มรูปแล้ว แต่ยังไม่มีเคสนิติบุคคล/วางบิลประกัน'],
+  ['12','เสร็จสมบูรณ์','บางส่วน','ครบ','เว็บปิดงานครบ · มือถือยังไม่มีหน้าจอส่งมอบรถและลายเซ็นรับรถคืน']
+].map(r => {
+  const mk = (v) => v === 'ครบ' ? { bg:'#E3F5F1', fg:'#0B6D5E' } : (v === 'บางส่วน' ? { bg:'#FDF3E2', fg:'#8A5A00' } : (v === 'ไม่เกี่ยวข้อง' ? { bg:'#EEF1F5', fg:'#475569' } : { bg:'#E4E9F0', fg:'#1B3557' }));
+  return { n:r[0], stage:r[1], m:r[2], w:r[3], note:r[4],
+    mBg:mk(r[2]).bg, mFg:mk(r[2]).fg, wBg:mk(r[3]).bg, wFg:mk(r[3]).fg,
+    noteFg: (r[2] === 'บางส่วน' || r[3] === 'บางส่วน') ? '#8A5A00' : '#475569',
+    bg: (r[2] === 'บางส่วน' || r[3] === 'บางส่วน') ? '#FFFDF8' : '#fff' };
+});
+
+const GAPS = [
+  { pri:'สูง', title:'มือถือ: หน้าส่งมอบรถและลายเซ็นรับรถคืน', body:'วงจรงานจบที่ “เสร็จสมบูรณ์” บนเว็บ แต่ขั้นตอนจริงคือหน้าร้านเดินตรวจรถกับลูกค้าแล้วรับลายเซ็น — ตอนนี้ยังไม่มีหน้าจอนี้บนมือถือ',
+    fix:'ใช้แพตเทิร์นรูป + ลายเซ็นจากขั้นรับรถ เพิ่มเช็กลิสต์ของในรถและเงื่อนไขว่าต้องชำระครบก่อนปิดงาน' },
+  { pri:'สูง', title:'เว็บ: ใบกำกับภาษีกรณีนิติบุคคลและวางบิลประกัน', body:'มีใบเสร็จและใบกำกับเต็มรูปสำหรับบุคคลแล้ว แต่งานประกันภัยและลูกค้าองค์กรต้องวางบิล/ตั้งลูกหนี้ ซึ่งยังไม่มีหน้าจอ',
+    fix:'เพิ่มโหมด “วางบิล” ในหน้ารับชำระ พร้อมสถานะลูกหนี้และผู้อนุมัติ ใช้คอมโพเนนต์สรุปยอดเดิม' },
+  { pri:'สูง', title:'เว็บ: โฟกัสคีย์บอร์ดและป้ายสำหรับโปรแกรมอ่านหน้าจอ', body:'ตารางและแผ่นซ้อนทั้งหมดใช้เมาส์เป็นหลัก · ยังไม่ได้ระบุลำดับ Tab, วงโฟกัสที่มองเห็น, การกัก focus ในโมดัล และป้าย aria สำหรับปุ่มไอคอน',
+    fix:'กำหนดสเปกโฟกัส (วงโฟกัส 2px น้ำเงิน) ปุ่มลัด POS ที่ทำงานจริง และป้ายข้อความให้ปุ่มไอคอนทุกตัว' },
+  { pri:'กลาง', title:'มือถือ: สิทธิ์กล้องและไมโครโฟนถูกปฏิเสธ', body:'มีสถานะสแกนบาร์โค้ดไม่พบแล้ว แต่ยังไม่มีกรณีผู้ใช้ปฏิเสธสิทธิ์กล้อง/ไมค์ ซึ่งเกิดบ่อยกับเครื่องใหม่',
+    fix:'เพิ่มสถานะอธิบายวิธีเปิดสิทธิ์ + ทางเลือกกรอกเลขงานด้วยมือ ใช้แพตเทิร์นสถานะไม่มีสิทธิ์ที่มีอยู่' },
+  { pri:'กลาง', title:'ตั้งค่าระบบ: ผู้ใช้ สิทธิ์ ราคามาตรฐาน ภาษี', body:'แผนผังข้อมูลมีเมนูตั้งค่าแล้วแต่ยังไม่มีหน้าจอ ทั้งที่กฎสิทธิ์ถูกอ้างอิงในเกือบทุกโมดูล',
+    fix:'ออกแบบตารางผู้ใช้ + เมทริกซ์สิทธิ์ตามบทบาท และหน้าตั้งค่าอัตราภาษี/ราคามาตรฐาน' },
+  { pri:'กลาง', title:'ข้อความไทยที่ขนาดตัวอักษร 200%', body:'ป้ายสถานะและปุ่มบนมือถือใช้ข้อความยาว เช่น “ควรเฝ้าระวัง” และ “ส่งซัพพลายเออร์แล้ว” เมื่อผู้ใช้ขยายตัวอักษรจะล้นกรอบ',
+    fix:'กำหนดกฎย่อข้อความสถานะ (ป้ายสั้น + คำอธิบายบรรทัดถัดไป) และให้ปุ่มสูงตามเนื้อหาไม่ตรึงความสูง' },
+  { pri:'ต่ำ', title:'เว็บ: การล็อกเอกสารเมื่อแก้พร้อมกัน', body:'มีคำเตือน “มีคนแก้ไขพร้อมกัน” และการขอสิทธิ์แก้คนเดียวในใบเสนอราคาแล้ว แต่โมดูลอื่น (PO, กระทบยอด) ยังไม่มี',
+    fix:'ใช้แถบเตือนเดียวกันกับ PO และหน้ากระทบยอด พร้อมสถานะอ่านอย่างเดียวให้ผู้ใช้อีกคน' },
+  { pri:'ต่ำ', title:'ศูนย์แจ้งเตือนบนเว็บ', body:'มีไอคอนกระดิ่งและตัวเลขบนเว็บ แต่ยังไม่มีรายการแจ้งเตือนจริงแบบที่มือถือมี',
+    fix:'ทำลิ้นชักแจ้งเตือนใช้การ์ดเดียวกับกล่องแจ้งเตือนบนมือถือ แยกกลุ่มตามงาน' }
+].map(g => ({
+  pri:g.pri, title:g.title, body:g.body, fix:g.fix,
+  accent: g.pri === 'สูง' ? '#C02626' : (g.pri === 'กลาง' ? '#E0930C' : '#94A3B8'),
+  border: g.pri === 'สูง' ? '#F0C2C2' : (g.pri === 'กลาง' ? '#F0D9AC' : '#E3E8EF'),
+  pBg: g.pri === 'สูง' ? '#FBE9E9' : (g.pri === 'กลาง' ? '#FDF3E2' : '#EEF1F5'),
+  pFg: g.pri === 'สูง' ? '#A31D1D' : (g.pri === 'กลาง' ? '#8A5A00' : '#475569')
+}));
+
+const HEUR = [
+  { n:1, title:'มองเห็นสถานะของระบบ', score:'ดี',
+    good:'ทุกจอมีสถานะงาน เวลาอัปเดตล่าสุด และสถานะการซิงก์ · POS แสดงยอดคงเหลือสดตลอดการแบ่งจ่าย',
+    bad:'บนเว็บบางหน้า (สต็อก, จัดซื้อ) ยังไม่บอกเวลาข้อมูลล่าสุดเหมือนหน้ารายงาน',
+    action:'ใส่ป้ายเวลาอัปเดตแบบเดียวกับหน้ารายงานที่หัวตารางสต็อกและ PO' },
+  { n:2, title:'ใช้ภาษาเดียวกับหน้างานจริง', score:'ดี',
+    good:'ใช้คำที่ช่างและหน้าร้านพูดจริง เช่น รออะไหล่ เจียจานเบรก เบิกของ วางบิล · ฝั่งลูกค้าใช้ภาษาที่เข้าใจง่ายไม่มีศัพท์ระบบ',
+    bad:'คำว่า “SLA” และ “Fill rate” ในรายงานยังเป็นศัพท์อังกฤษล้วน',
+    action:'คงคำอังกฤษไว้แต่เพิ่มคำไทยกำกับในลิ้นชักนิยามตัวชี้วัด (ทำแล้วในรอบนี้)' },
+  { n:3, title:'ผู้ใช้ควบคุมได้และย้อนกลับได้', score:'พอใช้',
+    good:'อนุมัติทั้งหมดมีเลิกทำ · ลายเซ็นลบได้พร้อมยืนยัน · ออกจากฉบับร่างมีทางเลือกเก็บหรือทิ้ง',
+    bad:'การปิดรายการซ่อมและการปรับสต็อกยังไม่มีทางย้อนกลับในตัวเอง ต้องพึ่งการแก้ไขรายการใหม่',
+    action:'เพิ่มปุ่มย้อนสถานะรายการซ่อม (มีแล้วในรอบนี้ผ่านการแตะซ้ำ) และคำเตือนก่อนปรับสต็อกที่ต้องอนุมัติ' },
+  { n:4, title:'ความสม่ำเสมอ', score:'ดี',
+    good:'ป้ายสถานะ 10 สถานะ ปุ่ม สรุปยอด ไทม์ไลน์ และแผ่นยืนยันใช้ชุดเดียวกันทุกไฟล์',
+    bad:'เดิมมีจุดที่ไม่ตรง เช่น หัวเรื่องงานบนเว็บติดป้ายเกินกำหนดตายตัว และกราฟค่าแรงยังโชว์ตัวเงินให้บทบาทที่ถูกจำกัด',
+    action:'แก้แล้วทั้งสองจุด — ป้ายเกินกำหนดมาจากข้อมูลจริง และสลับกราฟเป็นหน่วยไม่ใช่ตัวเงินเมื่อไม่มีสิทธิ์' },
+  { n:5, title:'ป้องกันความผิดพลาด', score:'ดี',
+    good:'ส่ง QC ไม่ได้ถ้างานที่อนุมัติไม่ครบ · ปิดการขายไม่ได้ถ้ายอดคงเหลือไม่เป็นศูนย์ · กันสต็อกติดลบ · กันเลขไมล์ต่ำกว่าเดิม · กันรายการซ้ำในใบเสนอราคา',
+    bad:'เดิมหลัง QC ผ่านยังกดแก้รายการซ่อมได้ ทำให้งานพร้อมส่งมอบมีรายการค้าง',
+    action:'ล็อกรายการหลัง QC ผ่าน และต้องกด “เปิดงานซ่อมใหม่” ที่ยกเลิกผล QC อย่างชัดเจน (แก้แล้ว)' },
+  { n:6, title:'จำได้ดีกว่าต้องนึกเอง', score:'ดี',
+    good:'ใบเสนอราคาดึงผลตรวจและรูปมาให้ · POS ดึงรายการที่อนุมัติมาให้ · คิวแนะนำสั่งซื้อคำนวณจำนวนให้และหักของที่กำลังสั่ง',
+    bad:'หน้าค้นหาบนเว็บยังไม่มีประวัติการค้นล่าสุด ทำให้ต้องพิมพ์เลขงานซ้ำ',
+    action:'เพิ่มรายการค้นล่าสุด 5 รายการในลิ้นชักค้นหา ใช้การ์ดผลลัพธ์เดิม' },
+  { n:7, title:'ประสิทธิภาพสำหรับผู้ใช้ชำนาญ', score:'พอใช้',
+    good:'มือถือมี “ที่เหลือปกติทั้งหมด” และเลื่อนโฟกัสอัตโนมัติ · POS มีปุ่มลัด F2–F5 และปุ่มเงินพอดี · เว็บมีมุมมองที่บันทึกไว้',
+    bad:'ปุ่มลัดบนเว็บยังเป็นเพียงคำอธิบาย ยังไม่ผูกกับการทำงานจริง และไม่มีทางเลือกทำงานด้วยคีย์บอร์ดล้วน',
+    action:'ทำสเปกปุ่มลัดที่ผูกจริง (⌘K ค้นหา, F2–F5 ช่องทางชำระ, Enter ยืนยัน) พร้อมลำดับ Tab ของทุกตาราง' },
+  { n:8, title:'ข้อมูลน้อยแต่พอใช้', score:'ดี',
+    good:'มือถือแสดงเฉพาะสิ่งที่ต้องตัดสินใจตรงหน้า · เว็บหนาแน่นแต่มีลำดับชั้นชัด · รายงานทุกกราฟมีตัวเลขกำกับและตารางเทียบเท่า',
+    bad:'ตารางเว็บบางจอมีคอลัมน์มากเมื่อบีบเหลือ 1024px',
+    action:'ซ่อนคอลัมน์รอง (ลูกค้า, ช่าง) ที่ 1024px แล้วย้ายไปแถวขยาย (ทำแล้วในคิวงาน · ต้องทำเพิ่มในสต็อกและ PO)' },
+  { n:9, title:'ข้อความผิดพลาดที่กู้คืนได้', score:'ดี',
+    good:'ทุกข้อผิดพลาดบอกสาเหตุ ผลกระทบ และปุ่มถัดไป เช่น อัปโหลดล้มเหลว ลองใหม่ · QR หมดเวลาแล้วตรวจสอบกับธนาคาร · ส่งออกล้มเหลวแล้วลดช่วงข้อมูล',
+    bad:'ข้อความบางจุดยังไม่บอกเลขอ้างอิงให้แจ้งไอที',
+    action:'ใส่รหัสอ้างอิง (trace/ref) ในกล่องข้อผิดพลาดทุกจุดแบบเดียวกับหน้า 503 และสถานะไม่มีสิทธิ์' },
+  { n:10, title:'ความช่วยเหลือและคำแนะนำการทำงาน', score:'พอใช้',
+    good:'รายงานมีลิ้นชักนิยามตัวชี้วัดพร้อมสูตร · หน้ากระทบยอดและ GRN มีคำอธิบายกฎธุรกิจใต้ตาราง',
+    bad:'มือถือยังไม่มีคำแนะนำสั้นสำหรับพนักงานใหม่ในขั้นที่ตัดสินใจยาก เช่น การมาร์กความเสียหายและการแจ้งงานเพิ่ม',
+    action:'เพิ่มคำใบ้บรรทัดเดียวใต้หัวข้อในขั้นเหล่านั้น (รูปแบบเดียวกับข้อความช่วยในขั้นถ่ายรูป)' }
+].map(h => ({
+  n:h.n, title:h.title, score:h.score, good:h.good, bad:h.bad, action:h.action,
+  sBg: h.score === 'ดี' ? '#E3F5F1' : '#FDF3E2', sFg: h.score === 'ดี' ? '#0B6D5E' : '#8A5A00'
+}));
+
+const CHECKS = [
+  ['สถานะกำลังโหลด / ว่าง / ผิดพลาด / ลองใหม่','ครบ','มีทุกโมดูลหลัก · เว็บมี 503 + ลองใหม่ · มือถือมีสเกเลตันและว่าง'],
+  ['สถานะไม่มีสิทธิ์เข้าถึง','ครบ','มีทั้ง 2 แพลตฟอร์ม พร้อมรหัสอ้างอิงและทางขอสิทธิ์'],
+  ['ออฟไลน์ / บันทึกในเครื่อง / รอซิงก์','ครบ','รหัสชั่วคราว TMP · ศูนย์ซิงก์ 3 สถานะ · ลายเซ็นออฟไลน์ไม่ถือว่ายืนยัน'],
+  ['ข้อมูลชนกันตอนซิงก์','ครบ','ใบตรวจเช็คและศูนย์ซิงก์ให้เลือก “ใช้ของฉัน / ใช้ของเว็บ”'],
+  ['ข้อมูลไม่เป็นปัจจุบันบนเว็บ','บางส่วน','มีในรายงานและสต็อก · ยังไม่มีในจัดซื้อและกระทบยอด'],
+  ['แก้ไขพร้อมกันบนเว็บ','บางส่วน','มีในใบเสนอราคาและการรับของ · ควรขยายไป PO และกระทบยอด'],
+  ['อนุมัติบางส่วน + เวอร์ชันใบเสนอราคา','ครบ','ผลรายบรรทัด + ลายเซ็นผูกเวอร์ชัน + ประวัติและเหตุผลราคาเปลี่ยน'],
+  ['รับของบางส่วน','ครบ','GRN รายบรรทัด · PO ยังเปิด · ของชำรุดไม่เข้าของใช้ได้ · รับเกินต้องอนุมัติ'],
+  ['แบ่งจ่าย + สถานะการชำระไม่แน่นอน','ครบ','แบ่งได้หลายช่องทาง · QR หมดเวลาเป็น “กำลังตรวจสอบ” ไม่ใช่ล้มเหลว'],
+  ['ป้องกันการเปลี่ยนสถานะที่ไม่ถูกต้อง','ครบ','ส่ง QC · พร้อมส่งมอบ · ปิดการขาย · ล็อกหลัง QC ผ่าน (แก้ในรอบนี้)'],
+  ['ยืนยันการกระทำที่ทำลายข้อมูล + เหตุผล','ครบ','ยกเลิกงาน · ยกเลิก PO · คืนเงิน · พิมพ์ซ้ำ · ปรับสต็อก ทุกอย่างมีเหตุผลและผู้ทำ'],
+  ['ข้อความไทยที่ 200% text scaling','ต้องแก้','ป้ายสถานะยาวและปุ่มความสูงตรึงจะล้น — ต้องกำหนดกฎย่อข้อความและปุ่มยืดตามเนื้อหา'],
+  ['โฟกัสคีย์บอร์ด / ใช้คีย์บอร์ดล้วนบนเว็บ','ต้องแก้','ยังไม่มีสเปกลำดับ Tab, วงโฟกัส, การกัก focus ในโมดัล และปุ่มลัดที่ผูกจริง'],
+  ['ป้ายสำหรับโปรแกรมอ่านหน้าจอ','ต้องแก้','ปุ่มไอคอน (ถ่ายรูป ลบ พิมพ์) ยังไม่มีข้อความกำกับ · กราฟมีตารางเทียบเท่าแล้ว'],
+  ['ความคมชัดและสัญญาณสถานะที่ไม่ใช้สีเดียว','ครบ','ทุกป้ายมีสี + ไอคอน + ข้อความ · แถวเกินกำหนดใช้แถบซ้ายหนาและเหตุผลกำกับ'],
+  ['เป้าแตะมือถือ 48×48px','ครบ','ปุ่มหลัก 54–56px · ปุ่มในแถวอย่างน้อย 44–48px · แถบล่างสูง 48px ต่อรายการ'],
+  ['เวลาและความสดของข้อมูลที่มองเห็น','บางส่วน','มีในรายงาน มือถือ และหัวงาน · ควรเพิ่มที่ตารางสต็อกและ PO']
+].map(c => ({
+  label:c[0], result:c[1], note:c[2],
+  rBg: c[1] === 'ครบ' ? '#E3F5F1' : (c[1] === 'บางส่วน' ? '#FDF3E2' : '#FBE9E9'),
+  rFg: c[1] === 'ครบ' ? '#0B6D5E' : (c[1] === 'บางส่วน' ? '#8A5A00' : '#A31D1D'),
+  bg: c[1] === 'ต้องแก้' ? '#FFFDFD' : (c[1] === 'บางส่วน' ? '#FFFDF8' : '#fff')
+}));
+
+const FIXES = [
+  { tag:'ป้องกันสถานะผิด', file:'Repair QC', title:'งานพร้อมส่งมอบยังแก้รายการซ่อมได้',
+    before:'หลัง QC ผ่าน ยังกด “ทำเสร็จแล้ว · แตะเพื่อแก้” ได้ ทำให้ตัวนับเหลือ 4/5 ขณะที่หัวเรื่องยังเป็นพร้อมส่งมอบ',
+    after:'ล็อกรายการทั้งหมดหลัง QC ผ่าน · ซ่อนปุ่มพักงาน/รออะไหล่/งานเพิ่ม · ต้องกด “เปิดงานซ่อมใหม่ (ยกเลิกผล QC)” ซึ่งบังคับตรวจ QC อีกครั้ง' },
+  { tag:'ความถูกต้องของข้อมูล', file:'Web', title:'หัวเรื่องงานติดป้ายเกินกำหนดตายตัว',
+    before:'ทุกงานที่เปิดจะขึ้น “เกินกำหนด 2 ชม. 32 นาที” แม้แต่งานที่ส่งทันเวลา ขัดกับตารางและตัวเลขบนแดชบอร์ด',
+    after:'ป้ายและสีของเวลานัดส่งมอบมาจากข้อมูลของงานนั้นจริง · เหลือเพียง JB-6709 ที่เกินกำหนด ตรงกับ “เกินกำหนด = 1”' },
+  { tag:'สิทธิ์การเข้าถึง', file:'Reports', title:'กราฟค่าแรงเปิดเผยตัวเงินให้บทบาทที่ถูกจำกัด',
+    before:'หัวหน้าช่างเห็นการ์ดบอกว่าข้อมูลถูกซ่อน แต่กราฟยังพิมพ์ค่าแรงรายคนเป็นบาท และตารางเทียบเท่าก็เผยตัวเลขเดียวกัน',
+    after:'สลับเป็น “รายการค่าแรงที่ปิดงานต่อช่าง” หน่วยรายการ พร้อมเส้นค่าเฉลี่ยไม่ใช่ตัวเงิน · KPI และคอลัมน์เงินถูกตัดออกเช่นเดิม' },
+  { tag:'ข้อบกพร่องการทำงาน', file:'Purchasing', title:'ตัวนับจำนวนตอนรับของกินคลิก',
+    before:'กด + หลายครั้งติดกันนับเป็นครั้งเดียว (อ่านค่าจาก render เดิม) ทำให้รับของที่ค้างไม่ครบและปิด PO ไม่ได้',
+    after:'เปลี่ยนเป็นอัปเดตจากสถานะล่าสุดทุกครั้ง · รับของรอบสองครบและ PO ปิดเป็น “รับครบแล้ว” ได้ตามกฎ' },
+  { tag:'ความถูกต้องของตัวเลข', file:'Demo', title:'ยอดใบเสนอราคาในไทม์ไลน์ไม่ตรงกับหน้าจอ',
+    before:'ไทม์ไลน์ปิดงานบอก “ออกใบเสนอราคา 8,860.00 บาท” ขณะที่หน้าสร้างใบเสนอราคาแสดง 8,838.20 บาท',
+    after:'แก้เป็น 8,838.20 บาท ตรงกับยอดก่อน VAT + VAT 7% ทั้งบนมือถือและเว็บ' },
+  { tag:'ผังหน้าจอ', file:'Quotation', title:'พื้นที่ทำงานกลางเลื่อนไม่ได้และตัดเนื้อหา',
+    before:'การ์ดในคอลัมน์กลางถูกบีบ (การ์ด 423px แต่เนื้อหา 800px) และคอลัมน์ไม่มีแถบเลื่อน ทำให้แก้บรรทัดส่วนใหญ่ไม่ได้',
+    after:'ตั้งการ์ดเป็น flex:none ให้เนื้อหาไหลออกและคอลัมน์เลื่อนได้จริง · เข้าถึงทุกบรรทัดและคำเตือนของไม่พอได้' },
+  { tag:'ผังหน้าจอ', file:'Quotation', title:'ช่องหมายเหตุถึงลูกค้าถูกตัดทุกบรรทัด',
+    before:'กริดควบคุม 6 ช่องใช้ 1fr ทำให้ข้อความไทยยาวดันความกว้างเกินการ์ด 139px ช่องสุดท้ายเหลือให้เห็นเพียง 24px',
+    after:'เปลี่ยนเป็น minmax(0,1fr) ทุกช่อง · ช่องหมายเหตุอยู่ในกรอบครบทุกบรรทัด' },
+  { tag:'ผังหน้าจอ', file:'Foundation', title:'แถบเมนูเว็บในบอร์ดแผนผังถูกตัด',
+    before:'กรอบตัวอย่างสูง 340px แต่เมนูสูง 508px ทำให้เมนูการเงิน ลูกค้า รายงาน และตั้งค่าหายไป',
+    after:'ขยายกรอบเป็น 520px · เห็นเมนูครบทั้ง 9 รายการรวมถึงตั้งค่าระบบที่ตรึงอยู่ด้านล่าง' },
+  { tag:'ความครบถ้วน', file:'Mobile', title:'หน้าเลือกสาขาและกะว่างเปล่า',
+    before:'หน้าจอมีเพียงหัวข้อ “สาขาที่เข้าทำงานวันนี้” และ “กะทำงาน” แต่ไม่มีรายการให้เลือกเลย',
+    after:'เพิ่ม 3 สาขา (พร้อมจำนวนช่างและงานค้าง) และ 3 กะ (เวลา + หัวหน้ากะ) เลือกได้และส่งค่าไปแสดงบนหัวหน้าหลัก' },
+  { tag:'ความชัดเจนของเดโม', file:'Repair QC', title:'การ์ดคิวงานทุกใบเปิดงานเดียวกัน',
+    before:'แตะการ์ด ขข-8431 แล้วเปิดรายละเอียดของ 4กก-2871 ทำให้ผู้รีวิวเข้าใจผิดว่าข้อมูลไม่ตรงกัน',
+    after:'อธิบายตรง ๆ ว่าเดโมทำรายละเอียดครบเฉพาะ JB-6712 · การ์ดอื่นใช้แสดงการจัดลำดับคิวเท่านั้น' },
+  { tag:'ความสม่ำเสมอ', file:'Web', title:'แท็บรายละเอียดงานใช้ข้อมูลของงานอื่น',
+    before:'เปิดงานอื่นแล้วสลับไปแท็บตรวจเช็ค/ใบเสนอราคา จะเห็นเนื้อหาผ้าเบรกและ PO-2471 ของ JB-6712 ใต้หัวเรื่องงานอื่น',
+    after:'ใส่แถบกำกับชัดเจนว่าเนื้อหาแท็บเป็นข้อมูลตัวอย่างของ JB-6712 เมื่อเปิดจากงานอื่น' },
+  { tag:'ภาษาผู้ใช้', file:'Reports', title:'ศัพท์ตัวชี้วัดไม่มีคำอธิบาย',
+    before:'หน้ารายงานใช้คำว่า SLA, Fill rate, Price variance โดยไม่มีที่อธิบายให้ผู้จัดการสาขาเข้าใจตรงกัน',
+    after:'ลิ้นชัก “นิยามตัวชี้วัด” อธิบายทุกคำเป็นภาษาไทยพร้อมสูตรคำนวณ และกดเข้าได้จากไอคอน i ทุกการ์ด' }
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    const total = MATRIX.length;
+    const done = MATRIX.filter(r => r.done === 'ครบ').length;
+    const part = MATRIX.filter(r => r.done === 'บางส่วน').length;
+    const miss = MATRIX.filter(r => r.done === 'ยังไม่มี').length;
+    return {
+      summary: [
+        { n: String(total), label:'หน้าจอ/สถานะที่ตรวจ', fg:'#fff' },
+        { n: String(done), label:'ออกแบบครบแล้ว', fg:'#7DD3C4' },
+        { n: String(part), label:'ครบบางส่วน', fg:'#F0AE55' },
+        { n: String(miss), label:'ยังไม่มี', fg:'#F5A9A9' }
+      ],
+      matrix: MATRIX, lifecycle: LIFECYCLE, gaps: GAPS, heuristics: HEUR, checks: CHECKS, fixes: FIXES
+    };
+  }
+}
+
+</script>
+</body>
+</html>

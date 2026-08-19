@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  input { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  @keyframes gpFlash { 0% { background:#E6EFFC } 100% { background:transparent } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:16px; padding:{{pagePad}}; align-items:{{pageAlign}}">
+
+  <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+    <div style="width:1440px; max-width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px; background:#0B1526; border-radius:0 0 12px 12px; padding:10px 16px">
+      <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · เว็บ NEXT.JS · ต้นแบบ ไม่ใช่ระบบจริง</span>
+      <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+
+  <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap">
+    <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">WEB · NEXT.JS · OFFICE</span>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{setWide}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{wideBg}}; color:{{wideFg}}">1440px</span>
+      <span onClick="{{setNarrow}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{narrowBg}}; color:{{narrowFg}}">1024px</span>
+    </div>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{beManager}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mgrBg}}; color:{{mgrFg}}">ผู้จัดการสาขา</span>
+      <span onClick="{{beCashier}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{cashBg}}; color:{{cashFg}}">แคชเชียร์</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <span onClick="{{goLogin}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">เข้าสู่ระบบ</span>
+      <span onClick="{{simLive}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">อัปเดตเรียลไทม์</span>
+      <span onClick="{{simLoading}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">กำลังโหลด</span>
+      <span onClick="{{simEmpty}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ไม่พบข้อมูล</span>
+      <span onClick="{{simError}}" style="font-size:12px; font-weight:600; color:#A31D1D; background:#FEF6F6; border:1px solid #F0C2C2; padding:7px 11px; border-radius:8px; cursor:pointer">เซิร์ฟเวอร์ผิดพลาด</span>
+      <span onClick="{{simStale}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">ข้อมูลไม่เป็นปัจจุบัน</span>
+      <span onClick="{{simDenied}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">ไม่มีสิทธิ์เข้าถึง</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+  <div style="width:{{frameW}}; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:14px; overflow:hidden; box-shadow:0 26px 64px rgba(15,36,64,.14); display:flex; flex-direction:column; height:920px; position:relative">
+
+    <sc-if value="{{isLogin}}" hint-placeholder-val="{{true}}">
+      <div style="flex:1; display:flex">
+        <div style="flex:1; background:#0F2440; padding:56px; display:flex; flex-direction:column; justify-content:space-between">
+          <div style="display:flex; align-items:center; gap:12px">
+            <div style="width:34px; height:34px; border-radius:9px; background:#1B6BE3; display:flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/><circle cx="8" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></div>
+            <span style="font-size:16px; font-weight:700; color:#fff">GaragePro Service Ops</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:16px; max-width:460px">
+            <span style="font-size:34px; font-weight:700; color:#fff; line-height:1.3">ระบบปฏิบัติการศูนย์บริการ<br>สำหรับสำนักงานและการเงิน</span>
+            <span style="font-size:15px; color:#A9BDD6; line-height:1.8">คิวงานซ่อม · ใบเสนอราคา · รับชำระเงิน · สต็อกและจัดซื้อ · รายงานผู้บริหาร ทำงานร่วมกับแอปมือถือของหน้าร้านและช่างแบบเรียลไทม์</span>
+          </div>
+          <span style="font-size:13px; color:#7C93B3; font-family:'IBM Plex Mono',monospace">ระบบภายในองค์กร · v1.0.0 · ฝ่ายไอที ต่อ 1180</span>
+        </div>
+        <div style="width:460px; background:#fff; padding:56px 48px; display:flex; flex-direction:column; justify-content:center; gap:20px">
+          <div style="display:flex; flex-direction:column; gap:6px">
+            <span style="font-size:24px; font-weight:700; color:#0F2440">เข้าสู่ระบบพนักงาน</span>
+            <span style="font-size:14px; color:#64748B; line-height:1.7">ใช้บัญชีที่บริษัทออกให้ ทุกการกระทำถูกบันทึกเพื่อการตรวจสอบ</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px">
+            <label style="font-size:13px; font-weight:600; color:#334155">รหัสพนักงาน</label>
+            <div style="height:48px; border:1px solid #C9D6E6; border-radius:10px; display:flex; align-items:center; padding:0 14px; font-size:15px; font-weight:600; color:#0F2440; font-family:'IBM Plex Mono',monospace">EMP-10032</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:7px">
+            <label style="font-size:13px; font-weight:600; color:#334155">รหัสผ่าน</label>
+            <div style="height:48px; border:1px solid #C9D6E6; border-radius:10px; display:flex; align-items:center; padding:0 14px; font-size:18px; letter-spacing:.2em; color:#0F2440">••••••••••</div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between">
+            <span style="font-size:13px; color:#475569; display:flex; align-items:center; gap:8px"><span style="width:18px; height:18px; border-radius:5px; background:#1B6BE3; display:inline-flex; align-items:center; justify-content:center"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span>จำรหัสพนักงาน</span>
+            <span style="font-size:13px; font-weight:600; color:#1B6BE3">ลืมรหัสผ่าน?</span>
+          </div>
+          <button onClick="{{doLogin}}" style="height:52px; background:#1B6BE3; color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">เข้าสู่ระบบ</button>
+          <div style="background:#F7F9FC; border-radius:10px; padding:13px 15px; font-size:13px; color:#475569; line-height:1.7">ระบบนี้ใช้สำหรับพนักงานภายในเท่านั้น หากพบการเข้าใช้งานผิดปกติ กรุณาแจ้งผู้จัดการสาขาทันที</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isBranch}}" hint-placeholder-val="{{false}}">
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; background:#EEF1F6">
+        <div style="width:720px; background:#fff; border:1px solid #E3E8EF; border-radius:16px; box-shadow:0 20px 50px rgba(15,36,64,.12); overflow:hidden">
+          <div style="padding:26px 30px; border-bottom:1px solid #EDF1F6; display:flex; flex-direction:column; gap:5px">
+            <span style="font-size:13px; color:#64748B">สวัสดี กัญญารัตน์ ดีสมบัติ · {{roleLabel}}</span>
+            <span style="font-size:23px; font-weight:700; color:#0F2440">เลือกสาขาที่ต้องการทำงาน</span>
+          </div>
+          <div style="padding:22px 30px; display:flex; flex-direction:column; gap:12px">
+            <sc-for list="{{branches}}" as="b" hint-placeholder-count="3">
+              <div onClick="{{b.pick}}" style="border:{{b.border}}; border-radius:12px; padding:16px 18px; display:flex; align-items:center; gap:16px; cursor:pointer">
+                <span style="width:22px; height:22px; border-radius:50%; border:{{b.dot}}; display:flex; align-items:center; justify-content:center; flex:none"><span style="width:10px; height:10px; border-radius:50%; background:{{b.fill}}"></span></span>
+                <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+                  <span style="font-size:17px; font-weight:700; color:#0F2440">{{b.name}}</span>
+                  <span style="font-size:13px; color:#64748B">{{b.meta}}</span>
+                </div>
+                <div style="display:flex; gap:18px">
+                  <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{b.open}}</span><span style="font-size:11px; color:#64748B">งานค้าง</span></div>
+                  <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:18px; font-weight:700; color:#C02626; font-family:'IBM Plex Mono',monospace">{{b.late}}</span><span style="font-size:11px; color:#64748B">เกินกำหนด</span></div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="padding:18px 30px 24px; display:flex; justify-content:flex-end; border-top:1px solid #EDF1F6"><button onClick="{{enterApp}}" style="height:48px; padding:0 24px; background:#1B6BE3; color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">เข้าใช้งาน {{branchName}}</button></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{inApp}}" hint-placeholder-val="{{false}}">
+      <div style="flex:1; display:flex; overflow:hidden">
+        <div style="width:{{navW}}; background:#0F2440; flex:none; display:flex; flex-direction:column; padding:16px 10px; gap:3px; overflow:hidden">
+          <div style="padding:8px 10px 14px; display:flex; align-items:center; gap:10px">
+            <div style="width:26px; height:26px; border-radius:7px; background:#1B6BE3; flex:none; display:flex; align-items:center; justify-content:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+            <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+              <span style="font-size:14px; font-weight:700; color:#fff; white-space:nowrap">GaragePro</span>
+            </sc-if>
+          </div>
+          <sc-for list="{{nav}}" as="n" hint-placeholder-count="7">
+            <div onClick="{{n.tap}}" style="min-height:42px; border-radius:9px; padding:0 10px; display:flex; align-items:center; gap:11px; cursor:pointer; background:{{n.bg}}">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{n.path}}"/></svg>
+              <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                <span style="font-size:13.5px; font-weight:600; color:{{n.fg}}; white-space:nowrap; flex:1">{{n.label}}</span>
+              </sc-if>
+              <sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{false}}">
+                <span style="background:{{n.badgeBg}}; color:#fff; font-size:10px; font-weight:700; min-width:18px; height:18px; border-radius:999px; display:flex; align-items:center; justify-content:center; flex:none">{{n.badge}}</span>
+              </sc-if>
+            </div>
+          </sc-for>
+          <div style="margin-top:auto; display:flex; flex-direction:column; gap:3px">
+            <div onClick="{{simDenied}}" style="min-height:42px; border-radius:9px; padding:0 10px; display:flex; align-items:center; gap:11px; cursor:pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C93B3" stroke-width="2.2" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 10h.1a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1z"/></svg>
+              <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                <span style="font-size:13.5px; color:#7C93B3; white-space:nowrap">ตั้งค่าระบบ</span>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden; background:#F1F4F9">
+          <div style="height:60px; flex:none; background:#fff; border-bottom:1px solid #E3E8EF; display:flex; align-items:center; gap:14px; padding:0 20px">
+            <div style="flex:1; max-width:{{searchW}}; position:relative">
+              <div onClick="{{focusSearch}}" style="height:38px; border:1px solid #E3E8EF; border-radius:9px; background:#F7F9FC; display:flex; align-items:center; gap:9px; padding:0 12px; cursor:text">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                <input value="{{q}}" onChange="{{onQ}}" placeholder="ค้นหาเลขงาน ทะเบียน ลูกค้า เบอร์โทร ใบเสนอราคา ใบเสร็จ หรือ PO (⌘K)" style="flex:1; border:none; outline:none; background:transparent; font-size:13px; color:#0F2440"/>
+                <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace; flex:none">⌘K</span>
+              </div>
+              <sc-if value="{{showResults}}" hint-placeholder-val="{{false}}">
+                <div style="position:absolute; top:44px; left:0; right:0; background:#fff; border:1px solid #E3E8EF; border-radius:12px; box-shadow:0 16px 36px rgba(15,36,64,.16); z-index:30; overflow:hidden; animation:gpIn .12s ease-out">
+                  <div style="padding:9px 14px; background:#F7F9FC; border-bottom:1px solid #EDF1F6; display:flex; justify-content:space-between"><span style="font-size:11px; font-weight:700; color:#64748B; letter-spacing:.06em">ผลการค้นหา</span><span style="font-size:11px; color:#94A3B8">{{resultCount}} รายการ</span></div>
+                  <sc-for list="{{results}}" as="r" hint-placeholder-count="3">
+                    <div onClick="{{r.open}}" style="padding:11px 14px; border-bottom:1px solid #F5F8FB; display:flex; align-items:center; gap:12px; cursor:pointer">
+                      <span style="background:{{r.kBg}}; color:{{r.kFg}}; font-size:10px; font-weight:700; padding:3px 7px; border-radius:5px; flex:none">{{r.kind}}</span>
+                      <span style="font-size:13px; font-weight:600; color:#0F2440; font-family:'IBM Plex Mono',monospace; flex:none">{{r.code}}</span>
+                      <span style="font-size:13px; color:#475569; flex:1">{{r.desc}}</span>
+                      <span style="font-size:12px; color:#94A3B8">{{r.meta}}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{noResults}}" hint-placeholder-val="{{false}}">
+                    <div style="padding:26px; text-align:center; display:flex; flex-direction:column; gap:5px"><span style="font-size:14px; font-weight:700; color:#334155">ไม่พบข้อมูลที่ตรงกับ “{{q}}”</span><span style="font-size:12px; color:#64748B">ลองค้นด้วยเลขงาน JB- เลขที่ใบเสนอราคา QT- หรือเบอร์โทร 10 หลัก</span></div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+              <div onClick="{{goBranch}}" style="display:flex; align-items:center; gap:7px; cursor:pointer; padding:7px 10px; border:1px solid #E3E8EF; border-radius:8px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg>
+                <span style="font-size:13px; font-weight:600; color:#334155; white-space:nowrap">{{branchName}}</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+              <div onClick="{{simLive}}" style="position:relative; cursor:pointer; width:34px; height:34px; display:flex; align-items:center; justify-content:center">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.1" stroke-linecap="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+                <span style="position:absolute; top:2px; right:2px; background:#C02626; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center">{{alerts}}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:9px; padding-left:14px; border-left:1px solid #E3E8EF">
+                <div style="width:30px; height:30px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff">{{initials}}</div>
+                <div style="display:flex; flex-direction:column"><span style="font-size:12.5px; font-weight:700; color:#0F2440; white-space:nowrap">{{userName}}</span><span style="font-size:11px; color:#64748B">{{roleLabel}}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="flex:none; background:#fff; border-bottom:1px solid #EDF1F6; padding:10px 20px; display:flex; align-items:center; gap:8px">
+            <span onClick="{{goDash}}" style="font-size:12px; color:#64748B; cursor:pointer">{{branchName}}</span>
+            <span style="color:#CBD5E1">/</span>
+            <span style="font-size:12px; color:{{crumb2Color}}; font-weight:{{crumb2Weight}}; cursor:pointer">{{crumb2}}</span>
+            <sc-if value="{{hasCrumb3}}" hint-placeholder-val="{{false}}">
+              <span style="color:#CBD5E1">/</span>
+              <span style="font-size:12px; color:#0F2440; font-weight:600">{{crumb3}}</span>
+            </sc-if>
+            <span style="margin-left:auto; font-size:11.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{clock}}</span>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:16px">
+
+            <sc-if value="{{stale}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:10px; padding:11px 14px; display:flex; align-items:center; gap:10px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+                <span style="font-size:13px; font-weight:600; color:#8A5A00; flex:1">ข้อมูลอาจไม่เป็นปัจจุบัน — การเชื่อมต่อเรียลไทม์หลุดเมื่อ 15:38 น. ตัวเลขที่เห็นมาจากข้อมูลล่าสุดที่โหลดไว้</span>
+                <span onClick="{{refresh}}" style="font-size:12px; font-weight:700; color:#8A5A00; background:#fff; border:1px solid #F0D9AC; padding:6px 12px; border-radius:7px; cursor:pointer">โหลดใหม่</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{denied}}" hint-placeholder-val="{{false}}">
+              <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:60px 0">
+                <div style="width:520px; background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:36px; display:flex; flex-direction:column; align-items:center; gap:14px; text-align:center">
+                  <div style="width:54px; height:54px; border-radius:14px; background:#FBE9E9; display:flex; align-items:center; justify-content:center"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#C02626" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+                  <span style="font-size:20px; font-weight:700; color:#0F2440">ไม่มีสิทธิ์เข้าถึงส่วนนี้</span>
+                  <span style="font-size:14px; color:#475569; line-height:1.8">บทบาท <b style="color:#0F2440">{{roleLabel}}</b> ไม่สามารถเปิดดูรายงานกำไรขั้นต้นและการตั้งค่าระบบได้<br>หากต้องใช้งาน กรุณาขอสิทธิ์จากผู้จัดการเขต</span>
+                  <span style="font-size:12px; color:#64748B; background:#F7F9FC; border-radius:8px; padding:9px 14px; font-family:'IBM Plex Mono',monospace">ref: PERM-4031 · EMP-10032 · 15:42</span>
+                  <button onClick="{{goDash}}" style="height:46px; padding:0 22px; background:#1B6BE3; color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">กลับหน้าแดชบอร์ด</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{srvError}}" hint-placeholder-val="{{false}}">
+              <div style="background:#fff; border:1px solid #F0C2C2; border-radius:14px; padding:28px; display:flex; gap:18px; align-items:flex-start">
+                <div style="width:44px; height:44px; border-radius:12px; background:#FBE9E9; display:flex; align-items:center; justify-content:center; flex:none"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C02626" stroke-width="2.4" stroke-linecap="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg></div>
+                <div style="display:flex; flex-direction:column; gap:8px; flex:1">
+                  <span style="font-size:18px; font-weight:700; color:#0F2440">โหลดข้อมูลคิวงานไม่สำเร็จ</span>
+                  <span style="font-size:14px; color:#475569; line-height:1.8">เซิร์ฟเวอร์ตอบกลับข้อผิดพลาด 503 — บริการฐานข้อมูลคิวงานไม่ตอบสนอง ทีมไอทีได้รับแจ้งอัตโนมัติแล้ว งานที่บันทึกไว้ไม่สูญหาย</span>
+                  <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">trace 8f21c4 · 15:41:02 · /api/jobs?branch=bangna</span>
+                  <div style="display:flex; gap:10px; margin-top:4px">
+                    <button onClick="{{refresh}}" style="height:44px; padding:0 20px; background:#1B6BE3; color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ลองใหม่</button>
+                    <button onClick="{{goDash}}" style="height:44px; padding:0 20px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:10px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">กลับแดชบอร์ด</button>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{showDash}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex; flex-direction:column; gap:16px">
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px">
+                  <div style="display:flex; flex-direction:column; gap:4px">
+                    <span style="font-size:22px; font-weight:700; color:#0F2440">{{dashTitle}}</span>
+                    <span style="font-size:13px; color:#64748B">{{dashSub}}</span>
+                  </div>
+                  <div style="display:flex; align-items:center gap:8px; display:flex; gap:8px">
+                    <span style="display:inline-flex; align-items:center; gap:7px; background:{{liveBg}}; border:1px solid {{liveBorder}}; color:{{liveFg}}; font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px"><span style="width:8px; height:8px; border-radius:50%; background:{{liveDot}}; animation:gpPulse 1.6s ease-in-out infinite"></span>{{liveLabel}}</span>
+                    <span onClick="{{goList}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:8px; cursor:pointer">เปิดคิวงานทั้งหมด</span>
+                  </div>
+                </div>
+
+                <sc-if value="{{isManager}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex; flex-direction:column; gap:16px">
+                    <div style="display:grid; grid-template-columns:{{tileCols}}; gap:10px">
+                      <sc-for list="{{tiles}}" as="t" hint-placeholder-count="9">
+                        <div onClick="{{t.tap}}" style="background:#fff; border:1px solid {{t.border}}; border-top:3px solid {{t.accent}}; border-radius:11px; padding:13px 14px; display:flex; flex-direction:column; gap:7px; cursor:pointer">
+                          <div style="display:flex; align-items:center; gap:7px; color:{{t.fg}}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{t.path}}"/></svg>
+                            <span style="font-size:12px; font-weight:700; line-height:1.35">{{t.label}}</span>
+                          </div>
+                          <div style="display:flex; align-items:baseline; gap:7px">
+                            <span style="font-size:28px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1">{{t.n}}</span>
+                            <span style="font-size:11px; color:#64748B">{{t.unit}}</span>
+                          </div>
+                          <span style="font-size:11px; color:{{t.deltaFg}}">{{t.delta}}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:{{moneyCols}}; gap:14px">
+                      <div style="background:#0F2440; border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:14px">
+                        <span style="font-size:13px; color:#8FA6C4; font-weight:600">รายได้วันนี้ · {{branchName}}</span>
+                        <div style="display:flex; align-items:baseline; gap:10px"><span style="font-size:34px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ 184,320</span><span style="font-size:12px; color:#7DD3C4; font-weight:700">+12% จากเมื่อวาน</span></div>
+                        <div style="display:flex; gap:16px">
+                          <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; color:#8FA6C4">เงินสด</span><span style="font-size:15px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">42,180</span></div>
+                          <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; color:#8FA6C4">โอน/QR</span><span style="font-size:15px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">96,540</span></div>
+                          <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; color:#8FA6C4">บัตรเครดิต</span><span style="font-size:15px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">45,600</span></div>
+                        </div>
+                        <div onClick="{{goPos}}" style="border-top:1px solid #1B3557; padding-top:13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer">
+                          <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:12px; color:#F0AE55; font-weight:700">ค้างชำระ 6 ใบ</span><span style="font-size:11px; color:#8FA6C4">รวม 78,940 บาท · เกิน 7 วัน 2 ใบ</span></div>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F0AE55" stroke-width="2.6" stroke-linecap="round"><path d="M10 6l6 6-6 6"/></svg>
+                        </div>
+                      </div>
+
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:18px; display:flex; flex-direction:column; gap:12px">
+                        <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:15px; font-weight:700; color:#0F2440">แจ้งเตือนสต็อกและจัดซื้อ</span><span onClick="{{goStock}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">ดูทั้งหมด</span></div>
+                        <sc-for list="{{stockAlerts}}" as="a" hint-placeholder-count="4">
+                          <div style="display:flex; align-items:center; gap:11px; padding:9px 11px; background:{{a.bg}}; border-radius:9px">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{a.fg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{a.path}}"/></svg>
+                            <div style="display:flex; flex-direction:column; gap:1px; flex:1"><span style="font-size:13px; font-weight:600; color:#0F2440">{{a.label}}</span><span style="font-size:11.5px; color:{{a.fg}}">{{a.meta}}</span></div>
+                            <span style="font-size:13px; font-weight:700; color:{{a.fg}}; font-family:'IBM Plex Mono',monospace">{{a.value}}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; overflow:hidden">
+                      <div style="padding:15px 18px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:12px">
+                        <span style="font-size:15px; font-weight:700; color:#0F2440">กระดานสถานะโรงซ่อม</span>
+                        <span style="display:inline-flex; align-items:center; gap:6px; background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; padding:4px 9px; border-radius:5px"><span style="width:7px; height:7px; border-radius:50%; background:#0E9F8C; animation:gpPulse 1.6s ease-in-out infinite"></span>อัปเดตสด</span>
+                        <span style="margin-left:auto; font-size:12px; color:#64748B">ช่างเข้ากะ 6 คน · ช่องซ่อมว่าง 2 ช่อง</span>
+                      </div>
+                      <div style="display:grid; grid-template-columns:{{bayCols}}; gap:0">
+                        <sc-for list="{{bays}}" as="b" hint-placeholder-count="8">
+                          <div style="padding:14px; border-right:1px solid #EDF1F6; border-bottom:1px solid #EDF1F6; display:flex; flex-direction:column; gap:9px; background:{{b.bg}}">
+                            <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:11px; font-weight:700; color:#64748B; font-family:'IBM Plex Mono',monospace">{{b.bay}}</span><span style="width:8px; height:8px; border-radius:50%; background:{{b.dot}}"></span></div>
+                            <span style="font-size:16px; font-weight:700; color:#0F2440">{{b.reg}}</span>
+                            <span style="font-size:11.5px; color:#475569; line-height:1.5">{{b.tech}}</span>
+                            <span style="display:inline-flex; align-self:flex-start; align-items:center; gap:5px; background:{{b.stBg}}; color:{{b.stFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{b.stPath}}"/></svg>{{b.stLabel}}</span>
+                            <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{b.time}}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{isCashier}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:16px">
+                    <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:12px">
+                      <div style="background:#0F2440; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px"><span style="font-size:12px; color:#8FA6C4; font-weight:600">รับเงินวันนี้</span><span style="font-size:26px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ 184,320</span><span style="font-size:11px; color:#7DD3C4">ใบเสร็จ 14 ใบ · ใบกำกับภาษี 9 ใบ</span></div>
+                      <div onClick="{{goPos}}" style="background:#fff; border:1px solid #F0D9AC; border-top:3px solid #E0930C; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px; cursor:pointer"><span style="font-size:12px; color:#8A5A00; font-weight:700">รอชำระเงิน</span><span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">6</span><span style="font-size:11px; color:#64748B">รวม 78,940 บาท</span></div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-top:3px solid #0E9F8C; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px"><span style="font-size:12px; color:#0B6D5E; font-weight:700">พร้อมส่งมอบ</span><span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">3</span><span style="font-size:11px; color:#64748B">รอเรียกเก็บเมื่อลูกค้ามารับ</span></div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-top:3px solid #1B6BE3; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px"><span style="font-size:12px; color:#1552B3; font-weight:700">สถานะกะ</span><span style="font-size:20px; font-weight:700; color:#0F2440">เปิดกะอยู่</span><span style="font-size:11px; color:#64748B">เปิด 08:05 น. · เงินสดในลิ้นชัก 12,400</span></div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; overflow:hidden">
+                      <div style="padding:15px 18px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; justify-content:space-between"><span style="font-size:15px; font-weight:700; color:#0F2440">คิวรอเรียกเก็บเงิน</span><span onClick="{{goPos}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">เปิดหน้า POS</span></div>
+                      <div style="display:grid; grid-template-columns:110px 120px 1fr 130px 130px 120px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                        <div style="padding:10px 14px">เลขงาน</div><div style="padding:10px 14px">ทะเบียน</div><div style="padding:10px 14px">ลูกค้า</div><div style="padding:10px 14px">สถานะ</div><div style="padding:10px 14px; text-align:right">ยอดสุทธิ</div><div style="padding:10px 14px; text-align:right">มัดจำ</div>
+                      </div>
+                      <sc-for list="{{payQueue}}" as="r" hint-placeholder-count="4">
+                        <div onClick="{{r.open}}" style="display:grid; grid-template-columns:110px 120px 1fr 130px 130px 120px; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; cursor:pointer">
+                          <div style="padding:12px 14px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.no}}</div>
+                          <div style="padding:12px 14px; font-weight:700; color:#0F2440">{{r.reg}}</div>
+                          <div style="padding:12px 14px; color:#334155">{{r.customer}}</div>
+                          <div style="padding:12px 14px"><span style="display:inline-flex; align-items:center; gap:5px; background:{{r.stBg}}; color:{{r.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.stPath}}"/></svg>{{r.stLabel}}</span></div>
+                          <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{r.total}}</div>
+                          <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#64748B">{{r.deposit}}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:16px; font-size:13px; color:#475569; line-height:1.8">บทบาทแคชเชียร์เห็นเฉพาะ แดชบอร์ด · งานซ่อม (อ่าน) · POS · รายงานการเงินของกะตัวเอง — เมนูสต็อก จัดซื้อ และรายงานกำไรขั้นต้นถูกซ่อนไว้</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{showBoard}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex; flex-direction:column; gap:14px; flex:1; min-height:0">
+                <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                  <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:22px; font-weight:700; color:#0F2440">บอร์ดงานซ่อมตามสถานะ</span><span style="font-size:13px; color:#64748B">{{jobCount}} งานในสาขา · ลากการ์ดเพื่อเปลี่ยนสถานะ (ในระบบจริง)</span></div>
+                  <div style="display:flex; gap:8px">
+                    <span onClick="{{goList}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:8px; cursor:pointer">มุมมองตาราง</span>
+                    <span style="font-size:12px; font-weight:700; color:#fff; background:#1B6BE3; padding:8px 12px; border-radius:8px">มุมมองบอร์ด</span>
+                  </div>
+                </div>
+                <div style="flex:1; display:flex; gap:12px; overflow-x:auto; padding-bottom:8px">
+                  <sc-for list="{{columns}}" as="c" hint-placeholder-count="6">
+                    <div style="width:262px; flex:none; background:#EBEFF5; border-radius:12px; display:flex; flex-direction:column; max-height:100%">
+                      <div style="padding:12px 13px; display:flex; align-items:center; gap:8px; border-bottom:2px solid {{c.accent}}">
+                        <span style="font-size:13px; font-weight:700; color:#0F2440; flex:1">{{c.label}}</span>
+                        <span style="background:#fff; color:#475569; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{c.n}}</span>
+                      </div>
+                      <div style="flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:9px">
+                        <sc-for list="{{c.cards}}" as="j" hint-placeholder-count="2">
+                          <div onClick="{{j.open}}" style="background:#fff; border:{{j.border}}; border-radius:10px; padding:11px; display:flex; flex-direction:column; gap:7px; cursor:pointer; box-shadow:0 1px 2px rgba(15,36,64,.06); animation:{{j.anim}}">
+                            <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:15px; font-weight:700; color:#0F2440">{{j.reg}}</span><span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{j.no}}</span></div>
+                            <span style="font-size:12px; color:#475569; line-height:1.5">{{j.model}}</span>
+                            <span style="font-size:12px; color:#64748B">{{j.customer}}</span>
+                            <sc-if value="{{j.late}}" hint-placeholder-val="{{false}}">
+                              <span style="display:inline-flex; align-items:center; gap:5px; background:#FBE9E9; color:#A31D1D; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/></svg>เกินกำหนด {{j.lateBy}}</span>
+                            </sc-if>
+                            <div style="display:flex; align-items:center; justify-content:space-between; border-top:1px solid #F1F4F9; padding-top:7px">
+                              <span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{j.promise}}</span>
+                              <span style="font-size:11px; color:#475569">{{j.techShort}}</span>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{showList}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:14px">
+                  <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:22px; font-weight:700; color:#0F2440">คิวงานซ่อม</span><span style="font-size:13px; color:#64748B">{{listSub}}</span></div>
+                  <div style="display:flex; gap:8px">
+                    <span onClick="{{goBoard}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:8px; cursor:pointer">มุมมองบอร์ด</span>
+                    <span style="font-size:12px; font-weight:700; color:#fff; background:#1B6BE3; padding:8px 12px; border-radius:8px">มุมมองตาราง</span>
+                  </div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px 15px; display:flex; flex-direction:column; gap:12px">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+                    <span style="font-size:11.5px; font-weight:700; color:#94A3B8; letter-spacing:.06em">มุมมองที่บันทึกไว้</span>
+                    <sc-for list="{{views}}" as="v" hint-placeholder-count="5">
+                      <span onClick="{{v.tap}}" style="display:inline-flex; align-items:center; gap:6px; background:{{v.bg}}; color:{{v.fg}}; border:1px solid {{v.border}}; font-size:12.5px; font-weight:600; padding:6px 11px; border-radius:7px; cursor:pointer">{{v.label}}<span style="font-family:'IBM Plex Mono',monospace; opacity:.75">{{v.n}}</span></span>
+                    </sc-for>
+                    <span style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer; margin-left:4px">+ บันทึกมุมมองนี้</span>
+                  </div>
+                  <div style="height:1px; background:#EDF1F6"></div>
+                  <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+                    <div style="height:36px; border:1px solid #E3E8EF; border-radius:8px; display:flex; align-items:center; gap:8px; padding:0 11px; background:#F7F9FC">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                      <input value="{{filterText}}" onChange="{{onFilterText}}" placeholder="กรองในตาราง" style="border:none; outline:none; background:transparent; font-size:13px; color:#0F2440; width:150px"/>
+                    </div>
+                    <sc-for list="{{statusFilters}}" as="f" hint-placeholder-count="5">
+                      <span onClick="{{f.tap}}" style="background:{{f.bg}}; color:{{f.fg}}; border:1px solid {{f.border}}; font-size:12.5px; font-weight:600; padding:8px 11px; border-radius:8px; cursor:pointer">{{f.label}}</span>
+                    </sc-for>
+                    <sc-if value="{{hasFilters}}" hint-placeholder-val="{{false}}">
+                      <span onClick="{{clearFilters}}" style="font-size:12px; font-weight:700; color:#C02626; cursor:pointer; margin-left:2px">ล้างตัวกรอง</span>
+                    </sc-if>
+                    <span style="margin-left:auto; font-size:12px; color:#64748B">เรียงตาม <b style="color:#0F2440">{{sortLabel}}</b></span>
+                  </div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                  <div style="display:grid; grid-template-columns:{{cols}}; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                    <div onClick="{{sortNo}}" style="padding:11px 14px; cursor:pointer">เลขงาน</div>
+                    <div style="padding:11px 14px">ทะเบียน / รุ่นรถ</div>
+                    <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                      <div style="padding:11px 14px">ลูกค้า</div>
+                    </sc-if>
+                    <div style="padding:11px 14px">สถานะ</div>
+                    <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                      <div style="padding:11px 14px">ช่างผู้รับผิดชอบ</div>
+                    </sc-if>
+                    <div onClick="{{sortPromise}}" style="padding:11px 14px; cursor:pointer; color:{{promiseHeadColor}}">นัดส่งมอบ {{promiseArrow}}</div>
+                    <div onClick="{{sortTotal}}" style="padding:11px 14px; text-align:right; cursor:pointer; color:{{totalHeadColor}}">ยอดสุทธิ {{totalArrow}}</div>
+                    <div style="padding:11px 14px; text-align:right">การชำระ</div>
+                  </div>
+
+                  <sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+                    <div style="padding:14px; display:flex; flex-direction:column; gap:12px">
+                      <div style="height:14px; border-radius:6px; background:#E9EDF3; width:96%; animation:gpPulse 1.3s ease-in-out infinite"></div>
+                      <div style="height:14px; border-radius:6px; background:#EDF1F6; width:88%"></div>
+                      <div style="height:14px; border-radius:6px; background:#E9EDF3; width:92%; animation:gpPulse 1.3s ease-in-out .2s infinite"></div>
+                      <div style="height:14px; border-radius:6px; background:#EDF1F6; width:80%"></div>
+                      <div style="height:14px; border-radius:6px; background:#E9EDF3; width:90%; animation:gpPulse 1.3s ease-in-out .4s infinite"></div>
+                      <span style="align-self:center; font-size:12px; color:#64748B; padding:8px 0">กำลังโหลดคิวงานจากเซิร์ฟเวอร์…</span>
+                    </div>
+                  </sc-if>
+
+                  <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                    <div onClick="{{r.open}}" style="display:grid; grid-template-columns:{{cols}}; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; cursor:pointer; background:{{r.rowBg}}; animation:{{r.anim}}">
+                      <div style="padding:11px 14px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.no}}</div>
+                      <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px"><span style="font-weight:700; color:#0F2440">{{r.reg}}</span><span style="font-size:11.5px; color:#64748B">{{r.model}}</span></div>
+                      <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                        <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#334155">{{r.customer}}</span><span style="font-size:11.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{r.phone}}</span></div>
+                      </sc-if>
+                      <div style="padding:11px 14px; display:flex; flex-direction:column; gap:4px; align-items:flex-start">
+                        <span style="display:inline-flex; align-items:center; gap:5px; background:{{r.stBg}}; color:{{r.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.stPath}}"/></svg>{{r.stLabel}}</span>
+                        <sc-if value="{{r.justUpdated}}" hint-placeholder-val="{{false}}">
+                          <span style="font-size:10.5px; font-weight:700; color:#1552B3">อัปเดตเมื่อสักครู่</span>
+                        </sc-if>
+                      </div>
+                      <sc-if value="{{wide}}" hint-placeholder-val="{{true}}">
+                        <div style="padding:11px 14px; color:#334155">{{r.tech}}</div>
+                      </sc-if>
+                      <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px">
+                        <span style="font-family:'IBM Plex Mono',monospace; color:{{r.promiseFg}}; font-weight:{{r.promiseWeight}}">{{r.promise}}</span>
+                        <sc-if value="{{r.late}}" hint-placeholder-val="{{false}}">
+                          <span style="font-size:10.5px; font-weight:700; color:#A31D1D">เกิน {{r.lateBy}}</span>
+                        </sc-if>
+                      </div>
+                      <div style="padding:11px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{r.total}}</div>
+                      <div style="padding:11px 14px; text-align:right"><span style="display:inline-flex; align-items:center; gap:5px; background:{{r.payBg}}; color:{{r.payFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{r.payLabel}}</span></div>
+                    </div>
+                  </sc-for>
+
+                  <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+                    <div style="padding:64px 24px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center">
+                      <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 14h8"/></svg>
+                      <span style="font-size:17px; font-weight:700; color:#334155">ไม่มีงานที่ตรงกับมุมมองนี้</span>
+                      <span style="font-size:13px; color:#64748B; line-height:1.7">มุมมอง “{{viewName}}” ไม่พบงานในสาขา {{branchName}} วันนี้<br>ลองล้างตัวกรองหรือเปลี่ยนช่วงวันที่</span>
+                      <button onClick="{{clearFilters}}" style="height:44px; padding:0 20px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:10px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ล้างตัวกรอง</button>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{hasRows}}" hint-placeholder-val="{{true}}">
+                    <div style="padding:12px 15px; display:flex; align-items:center; gap:14px; background:#F7F9FC">
+                      <span style="font-size:12.5px; color:#64748B">แสดง {{rangeText}} จาก {{filteredN}} รายการ</span>
+                      <div style="margin-left:auto; display:flex; align-items:center; gap:6px">
+                        <span onClick="{{prevPage}}" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #E3E8EF; border-radius:7px; background:#fff; cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></span>
+                        <sc-for list="{{pages}}" as="p" hint-placeholder-count="2">
+                          <span onClick="{{p.tap}}" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid {{p.border}}; border-radius:7px; background:{{p.bg}}; color:{{p.fg}}; font-size:13px; font-weight:700; cursor:pointer; font-family:'IBM Plex Mono',monospace">{{p.n}}</span>
+                        </sc-for>
+                        <span onClick="{{nextPage}}" style="min-width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #E3E8EF; border-radius:7px; background:#fff; cursor:pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.4" stroke-linecap="round"><path d="M10 6l6 6-6 6"/></svg></span>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{showJob}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; overflow:hidden; position:sticky; top:0; z-index:12; box-shadow:0 2px 8px rgba(15,36,64,.06)">
+                  <div style="padding:16px 20px; display:flex; align-items:flex-start; gap:20px">
+                    <div style="display:flex; flex-direction:column; gap:7px; flex:1">
+                      <div style="display:flex; align-items:center; gap:10px">
+                        <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span>
+                        <span style="display:inline-flex; align-items:center; gap:5px; background:{{jbStBg}}; color:{{jbStFg}}; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{jbStPath}}"/></svg>{{jbStLabel}}</span>
+                        <sc-if value="{{jbLate}}" hint-placeholder-val="{{false}}">
+                          <span style="display:inline-flex; align-items:center; gap:5px; background:#FBE9E9; color:#A31D1D; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/></svg>เกินกำหนด {{jbLateBy}}</span>
+                        </sc-if>
+                      </div>
+                      <div style="display:flex; align-items:baseline; gap:14px">
+                        <span style="font-size:26px; font-weight:700; color:#0F2440">{{jbReg}}</span>
+                        <span style="font-size:14px; color:#475569">{{jbModel}}</span>
+                      </div>
+                      <div style="display:flex; gap:22px; flex-wrap:wrap">
+                        <span style="font-size:13px; color:#475569">ลูกค้า <b style="color:#0F2440">{{jbCust}}</b> · <span style="font-family:'IBM Plex Mono',monospace">{{jbPhone}}</span></span>
+                        <span style="font-size:13px; color:#475569">นัดส่งมอบ <b style="color:{{jbPromiseFg}}; font-weight:{{jbPromiseWeight}}; font-family:'IBM Plex Mono',monospace">{{jbPromise}}</b></span>
+                        <span style="font-size:13px; color:#475569">ช่าง <b style="color:#0F2440">{{jbTech}}</b></span>
+                      </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end; flex:none">
+                      <button onClick="{{primaryAction}}" style="height:44px; padding:0 20px; background:#1B6BE3; color:#fff; border:none; border-radius:10px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer">{{jbAction}}</button>
+                      <div style="display:flex; gap:8px">
+                        <span style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:7px 11px; border-radius:7px; cursor:pointer">พิมพ์เอกสาร</span>
+                        <span onClick="{{simDenied}}" style="font-size:12px; font-weight:700; color:#C02626; background:#fff; border:1px solid #F0C2C2; padding:7px 11px; border-radius:7px; cursor:pointer">ยกเลิกงาน</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style="display:flex; gap:2px; padding:0 20px; border-top:1px solid #EDF1F6; overflow-x:auto">
+                    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="8">
+                      <span onClick="{{t.tap}}" style="padding:11px 13px; font-size:13px; font-weight:{{t.weight}}; color:{{t.fg}}; border-bottom:2.5px solid {{t.border}}; cursor:pointer; white-space:nowrap">{{t.label}}</span>
+                    </sc-for>
+                  </div>
+                </div>
+
+                <sc-if value="{{tabOverview}}" hint-placeholder-val="{{true}}">
+                  <div style="display:grid; grid-template-columns:{{jobCols}}; gap:14px; align-items:start">
+                    <div style="display:flex; flex-direction:column; gap:14px">
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:13px">
+                        <span style="font-size:15px; font-weight:700; color:#0F2440">ข้อมูลการรับรถ</span>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:11px 20px; font-size:13px">
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">รับรถเมื่อ</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">29 ก.ค. 08:32</span></div>
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">เลขไมล์</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">78,940 กม.</span></div>
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">น้ำมัน</span><span style="color:#0F2440; font-weight:600">1/2</span></div>
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">ที่มาของงาน</span><span style="color:#0F2440; font-weight:600">ลูกค้าเข้ามาเอง</span></div>
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">รับรถโดย</span><span style="color:#0F2440; font-weight:600">พิมพ์ชนก วัฒนกุล</span></div>
+                          <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">ประกัน</span><span style="color:#0F2440; font-weight:600">หน้าร้าน (ลูกค้าจ่ายเอง)</span></div>
+                        </div>
+                        <div style="display:flex; gap:8px">
+                          <div style="flex:1; height:78px; border-radius:9px; background:#D8DEE7; position:relative"><span style="position:absolute; left:6px; bottom:6px; background:rgba(15,36,64,.8); color:#fff; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px">หน้า</span></div>
+                          <div style="flex:1; height:78px; border-radius:9px; background:#C9D1DC; position:relative"><span style="position:absolute; left:6px; bottom:6px; background:rgba(15,36,64,.8); color:#fff; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px">หลัง</span></div>
+                          <div style="flex:1; height:78px; border-radius:9px; background:#D8DEE7; position:relative"><span style="position:absolute; left:6px; bottom:6px; background:rgba(15,36,64,.8); color:#fff; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px">ซ้าย</span></div>
+                          <div style="flex:1; height:78px; border-radius:9px; background:#C9D1DC; position:relative"><span style="position:absolute; left:6px; bottom:6px; background:rgba(15,36,64,.8); color:#fff; font-size:10px; font-weight:600; padding:2px 6px; border-radius:4px">ขวา</span></div>
+                          <div style="flex:1; height:78px; border-radius:9px; background:#EEF1F6; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:#475569">+2</div>
+                        </div>
+                      </div>
+
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                          <span style="font-size:15px; font-weight:700; color:#0F2440">อาการที่ลูกค้าแจ้ง</span>
+                          <sc-for list="{{complaints}}" as="c" hint-placeholder-count="2">
+                            <div style="background:#FFFBF3; border-radius:9px; padding:10px 12px; font-size:13px; color:#8A5A00; line-height:1.6">{{c.text}}</div>
+                          </sc-for>
+                        </div>
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                          <span style="font-size:15px; font-weight:700; color:#0F2440">ที่ช่างตรวจพบเพิ่ม</span>
+                          <sc-for list="{{findings}}" as="f" hint-placeholder-count="2">
+                            <div style="background:#F7F9FC; border-radius:9px; padding:10px 12px; display:flex; flex-direction:column; gap:3px"><span style="font-size:13px; color:#334155; font-weight:600">{{f.label}}</span><span style="font-size:12px; color:#64748B; line-height:1.55">{{f.note}}</span></div>
+                          </sc-for>
+                        </div>
+                      </div>
+
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                        <div style="padding:14px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; justify-content:space-between"><span style="font-size:15px; font-weight:700; color:#0F2440">รายการงานและสถานะอะไหล่</span><span style="font-size:12px; color:#64748B">อนุมัติ 5 · ไม่อนุมัติ 1 · รออนุมัติเพิ่ม 1</span></div>
+                        <div style="display:grid; grid-template-columns:1fr 130px 130px 110px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                          <div style="padding:9px 14px">รายการ</div><div style="padding:9px 14px">การอนุมัติ</div><div style="padding:9px 14px">อะไหล่</div><div style="padding:9px 14px; text-align:right">ราคา</div>
+                        </div>
+                        <sc-for list="{{workItems}}" as="w" hint-placeholder-count="6">
+                          <div style="display:grid; grid-template-columns:1fr 130px 130px 110px; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center">
+                            <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{w.label}}</span><span style="font-size:11.5px; color:#94A3B8">{{w.who}}</span></div>
+                            <div style="padding:11px 14px"><span style="background:{{w.apBg}}; color:{{w.apFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{w.apLabel}}</span></div>
+                            <div style="padding:11px 14px"><span style="background:{{w.pBg}}; color:{{w.pFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{w.pLabel}}</span></div>
+                            <div style="padding:11px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; color:{{w.priceFg}}; font-weight:600">{{w.price}}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+
+                    <div style="display:flex; flex-direction:column; gap:14px">
+                      <div style="background:#0F2440; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px">
+                        <span style="font-size:13px; color:#8FA6C4; font-weight:600">สรุปการเงิน</span>
+                        <div style="display:flex; flex-direction:column; gap:7px; font-size:13px">
+                          <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าแรง</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">6,800.00</span></div>
+                          <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าอะไหล่</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">10,450.00</span></div>
+                          <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ส่วนลด</span><span style="color:#F0AE55; font-family:'IBM Plex Mono',monospace">−500.00</span></div>
+                          <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">1,151.50</span></div>
+                        </div>
+                        <div style="border-top:1px solid #1B3557; padding-top:11px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:13px; color:#A9BDD6; font-weight:600">ยอดสุทธิ</span><span style="font-size:22px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ 17,601.50</span></div>
+                        <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#A9BDD6">มัดจำรับแล้ว</span><span style="color:#7DD3C4; font-family:'IBM Plex Mono',monospace">2,000.00</span></div>
+                        <div style="background:#FDF3E2; border-radius:8px; padding:9px 11px; display:flex; align-items:center; gap:7px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.8" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg><span style="font-size:12px; font-weight:700; color:#8A5A00">ค้างชำระ 15,601.50 บาท</span></div>
+                      </div>
+
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                        <span style="font-size:15px; font-weight:700; color:#0F2440">ผู้รับผิดชอบ</span>
+                        <sc-for list="{{assignees}}" as="a" hint-placeholder-count="4">
+                          <div style="display:flex; align-items:center; gap:10px">
+                            <div style="width:30px; height:30px; border-radius:50%; background:{{a.bg}}; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff; flex:none">{{a.ini}}</div>
+                            <div style="display:flex; flex-direction:column; gap:1px; flex:1"><span style="font-size:13px; font-weight:600; color:#0F2440">{{a.name}}</span><span style="font-size:11.5px; color:#64748B">{{a.role}}</span></div>
+                          </div>
+                        </sc-for>
+                        <span style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">เปลี่ยนผู้รับผิดชอบ</span>
+                      </div>
+
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px">
+                        <span style="font-size:15px; font-weight:700; color:#0F2440">ไทม์ไลน์งานบริการ</span>
+                        <sc-for list="{{timeline}}" as="e" hint-placeholder-count="6">
+                          <div style="display:flex; gap:11px">
+                            <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:9px; height:9px; border-radius:50%; background:{{e.dot}}; margin-top:5px"></div><div style="flex:1; width:2px; background:#E3E8EF"></div></div>
+                            <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:13px">
+                              <span style="font-size:12.5px; font-weight:600; color:#0F2440; line-height:1.5">{{e.text}}</span>
+                              <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{e.who}} · {{e.time}} · {{e.src}}</span>
+                            </div>
+                          </div>
+                        </sc-for>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{tabOther}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:14px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:14px">
+                      <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:16px; font-weight:700; color:#0F2440">{{tabTitle}}</span><span style="font-size:12px; color:#64748B">{{tabMeta}}</span></div>
+                      <sc-if value="{{jbSample}}" hint-placeholder-val="{{false}}">
+                        <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:10px 13px; font-size:12.5px; color:#8A5A00; line-height:1.65; font-weight:600">เนื้อหาในแท็บนี้เป็นข้อมูลตัวอย่างของงาน JB-6712 (4กก-2871) — เดโมนี้จัดทำรายละเอียดครบเฉพาะงานนั้น</div>
+                      </sc-if>
+                      <sc-for list="{{tabRows}}" as="r" hint-placeholder-count="5">
+                        <div style="display:flex; align-items:flex-start; gap:14px; padding:12px 0; border-top:1px solid #F1F4F9">
+                          <span style="width:170px; flex:none; font-size:12.5px; color:#64748B; padding-top:1px">{{r.k}}</span>
+                          <span style="flex:1; font-size:13.5px; color:#0F2440; line-height:1.7">{{r.v}}</span>
+                          <sc-if value="{{r.hasTag}}" hint-placeholder-val="{{false}}">
+                            <span style="background:{{r.tagBg}}; color:{{r.tagFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none">{{r.tag}}</span>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:15px; font-size:12.5px; color:#64748B; line-height:1.8">{{tabNote}}</div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{showModule}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex; flex-direction:column; gap:16px">
+
+                <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px">
+                  <div style="display:flex; flex-direction:column; gap:4px">
+                    <span style="font-size:22px; font-weight:700; color:#0F2440">{{mTitle}}</span>
+                    <span style="font-size:13px; color:#64748B">{{mSub}}</span>
+                  </div>
+                  <div style="display:flex; gap:8px">
+                    <span onClick="{{goDash}}" style="height:38px; padding:0 14px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; display:inline-flex; align-items:center; font-size:12.5px; font-weight:700; cursor:pointer">กลับแดชบอร์ด</span>
+                    <a href="{{mHref}}" style="height:38px; padding:0 15px; background:#1B6BE3; color:#fff; border-radius:9px; display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:700; text-decoration:none">{{mCta}} &#8594;</a>
+                  </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px">
+                  <sc-for list="{{mKpis}}" as="k" hint-placeholder-count="4">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-top:3px solid {{k.accent}}; border-radius:11px; padding:13px 14px; display:flex; flex-direction:column; gap:7px">
+                      <span style="font-size:12px; font-weight:700; color:{{k.fg}}; line-height:1.35">{{k.label}}</span>
+                      <div style="display:flex; align-items:baseline; gap:7px">
+                        <span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1">{{k.n}}</span>
+                        <span style="font-size:11px; color:#64748B">{{k.unit}}</span>
+                      </div>
+                      <span style="font-size:11px; color:#94A3B8">{{k.note}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:grid; grid-template-columns:{{mBodyCols}}; gap:14px; align-items:start">
+
+                  <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                    <div style="padding:13px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+                      <span style="font-size:15px; font-weight:700; color:#0F2440">{{mTableTitle}}</span>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap">
+                        <sc-for list="{{mChips}}" as="c" hint-placeholder-count="4">
+                          <span onClick="{{c.tap}}" style="font-size:12px; font-weight:600; padding:6px 11px; border-radius:7px; cursor:pointer; background:{{c.bg}}; color:{{c.fg}}; border:1px solid {{c.border}}">{{c.label}}</span>
+                        </sc-for>
+                      </div>
+                      <span style="margin-left:auto; font-size:12px; color:#64748B">{{mCount}}</span>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:{{mCols}}; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                      <sc-for list="{{mHead}}" as="h" hint-placeholder-count="6">
+                        <div style="padding:9px 14px; display:flex; justify-content:{{h.align}}">{{h.label}}</div>
+                      </sc-for>
+                    </div>
+
+                    <sc-for list="{{mRows}}" as="r" hint-placeholder-count="6">
+                      <a href="{{r.href}}" style="display:grid; grid-template-columns:{{mCols}}; border-bottom:1px solid #F5F8FB; align-items:center; text-decoration:none; background:{{r.bg}}" style-hover="background:#F7FAFF">
+                        <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="6">
+                          <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px; align-items:{{c.items}}; min-width:0">
+                            <sc-if value="{{c.isTag}}" hint-placeholder-val="{{false}}">
+                              <span style="background:{{c.tagBg}}; color:{{c.tagFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px; white-space:nowrap">{{c.text}}</span>
+                            </sc-if>
+                            <sc-if value="{{c.isText}}" hint-placeholder-val="{{true}}">
+                              <span style="font-size:13px; font-weight:{{c.weight}}; color:{{c.fg}}; font-family:{{c.font}}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%">{{c.text}}</span>
+                            </sc-if>
+                            <sc-if value="{{c.hasSub}}" hint-placeholder-val="{{false}}">
+                              <span style="font-size:11.5px; color:#94A3B8; white-space:nowrap">{{c.sub}}</span>
+                            </sc-if>
+                          </div>
+                        </sc-for>
+                      </a>
+                    </sc-for>
+
+                    <sc-if value="{{mEmpty}}" hint-placeholder-val="{{false}}">
+                      <div style="padding:44px 24px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center">
+                        <span style="font-size:15px; font-weight:700; color:#334155">ไม่มีรายการในตัวกรองนี้</span>
+                        <span style="font-size:12.5px; color:#64748B; line-height:1.7">{{mEmptyNote}}</span>
+                      </div>
+                    </sc-if>
+
+                    <div style="padding:11px 16px; background:#F7F9FC; border-top:1px solid #EDF1F6; font-size:11.5px; color:#94A3B8; line-height:1.7">{{mHint}}</div>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; gap:14px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px">
+                      <span style="font-size:15px; font-weight:700; color:#0F2440">การกระทำถัดไป</span>
+                      <sc-for list="{{mActions}}" as="a" hint-placeholder-count="3">
+                        <div style="display:flex; flex-direction:column; gap:3px; padding:11px 12px; background:{{a.bg}}; border:1px solid {{a.border}}; border-radius:9px">
+                          <span style="font-size:13px; font-weight:700; color:{{a.fg}}; line-height:1.5">{{a.label}}</span>
+                          <span style="font-size:11.5px; color:#64748B; line-height:1.65">{{a.note}}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+
+                    <div style="background:#0F2440; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px">
+                      <span style="font-size:13px; color:#8FA6C4; font-weight:600">{{mSideTitle}}</span>
+                      <sc-for list="{{mStats}}" as="t" hint-placeholder-count="4">
+                        <div style="display:flex; align-items:baseline; justify-content:space-between; gap:10px">
+                          <span style="font-size:12.5px; color:#A9BDD6">{{t.label}}</span>
+                          <span style="font-size:14px; font-weight:700; color:{{t.fg}}; font-family:'IBM Plex Mono',monospace">{{t.value}}</span>
+                        </div>
+                      </sc-for>
+                      <a href="{{mHref}}" style="margin-top:4px; border-top:1px solid #1B3557; padding-top:12px; display:flex; align-items:center; justify-content:space-between; text-decoration:none">
+                        <span style="font-size:12.5px; font-weight:700; color:#7DD3C4">{{mCta}}</span>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7DD3C4" stroke-width="2.6" stroke-linecap="round"><path d="M10 6l6 6-6 6"/></svg>
+                      </a>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; right:22px; bottom:22px; background:#1E293B; border-radius:12px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; box-shadow:0 18px 40px rgba(15,36,64,.28); animation:gpIn .16s ease-out; max-width:400px; z-index:40">
+          <div style="width:30px; height:30px; border-radius:9px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13-6M20 12a8 8 0 0 1-13 6"/><path d="M17 3v3.5h-3.5M7 21v-3.5h3.5"/></svg></div>
+          <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+            <span style="font-size:13.5px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span>
+            <span style="font-size:12.5px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span>
+          </div>
+          <span onClick="{{openToast}}" style="font-size:12px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">เปิดงาน</span>
+        </div>
+      </sc-if>
+    </sc-if>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:1080},&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;manager&quot;,&quot;cashier&quot;],&quot;default&quot;:&quot;manager&quot;,&quot;tsType&quot;:&quot;'manager' | 'cashier'&quot;,&quot;section&quot;:&quot;เดโม&quot;},&quot;startWidth&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1440&quot;,&quot;1024&quot;],&quot;default&quot;:&quot;1440&quot;,&quot;tsType&quot;:&quot;'1440' | '1024'&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const ST = {
+  waitinspect: { label:'รอตรวจเช็ค', bg:'#EEF1F5', fg:'#475569', accent:'#94A3B8', path:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7.5v5l3 2' },
+  waitquote:   { label:'รอเสนอราคา', bg:'#E8EDF4', fg:'#1B3557', accent:'#1B3557', path:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5' },
+  waitapprove: { label:'รออนุมัติ', bg:'#FDF3E2', fg:'#8A5A00', accent:'#E0930C', path:'M6 2h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4M6 22h12' },
+  inprogress:  { label:'กำลังซ่อม', bg:'#E6EFFC', fg:'#1552B3', accent:'#1B6BE3', path:'M14.7 6.3a4 4 0 0 0 5 5l-8.4 8.4a2.8 2.8 0 0 1-4-4z' },
+  waitparts:   { label:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A', accent:'#C2410C', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  qc:          { label:'QC ตรวจสอบ', bg:'#E4E9F0', fg:'#0F2440', accent:'#0F2440', path:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4' },
+  ready:       { label:'พร้อมส่งมอบ', bg:'#D8F3EE', fg:'#0A6355', accent:'#0E9F8C', path:'M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5' },
+  done:        { label:'เสร็จสมบูรณ์', bg:'#E3F5F1', fg:'#0B6D5E', accent:'#0E9F8C', path:'M2 13l4 4 7-8M11 15l2 2 9-10' }
+};
+
+const JOBS = [
+  { no:'JB-6709', reg:'ขข-8431', model:'Mazda BT-50 PRO 2.2', customer:'วิภาวี ตั้งจิตต์', phone:'089-888-7777', st:'waitparts', tech:'ธีรศักดิ์ บุญมี', promise:'29 ก.ค. 12:00', total:42180, pay:'unpaid', late:'2 ชม. 32 นาที' },
+  { no:'JB-6714', reg:'2ขฉ-7742', model:'Nissan Almera 1.0 VL', customer:'ศิริพร ใจงาม', phone:'082-773-4411', st:'waitapprove', tech:'ณัฐพล ศรีสุวรรณ', promise:'29 ก.ค. 16:00', total:12340, pay:'unpaid', late:'' },
+  { no:'JB-6712', reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2 Smart', customer:'สมชาย พงษ์เจริญ', phone:'081-234-5678', st:'inprogress', tech:'อนุชา แก้วมณี', promise:'29 ก.ค. 16:30', total:17601.5, pay:'deposit', late:'' },
+  { no:'JB-6710', reg:'5กท-9098', model:'Ford Ranger XLT 2.0', customer:'ประเสริฐ มั่นคง', phone:'084-445-6677', st:'qc', tech:'ธีรศักดิ์ บุญมี', promise:'29 ก.ค. 18:00', total:23900, pay:'unpaid', late:'' },
+  { no:'JB-6703', reg:'1ขค-5590', model:'Honda City e:HEV RS', customer:'ปรียานุช อินทรโชติ', phone:'086-555-1234', st:'ready', tech:'สุรชัย พันธุ์ทอง', promise:'29 ก.ค. 15:00', total:8240, pay:'unpaid', late:'' },
+  { no:'JB-6715', reg:'8กจ-1174', model:'Isuzu D-Max Hi-Lander', customer:'ธนกร รัตนพงศ์', phone:'081-999-2244', st:'waitinspect', tech:'ยังไม่มอบหมาย', promise:'30 ก.ค. 11:00', total:0, pay:'none', late:'' },
+  { no:'JB-6716', reg:'3ขก-4408', model:'Toyota Hilux Revo 2.4', customer:'อารีย์ สมบูรณ์ทรัพย์', phone:'092-114-8890', st:'waitinspect', tech:'อนุชา แก้วมณี', promise:'30 ก.ค. 09:30', total:0, pay:'none', late:'' },
+  { no:'JB-6708', reg:'7กฉ-2210', model:'Mitsubishi Xpander Cross', customer:'กมลวรรณ พฤกษ์ไพร', phone:'095-330-1177', st:'inprogress', tech:'อนุชา แก้วมณี', promise:'29 ก.ค. 17:30', total:9780, pay:'deposit', late:'' },
+  { no:'JB-6706', reg:'9กด-3320', model:'Toyota Fortuner 2.8 V', customer:'สุนทร วิไลรัตน์', phone:'081-442-9080', st:'waitquote', tech:'วีระพงษ์ ทองดี', promise:'30 ก.ค. 14:00', total:0, pay:'none', late:'' },
+  { no:'JB-6701', reg:'6กพ-1188', model:'Honda CR-V 2.4 EL', customer:'ชนิดา เรืองศิลป์', phone:'098-221-7744', st:'done', tech:'สุรชัย พันธุ์ทอง', promise:'28 ก.ค. 16:00', total:31450, pay:'paid', late:'' },
+  { no:'JB-6699', reg:'4ขจ-7761', model:'Suzuki Swift GLX', customer:'อรพรรณ สุขเกษม', phone:'090-887-2211', st:'done', tech:'ณัฐพล ศรีสุวรรณ', promise:'28 ก.ค. 11:30', total:5980, pay:'paid', late:'' },
+  { no:'JB-6704', reg:'2กฬ-9932', model:'MG ZS EV Plus', customer:'บริษัท ไทยโลจิสติกส์ จำกัด', phone:'02-118-4400', st:'waitparts', tech:'ธีรศักดิ์ บุญมี', promise:'31 ก.ค. 10:00', total:18700, pay:'unpaid', late:'' }
+];
+
+const PAY = {
+  none:    { label:'ยังไม่ออกใบ', bg:'#EEF1F5', fg:'#64748B' },
+  unpaid:  { label:'ค้างชำระ', bg:'#FDF3E2', fg:'#8A5A00' },
+  deposit: { label:'รับมัดจำแล้ว', bg:'#E6EFFC', fg:'#1552B3' },
+  paid:    { label:'ชำระครบ', bg:'#E3F5F1', fg:'#0B6D5E' }
+};
+
+const NAV_ALL = [
+  { key:'dash', label:'แดชบอร์ด', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', label:'งานซ่อม', path:'M3 5h18v15H3zM3 10h18M8 15h8', badge:12 },
+  { key:'quote', label:'ใบเสนอราคา', path:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6', badge:7, warn:true },
+  { key:'pos', label:'POS', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM7 14h4', badge:6, warn:true },
+  { key:'stock', label:'สต็อก', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8', badge:3, warn:true },
+  { key:'po', label:'จัดซื้อ', path:'M6 6h15l-2 9H8zM6 6L5 3H2M9 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2M18 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2' },
+  { key:'report', label:'รายงาน', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+const TABS = [
+  { key:'overview', label:'ภาพรวม' }, { key:'inspect', label:'ตรวจเช็ค' }, { key:'quote', label:'ใบเสนอราคา' },
+  { key:'repair', label:'ซ่อม' }, { key:'qc', label:'QC' }, { key:'pay', label:'ชำระเงิน' },
+  { key:'docs', label:'เอกสาร' }, { key:'audit', label:'กิจกรรม' }
+];
+
+const TAB_DATA = {
+  inspect: { title:'ผลตรวจเช็คสภาพรถ', meta:'ตรวจ 31 รายการ · ต้องซ่อม 2 · เฝ้าระวัง 1 · โดย อนุชา แก้วมณี 09:05',
+    note:'ผลตรวจถูกส่งจากแอปมือถือของช่างเมื่อ 09:48 น. พร้อมรูป 12 รูป — ระบบล็อกไม่ให้แก้ไขหลังส่ง ต้องตีกลับจากเว็บเท่านั้น',
+    rows:[
+      { k:'ผ้าเบรกหน้า', v:'เหลือ 2 มม. มีเสียงดังตรงกับที่ลูกค้าแจ้ง · รูป 2 รูป', tag:'ต้องซ่อม', tagBg:'#FBE9E9', tagFg:'#A31D1D' },
+      { k:'โช้คอัพหน้าซ้าย', v:'น้ำมันซึม ยุบตัวช้า แนะนำเปลี่ยนเป็นคู่ · รูป 3 รูป + วิดีโอ', tag:'ต้องซ่อม', tagBg:'#FBE9E9', tagFg:'#A31D1D' },
+      { k:'แบตเตอรี่', v:'แรงดัน 12.1V อายุ 3 ปี ยังสตาร์ทได้ปกติ', tag:'เฝ้าระวัง', tagBg:'#FDF3E2', tagFg:'#8A5A00' },
+      { k:'ระบบแอร์', v:'กรองแอร์อุดตัน ลมออกน้อย น้ำยาปกติ', tag:'ต้องซ่อม', tagBg:'#FBE9E9', tagFg:'#A31D1D' },
+      { k:'ที่เหลือ 27 รายการ', v:'ผลปกติทั้งหมด · ไม่เกี่ยวข้อง 1 รายการ (ยางอะไหล่ไม่มีในรถ)', tag:'ปกติ', tagBg:'#E3F5F1', tagFg:'#0B6D5E' }
+    ] },
+  quote: { title:'ใบเสนอราคาและผลอนุมัติ', meta:'QT-6712-02 · เวอร์ชัน 2 · ลูกค้าเซ็นอนุมัติ 10:12 น.',
+    note:'เวอร์ชัน 1 ถูกยกเลิกเพราะปรับราคาอะไหล่โช้คอัพ · ลายเซ็นลูกค้าและ IP เครื่องที่ใช้เก็บไว้ในบันทึกการตรวจสอบ',
+    rows:[
+      { k:'เปลี่ยนผ้าเบรกหน้า', v:'อะไหล่ 1,290 + ค่าแรง 750 = 2,040 บาท', tag:'อนุมัติ', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'เจียจานเบรกหน้า', v:'ค่าบริการ 800 บาท', tag:'อนุมัติ', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ล้างแอร์ + กรองแอร์', v:'อะไหล่ 450 + ค่าแรง 500 = 950 บาท', tag:'อนุมัติ', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'เปลี่ยนโช้คอัพหน้า 2 ต้น', v:'อะไหล่ 4,800 + ค่าแรง 900 = 5,700 บาท', tag:'อนุมัติ', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'เปลี่ยนแบตเตอรี่', v:'ลูกค้าไม่อนุมัติ · เหตุผล: ขอปรึกษาที่บ้านก่อน', tag:'ไม่อนุมัติ', tagBg:'#FBE9E9', tagFg:'#A31D1D' },
+      { k:'ยางแท่นเครื่อง (งานเพิ่ม)', v:'ช่างแจ้งเพิ่มระหว่างซ่อม ประเมิน 1,850 + ค่าแรง 1.5 ชม.', tag:'รออนุมัติ', tagBg:'#FDF3E2', tagFg:'#8A5A00' }
+    ] },
+  repair: { title:'ความคืบหน้างานซ่อมและอะไหล่', meta:'ช่าง อนุชา แก้วมณี · ใช้เวลาไป 1 ชม. 24 นาที · 3/5 รายการ',
+    note:'ข้อมูลนี้ซิงก์มาจากแอปมือถือของช่าง รูปก่อน/หลังซ่อม 9 รูปกำลังรออัปโหลด 14.2 MB',
+    rows:[
+      { k:'เปลี่ยนผ้าเบรกหน้า', v:'เสร็จ 11:40 · รูปก่อน/หลังครบ', tag:'เสร็จแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'เจียจานเบรกหน้า', v:'เสร็จ 12:05 · รูปก่อน/หลังครบ', tag:'เสร็จแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ล้างแอร์ + กรองแอร์', v:'เสร็จ 13:20 · รูปก่อน/หลังครบ', tag:'เสร็จแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'เปลี่ยนโช้คอัพหน้า 2 ต้น', v:'PO-2471 · ผู้จำหน่ายแจ้งของถึง 31 ก.ค.', tag:'รออะไหล่', tagBg:'#FDEBE3', tagFg:'#A8380A' },
+      { k:'ตั้งศูนย์ถ่วงล้อ', v:'รอทำหลังเปลี่ยนช่วงล่างเสร็จ', tag:'ยังไม่เริ่ม', tagBg:'#EEF1F5', tagFg:'#475569' }
+    ] },
+  qc: { title:'ผลการตรวจ QC', meta:'ผู้ตรวจ สุรชัย พันธุ์ทอง · รอบที่ 2 · 15:31 น.',
+    note:'รอบที่ 1 ไม่ผ่านเพราะยังมีเสียงดังช่วงล่างซ้าย (ความสำคัญสูง) ส่งกลับให้ช่างแก้ไขและตรวจใหม่',
+    rows:[
+      { k:'เบรกและเสียงผิดปกติ', v:'เบรกนิ่ม ไม่มีเสียงดังแล้ว', tag:'ผ่าน', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ระดับของเหลว/รอยรั่ว', v:'ครบตามค่ากำหนด ไม่พบรอยรั่ว', tag:'ผ่าน', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ช่วงล่าง', v:'รออะไหล่โช้คอัพ ยังตรวจไม่ได้', tag:'รอตรวจ', tagBg:'#EEF1F5', tagFg:'#475569' },
+      { k:'ผลทดลองขับ', v:'3.2 กม. · ยังไม่ได้ทดลองขับรอบสุดท้าย', tag:'รอตรวจ', tagBg:'#EEF1F5', tagFg:'#475569' },
+      { k:'ความสะอาดและของในรถ', v:'ล้างรถแล้ว ของมีค่าอยู่ครบตามใบรับรถ', tag:'ผ่าน', tagBg:'#E3F5F1', tagFg:'#0B6D5E' }
+    ] },
+  pay: { title:'การชำระเงินและเอกสารภาษี', meta:'มัดจำ 2,000 · ค้างชำระ 15,601.50 บาท',
+    note:'ยังไม่สามารถออกใบกำกับภาษีเต็มจำนวนได้จนกว่างานจะผ่าน QC และเปลี่ยนสถานะเป็นพร้อมส่งมอบ',
+    rows:[
+      { k:'มัดจำ RC-24-0688', v:'2,000.00 บาท · เงินสด · 29 ก.ค. 08:40 · รับโดย จารุวรรณ ผ่องแผ้ว', tag:'ชำระแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ยอดคงเหลือ', v:'15,601.50 บาท · เรียกเก็บเมื่อลูกค้ามารับรถ', tag:'ค้างชำระ', tagBg:'#FDF3E2', tagFg:'#8A5A00' },
+      { k:'ช่องทางที่ลูกค้าแจ้ง', v:'โอนผ่าน QR PromptPay ในนามบุคคล', tag:'', tagBg:'', tagFg:'' },
+      { k:'ใบกำกับภาษี', v:'ยังไม่ออก · ต้องการในนามบุคคล ไม่ขอใบกำกับแบบเต็ม', tag:'รอออก', tagBg:'#EEF1F5', tagFg:'#475569' }
+    ] },
+  docs: { title:'เอกสารของงานนี้', meta:'6 ไฟล์ · อัปเดตล่าสุด 15:31 น.',
+    note:'เอกสารทุกฉบับเก็บเวอร์ชันไว้ทั้งหมด ดาวน์โหลดได้ตามสิทธิ์ของบทบาท',
+    rows:[
+      { k:'ใบรับรถ RC-6712.pdf', v:'สร้างจากมือถือ 29 ก.ค. 08:35 · มีลายเซ็นลูกค้า', tag:'ลงนามแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ใบเสนอราคา QT-6712-02.pdf', v:'เวอร์ชัน 2 · 29 ก.ค. 09:48', tag:'ใช้งาน', tagBg:'#E6EFFC', tagFg:'#1552B3' },
+      { k:'ใบเสนอราคา QT-6712-01.pdf', v:'เวอร์ชัน 1 · ถูกแทนที่', tag:'ยกเลิก', tagBg:'#EEF1F5', tagFg:'#475569' },
+      { k:'ใบอนุมัติรายการซ่อม.pdf', v:'ลูกค้าเซ็นอนุมัติ 5 รายการ 10:12', tag:'ลงนามแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' },
+      { k:'ใบสั่งซื้อ PO-2471.pdf', v:'โช้คอัพหน้า × 2 · ส่งผู้จำหน่าย 13:05', tag:'รอรับของ', tagBg:'#FDEBE3', tagFg:'#A8380A' },
+      { k:'ใบเสร็จมัดจำ RC-24-0688.pdf', v:'2,000.00 บาท', tag:'ชำระแล้ว', tagBg:'#E3F5F1', tagFg:'#0B6D5E' }
+    ] },
+  audit: { title:'บันทึกการตรวจสอบ (Audit log)', meta:'24 รายการ · เก็บ 7 ปีตามข้อกำหนดภาษี',
+    note:'ทุกการเปลี่ยนสถานะ ราคา และสิทธิ์ ถูกบันทึกพร้อมผู้ใช้ อุปกรณ์ และเวลา — แก้ไขย้อนหลังไม่ได้',
+    rows:[
+      { k:'15:31:08 · QC', v:'สุรชัย พันธุ์ทอง บันทึกผล QC รอบ 2 (เว็บ · 10.20.4.18)', tag:'', tagBg:'', tagFg:'' },
+      { k:'13:05:44 · จัดซื้อ', v:'ธนวัฒน์ อิ่มเอม ออก PO-2471 มูลค่า 4,800 บาท (เว็บ)', tag:'', tagBg:'', tagFg:'' },
+      { k:'11:12:02 · ราคา', v:'กัญญารัตน์ ดีสมบัติ อนุมัติส่วนลด 500 บาท (เกินสิทธิ์ธุรการ)', tag:'ต้องอนุมัติ', tagBg:'#FDF3E2', tagFg:'#8A5A00' },
+      { k:'10:12:35 · อนุมัติ', v:'ลูกค้าเซ็นอนุมัติผ่านเครื่องของ พิมพ์ชนก วัฒนกุล (มือถือ · offline→sync 10:19)', tag:'', tagBg:'', tagFg:'' },
+      { k:'09:48:11 · ใบเสนอราคา', v:'ณัฐพล ศรีสุวรรณ สร้าง QT-6712-02 แทนเวอร์ชัน 1', tag:'', tagBg:'', tagFg:'' },
+      { k:'08:32:19 · รับรถ', v:'พิมพ์ชนก วัฒนกุล เปิดงาน JB-6712 (มือถือ)', tag:'', tagBg:'', tagFg:'' }
+    ] }
+};
+
+const MS = {
+  draft:['ร่าง','#EEF1F5','#475569'], sent:['ส่งให้ลูกค้าแล้ว','#E8EDF4','#1B3557'],
+  waiting:['รอลูกค้าอนุมัติ','#FDF3E2','#8A5A00'], revise:['ลูกค้าขอแก้ไข','#FDEBE3','#A8380A'],
+  approved:['อนุมัติแล้ว','#E3F5F1','#0B6D5E'],
+  readypay:['พร้อมเก็บเงิน','#D8F3EE','#0A6355'], recon:['รอกระทบยอด','#E6EFFC','#1552B3'],
+  overdue:['เกินกำหนดชำระ','#FBE9E9','#A31D1D'], credit:['วางบิล 30 วัน','#E8EDF4','#1B3557'],
+  deposit:['รับมัดจำแล้ว','#E6EFFC','#1552B3'],
+  out:['หมดสต็อก','#FBE9E9','#A31D1D'], low:['ต่ำกว่าจุดสั่งซื้อ','#FDF3E2','#8A5A00'],
+  ordered:['สั่งซื้อแล้ว','#E6EFFC','#1552B3'], enough:['เพียงพอ','#E3F5F1','#0B6D5E'],
+  damaged:['รอส่งคืนผู้จำหน่าย','#FDEBE3','#A8380A'],
+  pending:['รออนุมัติ','#FDF3E2','#8A5A00'], partial:['รับบางส่วน','#E6EFFC','#1552B3'],
+  latercv:['เกินกำหนดรับ','#FBE9E9','#A31D1D'], received:['รับครบแล้ว','#E3F5F1','#0B6D5E'],
+  fresh:['พร้อมใช้','#E3F5F1','#0B6D5E'], queued:['กำลังประมวลผล','#E6EFFC','#1552B3'],
+  failed:['ส่งออกไม่สำเร็จ','#FBE9E9','#A31D1D'], limited:['จำกัดสิทธิ์ผู้จัดการเขต','#EEF1F5','#475569']
+};
+
+const MODULES = {
+  quote: {
+    title:'ใบเสนอราคา · คิวรอเสนอและรออนุมัติ',
+    sub:'เรียงตามเวลาที่ค้างนานที่สุด · ข้อตกลงบริการ: ออกใบภายใน 45 นาทีหลังผลตรวจเข้า',
+    cta:'เปิดโมดูลใบเสนอราคา', href:'GaragePro Quotation.dc.html?app=1',
+    kpis:[
+      ['รอเสนอราคา','3','งาน','ค้างเกิน 45 นาที 1 งาน','#1B3557','#1B3557'],
+      ['รอลูกค้าอนุมัติ','5','ใบ','ค้างเกิน 2 ชม. 2 ใบ','#E0930C','#8A5A00'],
+      ['มูลค่ารออนุมัติ','186,400','บาท','เฉลี่ย 37,280 บาท/ใบ','#1B6BE3','#1552B3'],
+      ['อนุมัติแล้ววันนี้','8','ใบ','อัตราอนุมัติ 72% ของที่ส่งไป','#0E9F8C','#0A6355']
+    ],
+    chips:[['all','ทั้งหมด'],['todo','รอเสนอราคา'],['wait','รออนุมัติ'],['rev','ขอแก้ไข']],
+    tableTitle:'คิวใบเสนอราคา', unit:'ใบ',
+    head:['เลขที่','งาน / ทะเบียน','ลูกค้า','สถานะ','ยอดสุทธิ','ค้างมานาน'],
+    cols:'132px 1.1fr 1.1fr 158px 118px 116px',
+    types:['code','main','text','status','num','age'],
+    rows:[
+      ['wait',1,['QT-6709-02','JB-6709|ขข-8431 Mazda BT-50','วิภาวี ตั้งจิตต์','waiting','42,180.00','3 ชม. 12 น.']],
+      ['wait',1,['QT-6714-01','JB-6714|2ขฉ-7742 Nissan Almera','ศิริพร ใจงาม','waiting','12,340.00','2 ชม. 41 น.']],
+      ['wait',0,['QT-6710-01','JB-6710|5กท-9098 Ford Ranger','ประเสริฐ มั่นคง','waiting','23,900.00','1 ชม. 08 น.']],
+      ['rev',0,['QT-6704-01','JB-6704|2กฬ-9932 MG ZS EV','บริษัท ไทยโลจิสติกส์','revise','18,700.00','55 นาที']],
+      ['todo',0,['QT-6706-01','JB-6706|9กด-3320 Fortuner 2.8','สุนทร วิไลรัตน์','draft','—','48 นาที']],
+      ['todo',0,['QT-6716-01','JB-6716|3ขก-4408 Hilux Revo','อารีย์ สมบูรณ์ทรัพย์','draft','—','22 นาที']],
+      ['all',0,['QT-6712-02','JB-6712|4กก-2871 Yaris Ativ','สมชาย พงษ์เจริญ','approved','17,601.50','—']]
+    ],
+    actions:[
+      ['โทรตาม 2 ใบที่เกินข้อตกลง 2 ชม.','QT-6709-02 และ QT-6714-01 — ลูกค้ายังไม่ตอบกลับ ให้หน้าร้านโทรก่อนปิดกะ','#FFFBF3','#F0D9AC','#8A5A00'],
+      ['แก้ไขตามที่ลูกค้าขอ','QT-6704-01 ขอตัดงานเจียจานเบรกออก แล้วส่งเวอร์ชัน 2 ให้ฝ่ายจัดซื้อลูกค้า','#F7F9FC','#E3E8EF','#0F2440'],
+      ['ออกใบให้ 2 งานที่ผลตรวจครบ','JB-6706 และ JB-6716 ผลตรวจเข้าแล้ว ยังไม่มีคนรับทำ','#F7F9FC','#E3E8EF','#0F2440']
+    ],
+    sideTitle:'ตัวเลขวันนี้ · ใบเสนอราคา',
+    stats:[['ออกใบทั้งหมด','11 ใบ','#FFFFFF'],['อนุมัติ','8 ใบ','#7DD3C4'],['ปฏิเสธ','1 ใบ','#F0AE55'],['เวลาออกใบเฉลี่ย','38 นาที','#FFFFFF']],
+    hint:'คลิกแถวเพื่อเปิดโมดูลใบเสนอราคา (สร้าง/แก้ไข 3 พาเนล พร้อมแคตตาล็อกอะไหล่) · หน้านี้เป็นคิวระดับโมดูล',
+    emptyNote:'ลองเลือกตัวกรองอื่น หรือดูคิวทั้งหมดของสาขา'
+  },
+  pos: {
+    title:'รับชำระเงิน · คิวรอเก็บเงิน',
+    sub:'เรียงตามความพร้อมส่งมอบ · ต้องกระทบยอดกับรายการซ่อมก่อนออกใบเสร็จทุกครั้ง',
+    cta:'เปิดโมดูลรับชำระเงิน', href:'GaragePro POS.dc.html?app=1',
+    kpis:[
+      ['รอเก็บเงิน','6','ใบ','พร้อมส่งมอบทันที 2 งาน','#E0930C','#8A5A00'],
+      ['ยอดค้างรวม','78,940','บาท','เกิน 7 วัน 2 ใบ · 31,200 บาท','#C02626','#A31D1D'],
+      ['รับแล้ววันนี้','184,320','บาท','เงินสด 42,180 · โอน/QR 96,540','#0E9F8C','#0A6355'],
+      ['รอกระทบยอด','2','งาน','มีรายการทำเกินที่ยังไม่ตัดสินใจ','#1B6BE3','#1552B3']
+    ],
+    chips:[['all','ทั้งหมด'],['ready','พร้อมเก็บเงิน'],['recon','รอกระทบยอด'],['late','เกินกำหนดชำระ']],
+    tableTitle:'คิวรับชำระเงิน', unit:'ใบ',
+    head:['เลขที่ใบแจ้งหนี้','งาน / ทะเบียน','ลูกค้า','สถานะ','ยอดค้าง','ค้างมานาน'],
+    cols:'138px 1.1fr 1.1fr 158px 118px 116px',
+    types:['code','main','text','status','num','age'],
+    rows:[
+      ['ready',0,['IV-24-0912','JB-6703|1ขค-5590 Honda City','ปรียานุช อินทรโชติ','readypay','8,240.00','รอรับรถ']],
+      ['recon',0,['IV-24-0914','JB-6712|4กก-2871 Yaris Ativ','สมชาย พงษ์เจริญ','recon','15,601.50','มัดจำ 2,000']],
+      ['late',1,['IV-24-0871','JB-6688|7กฉ-1120 Triton','ณรงค์ศักดิ์ พูลสุข','overdue','18,400.00','12 วัน']],
+      ['late',1,['IV-24-0863','JB-6681|5ขน-4432 Vios','สุพัตรา คำแก้ว','overdue','12,800.00','9 วัน']],
+      ['all',0,['IV-24-0908','JB-6704|2กฬ-9932 MG ZS EV','บริษัท ไทยโลจิสติกส์','credit','18,700.00','ครบ 12 ส.ค.']],
+      ['ready',0,['IV-24-0910','JB-6699|4ขจ-7761 Swift GLX','อรพรรณ สุขเกษม','readypay','5,980.00','รอรับรถ']]
+    ],
+    actions:[
+      ['ทวงถาม 2 ใบที่เกิน 7 วัน','IV-24-0871 และ IV-24-0863 — ต้องมีบันทึกการติดตามก่อนส่งต่อฝ่ายบัญชี','#FEF6F6','#F0C2C2','#A31D1D'],
+      ['ปิดการกระทบยอด JB-6712','มีรายการทำเกิน 1 รายการ (เจียจานเบรก) รอผู้จัดการตัดสินใจคิดเงินหรือไม่','#FFFBF3','#F0D9AC','#8A5A00'],
+      ['เตรียมใบกำกับภาษีเต็มรูป','บริษัท ไทยโลจิสติกส์ ขอใบกำกับพร้อมใบวางบิลรอบ 15 ส.ค.','#F7F9FC','#E3E8EF','#0F2440']
+    ],
+    sideTitle:'สรุปกะแคชเชียร์ · 15:42',
+    stats:[['ใบเสร็จที่ออก','23 ใบ','#FFFFFF'],['เงินสดในลิ้นชัก','42,180','#7DD3C4'],['ยกเลิก/คืนเงิน','1 ใบ','#F0AE55'],['ส่วนต่างที่ยังไม่ปิด','0.00','#7DD3C4']],
+    hint:'คลิกแถวเพื่อเปิดโมดูลรับชำระเงิน (กระทบยอด · เงินสด/บัตร/โอน/QR · ออกใบเสร็จและใบกำกับ)',
+    emptyNote:'ไม่มีใบแจ้งหนี้ในตัวกรองนี้ — ลองดูคิวทั้งหมด'
+  },
+  stock: {
+    title:'สต็อกอะไหล่ · รายการที่ต้องจัดการ',
+    sub:'คลังสาขาบางนา · นับรอบล่าสุด 26 ก.ค. 2569 · แสดงเฉพาะรหัสที่ต้องตัดสินใจ',
+    cta:'เปิดโมดูลคลังอะไหล่', href:'GaragePro Inventory.dc.html?app=1',
+    kpis:[
+      ['ต่ำกว่าจุดสั่งซื้อ','12','รหัส','หมดสต็อกจริง 3 รหัส','#E0930C','#8A5A00'],
+      ['จองไว้กับงาน','34','รายการ','ใน 11 งานที่ยังไม่ปิด','#1B6BE3','#1552B3'],
+      ['มูลค่าคงคลัง','1,864,200','บาท','ค้างสต็อกเกิน 180 วัน 96,400 บาท','#1B3557','#1B3557'],
+      ['รอตรวจนับ','1','รอบ','หมวดน้ำมันเครื่อง · กำหนด 31 ก.ค.','#0E9F8C','#0A6355']
+    ],
+    chips:[['all','ทั้งหมด'],['out','หมดสต็อก'],['low','ต่ำกว่าจุดสั่งซื้อ'],['ordered','สั่งซื้อแล้ว']],
+    tableTitle:'รายการอะไหล่ที่ต้องจัดการ', unit:'รหัส',
+    head:['รหัส','ชื่ออะไหล่','คงเหลือ','จอง / สั่งแล้ว','จุดสั่งซื้อ','สถานะ'],
+    cols:'132px 1.5fr 100px 130px 110px 176px',
+    types:['code','main','num','text','num','status'],
+    rows:[
+      ['out',1,['P-SHK-0118','โช้คอัพหน้า KYB Excel-G|Toyota Yaris Ativ 2563–2566','0','จอง 2 · สั่งแล้ว 2','4','out']],
+      ['out',1,['P-BRK-0412','ผ้าเบรกหน้า Bendix MKT|ใช้ร่วม 6 รุ่น','0','จอง 3 · สั่งแล้ว 10','6','out']],
+      ['low',0,['P-OIL-0055','น้ำมันเครื่อง 5W-30 สังเคราะห์ 4 ลิตร','3','จอง 2 · สั่งแล้ว 0','8','low']],
+      ['low',0,['P-FIL-0231','กรองอากาศ Denso|Honda City / Jazz','5','จอง 1 · สั่งแล้ว 0','6','low']],
+      ['ordered',0,['P-TYR-0771','ยาง Michelin Energy XM2 185/65R15','4','จอง 4 · สั่งแล้ว 8','6','ordered']],
+      ['all',0,['P-BAT-0090','แบตเตอรี่ GS 65B24LS MF','7','จอง 1 · สั่งแล้ว 0','5','enough']],
+      ['all',0,['P-WIP-0220','ใบปัดน้ำฝน 24 นิ้ว Bosch|รับเข้าเสียหาย 2 ชิ้น','6','รอส่งคืน 2','4','damaged']]
+    ],
+    actions:[
+      ['เร่ง PO ของ 2 รหัสที่หมดสต็อก','โช้คอัพหน้าและผ้าเบรกหน้าหยุดงานอยู่ 2 งาน — PO-2471 และ PO-2465 เลยกำหนดรับ','#FEF6F6','#F0C2C2','#A31D1D'],
+      ['ยืนยันจุดสั่งซื้อใหม่ 4 รหัส','ยอดใช้เดือน ก.ค. สูงกว่าค่าเดิม 30% ระบบเสนอปรับจุดสั่งซื้อขึ้น','#F7F9FC','#E3E8EF','#0F2440'],
+      ['ส่งคืนของเสียหาย 2 ชิ้น','ใบปัดน้ำฝน Bosch รับเข้าไม่ผ่านตรวจ — ต้องออกใบส่งคืนภายใน 7 วัน','#FFFBF3','#F0D9AC','#8A5A00']
+    ],
+    sideTitle:'ความเคลื่อนไหววันนี้',
+    stats:[['เบิกใช้กับงานซ่อม','28 รายการ','#FFFFFF'],['รับเข้าจาก PO','2 ใบ','#7DD3C4'],['ปรับยอดหลังนับ','−3 ชิ้น','#F0AE55'],['โอนระหว่างสาขา','อยู่นอก MVP','#A9BDD6']],
+    hint:'คลิกแถวเพื่อเปิดโมดูลคลังอะไหล่ (รายละเอียดรหัส · ประวัติเคลื่อนไหว · ปรับยอดพร้อมเหตุผล)',
+    emptyNote:'ไม่มีรหัสในตัวกรองนี้ — สต็อกหมวดนี้อยู่ในระดับปกติ'
+  },
+  po: {
+    title:'จัดซื้อและรับของ',
+    sub:'ใบสั่งซื้อของสาขาบางนา · แสดงเฉพาะใบที่ยังไม่ปิด · เรียงตามกำหนดรับของ',
+    cta:'เปิดโมดูลจัดซื้อ', href:'GaragePro Purchasing.dc.html?app=1',
+    kpis:[
+      ['รออนุมัติ','3','ใบ','เกินสิทธิ์ธุรการ 1 ใบ (>20,000)','#E0930C','#8A5A00'],
+      ['รอรับของ','5','ใบ','กำหนดรับภายในวันนี้ 2 ใบ','#1B6BE3','#1552B3'],
+      ['เกินกำหนดรับ','2','ใบ','หยุดงานซ่อมอยู่ 2 งาน','#C02626','#A31D1D'],
+      ['มูลค่าค้างรับ','96,300','บาท','ผู้จำหน่าย 5 ราย','#1B3557','#1B3557']
+    ],
+    chips:[['all','ทั้งหมด'],['pending','รออนุมัติ'],['open','รอรับของ'],['late','เกินกำหนด']],
+    tableTitle:'ใบสั่งซื้อที่ยังไม่ปิด', unit:'ใบ',
+    head:['เลขที่ PO','ผู้จำหน่าย','รายการหลัก','มูลค่า','กำหนดรับ','สถานะ'],
+    cols:'126px 1.1fr 1.3fr 118px 130px 168px',
+    types:['code','main','text','num','text','status'],
+    rows:[
+      ['late',1,['PO-2465','สยามพาร์ท ซัพพลาย|ผู้จำหน่ายหลัก','ผ้าเบรกหน้า Bendix × 10','9,050.00','28 ก.ค. (เลย 1 วัน)','latercv']],
+      ['late',1,['PO-2471','เคดับบลิวบี ออโต้พาร์ท|เครดิต 30 วัน','โช้คอัพหน้า KYB × 2','4,800.00','29 ก.ค. เช้า','latercv']],
+      ['open',0,['PO-2469','มิชลิน ดีลเลอร์','ยาง Energy XM2 185/65R15 × 8','18,800.00','30 ก.ค.','approved']],
+      ['pending',1,['PO-2472','ไทยลูบ ออยล์|เกินสิทธิ์ธุรการ','น้ำมันเครื่อง 5W-30 × 24 แกลลอน','21,600.00','1 ส.ค.','pending']],
+      ['pending',0,['PO-2473','บ๊อช ออโต้พาร์ท','กรองอากาศ Denso × 12','3,480.00','1 ส.ค.','pending']],
+      ['all',0,['PO-2470','จีเอส แบตเตอรี่','แบตเตอรี่ 65B24LS × 6','13,740.00','29 ก.ค. 13:20','partial']]
+    ],
+    actions:[
+      ['ติดตามของ 2 ใบที่เลยกำหนด','PO-2465 และ PO-2471 ทำให้งาน JB-6709 และ JB-6712 หยุดรออะไหล่ — ต้องแจ้ง ETA ใหม่ให้ลูกค้า','#FEF6F6','#F0C2C2','#A31D1D'],
+      ['อนุมัติ PO-2472 (เกินสิทธิ์ธุรการ)','21,600 บาท เกินเพดาน 20,000 — ต้องผู้จัดการสาขาอนุมัติพร้อมเหตุผล','#FFFBF3','#F0D9AC','#8A5A00'],
+      ['ปิดการรับของ PO-2470','รับมาแล้ว 4 จาก 6 ลูก ต้องบันทึกรับบางส่วนและตัดสินใจส่วนที่เหลือ','#F7F9FC','#E3E8EF','#0F2440']
+    ],
+    sideTitle:'ผู้จำหน่าย · 30 วันล่าสุด',
+    stats:[['ส่งตรงเวลา','82%','#FFFFFF'],['ส่งช้าเกิน 1 วัน','4 ใบ','#F0AE55'],['ของไม่ผ่านตรวจรับ','2 ชิ้น','#F0AE55'],['มูลค่าสั่งซื้อรวม','412,600','#7DD3C4']],
+    hint:'คลิกแถวเพื่อเปิดโมดูลจัดซื้อ (สร้าง/อนุมัติ PO · รับของบางส่วน · บันทึกของไม่ผ่านตรวจรับ)',
+    emptyNote:'ไม่มีใบสั่งซื้อในตัวกรองนี้'
+  },
+  report: {
+    title:'รายงานผู้บริหาร',
+    sub:'สาขาบางนา · ช่วง 1–29 ก.ค. 2569 · ทุกกราฟมีตารางข้อมูลเทียบเท่าและเจาะลึกได้',
+    cta:'เปิดโมดูลรายงาน', href:'GaragePro Reports.dc.html?app=1',
+    kpis:[
+      ['ยอดขายเดือนนี้','4.62','ล้านบาท','+8.4% จากเดือนก่อน','#0E9F8C','#0A6355'],
+      ['กำไรขั้นต้น','38.4','%','ค่าแรง 61% · อะไหล่ 39%','#1B6BE3','#1552B3'],
+      ['ส่งมอบตรงเวลา','86','%','เป้า 90% · สาเหตุหลักคือรออะไหล่','#E0930C','#8A5A00'],
+      ['งานซ่อมซ้ำใน 30 วัน','2.1','%','5 งาน · เบรก 3 · ช่วงล่าง 2','#C02626','#A31D1D']
+    ],
+    chips:[['all','ทั้งหมด'],['fin','การเงิน'],['ops','ปฏิบัติการ'],['people','บุคลากร']],
+    tableTitle:'รายงานที่ใช้บ่อย', unit:'รายงาน',
+    head:['รายงาน','ช่วงเวลา','ตัวเลขหลัก','อัปเดตล่าสุด','สถานะ'],
+    cols:'1.5fr 190px 160px 170px 172px',
+    types:['main','text','num','text','status'],
+    rows:[
+      ['fin',0,['ยอดขายและกำไรขั้นต้น|แยกตามหมวดงานและช่างผู้ทำ','1–29 ก.ค. 2569','4,620,800','วันนี้ 15:30','fresh']],
+      ['ops',1,['เวลาไหลผ่านงานและข้อตกลงบริการ|ต้นเหตุความล่าช้าแยกตามขั้นตอน','1–29 ก.ค. 2569','19.4 ชม.','วันนี้ 15:30','fresh']],
+      ['ops',0,['สต็อกและอะไหล่ค้างสต็อก|มูลค่าคงคลังและรอบการหมุน','ณ 29 ก.ค. 2569','1,864,200','วันนี้ 06:00','fresh']],
+      ['people',0,['คอมมิชชันช่าง|ค่าแรงเรียกเก็บ × อัตราตามระดับ','งวด 16–31 ก.ค.','182,400','กำลังคำนวณ','queued']],
+      ['fin',1,['ลูกหนี้ค้างชำระ|แยกตามอายุหนี้และผู้รับผิดชอบ','ณ 29 ก.ค. 2569','78,940','วันนี้ 15:30','fresh']],
+      ['fin',0,['รายงานรวมทุกสาขา|ต้องมีสิทธิ์ผู้จัดการเขต','1 พ.ค.–29 ก.ค.','—','ส่งออก 14:12','failed']]
+    ],
+    actions:[
+      ['ตรวจต้นเหตุ SLA ที่หลุดเป้า','ความล่าช้า 19.4 ชม. มาจากรออะไหล่ 6 งาน — เจาะลึกไปยัง PO ที่เกินกำหนดได้จากรายงาน','#FFFBF3','#F0D9AC','#8A5A00'],
+      ['ส่งออกใหม่แบบแบ่งช่วง','รายงานรวมทุกสาขาล้มเหลวเพราะข้อมูลเกินขนาด — แบ่งเป็นรายเดือนแล้วส่งออกอีกครั้ง','#FEF6F6','#F0C2C2','#A31D1D'],
+      ['ยืนยันสูตรคอมมิชชันก่อนปิดงวด','อัตรา 8/10/12% ตามระดับช่างยังเป็นสมมติฐานของต้นแบบ ต้องได้คำตอบก่อน 31 ก.ค.','#F7F9FC','#E3E8EF','#0F2440']
+    ],
+    sideTitle:'สรุปเดือน ก.ค. 2569',
+    stats:[['งานที่ปิดสำเร็จ','318 งาน','#FFFFFF'],['มูลค่าต่อบิลเฉลี่ย','14,530','#7DD3C4'],['QC ไม่ผ่านรอบแรก','7.2%','#F0AE55'],['ความพึงพอใจลูกค้า','4.6 / 5','#7DD3C4']],
+    hint:'คลิกแถวเพื่อเปิดโมดูลรายงาน (6 แท็บ · กราฟพร้อมตารางเทียบเท่า · ส่งออก Excel/PDF)',
+    emptyNote:'ไม่มีรายงานในหมวดนี้'
+  }
+};
+
+function money(n) { return n ? n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }) : '—'; }
+
+class Component extends DCLogic {
+  state = {
+    screen:'login', role:'manager', branch:'สาขาบางนา', w:1440,
+    view:'dash', tab:'overview', q:'', filterText:'', statuses:[], viewKey:'today',
+    sort:'promise', dir:'asc', page:1,
+    loading:false, empty:false, error:false, stale:false, denied:false,
+    toast:null, updated:'', jobNo:'JB-6712', mChip:'all'
+  };
+
+  componentDidMount() {
+    this.live = setInterval(() => {
+      if (this.state.screen !== 'app' || this.state.toast) return;
+      if (this.state.view !== 'dash' && this.state.view !== 'board' && this.state.view !== 'list') return;
+      this.fireLive();
+    }, 11000);
+  }
+  componentWillUnmount() { clearInterval(this.live); clearTimeout(this.tt); }
+
+  fireLive = () => {
+    const picks = [
+      { no:'JB-6710', title:'JB-6710 เปลี่ยนสถานะเป็น “QC ตรวจสอบ”', body:'5กท-9098 Ford Ranger · ธีรศักดิ์ บุญมี ส่งงานเข้า QC จากแอปมือถือ' },
+      { no:'JB-6712', title:'JB-6712 ช่างแจ้งรออะไหล่ 1 รายการ', body:'4กก-2871 · โช้คอัพหน้า KYB × 2 — ธุรการต้องออกใบสั่งซื้อ' },
+      { no:'JB-6703', title:'JB-6703 พร้อมส่งมอบแล้ว', body:'1ขค-5590 Honda City · QC ผ่าน ส่งต่อให้แคชเชียร์เรียกเก็บเงิน' }
+    ];
+    const p = picks[Math.floor(Math.random() * picks.length)];
+    this.setState({ toast: p, updated: p.no });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 7000);
+  };
+
+  modVals(chip) {
+    const s = this.state;
+    const m = MODULES[s.view];
+    if (!m) return { kpis:[], chips:[], head:[], rows:[], actions:[], stats:[], cols:'1fr', title:'', sub:'', cta:'', href:'#', tableTitle:'', count:'', hint:'', emptyNote:'', isEmpty:false, sideTitle:'' };
+
+    const active = s.mChip || 'all';
+    const cell = (type, raw, hot) => {
+      const base = { text:'', sub:'', hasSub:false, isTag:false, isText:true, tagBg:'', tagFg:'', fg:'#475569', weight:'400', font:'inherit', items:'flex-start' };
+      if (type === 'status') {
+        const st = MS[raw] || ['—','#EEF1F5','#475569'];
+        return Object.assign(base, { text:st[0], isTag:true, isText:false, tagBg:st[1], tagFg:st[2] });
+      }
+      const parts = String(raw).split('|');
+      const o = Object.assign(base, { text:parts[0], sub:parts[1] || '', hasSub:!!parts[1] });
+      if (type === 'code') return Object.assign(o, { fg:'#0F2440', weight:'700', font:"'IBM Plex Mono',monospace" });
+      if (type === 'main') return Object.assign(o, { fg:'#0F2440', weight:'600' });
+      if (type === 'num') return Object.assign(o, { fg:'#0F2440', weight:'600', font:"'IBM Plex Mono',monospace", items:'flex-end' });
+      if (type === 'age') return Object.assign(o, { fg: hot ? '#A31D1D' : '#64748B', weight: hot ? '700' : '400', font:"'IBM Plex Mono',monospace", items:'flex-end' });
+      return o;
+    };
+
+    const rows = m.rows
+      .filter(r => active === 'all' || r[0] === active)
+      .map(r => ({
+        href: m.href,
+        bg: r[1] ? '#FFFBF7' : '#fff',
+        cells: m.types.map((t, i) => cell(t, r[2][i], !!r[1]))
+      }));
+
+    return {
+      title: m.title, sub: m.sub, cta: m.cta, href: m.href,
+      tableTitle: m.tableTitle, hint: m.hint, emptyNote: m.emptyNote, sideTitle: m.sideTitle,
+      count: 'แสดง ' + rows.length + ' จาก ' + m.rows.length + ' ' + m.unit,
+      isEmpty: rows.length === 0,
+      cols: m.cols,
+      head: m.head.map((h, i) => ({ label:h, align: m.types[i] === 'num' || m.types[i] === 'age' ? 'flex-end' : 'flex-start' })),
+      rows,
+      kpis: m.kpis.map(k => ({ label:k[0], n:k[1], unit:k[2], note:k[3], accent:k[4], fg:k[5] })),
+      chips: m.chips.map(c => Object.assign({ label:c[1], tap: () => this.setState({ mChip:c[0] }) }, chip(active === c[0]))),
+      actions: m.actions.map(a => ({ label:a[0], note:a[1], bg:a[2], border:a[3], fg:a[4] })),
+      stats: m.stats.map(t => ({ label:t[0], value:t[1], fg:t[2] }))
+    };
+  }
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '0 0 26px' : '48px', pageAlign: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const mgr = s.role === 'manager';
+    const wide = s.w === 1440;
+    const chip = (on) => on ? { bg:'#1B6BE3', fg:'#FFFFFF', border:'#1B6BE3' } : { bg:'#FFFFFF', fg:'#334155', border:'#C9D6E6' };
+    const mod = this.modVals(chip);
+
+    const nav = NAV_ALL.filter(n => mgr || ['dash','jobs','pos','report'].indexOf(n.key) > -1).map(n => {
+      const on = (n.key === 'jobs' && (s.view === 'list' || s.view === 'board' || s.view === 'job')) || (n.key === 'dash' && s.view === 'dash') || n.key === s.view;
+      return {
+        label: n.label, path: n.path,
+        bg: on ? '#1B6BE3' : 'transparent', fg: on ? '#FFFFFF' : '#A9BDD6',
+        hasBadge: !!n.badge, badge: n.badge, badgeBg: n.warn ? '#E0930C' : '#1B3557',
+        tap: () => {
+          if (n.key === 'dash') this.setState({ view:'dash', denied:false, error:false });
+          else if (n.key === 'jobs') this.setState({ view:'list', denied:false, error:false });
+          else if (n.key === 'report' && !mgr) this.setState({ denied:true });
+          else this.setState({ view:n.key, denied:false, error:false, mChip:'all' });
+        }
+      };
+    });
+
+    const jobs = JOBS.map(j => Object.assign({}, j, {
+      stLabel: ST[j.st].label, stBg: ST[j.st].bg, stFg: ST[j.st].fg, stPath: ST[j.st].path,
+      payLabel: PAY[j.pay].label, payBg: PAY[j.pay].bg, payFg: PAY[j.pay].fg,
+      totalText: money(j.total), isLate: !!j.late,
+      techShort: j.tech.split(' ')[0],
+      open: () => this.setState({ view:'job', tab:'overview', jobNo:j.no, toast:null })
+    }));
+
+    const views = [
+      { key:'today', label:'ทั้งหมดวันนี้', f: () => jobs },
+      { key:'approve', label:'ค้างอนุมัติ', f: () => jobs.filter(j => j.st === 'waitapprove') },
+      { key:'late', label:'เกินกำหนด', f: () => jobs.filter(j => j.isLate) },
+      { key:'parts', label:'รออะไหล่', f: () => jobs.filter(j => j.st === 'waitparts') },
+      { key:'pay', label:'รอชำระเงิน', f: () => jobs.filter(j => j.pay === 'unpaid') },
+      { key:'insdoc', label:'งานประกันรอเอกสาร', f: () => [] }
+    ];
+    const activeView = views.filter(v => v.key === s.viewKey)[0] || views[0];
+
+    let filtered = s.empty ? [] : activeView.f();
+    if (s.statuses.length) filtered = filtered.filter(j => s.statuses.indexOf(j.st) > -1);
+    if (s.filterText.trim()) {
+      const t = s.filterText.trim().toLowerCase();
+      filtered = filtered.filter(j => (j.no + j.reg + j.customer + j.model + j.phone).toLowerCase().indexOf(t) > -1);
+    }
+    const dir = s.dir === 'asc' ? 1 : -1;
+    filtered = filtered.slice().sort((a, b) => {
+      if (s.sort === 'total') return (a.total - b.total) * dir;
+      if (s.sort === 'no') return a.no.localeCompare(b.no) * dir;
+      return a.promise.localeCompare(b.promise) * dir;
+    });
+    const per = 8;
+    const pageN = Math.max(1, Math.ceil(filtered.length / per));
+    const page = Math.min(s.page, pageN);
+    const rows = s.loading ? [] : filtered.slice((page - 1) * per, page * per);
+
+    const columns = ['waitinspect','waitquote','waitapprove','inprogress','waitparts','qc','ready'].map(k => ({
+      label: ST[k].label, accent: ST[k].accent,
+      n: jobs.filter(j => j.st === k).length,
+      cards: jobs.filter(j => j.st === k).map(j => Object.assign({}, j, {
+        late: j.isLate, lateBy: j.late,
+        border: j.no === s.updated ? '2px solid #1B6BE3' : (j.isLate ? '1px solid #F0C2C2' : '1px solid #E3E8EF'),
+        anim: j.no === s.updated ? 'gpFlash 2.4s ease-out' : 'none'
+      }))
+    }));
+
+    const tiles = [
+      { key:'recv', label:'รับรถวันนี้', n:7, unit:'คัน', delta:'+2 จากเมื่อวาน', st:null, accent:'#1B6BE3', fg:'#1552B3', path:'M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5' },
+      { key:'wi', label:'รอตรวจเช็ค', n:2, unit:'งาน', delta:'รอเกิน 1 ชม. 1 งาน', st:'waitinspect', accent:'#94A3B8', fg:'#475569', path:ST.waitinspect.path },
+      { key:'wq', label:'รอเสนอราคา', n:1, unit:'งาน', delta:'ธุรการ 1 คนกำลังทำ', st:'waitquote', accent:'#1B3557', fg:'#1B3557', path:ST.waitquote.path },
+      { key:'wa', label:'รอลูกค้าอนุมัติ', n:1, unit:'งาน', delta:'ค้างเกิน 2 ชม. 1 งาน', st:'waitapprove', accent:'#E0930C', fg:'#8A5A00', path:ST.waitapprove.path },
+      { key:'ip', label:'กำลังซ่อม', n:2, unit:'งาน', delta:'ช่างว่าง 2 คน', st:'inprogress', accent:'#1B6BE3', fg:'#1552B3', path:ST.inprogress.path },
+      { key:'wp', label:'รออะไหล่', n:2, unit:'งาน', delta:'PO ค้าง 3 ใบ', st:'waitparts', accent:'#C2410C', fg:'#A8380A', path:ST.waitparts.path },
+      { key:'qc', label:'รอ QC', n:1, unit:'งาน', delta:'หัวหน้ากะ 1 คน', st:'qc', accent:'#0F2440', fg:'#0F2440', path:ST.qc.path },
+      { key:'rd', label:'พร้อมส่งมอบ', n:1, unit:'งาน', delta:'รอเรียกเก็บเงิน 1 งาน', st:'ready', accent:'#0E9F8C', fg:'#0A6355', path:ST.ready.path },
+      { key:'late', label:'เกินกำหนดส่งมอบ', n:1, unit:'งาน', delta:'ต้องแจ้งลูกค้าทันที', st:'late', accent:'#C02626', fg:'#A31D1D', path:'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01' }
+    ].map(t => ({
+      label: t.label, n: t.n, unit: t.unit, delta: t.delta, path: t.path,
+      accent: t.accent, fg: t.fg,
+      border: t.key === 'late' ? '#F0C2C2' : '#E3E8EF',
+      deltaFg: t.key === 'late' ? '#A31D1D' : '#94A3B8',
+      tap: () => this.setState({
+        view:'list', page:1, empty:false, error:false,
+        viewKey: t.key === 'late' ? 'late' : 'today',
+        statuses: t.st && t.st !== 'late' ? [t.st] : []
+      })
+    }));
+
+    const bays = [
+      { bay:'BAY 01', reg:'4กก-2871', tech:'อนุชา แก้วมณี', st:'inprogress', time:'เริ่ม 10:44 · 1 ชม. 24 น.' },
+      { bay:'BAY 02', reg:'ขข-8431', tech:'ธีรศักดิ์ บุญมี', st:'waitparts', time:'หยุดรอของ 13:10' },
+      { bay:'BAY 03', reg:'5กท-9098', tech:'ธีรศักดิ์ บุญมี', st:'qc', time:'ส่งตรวจ 15:20' },
+      { bay:'BAY 04', reg:'7กฉ-2210', tech:'อนุชา แก้วมณี', st:'inprogress', time:'เริ่ม 14:02' },
+      { bay:'BAY 05', reg:'1ขค-5590', tech:'สุรชัย พันธุ์ทอง', st:'ready', time:'QC ผ่าน 15:05' },
+      { bay:'BAY 06', reg:'2กฬ-9932', tech:'ธีรศักดิ์ บุญมี', st:'waitparts', time:'PO-2469 รอของ' },
+      { bay:'BAY 07', reg:'— ว่าง', tech:'พร้อมรับงาน', st:'waitinspect', time:'ว่างตั้งแต่ 14:30' },
+      { bay:'BAY 08', reg:'— ว่าง', tech:'พร้อมรับงาน', st:'waitinspect', time:'ว่างตั้งแต่ 15:10' }
+    ].map(b => ({
+      bay: b.bay, reg: b.reg, tech: b.tech, time: b.time,
+      stLabel: ST[b.st].label, stBg: ST[b.st].bg, stFg: ST[b.st].fg, stPath: ST[b.st].path,
+      dot: b.st === 'waitparts' ? '#C2410C' : (b.st === 'inprogress' ? '#1B6BE3' : (b.st === 'ready' ? '#0E9F8C' : '#CBD5E1')),
+      bg: b.reg.indexOf('ว่าง') > -1 ? '#F7F9FC' : (b.st === 'waitparts' ? '#FFFBF7' : '#fff')
+    }));
+
+    const q = s.q.trim().toLowerCase();
+    const searchPool = [];
+    JOBS.forEach(j => {
+      searchPool.push({ kind:'งานซ่อม', code:j.no, desc:j.reg + ' · ' + j.model + ' · ' + j.customer, meta:ST[j.st].label, hay:(j.no + j.reg + j.customer + j.phone + j.model).toLowerCase(), kBg:'#E6EFFC', kFg:'#1552B3', no:j.no });
+    });
+    searchPool.push({ kind:'ใบเสนอราคา', code:'QT-6712-02', desc:'4กก-2871 · สมชาย พงษ์เจริญ · 17,601.50 บาท', meta:'อนุมัติแล้ว', hay:'qt-6712-02 4กก-2871 สมชาย', kBg:'#E8EDF4', kFg:'#1B3557', no:'JB-6712' });
+    searchPool.push({ kind:'ใบเสร็จ', code:'RC-24-0688', desc:'มัดจำ 2,000.00 บาท · เงินสด', meta:'29 ก.ค.', hay:'rc-24-0688 มัดจำ', kBg:'#E3F5F1', kFg:'#0B6D5E', no:'JB-6712' });
+    searchPool.push({ kind:'ใบสั่งซื้อ', code:'PO-2471', desc:'โช้คอัพหน้า KYB × 2 · ออโต้พาร์ทเซ็นเตอร์', meta:'รอรับของ', hay:'po-2471 โช้คอัพ', kBg:'#FDEBE3', kFg:'#A8380A', no:'JB-6712' });
+    const results = q.length < 2 ? [] : searchPool.filter(r => r.hay.indexOf(q) > -1 || r.code.toLowerCase().indexOf(q) > -1).slice(0, 6)
+      .map(r => Object.assign({}, r, { open: () => this.setState({ view:'job', tab:'overview', jobNo:r.no, q:'' }) }));
+
+    const job = JOBS.filter(j => j.no === s.jobNo)[0] || JOBS[2];
+    const tabData = TAB_DATA[s.tab];
+
+    const payQueue = jobs.filter(j => j.pay === 'unpaid').slice(0, 5).map(j => Object.assign({}, j, {
+      total: money(j.total), deposit: j.pay === 'deposit' ? '2,000.00' : '—'
+    }));
+
+    return {
+      isLogin: s.screen === 'login', isBranch: s.screen === 'branch', inApp: s.screen === 'app',
+      frameW: s.w + 'px', wide, navW: wide ? '212px' : '68px', searchW: wide ? '520px' : '300px',
+      wideBg: wide ? '#0F2440' : 'transparent', wideFg: wide ? '#fff' : '#475569',
+      narrowBg: wide ? 'transparent' : '#0F2440', narrowFg: wide ? '#475569' : '#fff',
+      setWide: () => this.setState({ w:1440 }), setNarrow: () => this.setState({ w:1024 }),
+      mgrBg: mgr ? '#0F2440' : 'transparent', mgrFg: mgr ? '#fff' : '#475569',
+      cashBg: mgr ? 'transparent' : '#0F2440', cashFg: mgr ? '#475569' : '#fff',
+      beManager: () => this.setState({ role:'manager', view:'dash', denied:false }),
+      beCashier: () => this.setState({ role:'cashier', view:'dash', denied:false }),
+      isManager: mgr, isCashier: !mgr,
+      roleLabel: mgr ? 'ผู้จัดการสาขา' : 'แคชเชียร์',
+      userName: mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'จารุวรรณ ผ่องแผ้ว',
+      initials: mgr ? 'กร' : 'จว',
+      branchName: s.branch, alerts: mgr ? 5 : 3, clock:'29 ก.ค. 2569 · 15:42 น.',
+
+      goLogin: () => this.setState({ screen:'login' }),
+      doLogin: () => this.setState({ screen:'branch' }),
+      enterApp: () => this.setState({ screen:'app', view:'dash' }),
+      goBranch: () => this.setState({ screen:'branch' }),
+      branches: [
+        { name:'สาขาบางนา', meta:'ช่าง 6 คน · ช่องซ่อม 8 ช่อง', open:12, late:1 },
+        { name:'สาขารามอินทรา', meta:'ช่าง 4 คน · ช่องซ่อม 6 ช่อง', open:5, late:0 },
+        { name:'สาขาศรีราชา', meta:'ช่าง 5 คน · ช่องซ่อม 7 ช่อง', open:11, late:3 }
+      ].map(b => Object.assign({}, b, {
+        border: s.branch === b.name ? '2px solid #1B6BE3' : '1px solid #E3E8EF',
+        dot: s.branch === b.name ? '2px solid #1B6BE3' : '2px solid #C9D6E6',
+        fill: s.branch === b.name ? '#1B6BE3' : 'transparent',
+        pick: () => this.setState({ branch: b.name })
+      })),
+
+      nav,
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value }), focusSearch: () => {},
+      showResults: s.q.trim().length >= 2, results, resultCount: results.length, noResults: s.q.trim().length >= 2 && results.length === 0,
+
+      crumb2: s.view === 'dash' ? 'แดชบอร์ด' : (s.view === 'job' ? 'คิวงานซ่อม' : (s.view === 'board' ? 'บอร์ดงานซ่อม' : (s.view === 'list' ? 'คิวงานซ่อม' : (NAV_ALL.filter(n => n.key === s.view)[0] || { label:'แดชบอร์ด' }).label))),
+      crumb2Color: s.view === 'job' ? '#64748B' : '#0F2440',
+      crumb2Weight: s.view === 'job' ? '400' : '600',
+      hasCrumb3: s.view === 'job', crumb3: job.no + ' · ' + job.reg,
+
+      showDash: s.view === 'dash' && !s.denied && !s.error,
+      showBoard: s.view === 'board' && !s.denied && !s.error,
+      showList: s.view === 'list' && !s.denied && !s.error,
+      showJob: s.view === 'job' && !s.denied && !s.error,
+      showModule: !!MODULES[s.view] && !s.denied && !s.error,
+      mTitle: mod.title, mSub: mod.sub, mCta: mod.cta, mHref: mod.href,
+      mKpis: mod.kpis, mChips: mod.chips, mTableTitle: mod.tableTitle, mCount: mod.count,
+      mHead: mod.head, mCols: mod.cols, mRows: mod.rows, mEmpty: mod.isEmpty, mEmptyNote: mod.emptyNote,
+      mHint: mod.hint, mActions: mod.actions, mSideTitle: mod.sideTitle, mStats: mod.stats,
+      mBodyCols: wide ? '1fr 300px' : '1fr',
+
+      dashTitle: mgr ? 'ภาพรวมการปฏิบัติงาน · ' + s.branch : 'หน้าแคชเชียร์ · ' + s.branch,
+      dashSub: mgr ? 'ข้อมูลอัปเดตอัตโนมัติจากแอปมือถือของหน้าร้านและช่าง' : 'คิวรับชำระเงินและสรุปยอดของกะปัจจุบัน',
+      liveLabel: s.stale ? 'การเชื่อมต่อสดหลุด' : 'เชื่อมต่อสด',
+      liveBg: s.stale ? '#FFFBF3' : '#E3F5F1', liveBorder: s.stale ? '#F0D9AC' : '#B6E3DA',
+      liveFg: s.stale ? '#8A5A00' : '#0B6D5E', liveDot: s.stale ? '#E0930C' : '#0E9F8C',
+      tiles, tileCols: wide ? 'repeat(9,1fr)' : 'repeat(5,1fr)',
+      moneyCols: wide ? '1.25fr 1fr' : '1fr',
+      bayCols: wide ? 'repeat(4,1fr)' : 'repeat(3,1fr)',
+      bays, payQueue,
+      stockAlerts: [
+        { label:'ผ้าเบรกหน้า Toyota (เทียบ)', meta:'ต่ำกว่าจุดสั่งซื้อ · เหลือใช้ได้ 2 งาน', value:'2 ชิ้น', bg:'#FFFBF3', fg:'#8A5A00', path:'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01' },
+        { label:'น้ำมันเครื่อง 5W-30 (4L)', meta:'ต่ำกว่าจุดสั่งซื้อ · รอ PO-2468', value:'3 แกลลอน', bg:'#FFFBF3', fg:'#8A5A00', path:'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01' },
+        { label:'PO-2471 · ออโต้พาร์ทเซ็นเตอร์', meta:'เกินกำหนดรับของ 1 วัน · โช้คอัพ × 2', value:'4,800', bg:'#FEF6F6', fg:'#A31D1D', path:'M6 6h15l-2 9H8zM6 6L5 3H2' },
+        { label:'PO-2469 · สยามพาร์ท', meta:'ผู้จำหน่ายยืนยันส่ง 31 ก.ค.', value:'12,600', bg:'#F7F9FC', fg:'#475569', path:'M6 6h15l-2 9H8zM6 6L5 3H2' }
+      ],
+
+      jobCount: JOBS.length, columns,
+      goDash: () => this.setState({ view:'dash', denied:false, error:false, empty:false }),
+      goList: () => this.setState({ view:'list', denied:false, error:false, page:1 }),
+      goBoard: () => this.setState({ view:'board', denied:false, error:false }),
+      goPos: () => this.setState({ view:'pos', denied:false, error:false }),
+      goStock: () => mgr ? this.setState({ view:'stock' }) : this.setState({ denied:true }),
+
+      listSub: s.loading ? 'กำลังโหลด…' : 'มุมมอง “' + activeView.label + '” · ' + filtered.length + ' รายการ · สาขา ' + s.branch,
+      viewName: activeView.label,
+      views: views.map(v => Object.assign({ label:v.label, n:v.f().length, tap: () => this.setState({ viewKey:v.key, page:1, empty: v.key === 'insdoc', statuses:[] }) }, chip(s.viewKey === v.key))),
+      statusFilters: ['waitapprove','inprogress','waitparts','qc','ready'].map(k => Object.assign({
+        label: ST[k].label,
+        tap: () => this.setState(st => ({ statuses: st.statuses.indexOf(k) > -1 ? st.statuses.filter(x => x !== k) : st.statuses.concat([k]), page:1 }))
+      }, chip(s.statuses.indexOf(k) > -1))),
+      hasFilters: s.statuses.length > 0 || !!s.filterText.trim() || s.viewKey !== 'today',
+      clearFilters: () => this.setState({ statuses:[], filterText:'', viewKey:'today', empty:false, page:1 }),
+      filterText: s.filterText, onFilterText: (e) => this.setState({ filterText: e.target.value, page:1 }),
+      sortLabel: (s.sort === 'promise' ? 'นัดส่งมอบ' : (s.sort === 'total' ? 'ยอดสุทธิ' : 'เลขงาน')) + (s.dir === 'asc' ? ' (น้อย→มาก)' : ' (มาก→น้อย)'),
+      sortPromise: () => this.setState(st => ({ sort:'promise', dir: st.sort === 'promise' && st.dir === 'asc' ? 'desc' : 'asc' })),
+      sortTotal: () => this.setState(st => ({ sort:'total', dir: st.sort === 'total' && st.dir === 'asc' ? 'desc' : 'asc' })),
+      sortNo: () => this.setState(st => ({ sort:'no', dir: st.sort === 'no' && st.dir === 'asc' ? 'desc' : 'asc' })),
+      promiseArrow: s.sort === 'promise' ? (s.dir === 'asc' ? '↑' : '↓') : '',
+      totalArrow: s.sort === 'total' ? (s.dir === 'asc' ? '↑' : '↓') : '',
+      promiseHeadColor: s.sort === 'promise' ? '#1B6BE3' : '#64748B',
+      totalHeadColor: s.sort === 'total' ? '#1B6BE3' : '#64748B',
+      cols: wide ? '104px 1.25fr 1.1fr 150px 150px 150px 130px 130px' : '96px 1.4fr 140px 140px 120px 120px',
+      rows: rows.map(j => Object.assign({}, j, {
+        total: money(j.total), late: j.isLate, lateBy: j.late,
+        promiseFg: j.isLate ? '#A31D1D' : '#334155', promiseWeight: j.isLate ? '700' : '500',
+        justUpdated: j.no === s.updated,
+        rowBg: j.no === s.updated ? '#F4F8FE' : 'transparent',
+        anim: j.no === s.updated ? 'gpFlash 2.4s ease-out' : 'none'
+      })),
+      hasRows: !s.loading && rows.length > 0,
+      empty: !s.loading && filtered.length === 0,
+      loading: s.loading, filteredN: filtered.length,
+      rangeText: filtered.length ? ((page - 1) * per + 1) + '–' + Math.min(page * per, filtered.length) : '0',
+      pages: Array.apply(null, { length: pageN }).map((_, i) => Object.assign({ n: i + 1, tap: () => this.setState({ page: i + 1 }) },
+        (i + 1) === page ? { bg:'#1B6BE3', fg:'#fff', border:'#1B6BE3' } : { bg:'#fff', fg:'#475569', border:'#E3E8EF' })),
+      prevPage: () => this.setState(st => ({ page: Math.max(1, st.page - 1) })),
+      nextPage: () => this.setState({ page: Math.min(pageN, page + 1) }),
+
+      jbNo: job.no, jbReg: job.reg, jbModel: job.model, jbCust: job.customer, jbPhone: job.phone,
+      jbPromise: job.promise + ' น.', jbTech: job.tech,
+      jbLate: !!job.late, jbLateBy: job.late,
+      jbPromiseFg: job.late ? '#A31D1D' : '#0F2440', jbPromiseWeight: job.late ? '700' : '600',
+      jbSample: job.no !== 'JB-6712',
+      jbStLabel: ST[job.st].label, jbStBg: ST[job.st].bg, jbStFg: ST[job.st].fg, jbStPath: ST[job.st].path,
+      jbAction: job.st === 'waitparts' ? 'ออกใบสั่งซื้ออะไหล่' : (job.st === 'waitquote' ? 'สร้างใบเสนอราคา' : (job.st === 'ready' ? 'เรียกเก็บเงินที่ POS' : 'มอบหมายและกำหนดส่ง')),
+      primaryAction: () => this.setState({ view: job.st === 'ready' ? 'pos' : 'po' }),
+      jobCols: wide ? '1.65fr 1fr' : '1fr',
+      tabs: TABS.map(t => Object.assign({ label:t.label, tap: () => this.setState({ tab:t.key }) },
+        s.tab === t.key ? { fg:'#1B6BE3', border:'#1B6BE3', weight:'700' } : { fg:'#64748B', border:'transparent', weight:'500' })),
+      tabOverview: s.tab === 'overview', tabOther: s.tab !== 'overview',
+      tabTitle: tabData ? tabData.title : '', tabMeta: tabData ? tabData.meta : '', tabNote: tabData ? tabData.note : '',
+      tabRows: tabData ? tabData.rows.map(r => Object.assign({}, r, { hasTag: !!r.tag })) : [],
+      complaints: [{ text:'เบรกมีเสียงดัง เฉพาะตอนเบรกแรงช่วงเช้า' }, { text:'แอร์ไม่เย็นช่วงบ่าย ลมออกน้อย' }],
+      findings: [
+        { label:'โช้คอัพหน้าซ้ายมีน้ำมันซึม', note:'ยุบตัวช้า แนะนำเปลี่ยนเป็นคู่ · ลูกค้าอนุมัติแล้ว' },
+        { label:'แบตเตอรี่ใกล้ครบอายุ', note:'12.1V ใช้งาน 3 ปี · ลูกค้าไม่อนุมัติรอบนี้' },
+        { label:'ยางแท่นเครื่องขาด', note:'ช่างพบเพิ่มระหว่างซ่อม · รอลูกค้าอนุมัติใบเสนอราคาใหม่' }
+      ],
+      workItems: [
+        { label:'เปลี่ยนผ้าเบรกหน้า', who:'จากอาการที่ลูกค้าแจ้ง', ap:'ok', p:'ok', price:'2,040.00' },
+        { label:'เจียจานเบรกหน้า 2 ข้าง', who:'จากอาการที่ลูกค้าแจ้ง', ap:'ok', p:'na', price:'800.00' },
+        { label:'ล้างแอร์และเปลี่ยนกรองแอร์', who:'จากอาการที่ลูกค้าแจ้ง', ap:'ok', p:'ok', price:'950.00' },
+        { label:'เปลี่ยนโช้คอัพหน้า 2 ต้น', who:'ช่างแนะนำ', ap:'ok', p:'wait', price:'5,700.00' },
+        { label:'ตั้งศูนย์และถ่วงล้อ', who:'ช่างแนะนำ', ap:'ok', p:'na', price:'600.00' },
+        { label:'เปลี่ยนแบตเตอรี่', who:'ช่างแนะนำ', ap:'no', p:'na', price:'3,000.00' },
+        { label:'เปลี่ยนยางแท่นเครื่อง', who:'ช่างพบเพิ่มระหว่างซ่อม', ap:'pending', p:'order', price:'1,850.00' }
+      ].map(w => ({
+        label: w.label, who: w.who, price: w.price,
+        priceFg: w.ap === 'no' ? '#94A3B8' : '#0F2440',
+        apLabel: w.ap === 'ok' ? 'อนุมัติ' : (w.ap === 'no' ? 'ไม่อนุมัติ' : 'รออนุมัติ'),
+        apBg: w.ap === 'ok' ? '#E3F5F1' : (w.ap === 'no' ? '#FBE9E9' : '#FDF3E2'),
+        apFg: w.ap === 'ok' ? '#0B6D5E' : (w.ap === 'no' ? '#A31D1D' : '#8A5A00'),
+        pLabel: w.p === 'ok' ? 'ของพร้อม' : (w.p === 'wait' ? 'รอรับของ' : (w.p === 'order' ? 'ยังไม่สั่ง' : 'ไม่ใช้อะไหล่')),
+        pBg: w.p === 'ok' ? '#E3F5F1' : (w.p === 'wait' ? '#FDEBE3' : '#EEF1F5'),
+        pFg: w.p === 'ok' ? '#0B6D5E' : (w.p === 'wait' ? '#A8380A' : '#64748B')
+      })),
+      assignees: [
+        { ini:'อช', name:'อนุชา แก้วมณี', role:'ช่างหลัก · ช่องซ่อม BAY 01', bg:'#1B6BE3' },
+        { ini:'วท', name:'วีระพงษ์ ทองดี', role:'ช่างช่วย', bg:'#1B3557' },
+        { ini:'สพ', name:'สุรชัย พันธุ์ทอง', role:'หัวหน้ากะ · ผู้ตรวจ QC', bg:'#0E9F8C' },
+        { ini:'ณศ', name:'ณัฐพล ศรีสุวรรณ', role:'ธุรการผู้ออกใบเสนอราคา', bg:'#64748B' }
+      ],
+      timeline: [
+        { text:'ธุรการออกใบสั่งซื้อ PO-2471 (โช้คอัพหน้า × 2)', who:'ธนวัฒน์ อิ่มเอม', time:'13:05', src:'เว็บ', dot:'#C2410C' },
+        { text:'ช่างแจ้งรออะไหล่ 1 รายการ · งานอื่นทำต่อ', who:'อนุชา แก้วมณี', time:'12:52', src:'มือถือ', dot:'#C2410C' },
+        { text:'ปิดงาน 3 รายการ พร้อมรูปก่อน/หลัง 9 รูป', who:'อนุชา แก้วมณี', time:'13:20', src:'มือถือ', dot:'#0E9F8C' },
+        { text:'เริ่มงานซ่อม · จับเวลาอัตโนมัติ', who:'อนุชา แก้วมณี', time:'10:44', src:'มือถือ', dot:'#1B6BE3' },
+        { text:'ลูกค้าเซ็นอนุมัติ 5 จาก 6 รายการ', who:'พิมพ์ชนก วัฒนกุล', time:'10:12', src:'มือถือ', dot:'#0E9F8C' },
+        { text:'ส่งใบเสนอราคา QT-6712-02 ให้ลูกค้า', who:'ณัฐพล ศรีสุวรรณ', time:'09:48', src:'เว็บ', dot:'#1B3557' },
+        { text:'บันทึกผลตรวจเช็ค 31 รายการ · รูป 12 รูป', who:'อนุชา แก้วมณี', time:'09:05', src:'มือถือ', dot:'#94A3B8' },
+        { text:'รับรถเข้าอู่ · เลขไมล์ 78,940 กม.', who:'พิมพ์ชนก วัฒนกุล', time:'08:32', src:'มือถือ', dot:'#94A3B8' }
+      ],
+
+      stale: s.stale, denied: s.denied, srvError: s.error,
+      refresh: () => this.setState({ stale:false, error:false, loading:true, view: s.error ? 'list' : s.view }, () => setTimeout(() => this.setState({ loading:false }), 900)),
+      simLive: () => { this.setState({ screen:'app' }); this.fireLive(); },
+      simLoading: () => this.setState({ screen:'app', view:'list', loading:true, error:false, denied:false, empty:false }, () => setTimeout(() => this.setState({ loading:false }), 1600)),
+      simEmpty: () => this.setState({ screen:'app', view:'list', viewKey:'insdoc', empty:true, loading:false, error:false, denied:false, statuses:[] }),
+      simError: () => this.setState({ screen:'app', view:'list', error:true, loading:false, denied:false }),
+      simStale: () => this.setState({ screen:'app', stale:true }),
+      simDenied: () => this.setState({ screen:'app', denied:true }),
+
+      toast: !!s.toast, toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      openToast: () => this.setState(st => ({ view:'job', tab:'overview', jobNo: st.toast ? st.toast.no : st.jobNo, toast:null }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

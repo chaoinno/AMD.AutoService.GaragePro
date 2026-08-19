@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Flutter
+mobile/.dart_tool/
+mobile/build/
+mobile/ios/Pods/
+mobile/.flutter-plugins*
+
+# ไฟล์แนบที่อัปโหลดตอน dev — ไม่เข้า repo
+storage/
+backend/**/storage/
+
+# ความลับ — ใช้ dotnet user-secrets เท่านั้น
+appsettings.*.local.json
+*.env
+.env*

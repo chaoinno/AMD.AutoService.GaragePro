@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#E7EBF2; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  @keyframes gpPulse { 0%,100% { opacity:.35 } 50% { opacity:1 } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+  @keyframes gpFlash { 0% { background:#E6EFFC } 100% { background:#fff } }
+  @keyframes gpSpin { to { transform:rotate(360deg) } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:20px; padding:44px; align-items:flex-start">
+
+  <sc-if value="{{isStart}}" hint-placeholder-val="{{true}}">
+    <div style="width:1180px; display:flex; flex-direction:column; gap:22px">
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <div style="display:flex; align-items:center; gap:12px">
+          <div style="width:34px; height:34px; border-radius:9px; background:#1B6BE3; display:flex; align-items:center; justify-content:center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/><circle cx="8" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg></div>
+          <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">GARAGEPRO SERVICE OPS · CROSS-DEVICE PROTOTYPE</span>
+        </div>
+        <span style="font-size:34px; font-weight:700; color:#0F2440; line-height:1.2">เดโมเชื่อมต่อมือถือและเว็บด้วยงานซ่อมจริงหนึ่งงาน</span>
+        <span style="font-size:15px; color:#475569; line-height:1.8; max-width:860px">ทั้งสองแอปใช้เลขงาน ราคา สถานะ ผู้ทำงาน และเวลาชุดเดียวกัน — เดินเรื่องจากรับรถบนมือถือ ไปจนถึงรับเงินและออกใบเสร็จบนเว็บ 13 ขั้นตอน</span>
+      </div>
+
+      <div style="background:#0F2440; border-radius:16px; padding:24px; display:grid; grid-template-columns:1.1fr 1fr; gap:26px">
+        <div style="display:flex; flex-direction:column; gap:14px">
+          <span style="font-size:12px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">สถานการณ์ที่ใช้ทั้งเดโม</span>
+          <div style="display:flex; flex-direction:column; gap:9px; font-size:14px">
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">ลูกค้า</span><span style="color:#fff; font-weight:600">คุณธนา ศรีสุข · 081-447-2290</span></div>
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">รถ</span><span style="color:#fff; font-weight:600">Toyota Corolla Cross 2023 (Hybrid Smart)</span></div>
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">ทะเบียน</span><span style="color:#fff; font-weight:700; font-size:16px">3ขก 4821 กรุงเทพมหานคร</span></div>
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">สาขา</span><span style="color:#fff; font-weight:600">สาขารามอินทรา</span></div>
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">งานที่แจ้ง</span><span style="color:#fff; font-weight:600; line-height:1.6">เช็คระยะ 40,000 กม. และมีเสียงดังที่เบรกหน้า</span></div>
+            <div style="display:flex; gap:12px"><span style="width:96px; flex:none; color:#8FA6C4">เลขงาน</span><span style="color:#7DD3C4; font-weight:700; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span></div>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:11px">
+          <span style="font-size:12px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">เรื่องราวย่อ</span>
+          <div style="display:flex; flex-direction:column; gap:8px; font-size:13.5px; color:#C7D6E8; line-height:1.7">
+            <span>ช่างตรวจพบผ้าเบรกหน้าสึกและแบตเตอรี่อ่อน</span>
+            <span>ลูกค้าอนุมัติเช็คระยะและผ้าเบรก · ไม่อนุมัติเปลี่ยนแบตเตอรี่</span>
+            <span>ผ้าเบรกในสาขาไม่พอ ต้องรอของจากใบสั่งซื้อ {{poNo}} ที่มีอยู่แล้ว</span>
+            <span>ซ่อมเสร็จ ผ่าน QC และลูกค้าชำระแบบแบ่งจ่าย: มัดจำ + PromptPay</span>
+          </div>
+          <div style="margin-top:auto; background:#1B3557; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:10px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7DD3C4" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M4 12a8 8 0 0 1 13-6M20 12a8 8 0 0 1-13 6"/><path d="M17 3v3.5h-3.5M7 21v-3.5h3.5"/></svg>
+            <span style="font-size:12px; color:#BFD6F5; line-height:1.6">ทุกครั้งที่ข้ามเครื่อง ระบบจะแสดงการแจ้งเตือนสด ตัวเลขบนป้าย และบันทึกกิจกรรมใหม่ให้เห็น</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px">
+        <div onClick="{{openMobile}}" style="background:#fff; border:1px solid #D4DDE8; border-radius:16px; padding:26px; display:flex; flex-direction:column; gap:16px; cursor:pointer; box-shadow:0 14px 34px rgba(15,36,64,.09)">
+          <div style="display:flex; align-items:flex-start; gap:14px">
+            <div style="width:46px; height:46px; border-radius:13px; background:#E6EFFC; display:flex; align-items:center; justify-content:center; flex:none"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 19h2"/></svg></div>
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+              <span style="font-size:19px; font-weight:700; color:#0F2440">เปิด Flutter Mobile Demo</span>
+              <span style="font-size:13px; color:#64748B; line-height:1.7">หน้าร้านและช่างที่ข้างรถ · 430 × 932 · iPhone 15 Pro Max · เป้าแตะใหญ่ ทำงานทีละขั้น</span>
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px">
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">รับรถและถ่ายรูป</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">ตรวจเช็คสภาพ</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">ลูกค้าอนุมัติ + เซ็น</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">ซ่อมและ QC</span>
+          </div>
+          <span style="display:inline-flex; align-self:flex-start; align-items:center; gap:8px; background:#1B6BE3; color:#fff; font-size:14px; font-weight:700; padding:12px 18px; border-radius:10px">เริ่มที่ขั้นที่ 1 · รับรถเข้าอู่<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+
+        <div onClick="{{openWeb}}" style="background:#fff; border:1px solid #D4DDE8; border-radius:16px; padding:26px; display:flex; flex-direction:column; gap:16px; cursor:pointer; box-shadow:0 14px 34px rgba(15,36,64,.09)">
+          <div style="display:flex; align-items:flex-start; gap:14px">
+            <div style="width:46px; height:46px; border-radius:13px; background:#E4E9F0; display:flex; align-items:center; justify-content:center; flex:none"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#0F2440" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+            <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+              <span style="font-size:19px; font-weight:700; color:#0F2440">เปิด Next.js Web Demo</span>
+              <span style="font-size:13px; color:#64748B; line-height:1.7">ผู้จัดการ ธุรการ และแคชเชียร์ · 1280 กว้าง · ตาราง คิวงาน หลายพาเนล</span>
+            </div>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:6px">
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">แดชบอร์ดและคิวงาน</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">ใบเสนอราคา</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">สต็อกและใบสั่งซื้อ</span>
+            <span style="background:#F1F4F9; color:#475569; font-size:11.5px; font-weight:600; padding:6px 10px; border-radius:7px">POS และใบเสร็จ</span>
+          </div>
+          <span style="display:inline-flex; align-self:flex-start; align-items:center; gap:8px; background:#0F2440; color:#fff; font-size:14px; font-weight:700; padding:12px 18px; border-radius:10px">เข้าที่ขั้นที่ 3 · แดชบอร์ดรับงาน<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+      </div>
+
+      <div style="background:#fff; border:1px dashed #C9D6E6; border-radius:14px; padding:20px; display:flex; flex-direction:column; gap:12px">
+        <span style="font-size:13px; font-weight:700; color:#334155">ลำดับ 13 ขั้นของเดโม (กดที่ขั้นใดก็ได้เพื่อเข้าไปดู)</span>
+        <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px">
+          <sc-for list="{{steps}}" as="st" hint-placeholder-count="13">
+            <div onClick="{{st.go}}" style="display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:9px; background:{{st.rowBg}}; cursor:pointer">
+              <span style="width:22px; height:22px; border-radius:6px; background:{{st.numBg}}; color:{{st.numFg}}; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; font-family:'IBM Plex Mono',monospace">{{st.n}}</span>
+              <span style="background:{{st.devBg}}; color:{{st.devFg}}; font-size:10px; font-weight:700; padding:3px 7px; border-radius:5px; flex:none">{{st.dev}}</span>
+              <span style="font-size:12.5px; color:#334155; flex:1; line-height:1.45">{{st.title}}</span>
+              <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace; flex:none">{{st.time}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{inDemo}}" hint-placeholder-val="{{false}}">
+    <div style="display:flex; flex-direction:column; gap:14px">
+
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#0F2440; border-radius:12px; padding:12px 16px; width:{{barW}}; box-sizing:border-box">
+        <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">แผงควบคุมเดโม (ไม่ใช่ส่วนของแอปจริง)</span>
+        <span onClick="{{restart}}" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:7px 12px; border-radius:8px; cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13-6"/><path d="M17 3v3.5h-3.5M4 12a8 8 0 0 0 13 6"/></svg>กลับไปจุดเริ่ม Demo</span>
+        <span style="width:1px; height:18px; background:#1B3557"></span>
+        <div style="display:flex; gap:5px; background:#1B3557; border-radius:8px; padding:3px">
+          <span onClick="{{showMobile}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mBg}}; color:{{mFg}}">มือถือ (Flutter)</span>
+          <span onClick="{{showWeb}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{wBg}}; color:{{wFg}}">เว็บ (Next.js)</span>
+        </div>
+        <span style="font-size:12px; color:#A9BDD6; font-family:'IBM Plex Mono',monospace">{{jbNo}} · 3ขก 4821 · สาขารามอินทรา</span>
+        <span style="margin-left:auto; font-size:12px; font-weight:700; color:#fff">ขั้นที่ {{stepN}}/13 · {{stepTime}}</span>
+      </div>
+
+      <div style="display:flex; gap:20px; align-items:flex-start">
+
+        <div style="width:326px; flex:none; display:flex; flex-direction:column; gap:12px">
+          <div style="background:#fff; border:1px solid #D4DDE8; border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <span style="font-size:11px; font-weight:700; color:#1B6BE3; letter-spacing:.08em">คู่มือผู้รีวิว · ขั้นที่ {{stepN}}</span>
+              <span style="font-size:16px; font-weight:700; color:#0F2440; line-height:1.4">{{guideTitle}}</span>
+            </div>
+            <span style="font-size:13px; color:#475569; line-height:1.8">{{guideBody}}</span>
+            <div style="background:#E6EFFC; border-radius:10px; padding:12px; display:flex; gap:9px; align-items:flex-start">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M9 11l3 3 8-8"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              <div style="display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:11px; font-weight:700; color:#1552B3">กดที่นี่ในจอ</span>
+                <span style="font-size:12.5px; color:#1552B3; line-height:1.6; font-weight:600">{{guideClick}}</span>
+              </div>
+            </div>
+            <sc-if value="{{needsSwitch}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:9px">
+                <span style="font-size:12.5px; color:#8A5A00; line-height:1.65; font-weight:600">ขั้นถัดไปอยู่บน{{nextDevice}} — งานเดียวกันเลขเดิม เปลี่ยนเครื่องได้เลย</span>
+                <span onClick="{{switchDevice}}" style="align-self:flex-start; font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:8px 12px; border-radius:7px; cursor:pointer">สลับไป{{nextDevice}}</span>
+              </div>
+            </sc-if>
+            <div style="display:flex; gap:8px">
+              <sc-if value="{{hasPrev}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{prev}}" style="flex:1; height:42px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer">ขั้นก่อนหน้า</button>
+              </sc-if>
+              <sc-if value="{{hasNext}}" hint-placeholder-val="{{true}}">
+                <button onClick="{{next}}" style="flex:1.4; height:42px; background:#0F2440; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer">ข้ามไปขั้นถัดไป</button>
+              </sc-if>
+            </div>
+          </div>
+
+          <div style="background:#fff; border:1px solid #D4DDE8; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:7px; max-height:330px; overflow-y:auto">
+            <span style="font-size:12px; font-weight:700; color:#334155; padding-bottom:3px">13 ขั้นของสถานการณ์</span>
+            <sc-for list="{{steps}}" as="st" hint-placeholder-count="13">
+              <div onClick="{{st.go}}" style="display:flex; align-items:center; gap:9px; padding:8px 9px; border-radius:8px; background:{{st.rowBg}}; cursor:pointer">
+                <span style="width:20px; height:20px; border-radius:5px; background:{{st.numBg}}; color:{{st.numFg}}; font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; font-family:'IBM Plex Mono',monospace">{{st.n}}</span>
+                <span style="background:{{st.devBg}}; color:{{st.devFg}}; font-size:9.5px; font-weight:700; padding:2px 6px; border-radius:4px; flex:none">{{st.dev}}</span>
+                <span style="font-size:11.5px; color:#334155; flex:1; line-height:1.4">{{st.title}}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="background:#fff; border:1px solid #D4DDE8; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:9px">
+            <span style="font-size:12px; font-weight:700; color:#334155">ตัวเลขที่ต้องตรงกันทุกจอ</span>
+            <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px">
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">เลขงาน</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ใบเสนอราคา</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{qtNo}}</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ยอดที่อนุมัติ (รวม VAT)</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{total}}</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">มัดจำ + PromptPay</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">1,000 + {{qrAmt}}</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ใบสั่งซื้อผ้าเบรก</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{poNo}}</span></div>
+              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">สถานะงานตอนนี้</span><span style="color:{{jobStFg}}; font-weight:700">{{jobStLabel}}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{isMobile}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex; flex-direction:column; gap:10px; align-items:center">
+            <span style="font-size:11px; font-weight:700; color:#64748B; letter-spacing:.1em">FLUTTER · 430 × 932 · iPhone 15 Pro Max</span>
+            <div style="box-sizing:content-box; width:430px; height:932px; border:13px solid #0B1526; border-radius:62px; background:#F1F4F9; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 26px 60px rgba(15,36,64,.26); position:relative">
+              <div style="background:#0F2440; color:#fff; box-sizing:border-box; height:59px; padding:26px 30px 0; display:flex; align-items:flex-start; justify-content:space-between; font-size:12px; font-family:'IBM Plex Mono',monospace; flex:none; position:relative"><div style="position:absolute; left:50%; top:12px; transform:translateX(-50%); width:126px; height:37px; border-radius:19px; background:#05080F; z-index:4"></div>
+                <span>{{stepTime}}</span><span style="color:#7DD3C4">ออนไลน์ · 4G</span>
+              </div>
+              <div style="background:#0F2440; padding:0 16px 14px; flex:none; display:flex; align-items:center; gap:10px">
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                  <span style="font-size:11.5px; color:#8FA6C4; font-family:'IBM Plex Mono',monospace">{{jbNo}} · 3ขก 4821</span>
+                  <span style="font-size:18px; font-weight:700; color:#fff">{{mTitle}}</span>
+                </div>
+                <span style="display:inline-flex; align-items:center; gap:5px; background:{{jobStBg}}; color:{{jobStChipFg}}; font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px; flex:none">{{jobStLabel}}</span>
+              </div>
+
+              <div style="flex:1; overflow-y:auto; padding:14px 16px 46px; display:flex; flex-direction:column; gap:12px">
+
+                <sc-if value="{{m1}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:11px">
+                      <div style="display:flex; align-items:center; gap:8px"><span style="font-size:14px; font-weight:700; color:#0F2440; flex:1">ลูกค้าและรถ</span><span style="background:#E4E9F0; color:#1B3557; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:5px">ข้อมูลหลัก</span></div>
+                      <div style="display:flex; flex-direction:column; gap:7px; font-size:13.5px">
+                        <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">ลูกค้า</span><span style="color:#0F2440; font-weight:600">คุณธนา ศรีสุข</span></div>
+                        <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">เบอร์โทร</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">081-447-2290</span></div>
+                        <div style="display:flex; justify-content:space-between; gap:10px; border-top:1px solid #EDF1F6; padding-top:8px"><span style="color:#64748B">ทะเบียน</span><span style="color:#0F2440; font-weight:700; font-size:16px">3ขก 4821</span></div>
+                        <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">รุ่นรถ</span><span style="color:#0F2440; font-weight:600; text-align:right">Toyota Corolla Cross 2023</span></div>
+                        <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">เลขไมล์</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">40,120 กม.</span></div>
+                        <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">น้ำมัน</span><span style="color:#0F2440; font-weight:600">1/2</span></div>
+                      </div>
+                    </div>
+                    <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:5px">
+                      <span style="font-size:11.5px; font-weight:700; color:#8A5A00">อาการที่ลูกค้าแจ้ง</span>
+                      <span style="font-size:13.5px; color:#8A5A00; line-height:1.7">เช็คระยะ 40,000 กม. ตามคู่มือ · มีเสียงดังที่เบรกหน้าเวลาเบรกช่วงเช้า</span>
+                    </div>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:10px">
+                      <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#0F2440">รูปรอบคัน</span><span style="display:inline-flex; align-items:center; gap:5px; background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M4 12.5l5 5L20 7"/></svg>ครบ 5/5</span></div>
+                      <div style="display:flex; gap:6px">
+                        <div style="flex:1; aspect-ratio:1; border-radius:9px; background:#D8DEE7"></div>
+                        <div style="flex:1; aspect-ratio:1; border-radius:9px; background:#C9D1DC"></div>
+                        <div style="flex:1; aspect-ratio:1; border-radius:9px; background:#D8DEE7"></div>
+                        <div style="flex:1; aspect-ratio:1; border-radius:9px; background:#C9D1DC"></div>
+                        <div style="flex:1; aspect-ratio:1; border-radius:9px; background:#EEF1F6; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#475569">+1</div>
+                      </div>
+                      <span style="font-size:11.5px; color:#64748B">ถ่ายโดย พิมพ์ชนก วัฒนกุล · 09:10 น.</span>
+                    </div>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:9px">
+                      <span style="font-size:14px; font-weight:700; color:#0F2440">ของมีค่าและกุญแจ</span>
+                      <span style="font-size:13px; color:#475569; line-height:1.7">กุญแจ 2 ดอก · ยางอะไหล่ครบ · ไม่มีของมีค่าฝากไว้ · ลูกค้าเซ็นใบรับรถแล้ว</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m2}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:10px">
+                      <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#0F2440">ผลตรวจเช็ค 31 รายการ</span><span style="font-size:14px; font-weight:700; color:#0B6D5E; font-family:'IBM Plex Mono',monospace">31/31</span></div>
+                      <div style="height:8px; border-radius:4px; background:#EEF1F6; overflow:hidden"><div style="height:100%; width:100%; background:#0E9F8C; border-radius:4px"></div></div>
+                      <span style="font-size:12px; color:#64748B">ช่าง สมพงษ์ ทองแท้ · เริ่ม 09:24 เสร็จ 09:56</span>
+                    </div>
+                    <div style="background:#fff; border:1.5px solid #F0C2C2; border-left:5px solid #C02626; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:9px">
+                      <div style="display:flex; align-items:center; gap:8px"><span style="font-size:14.5px; font-weight:700; color:#0F2440; flex:1">ผ้าเบรกหน้าสึก เหลือ 2 มม.</span><span style="background:#FBE9E9; color:#A31D1D; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:5px">ต้องซ่อม</span></div>
+                      <span style="font-size:13px; color:#475569; line-height:1.7">ตรงกับเสียงดังที่ลูกค้าแจ้ง · จานเบรกยังไม่เป็นคลื่น ไม่ต้องเจีย</span>
+                      <div style="display:flex; gap:6px"><div style="flex:1; height:62px; border-radius:8px; background:#D8DEE7; position:relative"><div style="position:absolute; left:22px; top:16px; width:22px; height:22px; border:2.5px solid #C02626; border-radius:50%"></div></div><div style="flex:1; height:62px; border-radius:8px; background:#C9D1DC"></div></div>
+                      <div style="background:#F7F9FC; border-radius:9px; padding:10px; display:flex; flex-direction:column; gap:3px"><span style="font-size:11px; font-weight:700; color:#64748B">แนะนำ</span><span style="font-size:12.5px; color:#0F2440; font-weight:600">เปลี่ยนผ้าเบรกหน้า + ค่าแรง 1.5 ชม. · ทำครั้งนี้</span></div>
+                    </div>
+                    <div style="background:#fff; border:1.5px solid #F0D9AC; border-left:5px solid #E0930C; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:9px">
+                      <div style="display:flex; align-items:center; gap:8px"><span style="font-size:14.5px; font-weight:700; color:#0F2440; flex:1">แบตเตอรี่อ่อน วัดได้ 11.9 โวลต์</span><span style="background:#FDF3E2; color:#8A5A00; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:5px">ควรเฝ้าระวัง</span></div>
+                      <span style="font-size:13px; color:#475569; line-height:1.7">ใช้งาน 2 ปี 8 เดือน ยังสตาร์ทได้ แต่มีโอกาสดับกลางทางในหน้าฝน</span>
+                      <div style="background:#F7F9FC; border-radius:9px; padding:10px; display:flex; flex-direction:column; gap:3px"><span style="font-size:11px; font-weight:700; color:#64748B">แนะนำ</span><span style="font-size:12.5px; color:#0F2440; font-weight:600">เปลี่ยนแบตเตอรี่ 3,000 บาท · ภายใน 3 เดือน</span></div>
+                    </div>
+                    <div style="background:#E6EFFC; border-radius:12px; padding:12px; display:flex; gap:9px; align-items:flex-start">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="2.6"/></svg>
+                      <span style="font-size:12px; color:#1552B3; line-height:1.65; font-weight:600">ทั้ง 2 รายการจะแสดงให้ลูกค้าเห็นในขั้นอนุมัติราคา · ที่เหลือ 29 รายการผลปกติ</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m5}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#E6EFFC; border-radius:12px; padding:12px; font-size:12.5px; color:#1552B3; line-height:1.7; font-weight:600">ยื่นเครื่องให้คุณธนาเลือกเอง · เลือกได้ทีละรายการ ยอดด้านล่างเปลี่ยนตามที่เลือก</div>
+                    <sc-for list="{{apLines}}" as="l" hint-placeholder-count="3">
+                      <div style="background:#fff; border:{{l.border}}; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px">
+                        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px">
+                          <div style="display:flex; flex-direction:column; gap:4px; flex:1"><span style="font-size:15.5px; font-weight:700; color:#0F2440; line-height:1.45">{{l.name}}</span><span style="font-size:12px; color:#64748B">{{l.meta}}</span></div>
+                          <span style="font-size:17px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; flex:none">{{l.amount}}</span>
+                        </div>
+                        <span style="font-size:12.5px; color:#475569; line-height:1.7">{{l.why}}</span>
+                        <div style="display:flex; gap:8px">
+                          <div onClick="{{l.ok}}" style="flex:1.2; min-height:50px; background:{{l.okBg}}; border:1.5px solid {{l.okBorder}}; border-radius:11px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{l.okFg}}" stroke-width="3" stroke-linecap="round"><path d="M4 12.5l5 5L20 7"/></svg><span style="font-size:15px; font-weight:700; color:{{l.okFg}}">อนุมัติ</span></div>
+                          <div onClick="{{l.no}}" style="flex:1; min-height:50px; background:{{l.noBg}}; border:1.5px solid {{l.noBorder}}; border-radius:11px; display:flex; align-items:center; justify-content:center; gap:7px; cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{l.noFg}}" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span style="font-size:15px; font-weight:700; color:{{l.noFg}}">ไม่อนุมัติ</span></div>
+                        </div>
+                        <sc-if value="{{l.rejected}}" hint-placeholder-val="{{false}}">
+                          <div style="background:#FEF6F6; border-radius:9px; padding:10px; font-size:12px; color:#A31D1D; font-weight:600; line-height:1.6">เหตุผลที่ลูกค้าเลือก: {{l.reason}}</div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:10px">
+                      <span style="font-size:14px; font-weight:700; color:#0F2440">ลงชื่อยืนยัน</span>
+                      <span style="font-size:12.5px; color:#475569; line-height:1.75">ข้าพเจ้า คุณธนา ศรีสุข ตกลงให้ซ่อมเฉพาะ {{apOkN}} รายการที่อนุมัติ รวม {{total}} บาท (รวม VAT) และรับทราบว่ารายการที่ไม่อนุมัติจะยังไม่ดำเนินการ</span>
+                      <div onClick="{{sign}}" style="height:150px; border:1.5px dashed #C9D6E6; border-radius:12px; background:#F7F9FC; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative">
+                        <sc-if value="{{notSigned}}" hint-placeholder-val="{{true}}">
+                          <span style="font-size:14px; color:#94A3B8">แตะเพื่อเซ็นชื่อ</span>
+                        </sc-if>
+                        <sc-if value="{{signed}}" hint-placeholder-val="{{false}}">
+                          <svg viewBox="0 0 300 110" style="width:92%; height:80%"><path d="M28 82c20-40 32-46 42-19s16 34 26 8 18-40 30-12 15 30 26 8 22-34 34-8 18 26 34 6" fill="none" stroke="#0F2440" stroke-width="3.2" stroke-linecap="round"/></svg>
+                        </sc-if>
+                      </div>
+                      <span style="font-size:11.5px; color:#64748B; text-align:center">คุณธนา ศรีสุข · 29 ก.ค. 2569 10:41 น. · เครื่องหน้าร้าน #FD-07</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m7}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; align-items:center; gap:14px">
+                      <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:11.5px; color:#64748B">เวลาที่ใช้ไป</span><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">0 ชม. 00 นาที</span></div>
+                      <span style="font-size:11.5px; color:#64748B; text-align:right; line-height:1.5">นัดส่งมอบ<br><b style="font-family:'IBM Plex Mono',monospace; color:#0F2440">วันนี้ 16:00 น.</b></span>
+                    </div>
+                    <sc-for list="{{tasks}}" as="t" hint-placeholder-count="4">
+                      <div style="background:#fff; border:{{t.border}}; border-left:{{t.bar}}; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:9px">
+                        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px">
+                          <div style="display:flex; flex-direction:column; gap:3px; flex:1"><span style="font-size:14.5px; font-weight:700; color:#0F2440; line-height:1.45">{{t.name}}</span><span style="font-size:12px; color:#64748B">{{t.part}}</span></div>
+                          <span style="background:{{t.stBg}}; color:{{t.stFg}}; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:5px; flex:none">{{t.stLabel}}</span>
+                        </div>
+                        <sc-if value="{{t.blocked}}" hint-placeholder-val="{{false}}">
+                          <div style="background:#FDEBE3; border-radius:9px; padding:10px; font-size:12px; color:#A8380A; font-weight:600; line-height:1.6">{{t.blockText}}</div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                    <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:13px; display:flex; gap:9px; align-items:flex-start">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+                      <span style="font-size:12.5px; color:#8A5A00; line-height:1.7; font-weight:600">ผ้าเบรกหน้าในสาขาเหลือ 0 ชุด (จองไว้ให้งานอื่นแล้ว) — ต้องแจ้งรออะไหล่ แต่เช็คระยะทำต่อได้</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m10}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#E3F5F1; border:1px solid #B6E3DA; border-radius:12px; padding:13px; display:flex; gap:9px; align-items:flex-start">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B6D5E" stroke-width="2.6" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M4 12.5l5 5L20 7"/></svg>
+                      <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:13.5px; font-weight:700; color:#0B6D5E">อะไหล่ถึงสาขาแล้ว · รับเข้าคลัง 13:52</span><span style="font-size:12.5px; color:#0B6D5E; line-height:1.65">ผ้าเบรกหน้า 4 ชุดจาก {{poNo}} · เบิกให้งานนี้แล้ว 1 ชุด (GRN-0771)</span></div>
+                    </div>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; align-items:center; gap:14px">
+                      <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:11.5px; color:#64748B">เวลาที่ใช้ไป (ไม่รวมช่วงรออะไหล่)</span><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">1 ชม. 48 นาที</span></div>
+                      <span style="background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; padding:5px 9px; border-radius:6px">กำลังซ่อม</span>
+                    </div>
+                    <sc-for list="{{tasks}}" as="t" hint-placeholder-count="4">
+                      <div style="background:#fff; border:{{t.border}}; border-left:{{t.bar}}; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:9px">
+                        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px">
+                          <div style="display:flex; flex-direction:column; gap:3px; flex:1"><span style="font-size:14.5px; font-weight:700; color:#0F2440; line-height:1.45">{{t.name}}</span><span style="font-size:12px; color:#64748B">{{t.part}}</span></div>
+                          <span style="background:{{t.stBg}}; color:{{t.stFg}}; font-size:10.5px; font-weight:700; padding:4px 8px; border-radius:5px; flex:none">{{t.stLabel}}</span>
+                        </div>
+                        <sc-if value="{{t.photos}}" hint-placeholder-val="{{false}}">
+                          <div style="display:flex; gap:6px"><div style="flex:1; height:54px; border-radius:8px; background:#D8DEE7; position:relative"><span style="position:absolute; left:5px; bottom:5px; background:rgba(15,36,64,.8); color:#fff; font-size:9.5px; font-weight:600; padding:2px 5px; border-radius:3px">ก่อน</span></div><div style="flex:1; height:54px; border-radius:8px; background:#C9D1DC; position:relative"><span style="position:absolute; left:5px; bottom:5px; background:rgba(15,36,64,.8); color:#fff; font-size:9.5px; font-weight:600; padding:2px 5px; border-radius:3px">หลัง</span></div></div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m11}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:10px">
+                      <div style="display:flex; align-items:center; gap:10px"><span style="font-size:14px; font-weight:700; color:#0F2440; flex:1">ตรวจ QC ก่อนส่งมอบ</span><span style="font-size:14px; font-weight:700; color:#0B6D5E; font-family:'IBM Plex Mono',monospace">6/6</span></div>
+                      <span style="font-size:12px; color:#64748B">ผู้ตรวจ วีระชัย หัวหน้ากะ · 15:04–15:11</span>
+                    </div>
+                    <sc-for list="{{qcItems}}" as="q" hint-placeholder-count="6">
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; align-items:center; gap:11px">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0E9F8C" stroke-width="3" stroke-linecap="round" style="flex:none"><path d="M4 12.5l5 5L20 7"/></svg>
+                        <span style="font-size:13.5px; color:#0F2440; font-weight:600; flex:1; line-height:1.45">{{q.label}}</span>
+                        <span style="background:#E3F5F1; color:#0B6D5E; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none">ผ่าน</span>
+                      </div>
+                    </sc-for>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:8px">
+                      <span style="font-size:13px; font-weight:700; color:#0F2440">ผลทดลองขับ</span>
+                      <span style="font-size:12.5px; color:#475569; line-height:1.7">ขับทดสอบ 3.4 กม. · เสียงเบรกหายแล้ว เบรกนิ่มสม่ำเสมอ ไม่มีไฟเตือนขึ้น</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{m13}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:12px">
+                    <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:6px 0">
+                      <div style="width:58px; height:58px; border-radius:50%; background:#0E9F8C; display:flex; align-items:center; justify-content:center"><svg width="29" height="29" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                      <span style="font-size:19px; font-weight:700; color:#0F2440">งานเสร็จสมบูรณ์</span>
+                      <span style="font-size:13px; color:#64748B; text-align:center; line-height:1.7">ส่งมอบรถให้คุณธนาแล้ว 15:44 น.<br>ชำระครบ {{total}} บาท · ใบเสร็จ {{rcNo}}</span>
+                    </div>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:15px; display:flex; flex-direction:column; gap:11px">
+                      <span style="font-size:14px; font-weight:700; color:#0F2440">ไทม์ไลน์งานบริการ</span>
+                      <sc-for list="{{timeline}}" as="e" hint-placeholder-count="8">
+                        <div style="display:flex; gap:11px">
+                          <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:9px; height:9px; border-radius:50%; background:{{e.dot}}; margin-top:5px"></div><div style="flex:1; width:2px; background:#E3E8EF"></div></div>
+                          <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:12px"><span style="font-size:12.5px; font-weight:600; color:#0F2440; line-height:1.5">{{e.text}}</span><span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{e.who}} · {{e.time}} · {{e.src}}</span></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{mWait}}" hint-placeholder-val="{{false}}">
+                  <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; padding:40px 10px; text-align:center">
+                    <div style="width:52px; height:52px; border-radius:14px; background:#E4E9F0; display:flex; align-items:center; justify-content:center"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#1B3557" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+                    <span style="font-size:17px; font-weight:700; color:#0F2440">ขั้นนี้ทำงานอยู่บนเว็บ</span>
+                    <span style="font-size:13px; color:#64748B; line-height:1.75">ขั้นที่ {{stepN}} ({{stepTitle}}) เป็นงานของ{{stepRole}}บนเว็บ<br>งานเดียวกันเลข {{jbNo}} · มือถือจะได้รับผลอัปเดตอัตโนมัติ</span>
+                    <button onClick="{{showWeb}}" style="min-height:50px; padding:0 20px; background:#1B6BE3; border:none; color:#fff; border-radius:12px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">สลับไปดูบนเว็บ</button>
+                  </div>
+                </sc-if>
+              </div>
+
+              <sc-if value="{{mHasCta}}" hint-placeholder-val="{{true}}">
+                <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:11px 16px 42px; display:flex; flex-direction:column; gap:8px; box-shadow:0 -5px 16px rgba(15,36,64,.08)">
+                  <div style="display:flex; align-items:center; gap:7px">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0E9F8C" stroke-width="2.8" stroke-linecap="round" style="flex:none"><path d="M4 12.5l5 5L20 7"/></svg>
+                    <span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{mSaveLine}}</span>
+                  </div>
+                  <button onClick="{{mCta}}" style="min-height:54px; background:{{mCtaBg}}; border:none; color:#fff; border-radius:13px; font-family:inherit; font-size:16.5px; font-weight:700; cursor:pointer">{{mCtaLabel}}</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{mToast}}" hint-placeholder-val="{{false}}">
+                <div style="position:absolute; left:14px; right:14px; bottom:130px; background:#1E293B; border-radius:12px; padding:13px 14px; display:flex; align-items:flex-start; gap:11px; box-shadow:0 16px 34px rgba(15,36,64,.3); animation:gpIn .16s ease-out; z-index:30">
+                  <div style="width:26px; height:26px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13-6M20 12a8 8 0 0 1-13 6"/><path d="M17 3v3.5h-3.5M7 21v-3.5h3.5"/></svg></div>
+                  <div style="display:flex; flex-direction:column; gap:3px; flex:1"><span style="font-size:12.5px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span><span style="font-size:11.5px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span></div>
+                  <span onClick="{{clearToast}}" style="font-size:11px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+                </div>
+              </sc-if>
+              <div style="position:absolute; left:0; right:0; bottom:0; height:34px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:9px; pointer-events:none; z-index:95">
+                <div style="width:144px; height:5px; border-radius:3px; background:rgba(120,140,165,.75)"></div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isWeb}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <span style="font-size:11px; font-weight:700; color:#64748B; letter-spacing:.1em">NEXT.JS · 1280 กว้าง</span>
+            <div style="width:1280px; height:844px; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:12px; overflow:hidden; display:flex; box-shadow:0 26px 60px rgba(15,36,64,.16); position:relative">
+              <div style="width:64px; flex:none; background:#0F2440; display:flex; flex-direction:column; align-items:center; padding:14px 0; gap:5px">
+                <div style="width:28px; height:28px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; margin-bottom:9px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+                <sc-for list="{{wNav}}" as="n" hint-placeholder-count="6">
+                  <div style="width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:{{n.bg}}; position:relative">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.path}}"/></svg>
+                    <sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{false}}">
+                      <span style="position:absolute; top:4px; right:3px; background:#E0930C; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center; animation:gpPulse 1.6s ease-in-out infinite">{{n.badge}}</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+                <div style="height:52px; flex:none; background:#fff; border-bottom:1px solid #E3E8EF; display:flex; align-items:center; gap:12px; padding:0 16px">
+                  <div style="display:flex; align-items:center; gap:8px; font-size:11.5px; color:#64748B">
+                    <span>สาขารามอินทรา</span><span style="color:#CBD5E1">/</span><span>{{wCrumb}}</span><span style="color:#CBD5E1">/</span><span style="color:#0F2440; font-weight:600">{{jbNo}} · 3ขก 4821</span>
+                  </div>
+                  <div style="margin-left:auto; display:flex; align-items:center; gap:12px">
+                    <span style="display:inline-flex; align-items:center; gap:6px; background:#E3F5F1; border:1px solid #B6E3DA; color:#0B6D5E; font-size:11px; font-weight:700; padding:6px 10px; border-radius:7px"><span style="width:7px; height:7px; border-radius:50%; background:#0E9F8C; animation:gpPulse 1.6s ease-in-out infinite"></span>เชื่อมต่อสด</span>
+                    <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">29 ก.ค. 2569 · {{stepTime}}</span>
+                    <div style="display:flex; align-items:center; gap:8px; padding-left:12px; border-left:1px solid #E3E8EF">
+                      <div style="width:27px; height:27px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff">{{wInitials}}</div>
+                      <div style="display:flex; flex-direction:column"><span style="font-size:12px; font-weight:700; color:#0F2440">{{wUser}}</span><span style="font-size:10.5px; color:#64748B">{{wRole}}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:13px">
+
+                  <sc-if value="{{w3}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                        <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:20px; font-weight:700; color:#0F2440">แดชบอร์ดสาขารามอินทรา</span><span style="font-size:12.5px; color:#64748B">งานใหม่จากมือถือเข้ามาแบบเรียลไทม์</span></div>
+                        <span style="display:inline-flex; align-items:center; gap:6px; background:#FDF3E2; border:1px solid #F0D9AC; color:#8A5A00; font-size:11.5px; font-weight:700; padding:8px 12px; border-radius:8px">รอเสนอราคา 1 งาน · ใหม่</span>
+                      </div>
+                      <div style="display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px">
+                        <sc-for list="{{wTiles}}" as="t" hint-placeholder-count="6">
+                          <div style="background:#fff; border:1px solid {{t.border}}; border-top:3px solid {{t.accent}}; border-radius:11px; padding:12px; display:flex; flex-direction:column; gap:6px; animation:{{t.anim}}">
+                            <span style="font-size:11.5px; font-weight:700; color:{{t.fg}}; line-height:1.35">{{t.label}}</span>
+                            <span style="font-size:24px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1">{{t.n}}</span>
+                            <span style="font-size:10.5px; color:#94A3B8">{{t.sub}}</span>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                        <div style="padding:12px 15px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px"><span style="font-size:13.5px; font-weight:700; color:#0F2440">คิวงานซ่อมวันนี้</span><span style="margin-left:auto; font-size:11.5px; color:#64748B">อัปเดตล่าสุด {{stepTime}}</span></div>
+                        <div style="display:grid; grid-template-columns:110px 150px 1fr 150px 150px 130px 130px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                          <div style="padding:10px 14px">เลขงาน</div><div style="padding:10px 12px">ทะเบียน</div><div style="padding:10px 12px">ลูกค้า / รุ่นรถ</div><div style="padding:10px 12px">สถานะ</div><div style="padding:10px 12px">ช่าง</div><div style="padding:10px 12px">นัดส่งมอบ</div><div style="padding:10px 14px; text-align:right">ยอด</div>
+                        </div>
+                        <sc-for list="{{wRows}}" as="r" hint-placeholder-count="4">
+                          <div onClick="{{r.open}}" style="display:grid; grid-template-columns:110px 150px 1fr 150px 150px 130px 130px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; cursor:pointer; background:{{r.bg}}; animation:{{r.anim}}">
+                            <div style="padding:11px 14px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.no}}</div>
+                            <div style="padding:11px 12px; font-weight:700; color:#0F2440">{{r.reg}}</div>
+                            <div style="padding:11px 12px; color:#334155">{{r.cust}}</div>
+                            <div style="padding:11px 12px; display:flex; flex-direction:column; gap:3px; align-items:flex-start">
+                              <span style="background:{{r.stBg}}; color:{{r.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{r.stLabel}}</span>
+                              <sc-if value="{{r.isNew}}" hint-placeholder-val="{{false}}">
+                                <span style="font-size:10.5px; font-weight:700; color:#1552B3">อัปเดตเมื่อสักครู่</span>
+                              </sc-if>
+                            </div>
+                            <div style="padding:11px 12px; color:#334155">{{r.tech}}</div>
+                            <div style="padding:11px 12px; font-family:'IBM Plex Mono',monospace; color:#334155">{{r.promise}}</div>
+                            <div style="padding:11px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{r.amount}}</div>
+                          </div>
+                        </sc-for>
+                      </div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:15px; display:flex; gap:16px; align-items:flex-start">
+                        <div style="display:flex; flex-direction:column; gap:8px; flex:1">
+                          <span style="font-size:13.5px; font-weight:700; color:#0F2440">ผลตรวจของ {{jbNo}} ที่เพิ่งเข้ามา</span>
+                          <div style="display:flex; gap:10px">
+                            <div style="flex:1; background:#FEF6F6; border:1px solid #F0C2C2; border-radius:9px; padding:11px; display:flex; flex-direction:column; gap:3px"><span style="font-size:12px; font-weight:700; color:#A31D1D">ผ้าเบรกหน้าสึก เหลือ 2 มม.</span><span style="font-size:11.5px; color:#A31D1D; line-height:1.55">ต้องซ่อม · ตรงกับอาการที่ลูกค้าแจ้ง · รูป 2 รูป</span></div>
+                            <div style="flex:1; background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:11px; display:flex; flex-direction:column; gap:3px"><span style="font-size:12px; font-weight:700; color:#8A5A00">แบตเตอรี่อ่อน 11.9 โวลต์</span><span style="font-size:11.5px; color:#8A5A00; line-height:1.55">ควรเฝ้าระวัง · ช่างแนะนำเปลี่ยนภายใน 3 เดือน</span></div>
+                            <div style="flex:1; background:#F7FCFA; border:1px solid #B6E3DA; border-radius:9px; padding:11px; display:flex; flex-direction:column; gap:3px"><span style="font-size:12px; font-weight:700; color:#0B6D5E">29 รายการที่เหลือปกติ</span><span style="font-size:11.5px; color:#0B6D5E; line-height:1.55">เช็คระยะ 40,000 กม. ทำได้ตามคู่มือ</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w4}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                        <div style="display:flex; flex-direction:column; gap:4px">
+                          <div style="display:flex; align-items:center; gap:9px"><span style="font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{qtNo}}</span><span style="background:#EEF1F5; color:#475569; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">ฉบับร่าง · เวอร์ชัน 1</span></div>
+                          <span style="font-size:20px; font-weight:700; color:#0F2440">สร้างใบเสนอราคาจากผลตรวจ</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px"><span style="font-size:11.5px; color:#64748B">ยอดที่จะเสนอ (รวม VAT)</span><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{quoteTotal}}</span></div>
+                      </div>
+                      <div style="display:grid; grid-template-columns:280px 1fr; gap:13px; align-items:start">
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:11px">
+                          <span style="font-size:13px; font-weight:700; color:#0F2440">บริบทจากมือถือ</span>
+                          <div style="background:#FFFBF3; border-radius:9px; padding:10px; font-size:11.5px; color:#8A5A00; line-height:1.6">ลูกค้าแจ้ง: เช็คระยะ 40,000 กม. · เสียงดังที่เบรกหน้า</div>
+                          <div style="display:flex; flex-direction:column; gap:7px; font-size:11.5px">
+                            <div style="display:flex; justify-content:space-between"><span style="color:#64748B">เลขไมล์</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">40,120 กม.</span></div>
+                            <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ช่างผู้ตรวจ</span><span style="color:#0F2440; font-weight:600">สมพงษ์ ทองแท้</span></div>
+                            <div style="display:flex; justify-content:space-between"><span style="color:#64748B">รูปประกอบ</span><span style="color:#0F2440; font-weight:600">7 รูป</span></div>
+                          </div>
+                          <div style="display:flex; gap:6px"><div style="flex:1; height:56px; border-radius:8px; background:#D8DEE7"></div><div style="flex:1; height:56px; border-radius:8px; background:#C9D1DC"></div></div>
+                        </div>
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                          <div style="display:grid; grid-template-columns:1.6fr 90px 110px 110px 130px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                            <div style="padding:10px 14px">รายการ</div><div style="padding:10px 8px; text-align:center">จำนวน</div><div style="padding:10px 10px; text-align:right">ราคา/หน่วย</div><div style="padding:10px 10px; text-align:right">รวม</div><div style="padding:10px 12px">ที่มา</div>
+                          </div>
+                          <sc-for list="{{quoteRows}}" as="q" hint-placeholder-count="5">
+                            <div style="display:grid; grid-template-columns:1.6fr 90px 110px 110px 130px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                              <div style="padding:11px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{q.name}}</span><span style="font-size:10.5px; color:#94A3B8">{{q.code}}</span></div>
+                              <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{q.qty}}</div>
+                              <div style="padding:11px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#475569">{{q.price}}</div>
+                              <div style="padding:11px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{q.total}}</div>
+                              <div style="padding:11px 12px"><span style="background:{{q.srcBg}}; color:{{q.srcFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">{{q.src}}</span></div>
+                            </div>
+                          </sc-for>
+                          <div style="padding:13px 14px; background:#F7F9FC; display:flex; align-items:center; gap:18px">
+                            <span style="font-size:11.5px; color:#64748B">รวม 5 รายการ · ยืนราคาถึง 31 ก.ค. 2569</span>
+                            <div style="margin-left:auto; display:flex; gap:20px; align-items:baseline">
+                              <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:10.5px; color:#64748B">ก่อน VAT</span><span style="font-size:12.5px; font-weight:600; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{quoteSub}}</span></div>
+                              <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:10.5px; color:#64748B">VAT 7%</span><span style="font-size:12.5px; font-weight:600; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{quoteVat}}</span></div>
+                              <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:10.5px; color:#64748B">รวมทั้งใบ</span><span style="font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{quoteTotal}}</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style="background:#E6EFFC; border:1px solid #BCD3F5; border-radius:11px; padding:13px; display:flex; gap:10px; align-items:flex-start">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.3" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8"/></svg>
+                        <span style="font-size:12.5px; color:#1552B3; line-height:1.7; flex:1">ผ้าเบรกหน้า: คงเหลือใช้ได้ในสาขา <b>0 ชุด</b> (คงคลัง 2 · จองไว้ 2) — มีของกำลังสั่ง 4 ชุดใน {{poNo}} กำหนดถึง 29 ก.ค. บ่าย จึงยังเสนอราคาได้แต่ต้องแจ้งลูกค้าเรื่องเวลา</span>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w6}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                        <div style="display:flex; flex-direction:column; gap:4px">
+                          <div style="display:flex; align-items:center; gap:9px"><span style="font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{qtNo}}</span><span style="background:#FDF3E2; color:#8A5A00; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">อนุมัติบางส่วน</span></div>
+                          <span style="font-size:20px; font-weight:700; color:#0F2440">ผลอนุมัติจากลูกค้า</span>
+                          <span style="font-size:12.5px; color:#64748B">คุณธนาเซ็นบนเครื่องหน้าร้าน #FD-07 เวลา 10:41 น. · ซิงก์เข้าระบบ 10:42 น.</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px"><span style="font-size:11.5px; color:#64748B">ยอดที่อนุมัติ (รวม VAT)</span><span style="font-size:24px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{total}}</span></div>
+                      </div>
+                      <div style="display:grid; grid-template-columns:1fr 300px; gap:13px; align-items:start">
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                          <div style="display:grid; grid-template-columns:1.6fr 130px 120px 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                            <div style="padding:10px 14px">รายการ</div><div style="padding:10px 10px">ผลอนุมัติ</div><div style="padding:10px 10px; text-align:right">ยอด</div><div style="padding:10px 12px">เหตุผล / ขั้นถัดไป</div>
+                          </div>
+                          <sc-for list="{{apResult}}" as="r" hint-placeholder-count="5">
+                            <div style="display:grid; grid-template-columns:1.6fr 130px 120px 1fr; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; background:{{r.bg}}">
+                              <div style="padding:11px 14px; color:#0F2440; font-weight:600; line-height:1.45">{{r.name}}</div>
+                              <div style="padding:11px 10px"><span style="background:{{r.apBg}}; color:{{r.apFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{r.apLabel}}</span></div>
+                              <div style="padding:11px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:{{r.amtFg}}; text-decoration:{{r.strike}}">{{r.amount}}</div>
+                              <div style="padding:11px 12px; font-size:11.5px; color:#475569; line-height:1.55">{{r.note}}</div>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:13px">
+                          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:10px">
+                            <span style="font-size:13px; font-weight:700; color:#0F2440">หลักฐานการอนุมัติ</span>
+                            <div style="background:#F7F9FC; border-radius:9px; height:88px; display:flex; align-items:center; justify-content:center"><svg viewBox="0 0 300 100" style="width:88%; height:76%"><path d="M28 76c20-38 32-44 42-18s16 32 26 8 18-38 30-11 15 28 26 7 22-32 34-7 18 24 34 5" fill="none" stroke="#0F2440" stroke-width="3" stroke-linecap="round"/></svg></div>
+                            <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px">
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ผู้เซ็น</span><span style="color:#0F2440; font-weight:700">คุณธนา ศรีสุข</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">เวลา</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">29 ก.ค. 10:41:22</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">พนักงานรับรอง</span><span style="color:#0F2440; font-weight:600">พิมพ์ชนก วัฒนกุล</span></div>
+                            </div>
+                          </div>
+                          <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:7px">
+                            <span style="font-size:12.5px; font-weight:700; color:#8A5A00">สิ่งที่ต้องทำต่อ</span>
+                            <span style="font-size:11.5px; color:#8A5A00; line-height:1.7">1. ส่งงานให้ช่างเริ่มเช็คระยะได้ทันที<br>2. ผ้าเบรกต้องรอของจาก {{poNo}} (ถึงบ่ายนี้)<br>3. แบตเตอรี่: บันทึกเป็นข้อเสนอค้างไว้ ติดตามใน 3 เดือน</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w8}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="background:#FFFBF3; border:1.5px solid #F0D9AC; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:flex-start">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+                        <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                          <span style="font-size:14.5px; font-weight:700; color:#8A5A00">ช่างแจ้งรออะไหล่จากมือถือ · 11:20 น.</span>
+                          <span style="font-size:12.5px; color:#8A5A00; line-height:1.7">{{jbNo}} · ผ้าเบรกหน้า Corolla Cross 1 ชุด — คงเหลือใช้ได้ในสาขา 0 ชุด · ช่างเลือก “ทำงานรายการอื่นต่อได้” จึงล็อกเฉพาะรายการเบรก งานเช็คระยะเดินต่อตามปกติ</span>
+                        </div>
+                        <span style="background:#FDEBE3; color:#A8380A; font-size:11px; font-weight:700; padding:6px 10px; border-radius:6px; flex:none">สถานะงาน: รออะไหล่</span>
+                      </div>
+                      <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px">
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                          <div style="padding:12px 15px; border-bottom:1px solid #EDF1F6"><span style="font-size:13.5px; font-weight:700; color:#0F2440">สถานะรายการซ่อมของ {{jbNo}}</span></div>
+                          <sc-for list="{{tasks}}" as="t" hint-placeholder-count="4">
+                            <div style="padding:11px 15px; border-bottom:1px solid #F5F8FB; display:flex; align-items:center; gap:11px">
+                              <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12.5px; font-weight:600; color:#0F2440">{{t.name}}</span><span style="font-size:10.5px; color:#94A3B8">{{t.part}}</span></div>
+                              <span style="background:{{t.stBg}}; color:{{t.stFg}}; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none">{{t.stLabel}}</span>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:11px">
+                          <span style="font-size:13.5px; font-weight:700; color:#0F2440">ผลกระทบและสิ่งที่ต้องทำ</span>
+                          <div style="display:flex; flex-direction:column; gap:9px">
+                            <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#FDEBE3; color:#A8380A; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">1</span><span style="font-size:12px; color:#475569; line-height:1.6">ตรวจ {{poNo}} ว่าของจะถึงทันนัดส่งมอบ 16:00 น. หรือไม่</span></div>
+                            <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">2</span><span style="font-size:12px; color:#475569; line-height:1.6">ถ้าถึงบ่ายนี้ ไม่ต้องเลื่อนนัด — แจ้งลูกค้าเฉพาะกรณีล่าช้า</span></div>
+                            <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">3</span><span style="font-size:12px; color:#475569; line-height:1.6">งานที่ทำเสร็จแล้วยังอยู่ครบ ไม่ถูกล้างเพราะเปลี่ยนสถานะ</span></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w9}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                        <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:20px; font-weight:700; color:#0F2440">สต็อกและใบสั่งซื้อของผ้าเบรกหน้า</span><span style="font-size:12.5px; color:#64748B">P-BRK-0517 · Corolla Cross 2022–2024 · หน่วย: ชุด</span></div>
+                        <span style="background:#E6EFFC; color:#1552B3; font-size:11.5px; font-weight:700; padding:8px 12px; border-radius:8px">ผูกกับงาน {{jbNo}}</span>
+                      </div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:11px">
+                        <div style="background:#F7F9FC; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#64748B; font-weight:600">คงคลัง</span><span style="font-size:21px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">2</span></div>
+                        <div style="background:#FFFBF3; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#8A5A00; font-weight:600">จองไว้</span><span style="font-size:21px; font-weight:700; color:#8A5A00; font-family:'IBM Plex Mono',monospace">−2</span></div>
+                        <div style="background:#FEF6F6; border:1.5px solid #F0C2C2; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#A31D1D; font-weight:700">คงเหลือใช้ได้</span><span style="font-size:21px; font-weight:700; color:#A31D1D; font-family:'IBM Plex Mono',monospace">0</span></div>
+                        <div style="background:#FDEBE3; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#A8380A; font-weight:600">กำลังสั่ง ({{poNo}})</span><span style="font-size:21px; font-weight:700; color:#A8380A; font-family:'IBM Plex Mono',monospace">4</span></div>
+                        <div style="background:#F7F9FC; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#64748B; font-weight:600">ชำรุด/กักกัน</span><span style="font-size:21px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">0</span></div>
+                      </div>
+                      <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:11px; padding:13px; font-size:12px; color:#475569; font-family:'IBM Plex Mono',monospace; line-height:1.7">คงเหลือใช้ได้ = 2 − 2 = 0 ชุด · ของกำลังสั่ง 4 ชุดไม่นับเป็นของที่ใช้ได้จนกว่าจะรับเข้าคลัง</div>
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                        <div style="padding:12px 15px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px"><span style="font-size:13.5px; font-weight:700; color:#0F2440">ใบสั่งซื้อที่เกี่ยวข้อง</span><span style="margin-left:auto; font-size:11.5px; color:#0B6D5E; font-weight:700">มีอยู่แล้ว ไม่ต้องสั่งใหม่</span></div>
+                        <div style="display:grid; grid-template-columns:110px 1fr 130px 130px 140px 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                          <div style="padding:10px 14px">เลขที่ PO</div><div style="padding:10px 12px">ผู้จำหน่าย</div><div style="padding:10px 12px">สั่ง / รับแล้ว</div><div style="padding:10px 12px">กำหนดรับ</div><div style="padding:10px 12px">สถานะ</div><div style="padding:10px 14px">หมายเหตุ</div>
+                        </div>
+                        <div style="display:grid; grid-template-columns:110px 1fr 130px 130px 140px 1fr; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; background:#FFFDF8">
+                          <div style="padding:11px 14px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{poNo}}</div>
+                          <div style="padding:11px 12px; color:#0F2440; font-weight:600">ออโต้พาร์ท เซ็นเตอร์</div>
+                          <div style="padding:11px 12px; font-family:'IBM Plex Mono',monospace; color:#475569">4 / 0 ชุด</div>
+                          <div style="padding:11px 12px; font-family:'IBM Plex Mono',monospace; color:#0F2440; font-weight:600">29 ก.ค. บ่าย</div>
+                          <div style="padding:11px 12px"><span style="background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">ส่งซัพพลายเออร์แล้ว</span></div>
+                          <div style="padding:11px 14px; font-size:11.5px; color:#475569; line-height:1.55">ผู้จำหน่ายยืนยันส่งรอบบ่าย · จองไว้ให้ {{jbNo}} 1 ชุด</div>
+                        </div>
+                        <div style="padding:12px 15px; background:#F7F9FC; font-size:11.5px; color:#64748B">เมื่อรับของเข้าคลัง ระบบจะปลดล็อกรายการเบรกของ {{jbNo}} และแจ้งช่างบนมือถืออัตโนมัติ</div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w12}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="display:flex; align-items:flex-end; justify-content:space-between">
+                        <div style="display:flex; flex-direction:column; gap:4px">
+                          <div style="display:flex; align-items:center; gap:9px"><span style="font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span><span style="background:#D8F3EE; color:#0A6355; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">พร้อมส่งมอบ · QC ผ่าน</span></div>
+                          <span style="font-size:20px; font-weight:700; color:#0F2440">รับชำระเงินและออกใบเสร็จ</span>
+                          <span style="font-size:12.5px; color:#64748B">กระทบยอดแล้ว: ทำจริงตรงกับที่ลูกค้าอนุมัติทุกรายการ · ไม่มีส่วนต่าง</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:2px"><span style="font-size:11.5px; color:#64748B">ยอดที่ต้องชำระ</span><span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{due}}</span></div>
+                      </div>
+                      <div style="display:grid; grid-template-columns:1fr 320px; gap:13px; align-items:start">
+                        <div style="display:flex; flex-direction:column; gap:13px">
+                          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                            <div style="padding:12px 15px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px"><span style="font-size:13.5px; font-weight:700; color:#0F2440">รายการที่เรียกเก็บ</span><span style="background:#E3F5F1; color:#0B6D5E; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px">เฉพาะรายการที่ลูกค้าอนุมัติ</span></div>
+                            <sc-for list="{{billRows}}" as="b" hint-placeholder-count="4">
+                              <div style="display:grid; grid-template-columns:1fr 90px 110px 120px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                                <div style="padding:10px 15px; color:#0F2440; font-weight:600">{{b.name}}</div>
+                                <div style="padding:10px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.qty}}</div>
+                                <div style="padding:10px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.price}}</div>
+                                <div style="padding:10px 15px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{b.total}}</div>
+                              </div>
+                            </sc-for>
+                          </div>
+                          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:12px">
+                            <span style="font-size:13.5px; font-weight:700; color:#0F2440">แบ่งจ่าย 2 ช่องทาง</span>
+                            <sc-for list="{{payments}}" as="p" hint-placeholder-count="2">
+                              <div style="border:1px solid {{p.border}}; background:{{p.bg}}; border-radius:10px; padding:12px; display:flex; align-items:center; gap:12px">
+                                <div style="width:32px; height:32px; border-radius:9px; background:#fff; display:flex; align-items:center; justify-content:center; flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{p.fg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.path}}"/></svg></div>
+                                <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12.5px; font-weight:700; color:#0F2440">{{p.label}}</span><span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{p.meta}}</span></div>
+                                <span style="background:{{p.stBg}}; color:{{p.stFg}}; font-size:10.5px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none">{{p.st}}</span>
+                                <span style="font-size:15px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; flex:none; width:110px; text-align:right">{{p.amount}}</span>
+                              </div>
+                            </sc-for>
+                            <sc-if value="{{qrWaiting}}" hint-placeholder-val="{{true}}">
+                              <div style="border:1px solid #BCD3F5; background:#E6EFFC; border-radius:10px; padding:13px; display:flex; gap:14px; align-items:center">
+                                <div style="width:96px; height:96px; background:#fff; border-radius:9px; display:flex; align-items:center; justify-content:center; flex:none"><svg viewBox="0 0 21 21" style="width:82px; height:82px" shape-rendering="crispEdges"><rect width="21" height="21" fill="#fff"/><path d="{{qrPath}}" fill="#0F2440"/></svg></div>
+                                <div style="display:flex; flex-direction:column; gap:6px; flex:1">
+                                  <span style="font-size:13px; font-weight:700; color:#1552B3">รอลูกค้าสแกน PromptPay · {{qrAmt}} บาท</span>
+                                  <span style="font-size:11.5px; color:#1552B3; line-height:1.6">ระบบจะยืนยันอัตโนมัติเมื่อธนาคารแจ้งรับเงิน · หมดอายุใน 04:41</span>
+                                  <div style="height:6px; border-radius:3px; background:#fff; overflow:hidden"><div style="height:100%; width:88%; background:#1B6BE3; border-radius:3px"></div></div>
+                                </div>
+                              </div>
+                            </sc-if>
+                          </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:13px">
+                          <div style="background:#0F2440; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:9px">
+                            <span style="font-size:11.5px; color:#8FA6C4; font-weight:600">สรุปยอด</span>
+                            <div style="display:flex; flex-direction:column; gap:7px; font-size:12px">
+                              <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าอะไหล่</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">3,610.00</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าแรง</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">1,650.00</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">368.20</span></div>
+                              <div style="display:flex; justify-content:space-between; border-top:1px solid #1B3557; padding-top:7px"><span style="color:#A9BDD6">รวมทั้งใบ</span><span style="color:#fff; font-weight:700; font-family:'IBM Plex Mono',monospace">{{total}}</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">มัดจำที่รับแล้ว</span><span style="color:#7DD3C4; font-family:'IBM Plex Mono',monospace">−1,000.00</span></div>
+                            </div>
+                            <div style="border-top:1px solid #1B3557; padding-top:10px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:12.5px; color:#A9BDD6; font-weight:600">คงเหลือ</span><span style="font-size:20px; font-weight:700; color:{{remainFg}}; font-family:'IBM Plex Mono',monospace">{{remaining}}</span></div>
+                          </div>
+                          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:9px">
+                            <span style="font-size:13px; font-weight:700; color:#0F2440">เอกสารที่จะออก</span>
+                            <div style="display:flex; flex-direction:column; gap:6px; font-size:11.5px">
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ประเภท</span><span style="color:#0F2440; font-weight:700">ใบเสร็จรับเงิน</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">เลขที่</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{rcNo}}</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ผู้รับเอกสาร</span><span style="color:#0F2440; font-weight:600">คุณธนา ศรีสุข</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ผู้รับเงิน</span><span style="color:#0F2440; font-weight:600">อรทัย การเงิน</span></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{w13}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; flex-direction:column; gap:13px">
+                      <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:18px; display:flex; align-items:center; gap:18px">
+                        <div style="width:50px; height:50px; border-radius:50%; background:#0E9F8C; display:flex; align-items:center; justify-content:center; flex:none"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                        <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                          <span style="font-size:19px; font-weight:700; color:#0F2440">{{jbNo}} · เสร็จสมบูรณ์</span>
+                          <span style="font-size:12.5px; color:#64748B">3ขก 4821 · คุณธนา ศรีสุข · ส่งมอบ 15:44 น. · รอบเวลางาน 6 ชม. 32 นาที (รออะไหล่ 2 ชม. 45 นาที)</span>
+                        </div>
+                        <div style="display:flex; gap:20px">
+                          <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:11px; color:#64748B">ยอดชำระ</span><span style="font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{total}}</span></div>
+                          <div style="display:flex; flex-direction:column; align-items:flex-end"><span style="font-size:11px; color:#64748B">ใบเสร็จ</span><span style="font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{rcNo}}</span></div>
+                        </div>
+                      </div>
+                      <div style="display:grid; grid-template-columns:1.35fr 1fr; gap:13px; align-items:start">
+                        <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px">
+                          <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13.5px; font-weight:700; color:#0F2440">ไทม์ไลน์งานบริการ (มือถือ + เว็บ)</span><span style="margin-left:auto; font-size:11px; color:#64748B">{{timelineN}} เหตุการณ์</span></div>
+                          <sc-for list="{{timeline}}" as="e" hint-placeholder-count="9">
+                            <div style="display:flex; gap:11px">
+                              <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:9px; height:9px; border-radius:50%; background:{{e.dot}}; margin-top:5px"></div><div style="flex:1; width:2px; background:#E3E8EF"></div></div>
+                              <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:11px; flex:1">
+                                <span style="font-size:12.5px; font-weight:600; color:#0F2440; line-height:1.5">{{e.text}}</span>
+                                <span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{e.who}} · {{e.time}} · {{e.src}}</span>
+                              </div>
+                            </div>
+                          </sc-for>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:13px">
+                          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:10px">
+                            <span style="font-size:13px; font-weight:700; color:#0F2440">สรุปผลของงานนี้</span>
+                            <div style="display:flex; flex-direction:column; gap:7px; font-size:11.5px">
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">รายการที่อนุมัติ / เสนอ</span><span style="color:#0F2440; font-weight:700">4 จาก 5</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ส่งมอบตรงเวลา</span><span style="color:#0B6D5E; font-weight:700">ตรงเวลา (นัด 16:00)</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">QC</span><span style="color:#0B6D5E; font-weight:700">ผ่านรอบแรก</span></div>
+                              <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ข้อเสนอค้างติดตาม</span><span style="color:#8A5A00; font-weight:700">แบตเตอรี่ · ใน 3 เดือน</span></div>
+                            </div>
+                          </div>
+                          <div style="background:#F7FCFA; border:1px solid #B6E3DA; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:7px">
+                            <span style="font-size:12.5px; font-weight:700; color:#0B6D5E">ข้อมูลที่ตรงกันทั้งสองแอป</span>
+                            <span style="font-size:11.5px; color:#0B6D5E; line-height:1.75">เลขงาน {{jbNo}} · ใบเสนอราคา {{qtNo}} · ยอด {{total}} บาท · ใบเสร็จ {{rcNo}} · ผ้าเบรกจาก {{poNo}} · ผู้เกี่ยวข้อง 5 คน · เวลาทุกเหตุการณ์ตรงกัน</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{wWait}}" hint-placeholder-val="{{false}}">
+                    <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:60px 0">
+                      <div style="width:520px; background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:34px; display:flex; flex-direction:column; align-items:center; gap:13px; text-align:center">
+                        <div style="width:50px; height:50px; border-radius:14px; background:#E6EFFC; display:flex; align-items:center; justify-content:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 19h2"/></svg></div>
+                        <span style="font-size:18px; font-weight:700; color:#0F2440">ขั้นนี้ทำงานอยู่บนมือถือ</span>
+                        <span style="font-size:13px; color:#64748B; line-height:1.8">ขั้นที่ {{stepN}} ({{stepTitle}}) เป็นงานของ{{stepRole}}ที่ข้างรถ<br>เมื่อบันทึกบนมือถือแล้ว หน้านี้จะได้รับอัปเดตแบบเรียลไทม์ทันที</span>
+                        <button onClick="{{showMobile}}" style="height:46px; padding:0 20px; background:#1B6BE3; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">สลับไปดูบนมือถือ</button>
+                      </div>
+                    </div>
+                  </sc-if>
+                </div>
+
+                <sc-if value="{{wHasCta}}" hint-placeholder-val="{{false}}">
+                  <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:12px 16px; display:flex; align-items:center; gap:14px">
+                    <span style="font-size:11.5px; color:#64748B; flex:1">{{wCtaNote}}</span>
+                    <button onClick="{{wCta2}}" style="height:44px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{wCta2Label}}</button>
+                    <button onClick="{{wCta}}" style="height:44px; padding:0 20px; background:{{wCtaBg}}; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">{{wCtaLabel}}</button>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{wToast}}" hint-placeholder-val="{{false}}">
+                  <div style="position:absolute; right:20px; bottom:20px; background:#1E293B; border-radius:12px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; box-shadow:0 18px 40px rgba(15,36,64,.3); animation:gpIn .16s ease-out; max-width:420px; z-index:40">
+                    <div style="width:28px; height:28px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13-6M20 12a8 8 0 0 1-13 6"/><path d="M17 3v3.5h-3.5M7 21v-3.5h3.5"/></svg></div>
+                    <div style="display:flex; flex-direction:column; gap:3px; flex:1"><span style="font-size:13px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span><span style="font-size:12px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span></div>
+                    <span onClick="{{clearToast}}" style="font-size:11.5px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1740,&quot;height&quot;:1080}}">
+const JB = 'JB-7042', QT = 'QT-7042-01', PO = 'PO-2455', RC = 'RC-24-0812';
+
+const STEPS = [
+  { n:1, dev:'มือถือ', role:'พนักงานหน้าร้าน', time:'09:12', title:'รับรถเข้าอู่ · เปิดงานใหม่',
+    guide:'พนักงานหน้าร้านรับรถของคุณธนาที่หน้าอู่ ถ่ายรูปรอบคัน บันทึกเลขไมล์และอาการที่แจ้ง',
+    click:'กด “ยืนยันเปิดงานซ่อม” ที่ปุ่มล่างจอมือถือ', cta:'ยืนยันเปิดงานซ่อม', st:'waitinspect' },
+  { n:2, dev:'มือถือ', role:'ช่างเทคนิค', time:'09:58', title:'ช่างส่งผลตรวจเช็ค',
+    guide:'ช่างสมพงษ์ตรวจ 31 รายการ พบผ้าเบรกหน้าสึกเหลือ 2 มม. และแบตเตอรี่อ่อน 11.9 โวลต์',
+    click:'กด “ส่งผลตรวจให้ธุรการ” ที่ปุ่มล่างจอมือถือ', cta:'ส่งผลตรวจให้ธุรการ', st:'waitquote' },
+  { n:3, dev:'เว็บ', role:'ผู้จัดการสาขา', time:'10:00', title:'เว็บได้รับงานอัปเดต',
+    guide:'แดชบอร์ดบนเว็บได้รับผลตรวจแบบเรียลไทม์ — แถวของงานนี้ไฮไลต์ ป้ายบนเมนูเพิ่มขึ้น และมีแจ้งเตือนขึ้นมุมจอ',
+    click:'กด “เปิดสร้างใบเสนอราคา” ที่แถบล่างของเว็บ', cta:'เปิดสร้างใบเสนอราคา', st:'waitquote' },
+  { n:4, dev:'เว็บ', role:'ธุรการ', time:'10:22', title:'สร้างและส่งใบเสนอราคา',
+    guide:'ธุรการดึงผลตรวจมาเป็นรายการ 5 บรรทัด (เช็คระยะ 3 + เบรก 1 + แบตเตอรี่ 1) ระบบเตือนว่าผ้าเบรกในสาขาเหลือใช้ได้ 0 ชุด',
+    click:'กด “ส่งให้ลูกค้าอนุมัติ” ที่แถบล่างของเว็บ', cta:'ส่งให้ลูกค้าอนุมัติ', st:'waitapprove' },
+  { n:5, dev:'มือถือ', role:'ลูกค้า (บนเครื่องพนักงาน)', time:'10:41', title:'ลูกค้าเลือกและเซ็นอนุมัติ',
+    guide:'หน้าร้านยื่นเครื่องให้คุณธนา — อนุมัติเช็คระยะและผ้าเบรก แต่ไม่อนุมัติแบตเตอรี่ แล้วเซ็นยืนยัน',
+    click:'ไม่อนุมัติแบตเตอรี่ → แตะกรอบเซ็นชื่อ → กด “บันทึกการอนุมัติ”', cta:'บันทึกการอนุมัติ', st:'approved' },
+  { n:6, dev:'เว็บ', role:'ธุรการ', time:'10:43', title:'เว็บเห็นผลอนุมัติรายบรรทัด',
+    guide:'เว็บแสดงว่าอนุมัติ 4 รายการ ไม่อนุมัติ 1 รายการ พร้อมลายเซ็น เวลา และพนักงานผู้รับรอง',
+    click:'กด “ส่งงานให้ช่างเริ่มซ่อม” ที่แถบล่างของเว็บ', cta:'ส่งงานให้ช่างเริ่มซ่อม', st:'approved' },
+  { n:7, dev:'มือถือ', role:'ช่างเทคนิค', time:'10:55', title:'ช่างเริ่มงานซ่อม',
+    guide:'ช่างเริ่มจับเวลาและทำเช็คระยะได้ทันที แต่ผ้าเบรกในสาขาเหลือใช้ได้ 0 ชุด จึงต้องแจ้งรออะไหล่เฉพาะรายการนั้น',
+    click:'กด “แจ้งรออะไหล่ผ้าเบรก” ที่ปุ่มล่างจอมือถือ', cta:'แจ้งรออะไหล่ผ้าเบรก', st:'inprogress' },
+  { n:8, dev:'เว็บ', role:'ธุรการ', time:'11:20', title:'เว็บเห็นเหตุการณ์รออะไหล่',
+    guide:'เหตุการณ์รออะไหล่ขึ้นบนเว็บทันที · ล็อกเฉพาะรายการเบรก งานเช็คระยะยังเดินต่อ และงานที่ทำเสร็จไม่ถูกล้าง',
+    click:'กด “ตรวจสต็อกและใบสั่งซื้อ” ที่แถบล่างของเว็บ', cta:'ตรวจสต็อกและใบสั่งซื้อ', st:'waitparts' },
+  { n:9, dev:'เว็บ', role:'ธุรการจัดซื้อ', time:'11:24', title:'ดูสถานะสต็อกและใบสั่งซื้อ',
+    guide:'คงเหลือใช้ได้ = 2 − 2 = 0 ชุด · มีของกำลังสั่ง 4 ชุดใน ' + PO + ' ถึงบ่ายนี้ จึงไม่ต้องออกใบสั่งซื้อใหม่และไม่ต้องเลื่อนนัด',
+    click:'กด “ยืนยันรับของและปลดล็อกงาน” ที่แถบล่างของเว็บ', cta:'ยืนยันรับของและปลดล็อกงาน', st:'waitparts' },
+  { n:10, dev:'มือถือ', role:'ช่างเทคนิค', time:'14:05', title:'ช่างทำงานต่อหลังของถึง',
+    guide:'ช่างได้รับแจ้งว่าอะไหล่ถึงแล้ว เบิก 1 ชุดและทำรายการเบรกต่อ พร้อมถ่ายรูปก่อน-หลังทุกรายการ',
+    click:'กด “ปิดงานซ่อมและส่ง QC” ที่ปุ่มล่างจอมือถือ', cta:'ปิดงานซ่อมและส่ง QC', st:'inprogress' },
+  { n:11, dev:'มือถือ', role:'หัวหน้ากะ', time:'15:12', title:'QC ผ่านและพร้อมส่งมอบ',
+    guide:'หัวหน้ากะตรวจ QC 6 หัวข้อและทดลองขับ 3.4 กม. — เสียงเบรกหายแล้ว ผ่านทุกข้อ',
+    click:'กด “สรุป QC ผ่าน · พร้อมส่งมอบ” ที่ปุ่มล่างจอมือถือ', cta:'สรุป QC ผ่าน · พร้อมส่งมอบ', st:'qc' },
+  { n:12, dev:'เว็บ', role:'แคชเชียร์', time:'15:40', title:'POS รับชำระแบ่งจ่าย',
+    guide:'แคชเชียร์กระทบยอดแล้วไม่พบส่วนต่าง หักมัดจำ 1,000 บาท ที่รับไว้ตอนรับรถ และรับส่วนที่เหลือด้วย PromptPay',
+    click:'กด “ยืนยันรับเงินและออกใบเสร็จ” ที่แถบล่างของเว็บ', cta:'ยืนยันรับเงินและออกใบเสร็จ', st:'ready' },
+  { n:13, dev:'ทั้งสอง', role:'ทั้งสองแอป', time:'15:44', title:'ทั้งสองแอปแสดงงานเสร็จสมบูรณ์',
+    guide:'ส่งมอบรถแล้ว งานปิดเป็น “เสร็จสมบูรณ์” ทั้งบนมือถือและเว็บ พร้อมไทม์ไลน์ครบทุกเหตุการณ์จากทั้งสองเครื่อง',
+    click:'สลับดูได้ทั้งสองเครื่อง — ตัวเลขและเวลาต้องตรงกันทุกจอ', cta:'', st:'done' }
+];
+
+const J_ST = {
+  waitinspect:{ label:'รอตรวจเช็ค', bg:'#EEF1F5', fg:'#475569' },
+  waitquote:{ label:'รอเสนอราคา', bg:'#E8EDF4', fg:'#1B3557' },
+  waitapprove:{ label:'รออนุมัติ', bg:'#FDF3E2', fg:'#8A5A00' },
+  approved:{ label:'อนุมัติแล้ว', bg:'#E3F5F1', fg:'#0B6D5E' },
+  inprogress:{ label:'กำลังซ่อม', bg:'#E6EFFC', fg:'#1552B3' },
+  waitparts:{ label:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A' },
+  qc:{ label:'QC ตรวจสอบ', bg:'#E4E9F0', fg:'#0F2440' },
+  ready:{ label:'พร้อมส่งมอบ', bg:'#D8F3EE', fg:'#0A6355' },
+  done:{ label:'เสร็จสมบูรณ์', bg:'#0E9F8C', fg:'#FFFFFF' }
+};
+
+const WNAV = [
+  { key:'dash', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', path:'M3 5h18v15H3zM3 10h18M8 15h8', badge:1 },
+  { key:'quote', path:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6' },
+  { key:'pos', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z' },
+  { key:'stock', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  { key:'report', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+const QUOTE = [
+  { code:'L-PM40-01', name:'ค่าแรงเช็คระยะ 40,000 กม.', qty:'1 งาน', price:900, total:900, src:'ลูกค้าขอ' },
+  { code:'P-OIL-2210', name:'น้ำมันเครื่องสังเคราะห์ 0W-20 (4 ลิตร)', qty:'1 แกลลอน', price:1250, total:1250, src:'ลูกค้าขอ' },
+  { code:'P-FLT-0620', name:'กรองน้ำมันเครื่อง + กรองแอร์', qty:'2 ชิ้น', price:335, total:670, src:'ลูกค้าขอ' },
+  { code:'P-BRK-0517', name:'ผ้าเบรกหน้า + ค่าแรง 1.5 ชม.', qty:'1 ชุด', price:2440, total:2440, src:'ช่างแนะนำ' },
+  { code:'P-BAT-0912', name:'เปลี่ยนแบตเตอรี่ + ค่าแรง', qty:'1 ลูก', price:3000, total:3000, src:'ช่างแนะนำ' }
+];
+
+const TIMELINE = [
+  { n:1, text:'รับรถเข้าอู่ · เลขไมล์ 40,120 กม. · รูปรอบคัน 5 รูป · ลูกค้าเซ็นใบรับรถ', who:'พิมพ์ชนก วัฒนกุล', time:'09:12', src:'มือถือ', dot:'#94A3B8' },
+  { n:2, text:'ส่งผลตรวจเช็ค 31 รายการ · ต้องซ่อม 1 · เฝ้าระวัง 1 · รูป 7 รูป', who:'สมพงษ์ ทองแท้', time:'09:58', src:'มือถือ', dot:'#1B3557' },
+  { n:4, text:'ออกใบเสนอราคา ' + QT + ' · 5 รายการ · 8,838.20 บาท', who:'ปวีณา เอกสาร', time:'10:22', src:'เว็บ', dot:'#1B3557' },
+  { n:5, text:'ลูกค้าอนุมัติ 4 รายการ ไม่อนุมัติแบตเตอรี่ · เซ็นยืนยัน 5,628.20 บาท', who:'คุณธนา ศรีสุข', time:'10:41', src:'มือถือ', dot:'#0E9F8C' },
+  { n:7, text:'เริ่มงานซ่อม · จับเวลาอัตโนมัติ', who:'สมพงษ์ ทองแท้', time:'10:55', src:'มือถือ', dot:'#1B6BE3' },
+  { n:8, text:'แจ้งรออะไหล่: ผ้าเบรกหน้า 1 ชุด · งานอื่นทำต่อได้', who:'สมพงษ์ ทองแท้', time:'11:20', src:'มือถือ', dot:'#C2410C' },
+  { n:9, text:'ตรวจสอบ ' + PO + ' · ของ 4 ชุดถึงบ่ายนี้ · ไม่ต้องเลื่อนนัดส่งมอบ', who:'ธนวัฒน์ อิ่มเอม', time:'11:24', src:'เว็บ', dot:'#1B3557' },
+  { n:10, text:'รับของเข้าคลัง GRN-0771 · เบิกผ้าเบรก 1 ชุดให้งานนี้ · ทำงานต่อ', who:'ประยุทธ์ คลังสินค้า', time:'13:52', src:'เว็บ', dot:'#0E9F8C' },
+  { n:10, text:'ปิดงานซ่อมครบ 4 รายการ · รูปก่อน/หลัง 8 รูป', who:'สมพงษ์ ทองแท้', time:'14:58', src:'มือถือ', dot:'#1B6BE3' },
+  { n:11, text:'QC ผ่านรอบแรก 6/6 · ทดลองขับ 3.4 กม. · เปลี่ยนเป็นพร้อมส่งมอบ', who:'วีระชัย หัวหน้ากะ', time:'15:12', src:'มือถือ', dot:'#0E9F8C' },
+  { n:12, text:'รับชำระแบ่งจ่าย: มัดจำ 1,000.00 + PromptPay 4,628.20 · ออกใบเสร็จ ' + RC, who:'อรทัย การเงิน', time:'15:40', src:'เว็บ', dot:'#0E9F8C' },
+  { n:13, text:'ส่งมอบรถให้ลูกค้า · ปิดงานเป็นเสร็จสมบูรณ์', who:'พิมพ์ชนก วัฒนกุล', time:'15:44', src:'มือถือ', dot:'#0E9F8C' }
+];
+
+const money = (n) => n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+
+function qrPath(seed) {
+  const N = 21;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+  const rnd = () => { h = (h * 1103515245 + 12345) & 0x7fffffff; return h / 0x7fffffff; };
+  const finder = (x, y, r, c) => (r >= y && r < y + 7 && c >= x && c < x + 7) &&
+    !((r === y + 1 || r === y + 5) && c > x && c < x + 6) && !((c === x + 1 || c === x + 5) && r > y && r < y + 6);
+  let d = '';
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const inF = (r < 8 && c < 8) || (r < 8 && c > N - 9) || (r > N - 9 && c < 8);
+    let on;
+    if (inF) on = finder(0, 0, r, c) || finder(N - 7, 0, r, c) || finder(0, N - 7, r, c);
+    else if (r === 6 || c === 6) on = (r + c) % 2 === 0;
+    else on = rnd() > 0.47;
+    if (on) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+  }
+  return d;
+}
+
+class Component extends DCLogic {
+  state = { view:'start', step:1, device:'mobile', battery:'', signed:false, qrPaid:false, toast:null };
+
+  componentWillUnmount() { clearTimeout(this.tt); }
+
+  say = (title, body) => {
+    this.setState({ toast:{ title, body } });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 7000);
+  };
+
+  goStep = (n) => {
+    const st = STEPS[n - 1];
+    const dev = st.dev === 'เว็บ' ? 'web' : (st.dev === 'มือถือ' ? 'mobile' : this.state.device);
+    this.setState({ view:'demo', step:n, device:dev });
+    if (n === 3) this.say('งานใหม่จากมือถือ · ' + JB, 'ช่างส่งผลตรวจเช็คของ 3ขก 4821 เข้ามาแล้ว — สถานะเปลี่ยนเป็น “รอเสนอราคา”');
+    else if (n === 6) this.say('ลูกค้าอนุมัติแล้ว · ' + JB, 'อนุมัติ 4 รายการ ไม่อนุมัติแบตเตอรี่ · ยอด 5,628.20 บาท พร้อมลายเซ็น');
+    else if (n === 8) this.say('ช่างแจ้งรออะไหล่ · ' + JB, 'ผ้าเบรกหน้า 1 ชุด · คงเหลือใช้ได้ 0 ชุด — ตรวจ ' + PO);
+    else if (n === 10) this.say('อะไหล่ถึงสาขาแล้ว', 'ผ้าเบรกหน้า 4 ชุดจาก ' + PO + ' รับเข้าคลัง · ปลดล็อกรายการเบรกของ ' + JB);
+    else if (n === 12) this.say('งานพร้อมส่งมอบ · ' + JB, 'QC ผ่านรอบแรก · เรียกเก็บได้ 5,628.20 บาท (หักมัดจำแล้วเหลือ 4,628.20)');
+    else if (n === 13) this.say('ปิดงานเสร็จสมบูรณ์ · ' + JB, 'ทั้งสองแอปแสดงสถานะเดียวกัน พร้อมไทม์ไลน์ครบทุกเหตุการณ์');
+    else this.setState({ toast:null });
+  };
+
+  renderVals() {
+    const s = this.state;
+    const step = STEPS[s.step - 1];
+    const nextStep = STEPS[s.step];
+    const stKey = step.st;
+    const jst = J_ST[stKey];
+    const isMobile = s.device === 'mobile';
+
+    const approvedSub = 900 + 1250 + 670 + 2440;
+    const vat = Math.round(approvedSub * 0.07 * 100) / 100;
+    const total = approvedSub + vat;
+    const deposit = 1000;
+    const qrAmt = total - deposit;
+
+    const quoteSub = QUOTE.reduce((n, q) => n + q.total, 0);
+    const quoteVat = Math.round(quoteSub * 0.07 * 100) / 100;
+
+    const batteryRejected = s.battery === 'no';
+    const okN = 4;
+
+    const tasks = [
+      { name:'เช็คระยะ 40,000 กม. (เปลี่ยนถ่ายน้ำมันเครื่อง)', part:'น้ำมันเครื่อง 0W-20 · เบิกแล้ว',
+        st: s.step >= 10 ? 'done' : (s.step >= 7 ? 'doing' : 'todo') },
+      { name:'เปลี่ยนกรองน้ำมันเครื่องและกรองแอร์', part:'กรอง 2 ชิ้น · เบิกแล้ว',
+        st: s.step >= 10 ? 'done' : (s.step >= 7 ? 'doing' : 'todo') },
+      { name:'เปลี่ยนผ้าเบรกหน้า', part: s.step >= 10 ? 'ผ้าเบรกหน้า 1 ชุด · เบิกจาก GRN-0771' : 'ผ้าเบรกหน้า 1 ชุด · คงเหลือใช้ได้ 0 ชุด',
+        st: s.step >= 10 ? 'done' : (s.step >= 8 ? 'blocked' : 'todo') },
+      { name:'เปลี่ยนแบตเตอรี่', part:'ลูกค้าไม่อนุมัติในใบเสนอราคา', st:'rejected' }
+    ].map(t => {
+      const meta = {
+        todo:{ label:'ยังไม่เริ่ม', bg:'#EEF1F5', fg:'#475569', bar:'1px solid #E3E8EF', border:'1px solid #E3E8EF' },
+        doing:{ label:'กำลังทำ', bg:'#E6EFFC', fg:'#1552B3', bar:'5px solid #1B6BE3', border:'1px solid #E3E8EF' },
+        done:{ label:'เสร็จแล้ว', bg:'#E3F5F1', fg:'#0B6D5E', bar:'5px solid #0E9F8C', border:'1px solid #E3E8EF' },
+        blocked:{ label:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A', bar:'5px solid #C2410C', border:'1.5px solid #F5C9B3' },
+        rejected:{ label:'ไม่อนุมัติ', bg:'#EEF1F5', fg:'#94A3B8', bar:'1px solid #E3E8EF', border:'1px dashed #E3E8EF' }
+      }[t.st];
+      return {
+        name: t.name, part: t.part, stLabel: meta.label, stBg: meta.bg, stFg: meta.fg,
+        bar: meta.bar, border: meta.border,
+        blocked: t.st === 'blocked',
+        blockText:'รอผ้าเบรกจาก ' + PO + ' · ผู้จำหน่ายยืนยันส่งบ่ายนี้ · งานอื่นทำต่อได้ตามปกติ',
+        photos: t.st === 'done'
+      };
+    });
+
+    const apLines = [
+      { key:'pm', name:'เช็คระยะ 40,000 กม. (น้ำมันเครื่อง + กรอง 2 ชิ้น + ค่าแรง)', meta:'ตามคู่มือศูนย์บริการ', amount: money(2820),
+        why:'ถึงระยะเปลี่ยนถ่ายตามคู่มือ ช่วยยืดอายุเครื่องยนต์และรักษาเงื่อนไขรับประกัน', fixed:'ok' },
+      { key:'brk', name:'เปลี่ยนผ้าเบรกหน้า', meta:'พร้อมค่าแรง 1.5 ชม. · รับประกัน 6 เดือน', amount: money(2440),
+        why:'ผ้าเบรกเหลือ 2 มม. เป็นสาเหตุของเสียงดังที่คุณแจ้ง ถ้าใช้ต่อจะกินจานเบรกและเสียเพิ่ม', fixed:'ok' },
+      { key:'bat', name:'เปลี่ยนแบตเตอรี่', meta:'แบตเตอรี่ + ค่าแรง · รับประกัน 1 ปี', amount: money(3000),
+        why:'วัดได้ 11.9 โวลต์ ใช้งาน 2 ปี 8 เดือน ยังสตาร์ทได้แต่มีโอกาสดับกลางทางในหน้าฝน', fixed:'' }
+    ].map(l => {
+      const dec = l.fixed || s.battery;
+      const isOk = dec === 'ok', isNo = dec === 'no';
+      return {
+        name: l.name, meta: l.meta, amount: l.amount, why: l.why,
+        border: isOk ? '2px solid #0E9F8C' : (isNo ? '2px solid #E08A8A' : '1px solid #E3E8EF'),
+        okBg: isOk ? '#0E9F8C' : '#fff', okFg: isOk ? '#fff' : '#0B6D5E', okBorder: isOk ? '#0E9F8C' : '#B6E3DA',
+        noBg: isNo ? '#C02626' : '#fff', noFg: isNo ? '#fff' : '#A31D1D', noBorder: isNo ? '#C02626' : '#F0C2C2',
+        rejected: isNo, reason:'ขอปรึกษาที่บ้านก่อน · ยังใช้งานได้ตามปกติ',
+        ok: () => { if (l.fixed) return; this.setState({ battery:'ok' }); },
+        no: () => { if (l.fixed) return; this.setState({ battery:'no' }); }
+      };
+    });
+
+    const wRows = [
+      { no: JB, reg:'3ขก 4821', cust:'คุณธนา ศรีสุข · Corolla Cross', st: stKey, tech:'สมพงษ์ ทองแท้', promise:'วันนี้ 16:00', amount: s.step >= 4 ? money(total) : '—', isNew:true },
+      { no:'JB-7039', reg:'2กบ 1180', cust:'สุภาพร มณีรัตน์ · Honda HR-V', st:'inprogress', tech:'เอกชัย ช่างดี', promise:'วันนี้ 17:00', amount:'12,480.00', isNew:false },
+      { no:'JB-7036', reg:'5ขฉ 9902', cust:'วรพล ทรัพย์เจริญ · Mazda CX-3', st:'ready', tech:'สมพงษ์ ทองแท้', promise:'วันนี้ 15:30', amount:'6,740.00', isNew:false },
+      { no:'JB-7031', reg:'1กด 4408', cust:'บริษัท สยามขนส่ง จำกัด · Hilux', st:'waitparts', tech:'เอกชัย ช่างดี', promise:'พรุ่งนี้ 10:00', amount:'28,150.00', isNew:false }
+    ].map(r => {
+      const m = J_ST[r.st];
+      return {
+        no: r.no, reg: r.reg, cust: r.cust, tech: r.tech, promise: r.promise, amount: r.amount,
+        stLabel: m.label, stBg: m.bg, stFg: m.fg, isNew: r.isNew,
+        bg: r.isNew ? '#F4F8FE' : '#fff', anim: r.isNew ? 'gpFlash 2.6s ease-out' : 'none',
+        open: () => this.goStep(4)
+      };
+    });
+
+    const timeline = TIMELINE.filter(e => e.n <= s.step);
+
+    const mSteps = [1, 2, 5, 7, 10, 11];
+    const wSteps = [3, 4, 6, 8, 9, 12];
+    const mActive = mSteps.indexOf(s.step) > -1 || s.step === 13;
+    const wActive = wSteps.indexOf(s.step) > -1 || s.step === 13;
+
+    const mCtaEnabled = s.step !== 5 || (s.battery && s.signed);
+    const wUsers = { 3:{ n:'กัญญารัตน์ ดีสมบัติ', r:'ผู้จัดการสาขา', i:'กร', c:'แดชบอร์ด' }, 4:{ n:'ปวีณา เอกสาร', r:'ธุรการ', i:'ปณ', c:'ใบเสนอราคา' },
+      6:{ n:'ปวีณา เอกสาร', r:'ธุรการ', i:'ปณ', c:'ใบเสนอราคา' }, 8:{ n:'ปวีณา เอกสาร', r:'ธุรการ', i:'ปณ', c:'คิวงานซ่อม' },
+      9:{ n:'ธนวัฒน์ อิ่มเอม', r:'ธุรการจัดซื้อ', i:'ธว', c:'สต็อกและจัดซื้อ' }, 12:{ n:'อรทัย การเงิน', r:'แคชเชียร์', i:'อท', c:'การเงินและ POS' },
+      13:{ n:'กัญญารัตน์ ดีสมบัติ', r:'ผู้จัดการสาขา', i:'กร', c:'คิวงานซ่อม' } };
+    const wu = wUsers[s.step] || wUsers[3];
+
+    return {
+      isStart: s.view === 'start', inDemo: s.view === 'demo',
+      jbNo: JB, qtNo: QT, poNo: PO, rcNo: RC,
+      total: money(total), due: money(total), qrAmt: money(qrAmt),
+      quoteSub: money(quoteSub), quoteVat: money(quoteVat), quoteTotal: money(quoteSub + quoteVat),
+      remaining: s.qrPaid ? '0.00' : money(qrAmt), remainFg: s.qrPaid ? '#7DD3C4' : '#F0AE55',
+
+      openMobile: () => this.goStep(1), openWeb: () => this.goStep(3),
+      restart: () => { clearTimeout(this.tt); this.setState({ view:'start', step:1, device:'mobile', battery:'', signed:false, qrPaid:false, toast:null }); },
+      showMobile: () => this.setState({ device:'mobile' }), showWeb: () => this.setState({ device:'web' }),
+      isMobile, isWeb: !isMobile,
+      barW: isMobile ? '760px' : '1630px',
+      mBg: isMobile ? '#1B6BE3' : 'transparent', mFg: isMobile ? '#fff' : '#A9BDD6',
+      wBg: isMobile ? 'transparent' : '#1B6BE3', wFg: isMobile ? '#A9BDD6' : '#fff',
+
+      steps: STEPS.map(st => ({
+        n: st.n, dev: st.dev, title: st.title, time: st.time,
+        rowBg: st.n === s.step ? '#E6EFFC' : (st.n < s.step ? '#F7FCFA' : 'transparent'),
+        numBg: st.n === s.step ? '#1B6BE3' : (st.n < s.step ? '#0E9F8C' : '#EEF1F6'),
+        numFg: st.n <= s.step ? '#fff' : '#94A3B8',
+        devBg: st.dev === 'มือถือ' ? '#E6EFFC' : (st.dev === 'เว็บ' ? '#E4E9F0' : '#E3F5F1'),
+        devFg: st.dev === 'มือถือ' ? '#1552B3' : (st.dev === 'เว็บ' ? '#1B3557' : '#0B6D5E'),
+        go: () => this.goStep(st.n)
+      })),
+      stepN: s.step, stepTime: step.time, stepTitle: step.title, stepRole: step.role,
+      guideTitle: step.title, guideBody: step.guide, guideClick: step.click,
+      hasPrev: s.step > 1, hasNext: s.step < 13,
+      prev: () => this.goStep(s.step - 1), next: () => this.goStep(Math.min(13, s.step + 1)),
+      needsSwitch: !!nextStep && nextStep.dev !== 'ทั้งสอง' && ((nextStep.dev === 'เว็บ') === isMobile),
+      nextDevice: nextStep ? (nextStep.dev === 'เว็บ' ? 'เว็บ' : 'มือถือ') : '',
+      switchDevice: () => this.setState({ device: nextStep && nextStep.dev === 'เว็บ' ? 'web' : 'mobile' }),
+
+      jobStLabel: jst.label, jobStBg: jst.bg, jobStChipFg: jst.fg,
+      jobStFg: stKey === 'waitparts' ? '#A8380A' : (stKey === 'done' ? '#0B6D5E' : '#0F2440'),
+
+      mTitle: { 1:'รับรถเข้าอู่', 2:'ใบตรวจเช็คสภาพรถ', 5:'ให้ลูกค้าอนุมัติราคา', 7:'งานซ่อมของฉัน', 10:'งานซ่อมของฉัน', 11:'ตรวจ QC ก่อนส่งมอบ', 13:'สรุปงานที่ปิดแล้ว' }[s.step] || 'งาน ' + JB,
+      m1: s.step === 1, m2: s.step === 2, m5: s.step === 5, m7: s.step === 7, m10: s.step === 10, m11: s.step === 11, m13: s.step === 13 && isMobile,
+      mWait: !mActive,
+      mHasCta: mActive && s.step !== 13,
+      mCtaLabel: s.step === 5 && !mCtaEnabled ? (s.battery ? 'ให้ลูกค้าเซ็นก่อนบันทึก' : 'เลือกผลอนุมัติแบตเตอรี่ก่อน') : step.cta,
+      mCtaBg: mCtaEnabled ? '#1B6BE3' : '#9BB0CB',
+      mSaveLine: s.step === 5 ? 'อนุมัติ ' + (s.battery === 'ok' ? 5 : okN) + ' รายการ · ' + money(s.battery === 'ok' ? total + 3210 : total) + ' บาท' : 'บันทึกในเครื่องแล้ว · ซิงก์อัตโนมัติ ' + step.time,
+      mCta: () => {
+        if (s.step === 5) {
+          if (!s.battery) { this.say('ยังเลือกไม่ครบ', 'ให้ลูกค้าเลือกอนุมัติหรือไม่อนุมัติรายการแบตเตอรี่ก่อน'); return; }
+          if (!s.signed) { this.say('ยังไม่มีลายเซ็น', 'แตะกรอบลายเซ็นเพื่อให้คุณธนาเซ็นยืนยันก่อนบันทึก'); return; }
+        }
+        this.goStep(s.step + 1);
+      },
+      apLines, apOkN: s.battery === 'ok' ? 5 : okN,
+      signed: s.signed, notSigned: !s.signed, sign: () => this.setState({ signed:true }),
+      tasks,
+      qcItems: [
+        { label:'เบรกหน้าทำงานปกติ ไม่มีเสียงดัง' }, { label:'ระดับน้ำมันเครื่องและของเหลวครบตามค่ากำหนด' },
+        { label:'ไม่พบรอยรั่วซึมใต้ท้องรถ' }, { label:'แรงดันลมยางและน็อตล้อครบตามค่ากำหนด' },
+        { label:'ไม่มีไฟเตือนขึ้นบนหน้าปัด' }, { label:'ล้างรถและเก็บของในรถคืนครบตามใบรับรถ' }
+      ],
+      timeline, timelineN: timeline.length,
+
+      w3: s.step === 3, w4: s.step === 4, w6: s.step === 6, w8: s.step === 8, w9: s.step === 9, w12: s.step === 12, w13: s.step === 13 && !isMobile,
+      wWait: !wActive,
+      wCrumb: wu.c, wUser: wu.n, wRole: wu.r, wInitials: wu.i,
+      wNav: WNAV.map(n => Object.assign({ path:n.path, hasBadge: !!n.badge && s.step >= 3 && s.step <= 4, badge:n.badge },
+        (n.key === 'dash' && s.step === 3) || (n.key === 'quote' && (s.step === 4 || s.step === 6)) ||
+        (n.key === 'jobs' && s.step === 8) || (n.key === 'stock' && s.step === 9) ||
+        (n.key === 'pos' && s.step === 12) || (n.key === 'jobs' && s.step === 13)
+          ? { bg:'#1B6BE3', fg:'#fff' } : { bg:'transparent', fg:'#A9BDD6' })),
+      wTiles: [
+        { label:'รับรถวันนี้', n:'6', sub:'+1 จากงานใหม่', accent:'#1B6BE3', fg:'#1552B3', border:'#E3E8EF', anim:'gpFlash 2.6s ease-out' },
+        { label:'รอตรวจเช็ค', n:'1', sub:'รอ 0.5 ชม.', accent:'#94A3B8', fg:'#475569', border:'#E3E8EF', anim:'none' },
+        { label:'รอเสนอราคา', n:'1', sub:'งานใหม่ ' + JB, accent:'#1B3557', fg:'#1B3557', border:'#F0D9AC', anim:'gpFlash 2.6s ease-out' },
+        { label:'กำลังซ่อม', n:'3', sub:'ช่างว่าง 1 คน', accent:'#1B6BE3', fg:'#1552B3', border:'#E3E8EF', anim:'none' },
+        { label:'รออะไหล่', n:'1', sub:'PO ค้าง 2 ใบ', accent:'#C2410C', fg:'#A8380A', border:'#E3E8EF', anim:'none' },
+        { label:'พร้อมส่งมอบ', n:'1', sub:'รอเรียกเก็บเงิน', accent:'#0E9F8C', fg:'#0A6355', border:'#E3E8EF', anim:'none' }
+      ],
+      wRows,
+      quoteRows: QUOTE.map(q => ({
+        name: q.name, code: q.code, qty: q.qty, price: money(q.price), total: money(q.total), src: q.src,
+        srcBg: q.src === 'ลูกค้าขอ' ? '#FDF3E2' : '#E6EFFC', srcFg: q.src === 'ลูกค้าขอ' ? '#8A5A00' : '#1552B3'
+      })),
+      apResult: [
+        { name:'ค่าแรงเช็คระยะ 40,000 กม.', ap:'ok', amount: money(900), note:'ส่งให้ช่างเริ่มได้ทันที' },
+        { name:'น้ำมันเครื่อง 0W-20 (4 ลิตร)', ap:'ok', amount: money(1250), note:'มีของในสาขา · จองให้งานนี้แล้ว' },
+        { name:'กรองน้ำมันเครื่อง + กรองแอร์', ap:'ok', amount: money(670), note:'มีของในสาขา' },
+        { name:'ผ้าเบรกหน้า + ค่าแรง', ap:'ok', amount: money(2440), note:'คงเหลือใช้ได้ 0 ชุด · รอของจาก ' + PO },
+        { name:'เปลี่ยนแบตเตอรี่', ap:'no', amount: money(3000), note:'เหตุผล: ขอปรึกษาที่บ้านก่อน · บันทึกติดตามใน 3 เดือน' }
+      ].map(r => ({
+        name: r.name, amount: r.amount, note: r.note,
+        apLabel: r.ap === 'ok' ? 'อนุมัติ' : 'ไม่อนุมัติ',
+        apBg: r.ap === 'ok' ? '#E3F5F1' : '#FBE9E9', apFg: r.ap === 'ok' ? '#0B6D5E' : '#A31D1D',
+        amtFg: r.ap === 'ok' ? '#0F2440' : '#94A3B8', strike: r.ap === 'ok' ? 'none' : 'line-through',
+        bg: r.ap === 'ok' ? '#fff' : '#FFFDFD'
+      })),
+      billRows: [
+        { name:'ค่าแรงเช็คระยะ 40,000 กม.', qty:'1 งาน', price: money(900), total: money(900) },
+        { name:'น้ำมันเครื่อง 0W-20 (4 ลิตร)', qty:'1 แกลลอน', price: money(1250), total: money(1250) },
+        { name:'กรองน้ำมันเครื่อง + กรองแอร์', qty:'2 ชิ้น', price: money(335), total: money(670) },
+        { name:'ผ้าเบรกหน้า + ค่าแรง 1.5 ชม.', qty:'1 ชุด', price: money(2440), total: money(2440) }
+      ],
+      payments: [
+        { label:'มัดจำ (รับตอนรับรถ)', meta:'RC-24-0788 · เงินสด · 09:15', amount: money(deposit), st:'สำเร็จ', stBg:'#E3F5F1', stFg:'#0B6D5E', bg:'#F7FCFA', border:'#B6E3DA', fg:'#0B6D5E', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM7 14h4' },
+        { label:'PromptPay QR', meta:'PP-7042-01 · ' + (s.qrPaid ? 'ธนาคารยืนยัน 15:39' : 'รอลูกค้าสแกน'), amount: money(qrAmt),
+          st: s.qrPaid ? 'สำเร็จ' : 'รอยืนยัน', stBg: s.qrPaid ? '#E3F5F1' : '#FDF3E2', stFg: s.qrPaid ? '#0B6D5E' : '#8A5A00',
+          bg: s.qrPaid ? '#F7FCFA' : '#fff', border: s.qrPaid ? '#B6E3DA' : '#E3E8EF', fg: s.qrPaid ? '#0B6D5E' : '#1552B3',
+          path:'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8h3v3H8zM13 13h3v3h-3z' }
+      ],
+      qrWaiting: !s.qrPaid, qrPath: qrPath('PP7042' + Math.round(qrAmt * 100)),
+
+      wHasCta: wActive && s.step !== 13,
+      wCtaLabel: s.step === 12 && !s.qrPaid ? 'จำลอง: ธนาคารแจ้งรับเงินแล้ว' : step.cta,
+      wCtaBg:'#1B6BE3',
+      wCtaNote: {
+        3:'งานใหม่มาจากมือถือของช่าง · เลขงานและผลตรวจตรงกันทั้งสองแอป',
+        4:'ระบบเตือนเรื่องสต็อกผ้าเบรกก่อนส่งใบเสนอราคา',
+        6:'มีเพียงรายการที่ลูกค้าอนุมัติที่จะไหลเข้าสู่การซ่อมและการเรียกเก็บเงิน',
+        8:'สถานะทั้งใบเป็นรออะไหล่ แต่รายการอื่นยังทำต่อได้',
+        9:'ของกำลังสั่งไม่นับเป็นคงเหลือใช้ได้จนกว่าจะรับเข้าคลัง',
+        12: s.qrPaid ? 'ยอดคงเหลือเป็น 0 แล้ว · ออกใบเสร็จได้' : 'ปิดการขายไม่ได้จนกว่ายอดคงเหลือจะเป็น 0'
+      }[s.step] || '',
+      wCta2Label:'ดูบนมือถือ', wCta2: () => this.setState({ device:'mobile' }),
+      wCta: () => {
+        if (s.step === 12 && !s.qrPaid) { this.setState({ qrPaid:true }); this.say('ธนาคารยืนยันรับเงินแล้ว', 'PromptPay ' + money(qrAmt) + ' บาท · ยอดคงเหลือเป็น 0 · ออกใบเสร็จ ' + RC + ' ได้'); return; }
+        this.goStep(s.step + 1);
+      },
+
+      mToast: !!s.toast && isMobile, wToast: !!s.toast && !isMobile,
+      toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      clearToast: () => this.setState({ toast:null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

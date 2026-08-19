@@ -1,0 +1,16 @@
+export const tokens = {
+  navy900: '#0F2440',
+  navy700: '#1B3557',
+  blue600: '#1B6BE3',
+  blue50: '#E6EFFC',
+  teal500: '#0E9F8C',
+  amber500: '#E0930C',
+  red600: '#C02626',
+  orange600: '#C2410C',
+  page: '#EEF1F6',
+  card: '#FFFFFF',
+  border: '#E3E8EF',
+  text: '#0F2440',
+  muted: '#64748B',
+  faint: '#94A3B8',
+} as const

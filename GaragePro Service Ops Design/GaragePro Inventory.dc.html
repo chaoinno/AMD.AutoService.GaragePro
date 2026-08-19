@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  input { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:16px; padding:{{pagePad}}; align-items:{{pageAlign}}">
+
+  <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+    <div style="width:1440px; max-width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px; background:#0B1526; border-radius:0 0 12px 12px; padding:10px 16px">
+      <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · เว็บ NEXT.JS · ต้นแบบ ไม่ใช่ระบบจริง</span>
+      <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+    <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">WEB · INVENTORY</span>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{beManager}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mgrBg}}; color:{{mgrFg}}">ผู้จัดการ (เห็นต้นทุน)</span>
+      <span onClick="{{beKeeper}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{kpBg}}; color:{{kpFg}}">เจ้าหน้าที่คลัง</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <span onClick="{{goDash}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">แดชบอร์ดคลัง</span>
+      <span onClick="{{goCatalog}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">แคตตาล็อกอะไหล่</span>
+      <span onClick="{{goLow}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">รายการต่ำกว่าจุดสั่งซื้อ</span>
+      <span onClick="{{demoNoHistory}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ไม่มีประวัติเคลื่อนไหว</span>
+      <span onClick="{{demoDup}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">สินค้าซ้ำ</span>
+      <span onClick="{{demoBarcode}}" style="font-size:12px; font-weight:600; color:#A31D1D; background:#FEF6F6; border:1px solid #F0C2C2; padding:7px 11px; border-radius:8px; cursor:pointer">สแกนบาร์โค้ดไม่พบ</span>
+      <span onClick="{{demoStale}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">ยอดไม่เป็นปัจจุบัน</span>
+      <span onClick="{{resetAll}}" style="font-size:12px; font-weight:600; color:#C02626; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">รีเซ็ต</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+  <div style="width:1440px; height:940px; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:14px; overflow:hidden; box-shadow:0 26px 64px rgba(15,36,64,.14); display:flex; position:relative">
+
+    <div style="width:68px; flex:none; background:#0F2440; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; margin-bottom:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <div onClick="{{n.tap}}" style="width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{n.bg}}; position:relative">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.path}}"/></svg>
+          <sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{false}}">
+            <span style="position:absolute; top:5px; right:4px; background:#E0930C; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center">{{n.badge}}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+      <div style="height:54px; flex:none; background:#fff; border-bottom:1px solid #E3E8EF; display:flex; align-items:center; gap:14px; padding:0 18px">
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748B">
+          <span onClick="{{goDash}}" style="cursor:pointer">สาขาบางนา</span><span style="color:#CBD5E1">/</span>
+          <span onClick="{{goCatalog}}" style="cursor:pointer">สต็อกอะไหล่</span>
+          <sc-if value="{{inPart}}" hint-placeholder-val="{{false}}">
+            <span style="color:#CBD5E1">/</span><span style="color:#0F2440; font-weight:600">{{p.code}}</span>
+          </sc-if>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:12px">
+          <div style="height:34px; border:1px solid #E3E8EF; border-radius:8px; background:#F7F9FC; display:flex; align-items:center; gap:8px; padding:0 11px; width:300px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round" style="flex:none"><path d="M4 7v10M8 7v10M12 7v10M16 7v10M20 7v10"/></svg>
+            <input value="{{scan}}" onChange="{{onScan}}" placeholder="สแกนบาร์โค้ดหรือพิมพ์รหัสอะไหล่" style="flex:1; border:none; outline:none; background:transparent; font-size:12.5px; color:#0F2440; font-family:'IBM Plex Mono',monospace"/>
+          </div>
+          <div style="display:flex; align-items:center; gap:9px; padding-left:12px; border-left:1px solid #E3E8EF">
+            <div style="width:29px; height:29px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:#fff">{{initials}}</div>
+            <div style="display:flex; flex-direction:column"><span style="font-size:12.5px; font-weight:700; color:#0F2440">{{userName}}</span><span style="font-size:11px; color:#64748B">{{roleLabel}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+
+        <sc-if value="{{barcodeFail}}" hint-placeholder-val="{{false}}">
+          <div style="flex:none; background:#FEF6F6; border:1.5px solid #F0C2C2; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:flex-start">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M4 7v10M8 7v10M12 7v10M16 7v10M20 7v10M3 3l18 18"/></svg>
+            <div style="display:flex; flex-direction:column; gap:5px; flex:1">
+              <span style="font-size:14.5px; font-weight:700; color:#A31D1D">ไม่พบบาร์โค้ด {{scanCode}} ในระบบ</span>
+              <span style="font-size:12.5px; color:#A31D1D; line-height:1.7">อาจเป็นอะไหล่ที่ยังไม่เปิดรหัส หรือบาร์โค้ดของผู้จำหน่ายที่ยังไม่ผูกกับรหัสในระบบ — ห้ามรับเข้าคลังจนกว่าจะมีรหัสอะไหล่</span>
+              <div style="display:flex; gap:9px; margin-top:3px">
+                <span onClick="{{reqNewSku}}" style="font-size:12px; font-weight:700; color:#fff; background:#1B6BE3; padding:8px 12px; border-radius:7px; cursor:pointer">ขอเปิดรหัสอะไหล่ใหม่</span>
+                <span onClick="{{linkBarcode}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:7px; cursor:pointer">ผูกบาร์โค้ดกับรหัสที่มีอยู่</span>
+                <span onClick="{{clearScan}}" style="font-size:12px; font-weight:700; color:#A31D1D; background:#fff; border:1px solid #F0C2C2; padding:8px 12px; border-radius:7px; cursor:pointer">ปิด</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isDash}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:22px; font-weight:700; color:#0F2440">คลังอะไหล่ · สาขาบางนา</span>
+                <span style="font-size:13px; color:#64748B">คงเหลือใช้ได้ = คงคลัง − จอง · ยอดกำลังสั่งไม่ถือเป็นของที่ใช้ได้</span>
+              </div>
+              <div style="display:flex; gap:8px">
+                <span onClick="{{goLow}}" style="font-size:12px; font-weight:700; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:9px 13px; border-radius:8px; cursor:pointer">ดูรายการต่ำกว่าจุดสั่งซื้อ {{lowN}}</span>
+                <span onClick="{{goCatalog}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:9px 13px; border-radius:8px; cursor:pointer">เปิดแคตตาล็อก</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:{{tileCols}}; gap:11px">
+              <sc-for list="{{tiles}}" as="t" hint-placeholder-count="6">
+                <div onClick="{{t.tap}}" style="background:#fff; border:1px solid {{t.border}}; border-top:3px solid {{t.accent}}; border-radius:11px; padding:14px; display:flex; flex-direction:column; gap:7px; cursor:pointer">
+                  <div style="display:flex; align-items:center; gap:7px; color:{{t.fg}}">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="{{t.path}}"/></svg>
+                    <span style="font-size:12px; font-weight:700">{{t.label}}</span>
+                  </div>
+                  <span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1">{{t.n}}</span>
+                  <span style="font-size:11px; color:#94A3B8; line-height:1.5">{{t.sub}}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.35fr 1fr; gap:14px; align-items:start">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                <div style="padding:14px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px"><span style="font-size:14px; font-weight:700; color:#0F2440">การปรับสต็อกล่าสุด</span><span style="margin-left:auto; font-size:12px; color:#64748B">7 วันย้อนหลัง</span></div>
+                <div style="display:grid; grid-template-columns:1.4fr 120px 100px 1fr 110px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                  <div style="padding:9px 14px">อะไหล่</div><div style="padding:9px 10px">ประเภท</div><div style="padding:9px 10px; text-align:center">จำนวน</div><div style="padding:9px 10px">เหตุผล</div><div style="padding:9px 14px">ผู้ทำ</div>
+                </div>
+                <sc-for list="{{adjustments}}" as="a" hint-placeholder-count="5">
+                  <div style="display:grid; grid-template-columns:1.4fr 120px 100px 1fr 110px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                    <div style="padding:10px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{a.name}}</span><span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{a.code}}</span></div>
+                    <div style="padding:10px"><span style="background:{{a.tagBg}}; color:{{a.tagFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">{{a.tag}}</span></div>
+                    <div style="padding:10px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{a.qtyFg}}">{{a.qty}}</div>
+                    <div style="padding:10px; font-size:11.5px; color:#475569; line-height:1.5">{{a.reason}}</div>
+                    <div style="padding:10px 14px; font-size:11.5px; color:#475569">{{a.who}}</div>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                  <div style="background:#0F2440; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px">
+                    <span style="font-size:12.5px; color:#8FA6C4; font-weight:600">มูลค่าสต็อกคงเหลือ (ต้นทุน)</span>
+                    <span style="font-size:28px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ 1,842,600</span>
+                    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px; border-top:1px solid #1B3557; padding-top:11px">
+                      <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ของที่ยังไม่ถูกจอง</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">1,588,400</span></div>
+                      <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ถูกจองไว้กับงานซ่อม</span><span style="color:#F0AE55; font-family:'IBM Plex Mono',monospace">254,200</span></div>
+                      <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ของชำรุด/กักกัน</span><span style="color:#F5A9A9; font-family:'IBM Plex Mono',monospace">12,480</span></div>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{noCost}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#fff; border:1px dashed #C9D6E6; border-radius:12px; padding:18px; display:flex; gap:12px; align-items:flex-start">
+                    <div style="width:38px; height:38px; border-radius:10px; background:#EEF1F5; display:flex; align-items:center; justify-content:center; flex:none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+                    <div style="display:flex; flex-direction:column; gap:4px">
+                      <span style="font-size:14px; font-weight:700; color:#334155">ไม่มีสิทธิ์ดูมูลค่าและต้นทุน</span>
+                      <span style="font-size:12.5px; color:#64748B; line-height:1.7">บทบาทเจ้าหน้าที่คลังเห็นจำนวนและการเคลื่อนไหวได้ทั้งหมด แต่ราคาทุนและมูลค่าสต็อกถูกซ่อนไว้ · ขอสิทธิ์เพิ่มได้จากผู้จัดการสาขา</span>
+                      <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">ref: PERM-2210 · EMP-10214</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                  <span style="font-size:14px; font-weight:700; color:#0F2440">สมการที่ระบบใช้</span>
+                  <div style="background:#F7F9FC; border-radius:9px; padding:13px; display:flex; flex-direction:column; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:#0F2440">
+                    <span><b>คงเหลือใช้ได้</b> = คงคลัง − จองไว้</span>
+                    <span style="color:#A8380A">ของกำลังสั่ง ไม่นับเป็นคงเหลือใช้ได้</span>
+                    <span style="color:#64748B">ของชำรุด/กักกัน ถูกกันออกจากคงคลังที่ขายได้</span>
+                  </div>
+                  <span style="font-size:11.5px; color:#64748B; line-height:1.7">การจองเกิดขึ้นอัตโนมัติเมื่อลูกค้าอนุมัติใบเสนอราคา และคลายเมื่อช่างเบิกของจริงหรืองานถูกยกเลิก</span>
+                </div>
+
+                <div style="background:#F7F9FC; border:1px dashed #C9D6E6; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:7px">
+                  <div style="display:flex; align-items:center; gap:8px">
+                    <span style="font-size:13.5px; font-weight:700; color:#475569">โอนย้ายระหว่างสาขา</span>
+                    <span style="background:#EEF1F5; color:#64748B; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">อนาคต / ไม่อยู่ใน MVP</span>
+                  </div>
+                  <span style="font-size:12px; color:#64748B; line-height:1.7">MVP นี้จัดการสต็อกรายสาขาแบบแยกกัน · การโอนของระหว่างสาขายังทำผ่านเอกสารภายในและบันทึกเป็นการปรับสต็อก 2 ฝั่ง — จะพิจารณาเป็นโฟลว์เต็มรูปแบบเมื่อยืนยันความต้องการจากหลายสาขาแล้ว</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isList}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex; flex-direction:column; gap:13px">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:14px">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:22px; font-weight:700; color:#0F2440">{{listTitle}}</span>
+                <span style="font-size:13px; color:#64748B">{{listSub}}</span>
+              </div>
+              <div style="display:flex; gap:8px">
+                <span onClick="{{goCatalog}}" style="font-size:12px; font-weight:700; color:{{allFg}}; background:{{allBg}}; border:1px solid #C9D6E6; padding:9px 13px; border-radius:8px; cursor:pointer">ทั้งหมด</span>
+                <span onClick="{{goLow}}" style="font-size:12px; font-weight:700; color:{{lowFg}}; background:{{lowBg}}; border:1px solid #F0D9AC; padding:9px 13px; border-radius:8px; cursor:pointer">ต่ำกว่าจุดสั่งซื้อ {{lowN}}</span>
+              </div>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px 15px; display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+              <div style="height:36px; border:1px solid #E3E8EF; border-radius:8px; background:#F7F9FC; display:flex; align-items:center; gap:8px; padding:0 11px; width:280px">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                <input value="{{q}}" onChange="{{onQ}}" placeholder="รหัส ชื่อ แบรนด์ หรือรุ่นรถที่ใช้ได้" style="flex:1; border:none; outline:none; background:transparent; font-size:13px; color:#0F2440"/>
+              </div>
+              <sc-for list="{{filters}}" as="f" hint-placeholder-count="6">
+                <span onClick="{{f.tap}}" style="background:{{f.bg}}; color:{{f.fg}}; border:1px solid {{f.border}}; font-size:12.5px; font-weight:600; padding:8px 11px; border-radius:8px; cursor:pointer">{{f.label}}</span>
+              </sc-for>
+              <sc-if value="{{hasFilters}}" hint-placeholder-val="{{false}}">
+                <span onClick="{{clearFilters}}" style="font-size:12px; font-weight:700; color:#C02626; cursor:pointer">ล้างตัวกรอง</span>
+              </sc-if>
+              <span style="margin-left:auto; font-size:12px; color:#64748B">พบ <b style="color:#0F2440">{{rowN}}</b> รายการ</span>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+              <div style="display:grid; grid-template-columns:{{cols}}; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                <div style="padding:10px 12px; display:flex; align-items:center; justify-content:center">
+                  <sc-if value="{{isLow}}" hint-placeholder-val="{{false}}">
+                    <div onClick="{{selectAll}}" style="width:17px; height:17px; border-radius:4px; border:2px solid {{allSelBorder}}; background:{{allSelBg}}; cursor:pointer; display:flex; align-items:center; justify-content:center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                  </sc-if>
+                </div>
+                <div style="padding:10px 12px">รหัส / บาร์โค้ด</div>
+                <div style="padding:10px 12px">ชื่ออะไหล่ / แบรนด์</div>
+                <div style="padding:10px 8px; text-align:center">คงคลัง</div>
+                <div style="padding:10px 8px; text-align:center">จอง</div>
+                <div style="padding:10px 8px; text-align:center">ใช้ได้</div>
+                <div style="padding:10px 8px; text-align:center">กำลังสั่ง</div>
+                <div style="padding:10px 8px; text-align:center">ชำรุด</div>
+                <div style="padding:10px 8px; text-align:center">จุดสั่งซื้อ</div>
+                <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                  <div style="padding:10px 12px; text-align:right">ทุน</div>
+                </sc-if>
+                <div style="padding:10px 12px; text-align:right">ราคาขาย</div>
+                <div style="padding:10px 12px">สถานะ</div>
+              </div>
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+                <div style="display:grid; grid-template-columns:{{cols}}; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; background:{{r.bg}}">
+                  <div style="padding:11px 12px; display:flex; align-items:center; justify-content:center">
+                    <sc-if value="{{isLow}}" hint-placeholder-val="{{false}}">
+                      <div onClick="{{r.toggleSel}}" style="width:17px; height:17px; border-radius:4px; border:2px solid {{r.selBorder}}; background:{{r.selBg}}; cursor:pointer; display:flex; align-items:center; justify-content:center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                    </sc-if>
+                  </div>
+                  <div onClick="{{r.open}}" style="padding:11px 12px; cursor:pointer; display:flex; flex-direction:column; gap:2px"><span style="font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.code}}</span><span style="font-size:10.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{r.barcode}}</span></div>
+                  <div onClick="{{r.open}}" style="padding:11px 12px; cursor:pointer; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600; line-height:1.4">{{r.name}}</span><span style="font-size:10.5px; color:#64748B">{{r.brand}} · {{r.cat}}</span></div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{r.onHand}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#8A5A00">{{r.reserved}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{r.availFg}}">{{r.available}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:{{r.onOrderFg}}">{{r.onOrder}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:{{r.dmgFg}}">{{r.damaged}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#94A3B8">{{r.rop}}</div>
+                  <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                    <div style="padding:11px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#64748B">{{r.cost}}</div>
+                  </sc-if>
+                  <div style="padding:11px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{r.price}}</div>
+                  <div style="padding:11px 12px"><span style="display:inline-flex; align-items:center; gap:5px; background:{{r.stBg}}; color:{{r.stFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.stPath}}"/></svg>{{r.stLabel}}</span></div>
+                </div>
+              </sc-for>
+              <sc-if value="{{emptyList}}" hint-placeholder-val="{{false}}">
+                <div style="padding:56px; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center">
+                  <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg>
+                  <span style="font-size:16px; font-weight:700; color:#334155">ไม่พบอะไหล่ที่ตรงกับเงื่อนไข</span>
+                  <span style="font-size:12.5px; color:#64748B">ลองล้างตัวกรองหรือค้นด้วยรหัสบางส่วน เช่น P-BRK</span>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+              <div style="position:sticky; bottom:0; background:#0F2440; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:16px; box-shadow:0 -8px 24px rgba(15,36,64,.18)">
+                <div style="display:flex; flex-direction:column; gap:2px">
+                  <span style="font-size:13.5px; font-weight:700; color:#fff">เลือกไว้ {{selN}} รายการ</span>
+                  <span style="font-size:11.5px; color:#8FA6C4">แนะนำสั่งรวม {{selQty}} หน่วย · ประมาณ {{selValue}}</span>
+                </div>
+                <span onClick="{{clearSel}}" style="font-size:12px; font-weight:700; color:#A9BDD6; cursor:pointer">ล้างที่เลือก</span>
+                <button onClick="{{makePo}}" style="margin-left:auto; height:44px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">สร้างร่างใบสั่งซื้อจากรายการที่เลือก</button>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isPart}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex; flex-direction:column; gap:14px">
+
+            <sc-if value="{{stale}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:11px; padding:12px 14px; display:flex; align-items:center; gap:11px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+                <span style="font-size:13px; font-weight:600; color:#8A5A00; flex:1">ยอดคงเหลืออาจไม่เป็นปัจจุบัน — ช่างเบิกของรายการนี้เมื่อ 12 วินาทีที่แล้วจากแอปมือถือ (คงคลังในหน้าจอนี้โหลดไว้ตอน 15:41)</span>
+                <span onClick="{{refresh}}" style="font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:7px 12px; border-radius:7px; cursor:pointer">โหลดยอดล่าสุด</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{dupWarn}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FFFBF3; border:1.5px solid #F0D9AC; border-radius:11px; padding:14px; display:flex; gap:12px; align-items:flex-start">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+                <div style="display:flex; flex-direction:column; gap:5px; flex:1">
+                  <span style="font-size:14px; font-weight:700; color:#8A5A00">อาจเป็นอะไหล่ซ้ำกับรหัสที่มีอยู่</span>
+                  <span style="font-size:12.5px; color:#8A5A00; line-height:1.7">รหัส <b>P-BRK-0423</b> มีบาร์โค้ดและชื่อใกล้เคียงกับ <b>P-BRK-0421</b> (ผ้าเบรกหน้า Bendix MKT) — สต็อกที่แยกกันจะทำให้ยอดคงเหลือเพี้ยน แนะนำรวมรหัสก่อนรับของเข้า</span>
+                  <div style="display:flex; gap:9px; margin-top:3px">
+                    <span onClick="{{mergeSku}}" style="font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:8px 12px; border-radius:7px; cursor:pointer">รวมเข้ากับ P-BRK-0421</span>
+                    <span onClick="{{keepSku}}" style="font-size:12px; font-weight:700; color:#8A5A00; background:#fff; border:1px solid #F0D9AC; padding:8px 12px; border-radius:7px; cursor:pointer">ยืนยันว่าเป็นของต่างกัน</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:18px; display:flex; gap:20px; align-items:flex-start">
+              <div style="display:flex; flex-direction:column; gap:8px; flex:1">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                  <span style="font-size:12.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{p.code}}</span>
+                  <span style="display:inline-flex; align-items:center; gap:5px; background:{{p.stBg}}; color:{{p.stFg}}; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.stPath}}"/></svg>{{p.stLabel}}</span>
+                  <span style="background:#EEF1F5; color:#475569; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px">{{p.cat}}</span>
+                </div>
+                <span style="font-size:22px; font-weight:700; color:#0F2440">{{p.name}}</span>
+                <span style="font-size:13px; color:#475569">{{p.brand}} · บาร์โค้ด <span style="font-family:'IBM Plex Mono',monospace">{{p.barcode}}</span></span>
+                <div style="display:flex; gap:7px; flex-wrap:wrap; margin-top:3px">
+                  <sc-for list="{{p.compat}}" as="c" hint-placeholder-count="3">
+                    <span style="background:#F1F4F9; color:#334155; font-size:11.5px; font-weight:600; padding:5px 10px; border-radius:6px">{{c.label}}</span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:9px; align-items:flex-end; flex:none">
+                <div style="display:flex; gap:8px">
+                  <button onClick="{{askAdjust}}" style="height:42px; padding:0 15px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ปรับสต็อก</button>
+                  <button onClick="{{makePoOne}}" style="height:42px; padding:0 15px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">สั่งซื้อเพิ่ม</button>
+                </div>
+                <span onClick="{{backList}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">กลับไปที่แคตตาล็อก</span>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1.5fr 1fr; gap:14px; align-items:start">
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                  <div style="padding:14px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px">
+                    <span style="font-size:14px; font-weight:700; color:#0F2440">สต็อกในสาขาบางนา</span>
+                    <span style="margin-left:auto; font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">อัปเดต 15:41:20</span>
+                  </div>
+                  <div style="padding:16px; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:11px">
+                    <div style="background:#F7F9FC; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#64748B; font-weight:600">คงคลัง</span><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{p.onHand}}</span></div>
+                    <div style="background:#FFFBF3; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#8A5A00; font-weight:600">จองไว้</span><span style="font-size:22px; font-weight:700; color:#8A5A00; font-family:'IBM Plex Mono',monospace">−{{p.reserved}}</span></div>
+                    <div style="background:{{p.availBg}}; border:1.5px solid {{p.availBorder}}; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:{{p.availFg}}; font-weight:700">คงเหลือใช้ได้</span><span style="font-size:22px; font-weight:700; color:{{p.availFg}}; font-family:'IBM Plex Mono',monospace">{{p.available}}</span></div>
+                    <div style="background:#FDEBE3; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#A8380A; font-weight:600">กำลังสั่ง</span><span style="font-size:22px; font-weight:700; color:#A8380A; font-family:'IBM Plex Mono',monospace">{{p.onOrder}}</span></div>
+                    <div style="background:#FEF6F6; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:4px"><span style="font-size:11px; color:#A31D1D; font-weight:600">ชำรุด/กักกัน</span><span style="font-size:22px; font-weight:700; color:#A31D1D; font-family:'IBM Plex Mono',monospace">{{p.damaged}}</span></div>
+                  </div>
+                  <div style="padding:0 16px 16px">
+                    <div style="background:#F7F9FC; border-radius:9px; padding:12px 14px; font-size:12.5px; color:#475569; line-height:1.7; font-family:'IBM Plex Mono',monospace">{{p.equation}}</div>
+                  </div>
+                  <div style="padding:0 16px 16px; display:flex; gap:14px; font-size:12px; color:#64748B; flex-wrap:wrap">
+                    <span>จองไว้กับงาน: <b style="color:#0F2440">{{p.reservedJobs}}</b></span>
+                    <span>ใบสั่งซื้อค้าง: <b style="color:#0F2440">{{p.poRef}}</b></span>
+                  </div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                  <div style="padding:14px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px">
+                    <span style="font-size:14px; font-weight:700; color:#0F2440">บัญชีการเคลื่อนไหวสต็อก</span>
+                    <span style="margin-left:auto; font-size:11.5px; color:#64748B">{{ledgerN}} รายการ</span>
+                  </div>
+                  <sc-if value="{{hasLedger}}" hint-placeholder-val="{{true}}">
+                    <div style="display:grid; grid-template-columns:118px 130px 74px 96px 1fr 110px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                      <div style="padding:9px 12px">เวลา</div><div style="padding:9px 10px">เอกสารอ้างอิง</div><div style="padding:9px 8px; text-align:center">เข้า/ออก</div><div style="padding:9px 8px; text-align:center">ก่อน → หลัง</div><div style="padding:9px 10px">เหตุผล</div><div style="padding:9px 12px">ผู้ทำ</div>
+                    </div>
+                    <sc-for list="{{ledger}}" as="l" hint-placeholder-count="6">
+                      <div style="display:grid; grid-template-columns:118px 130px 74px 96px 1fr 110px; border-bottom:1px solid #F5F8FB; font-size:12px; align-items:center; background:{{l.bg}}">
+                        <div style="padding:10px 12px; font-family:'IBM Plex Mono',monospace; color:#64748B">{{l.time}}</div>
+                        <div style="padding:10px; display:flex; flex-direction:column; gap:2px"><span style="font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{l.doc}}</span><span style="font-size:10px; color:#94A3B8">{{l.docType}}</span></div>
+                        <div style="padding:10px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{l.qtyFg}}">{{l.qty}}</div>
+                        <div style="padding:10px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{l.before}}→{{l.after}}</div>
+                        <div style="padding:10px; font-size:11.5px; color:#475569; line-height:1.5">{{l.reason}}</div>
+                        <div style="padding:10px 12px; font-size:11.5px; color:#475569">{{l.who}}</div>
+                      </div>
+                    </sc-for>
+                  </sc-if>
+                  <sc-if value="{{noLedger}}" hint-placeholder-val="{{false}}">
+                    <div style="padding:52px 24px; display:flex; flex-direction:column; align-items:center; gap:11px; text-align:center">
+                      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+                      <span style="font-size:16px; font-weight:700; color:#334155">ยังไม่มีประวัติการเคลื่อนไหว</span>
+                      <span style="font-size:12.5px; color:#64748B; line-height:1.7">รหัสนี้เพิ่งเปิดเมื่อ 28 ก.ค. 2569 และยังไม่เคยรับเข้าหรือเบิกออก<br>ประวัติจะเริ่มบันทึกเมื่อมีการรับของจากใบสั่งซื้อครั้งแรก</span>
+                      <button onClick="{{makePoOne}}" style="height:42px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">สร้างใบสั่งซื้อรายการนี้</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                  <span style="font-size:14px; font-weight:700; color:#0F2440">ราคาและภาษี</span>
+                  <div style="display:flex; flex-direction:column; gap:8px; font-size:12.5px">
+                    <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ราคาขาย</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{p.price}}</span></div>
+                    <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                      <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ต้นทุนล่าสุด</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{p.cost}}</span></div>
+                    </sc-if>
+                    <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                      <div style="display:flex; justify-content:space-between"><span style="color:#64748B">กำไรขั้นต้น</span><span style="color:#0B6D5E; font-weight:700; font-family:'IBM Plex Mono',monospace">{{p.margin}}</span></div>
+                    </sc-if>
+                    <sc-if value="{{noCost}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#F7F9FC; border-radius:8px; padding:10px 11px; display:flex; gap:8px; align-items:flex-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" style="flex:none; margin-top:2px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span style="font-size:11.5px; color:#64748B; line-height:1.6">ต้นทุนและกำไรถูกซ่อนสำหรับบทบาทเจ้าหน้าที่คลัง</span></div>
+                    </sc-if>
+                    <div style="display:flex; justify-content:space-between; border-top:1px solid #EDF1F6; padding-top:8px"><span style="color:#64748B">ภาษีมูลค่าเพิ่ม</span><span style="color:#0F2440; font-weight:600">คิด 7% แยกจากราคา</span></div>
+                    <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หน่วยนับ</span><span style="color:#0F2440; font-weight:600">{{p.unit}}</span></div>
+                  </div>
+                </div>
+
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                  <span style="font-size:14px; font-weight:700; color:#0F2440">การสั่งซื้อ</span>
+                  <div style="display:flex; flex-direction:column; gap:8px; font-size:12.5px">
+                    <div style="display:flex; justify-content:space-between"><span style="color:#64748B">จุดสั่งซื้อ (ROP)</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{p.rop}} {{p.unit}}</span></div>
+                    <div style="display:flex; justify-content:space-between"><span style="color:#64748B">จำนวนที่ควรสั่งต่อครั้ง</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{p.pq}} {{p.unit}}</span></div>
+                    <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ใช้เฉลี่ย 30 วัน</span><span style="color:#0F2440; font-weight:600">{{p.usage}}</span></div>
+                  </div>
+                  <div style="height:1px; background:#EDF1F6"></div>
+                  <span style="font-size:12.5px; font-weight:700; color:#0F2440">ผู้จำหน่าย</span>
+                  <sc-for list="{{p.suppliers}}" as="v" hint-placeholder-count="2">
+                    <div style="border:1px solid {{v.border}}; border-radius:9px; padding:11px; display:flex; flex-direction:column; gap:4px">
+                      <div style="display:flex; align-items:center; gap:8px"><span style="font-size:12.5px; font-weight:700; color:#0F2440; flex:1">{{v.name}}</span><span style="background:{{v.tagBg}}; color:{{v.tagFg}}; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px">{{v.tag}}</span></div>
+                      <div style="display:flex; justify-content:space-between; font-size:11.5px"><span style="color:#64748B">ส่งภายใน {{v.lead}}</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{v.price}}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isPo}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:22px; font-weight:700; color:#0F2440">ร่างใบสั่งซื้อ · PR-0319</span>
+                <span style="font-size:13px; color:#64748B">สร้างจากรายการต่ำกว่าจุดสั่งซื้อ {{poN}} รายการ · ยังไม่ส่งให้ผู้จำหน่าย</span>
+              </div>
+              <div style="display:flex; gap:9px">
+                <button onClick="{{goLow}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">กลับไปเลือกรายการ</button>
+                <button onClick="{{sendPo}}" style="height:42px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ส่งให้ฝ่ายจัดซื้ออนุมัติ</button>
+              </div>
+            </div>
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+              <div style="display:grid; grid-template-columns:120px 1.4fr 110px 90px 110px 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                <div style="padding:10px 14px">รหัส</div><div style="padding:10px 12px">อะไหล่</div><div style="padding:10px 8px; text-align:center">ใช้ได้ / ROP</div><div style="padding:10px 8px; text-align:center">สั่ง</div><div style="padding:10px 12px; text-align:right">ประมาณราคา</div><div style="padding:10px 12px">ผู้จำหน่ายที่แนะนำ</div>
+              </div>
+              <sc-for list="{{poRows}}" as="r" hint-placeholder-count="3">
+                <div style="display:grid; grid-template-columns:120px 1.4fr 110px 90px 110px 1fr; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                  <div style="padding:11px 14px; font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:600">{{r.code}}</div>
+                  <div style="padding:11px 12px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{r.name}}</span><span style="font-size:10.5px; color:#94A3B8">{{r.brand}}</span></div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:{{r.availFg}}; font-weight:700">{{r.available}} / {{r.rop}}</div>
+                  <div style="padding:11px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{r.qty}}</div>
+                  <div style="padding:11px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; color:{{r.priceFg}}">{{r.est}}</div>
+                  <div style="padding:11px 12px; font-size:11.5px; color:#475569">{{r.supplier}}</div>
+                </div>
+              </sc-for>
+              <div style="padding:14px; background:#F7F9FC; display:flex; align-items:center; gap:16px">
+                <span style="font-size:12.5px; color:#64748B">รวม {{poN}} รายการ · {{poQty}} หน่วย</span>
+                <span style="margin-left:auto; font-size:12.5px; color:#64748B">มูลค่าประมาณ</span>
+                <span style="font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{poValue}}</span>
+              </div>
+            </div>
+            <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:15px; font-size:12.5px; color:#64748B; line-height:1.8">จำนวนที่แนะนำคำนวณจาก “จำนวนที่ควรสั่งต่อครั้ง” ลบด้วยของที่กำลังสั่งอยู่แล้ว เพื่อไม่ให้สั่งซ้ำ · ของที่กำลังสั่งจะยังไม่ถูกนับเป็นคงเหลือใช้ได้จนกว่าจะรับเข้าคลัง</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{adjOpen}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute; inset:0; background:rgba(10,22,38,.55); display:flex; align-items:center; justify-content:center; z-index:50">
+        <div style="width:600px; background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 28px 64px rgba(15,36,64,.3); animation:gpIn .14s ease-out">
+          <div style="padding:16px 20px; border-bottom:1px solid #EDF1F6; display:flex; align-items:flex-start; gap:12px">
+            <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:17px; font-weight:700; color:#0F2440">ปรับสต็อกด้วยมือ</span><span style="font-size:12.5px; color:#64748B">{{p.code}} · {{p.name}} · คงคลังปัจจุบัน {{p.onHand}} {{p.unit}}</span></div>
+            <div onClick="{{closeAdj}}" style="margin-left:auto; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+          </div>
+          <div style="padding:18px 20px; display:flex; flex-direction:column; gap:15px">
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:12.5px; font-weight:700; color:#334155">ประเภทการปรับ</span>
+              <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px">
+                <sc-for list="{{adjTypes}}" as="t" hint-placeholder-count="4">
+                  <div onClick="{{t.tap}}" style="min-height:46px; border:1px solid {{t.border}}; background:{{t.bg}}; border-radius:9px; padding:0 12px; display:flex; align-items:center; gap:8px; cursor:pointer"><span style="font-size:13px; font-weight:600; color:{{t.fg}}">{{t.label}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:150px 1fr; gap:12px">
+              <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">จำนวน ({{p.unit}})</label><input value="{{adjQty}}" onChange="{{onAdjQty}}" style="height:46px; border:{{adjQtyBorder}}; border-radius:9px; padding:0 12px; font-size:18px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace; text-align:right"/></div>
+              <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">ผลลัพธ์หลังปรับ</label><div style="height:46px; border:1px solid #E3E8EF; border-radius:9px; padding:0 12px; display:flex; align-items:center; background:#F7F9FC; font-size:13px; color:#475569; font-family:'IBM Plex Mono',monospace">{{adjPreview}}</div></div>
+            </div>
+            <sc-if value="{{adjError}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FEF6F6; border:1px solid #F0C2C2; border-radius:9px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.5" stroke-linecap="round" style="flex:none; margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+                <span style="font-size:12.5px; font-weight:600; color:#A31D1D; line-height:1.65; flex:1">{{adjErrorText}}</span>
+              </div>
+            </sc-if>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:12.5px; font-weight:700; color:#334155">เหตุผล (บังคับ)</span>
+              <div style="display:flex; flex-direction:column; gap:7px">
+                <sc-for list="{{adjReasons}}" as="r" hint-placeholder-count="4">
+                  <div onClick="{{r.tap}}" style="min-height:42px; border:1px solid {{r.border}}; background:{{r.bg}}; border-radius:9px; padding:0 12px; display:flex; align-items:center; cursor:pointer"><span style="font-size:13px; color:{{r.fg}}; font-weight:600">{{r.label}}</span></div>
+                </sc-for>
+              </div>
+            </div>
+            <div onClick="{{attachEvidence}}" style="border:1.5px dashed #C9D6E6; border-radius:10px; padding:13px; display:flex; align-items:center; gap:12px; cursor:pointer">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1B6BE3" stroke-width="2.2" stroke-linecap="round" style="flex:none"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12.5px; font-weight:700; color:#0F2440">{{evLabel}}</span><span style="font-size:11.5px; color:#64748B">{{evNote}}</span></div>
+              <sc-if value="{{hasEvidence}}" hint-placeholder-val="{{false}}">
+                <div style="width:46px; height:46px; border-radius:8px; background:#D8DEE7; flex:none"></div>
+              </sc-if>
+            </div>
+            <div style="background:{{apprBg}}; border:1px solid {{apprBorder}}; border-radius:9px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{apprFg}}" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="{{apprPath}}"/></svg>
+              <span style="font-size:12px; color:{{apprFg}}; line-height:1.7; font-weight:600; flex:1">{{apprText}}</span>
+            </div>
+          </div>
+          <div style="padding:14px 20px; border-top:1px solid #EDF1F6; background:#F7F9FC; display:flex; gap:10px; justify-content:flex-end">
+            <button onClick="{{closeAdj}}" style="height:44px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ยกเลิก</button>
+            <button onClick="{{submitAdj}}" style="height:44px; padding:0 18px; background:{{adjBtnBg}}; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{adjBtnLabel}}</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute; right:22px; bottom:22px; background:#1E293B; border-radius:12px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; box-shadow:0 18px 40px rgba(15,36,64,.28); animation:gpIn .15s ease-out; max-width:420px; z-index:70">
+        <div style="width:28px; height:28px; border-radius:8px; background:{{toastBg}}; display:flex; align-items:center; justify-content:center; flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="{{toastPath}}"/></svg></div>
+        <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+          <span style="font-size:13.5px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span>
+          <span style="font-size:12.5px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span>
+        </div>
+        <span onClick="{{clearToast}}" style="font-size:12px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+      </div>
+    </sc-if>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:1080},&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;manager&quot;,&quot;keeper&quot;],&quot;default&quot;:&quot;manager&quot;,&quot;tsType&quot;:&quot;'manager' | 'keeper'&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const NAV = [
+  { key:'dash', label:'แดชบอร์ด', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', label:'งานซ่อม', path:'M3 5h18v15H3zM3 10h18M8 15h8' },
+  { key:'stock', label:'สต็อก', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8', badge:5 },
+  { key:'po', label:'จัดซื้อ', path:'M6 6h15l-2 9H8zM6 6L5 3H2' },
+  { key:'report', label:'รายงาน', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+const PARTS = [
+  { code:'P-BRK-0421', barcode:'8851234500421', name:'ผ้าเบรกหน้า Bendix MKT', brand:'Bendix', cat:'ระบบเบรก', unit:'ชุด',
+    onHand:6, reserved:2, onOrder:0, damaged:0, rop:4, pq:10, cost:890, price:1290, usage:'8 ชุด/เดือน',
+    compat:['Toyota Yaris Ativ 2563–2566','Toyota Vios 2560–2566','Toyota Yaris 2561–2565'],
+    reservedJobs:'JB-6712 (1) · JB-6720 (1)', poRef:'ไม่มี',
+    suppliers:[{ name:'ออโต้พาร์ท เซ็นเตอร์', lead:'1 วัน', price:'890.00', tag:'หลัก' }, { name:'สยามพาร์ท ซัพพลาย', lead:'3 วัน', price:'930.00', tag:'สำรอง' }] },
+  { code:'P-BRK-0422', barcode:'8851234500422', name:'ผ้าเบรกหน้า แท้ศูนย์ Toyota', brand:'Toyota Genuine', cat:'ระบบเบรก', unit:'ชุด',
+    onHand:2, reserved:2, onOrder:4, damaged:0, rop:3, pq:6, cost:1320, price:1850, usage:'3 ชุด/เดือน',
+    compat:['Toyota Yaris Ativ 2563–2566'], reservedJobs:'JB-6718 (2)', poRef:'PO-2470 (4 ชุด · 31 ก.ค.)',
+    suppliers:[{ name:'โตโยต้า ศูนย์อะไหล่', lead:'2 วัน', price:'1,320.00', tag:'หลัก' }] },
+  { code:'P-SUS-1188', barcode:'8859900011885', name:'โช้คอัพหน้า KYB Excel-G', brand:'KYB', cat:'ช่วงล่าง', unit:'ต้น',
+    onHand:0, reserved:0, onOrder:2, damaged:0, rop:2, pq:4, cost:1780, price:2400, usage:'5 ต้น/เดือน',
+    compat:['Toyota Yaris Ativ 2563–2566','Toyota Vios 2560–2566'], reservedJobs:'ไม่มี', poRef:'PO-2471 (2 ต้น · 31 ก.ค.)',
+    suppliers:[{ name:'ออโต้พาร์ท เซ็นเตอร์', lead:'2 วัน', price:'1,780.00', tag:'หลัก' }, { name:'เคบี ช่วงล่าง', lead:'5 วัน', price:'1,690.00', tag:'ราคาถูกสุด' }] },
+  { code:'P-AC-0310', barcode:'8853300003105', name:'กรองแอร์ Denso', brand:'Denso', cat:'ระบบแอร์', unit:'ชิ้น',
+    onHand:14, reserved:1, onOrder:0, damaged:0, rop:6, pq:20, cost:260, price:450, usage:'12 ชิ้น/เดือน',
+    compat:['Toyota Yaris / Vios','Honda City','Mazda 2'], reservedJobs:'JB-6712 (1)', poRef:'ไม่มี',
+    suppliers:[{ name:'สยามพาร์ท ซัพพลาย', lead:'1 วัน', price:'260.00', tag:'หลัก' }] },
+  { code:'P-ENG-2044', barcode:'8857700020445', name:'ยางแท่นเครื่อง (ขวา)', brand:'OEM', cat:'เครื่องยนต์', unit:'ชิ้น',
+    onHand:1, reserved:1, onOrder:0, damaged:1, rop:2, pq:4, cost:1240, price:1850, usage:'2 ชิ้น/เดือน',
+    compat:['Toyota Yaris Ativ 1.2'], reservedJobs:'JB-6712 (1)', poRef:'ไม่มี',
+    suppliers:[{ name:'ออโต้พาร์ท เซ็นเตอร์', lead:'2 วัน', price:'1,240.00', tag:'หลัก' }] },
+  { code:'P-OIL-1001', barcode:'8851100010013', name:'น้ำมันเครื่อง 5W-30 สังเคราะห์ (4 ลิตร)', brand:'PTT', cat:'ของเหลว', unit:'แกลลอน',
+    onHand:3, reserved:0, onOrder:12, damaged:0, rop:8, pq:24, cost:820, price:1250, usage:'20 แกลลอน/เดือน',
+    compat:['ใช้ได้ทุกรุ่นเบนซิน'], reservedJobs:'ไม่มี', poRef:'PO-2468 (12 แกลลอน · 30 ก.ค.)',
+    suppliers:[{ name:'ปตท. ลูบริแคนท์ส', lead:'2 วัน', price:'820.00', tag:'หลัก' }] },
+  { code:'P-FLT-0501', barcode:'8852200005017', name:'กรองน้ำมันเครื่อง', brand:'Denso', cat:'ของเหลว', unit:'ชิ้น',
+    onHand:22, reserved:3, onOrder:0, damaged:0, rop:10, pq:30, cost:120, price:220, usage:'18 ชิ้น/เดือน',
+    compat:['Toyota Yaris / Vios / Altis','Honda City'], reservedJobs:'JB-6716 (2) · JB-6708 (1)', poRef:'ไม่มี',
+    suppliers:[{ name:'สยามพาร์ท ซัพพลาย', lead:'1 วัน', price:'120.00', tag:'หลัก' }] },
+  { code:'P-AC-0777', barcode:'8853300007771', name:'น้ำยาแอร์ R134a (กระป๋อง)', brand:'Chemours', cat:'ระบบแอร์', unit:'กระป๋อง',
+    onHand:9, reserved:1, onOrder:0, damaged:0, rop:4, pq:12, cost:340, price:520, usage:'7 กระป๋อง/เดือน',
+    compat:['ใช้ได้ทุกรุ่นที่ใช้ R134a'], reservedJobs:'JB-6721 (1)', poRef:'ไม่มี',
+    suppliers:[{ name:'ไทยแอร์พาร์ท', lead:'2 วัน', price:'340.00', tag:'หลัก' }] },
+  { code:'P-TYR-1855', barcode:'8854400018556', name:'ยาง 185/55R16 Michelin Energy XM2+', brand:'Michelin', cat:'ยางและล้อ', unit:'เส้น',
+    onHand:4, reserved:4, onOrder:8, damaged:0, rop:4, pq:8, cost:2350, price:3200, usage:'10 เส้น/เดือน',
+    compat:['Toyota Yaris Ativ','Honda City','Mazda 2'], reservedJobs:'JB-6719 (4)', poRef:'PO-2472 (8 เส้น · 1 ส.ค.)',
+    suppliers:[{ name:'มิชลิน ดีลเลอร์', lead:'3 วัน', price:'2,350.00', tag:'หลัก' }] },
+  { code:'P-WIP-0220', barcode:'8855500002203', name:'ใบปัดน้ำฝน 24 นิ้ว (รหัสใหม่)', brand:'Bosch', cat:'อุปกรณ์', unit:'ชิ้น',
+    onHand:0, reserved:0, onOrder:0, damaged:0, rop:4, pq:12, cost:290, price:480, usage:'ยังไม่มีข้อมูล',
+    compat:['รถเก๋งทั่วไป'], reservedJobs:'ไม่มี', poRef:'ไม่มี', fresh:true,
+    suppliers:[{ name:'บ๊อช ออโต้พาร์ท', lead:'3 วัน', price:'290.00', tag:'หลัก' }] },
+  { code:'P-BRK-0423', barcode:'8851234500421', name:'ผ้าเบรกหน้า Bendix MKT (รหัสใหม่จากผู้จำหน่าย)', brand:'Bendix', cat:'ระบบเบรก', unit:'ชุด',
+    onHand:3, reserved:0, onOrder:0, damaged:0, rop:4, pq:10, cost:905, price:1290, usage:'ยังไม่มีข้อมูล',
+    compat:['Toyota Yaris Ativ 2563–2566'], reservedJobs:'ไม่มี', poRef:'ไม่มี', dup:true,
+    suppliers:[{ name:'สยามพาร์ท ซัพพลาย', lead:'3 วัน', price:'905.00', tag:'หลัก' }] }
+];
+
+const LEDGER = {
+  'P-BRK-0421': [
+    { time:'29 ก.ค. 13:20', doc:'ISS-4471', docType:'ใบเบิกของช่าง', qty:-1, before:7, after:6, reason:'เบิกใช้งาน JB-6712 · อนุชา แก้วมณี', who:'อนุชา แก้วมณี' },
+    { time:'29 ก.ค. 10:15', doc:'JB-6712', docType:'จองจากใบเสนอราคา', qty:0, before:7, after:7, reason:'จอง 1 ชุด (ลูกค้าอนุมัติ) · ไม่กระทบคงคลัง', who:'ระบบอัตโนมัติ' },
+    { time:'28 ก.ค. 09:40', doc:'GRN-1188', docType:'รับของจาก PO-2465', qty:+6, before:1, after:7, reason:'รับของครบตามใบสั่งซื้อ · ตรวจสภาพผ่าน', who:'ประยุทธ์ คลังสินค้า' },
+    { time:'27 ก.ค. 16:02', doc:'ISS-4460', docType:'ใบเบิกของช่าง', qty:-2, before:3, after:1, reason:'เบิกใช้งาน JB-6705', who:'ธีรศักดิ์ บุญมี' },
+    { time:'26 ก.ค. 11:25', doc:'ADJ-0311', docType:'ปรับสต็อก', qty:-1, before:4, after:3, reason:'ของชำรุดจากการขนส่ง · แนบรูป 2 รูป', who:'ประยุทธ์ คลังสินค้า' },
+    { time:'25 ก.ค. 08:50', doc:'CNT-0042', docType:'ตรวจนับประจำเดือน', qty:+1, before:3, after:4, reason:'นับได้มากกว่าระบบ 1 ชุด · ผู้จัดการอนุมัติ', who:'กัญญารัตน์ ดีสมบัติ' }
+  ],
+  'P-SUS-1188': [
+    { time:'29 ก.ค. 13:05', doc:'PO-2471', docType:'ใบสั่งซื้อ', qty:0, before:0, after:0, reason:'สั่งซื้อ 2 ต้น · ยังไม่รับของ (ไม่นับเป็นของใช้ได้)', who:'ธนวัฒน์ อิ่มเอม' },
+    { time:'26 ก.ค. 15:40', doc:'ISS-4455', docType:'ใบเบิกของช่าง', qty:-2, before:2, after:0, reason:'เบิกใช้งาน JB-6699', who:'ธีรศักดิ์ บุญมี' }
+  ]
+};
+
+const ADJ_TYPES = [
+  { key:'damaged', label:'ตัดเป็นของชำรุด / กักกัน', dir:-1 },
+  { key:'loss', label:'ของสูญหาย / นับขาด', dir:-1 },
+  { key:'found', label:'นับเกิน / พบของเพิ่ม', dir:1 },
+  { key:'return', label:'รับคืนจากงานซ่อม', dir:1 }
+];
+const ADJ_REASONS = {
+  damaged:['ชำรุดจากการขนส่ง','ชำรุดระหว่างจัดเก็บ','ของผิดสเปกจากผู้จำหน่าย','หมดอายุการใช้งาน'],
+  loss:['นับประจำเดือนแล้วขาด','ไม่พบของในชั้นวาง','จ่ายของผิดรายการ'],
+  found:['นับประจำเดือนแล้วเกิน','พบของที่วางผิดชั้น','ยกเลิกงานแล้วของยังไม่คืนระบบ'],
+  return:['ช่างคืนของที่ไม่ได้ใช้','ลูกค้ายกเลิกงานหลังเบิก','เปลี่ยนรายการซ่อม']
+};
+
+function money(n) { return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+
+class Component extends DCLogic {
+  state = {
+    view:'dash', role:'manager', q:'', filters:[], sel:{}, code:'P-BRK-0421',
+    scan:'', barcodeFail:false, scanCode:'', stale:false, dupWarn:false,
+    adjOpen:false, adjType:'damaged', adjQty:'1', adjReason:'', evidence:false, adjErrorText:'',
+    parts: PARTS.map(p => Object.assign({}, p)), toast:null
+  };
+
+  componentWillUnmount() { clearTimeout(this.tt); }
+
+  say = (title, body, kind) => {
+    this.setState({ toast:{ title, body, kind: kind || 'ok' } });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 6000);
+  };
+
+  status = (p) => {
+    const avail = p.onHand - p.reserved;
+    if (p.onHand === 0) return { key:'out', label:'ของหมด', bg:'#FBE9E9', fg:'#A31D1D', path:'M6 6l12 12M18 6L6 18' };
+    if (avail <= 0) return { key:'reserved', label:'ถูกจองทั้งหมด', bg:'#FDF3E2', fg:'#8A5A00', path:'M6 2h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4M6 22h12' };
+    if (avail < p.rop) return { key:'low', label:'ต่ำกว่าจุดสั่งซื้อ', bg:'#FDEBE3', fg:'#A8380A', path:'M12 3l9.5 17h-19zM12 10v4' };
+    return { key:'ok', label:'ปกติ', bg:'#E3F5F1', fg:'#0B6D5E', path:'M4 12.5l5 5L20 7' };
+  };
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '0 0 26px' : '48px', pageAlign: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const mgr = s.role === 'manager';
+    const parts = s.parts;
+    const avail = (p) => p.onHand - p.reserved;
+    const lowList = parts.filter(p => avail(p) < p.rop);
+    const part = parts.filter(p => p.code === s.code)[0] || parts[0];
+    const chip = (on) => on ? { bg:'#1B6BE3', fg:'#FFFFFF', border:'#1B6BE3' } : { bg:'#FFFFFF', fg:'#334155', border:'#C9D6E6' };
+
+    const q = s.q.trim().toLowerCase();
+    let rows = s.view === 'low' ? lowList : parts;
+    if (q) rows = rows.filter(p => (p.code + p.name + p.brand + p.cat + p.compat.join(' ')).toLowerCase().indexOf(q) > -1);
+    if (s.filters.length) rows = rows.filter(p => {
+      const st = this.status(p).key;
+      return s.filters.some(f => (f === 'out' && st === 'out') || (f === 'low' && (st === 'low' || st === 'reserved')) ||
+        (f === 'onorder' && p.onOrder > 0) || (f === 'damaged' && p.damaged > 0) ||
+        (f === 'brake' && p.cat === 'ระบบเบรก') || (f === 'fluid' && p.cat === 'ของเหลว'));
+    });
+
+    const selCodes = Object.keys(s.sel).filter(k => s.sel[k]);
+    const selParts = parts.filter(p => selCodes.indexOf(p.code) > -1);
+    const suggestQty = (p) => Math.max(0, p.pq - p.onOrder);
+    const poRows = (selParts.length ? selParts : lowList).map(p => ({
+      code: p.code, name: p.name, brand: p.brand, rop: p.rop, available: avail(p),
+      availFg: avail(p) <= 0 ? '#A31D1D' : '#A8380A',
+      qty: suggestQty(p),
+      est: mgr ? money(suggestQty(p) * p.cost) : 'ซ่อนไว้',
+      priceFg: mgr ? '#0F2440' : '#94A3B8',
+      supplier: p.suppliers[0].name + ' · ส่ง ' + p.suppliers[0].lead
+    }));
+    const poQty = poRows.reduce((n, r) => n + r.qty, 0);
+    const poValue = mgr ? money((selParts.length ? selParts : lowList).reduce((n, p) => n + suggestQty(p) * p.cost, 0)) : 'ซ่อนไว้';
+
+    const led = LEDGER[part.code] || [];
+    const adjType = ADJ_TYPES.filter(t => t.key === s.adjType)[0];
+    const adjQtyN = parseInt(s.adjQty || '0', 10) || 0;
+    const after = part.onHand + adjType.dir * adjQtyN;
+    const negative = after < 0;
+    const overAvail = adjType.dir < 0 && adjQtyN > avail(part) && !negative;
+    const needsApproval = adjType.dir < 0 && adjQtyN >= 2 || s.adjType === 'found';
+
+    return {
+      isDash: s.view === 'dash', isList: s.view === 'catalog' || s.view === 'low', isLow: s.view === 'low',
+      isPart: s.view === 'part', isPo: s.view === 'po', inPart: s.view === 'part',
+      mgrBg: mgr ? '#0F2440' : 'transparent', mgrFg: mgr ? '#fff' : '#475569',
+      kpBg: mgr ? 'transparent' : '#0F2440', kpFg: mgr ? '#475569' : '#fff',
+      beManager: () => this.setState({ role:'manager' }), beKeeper: () => this.setState({ role:'keeper' }),
+      seeCost: mgr, noCost: !mgr,
+      roleLabel: mgr ? 'ผู้จัดการสาขา' : 'เจ้าหน้าที่คลัง',
+      userName: mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'ประยุทธ์ คลังสินค้า',
+      initials: mgr ? 'กร' : 'ปย',
+      nav: NAV.map(n => Object.assign({ label:n.label, path:n.path, hasBadge: !!n.badge, badge:n.badge, tap: () => this.setState({ view: n.key === 'po' ? 'po' : 'dash' }) },
+        n.key === 'stock' ? { bg:'#1B6BE3', fg:'#fff' } : { bg:'transparent', fg:'#A9BDD6' })),
+
+      scan: s.scan,
+      onScan: (e) => {
+        const v = e.target.value;
+        this.setState({ scan:v });
+        const hit = parts.filter(p => p.barcode === v.trim() || p.code.toLowerCase() === v.trim().toLowerCase())[0];
+        if (v.trim().length >= 13 && !hit) this.setState({ barcodeFail:true, scanCode:v.trim() });
+        else if (hit) this.setState({ view:'part', code:hit.code, barcodeFail:false, scan:'', dupWarn: !!hit.dup });
+      },
+      barcodeFail: s.barcodeFail, scanCode: s.scanCode,
+      clearScan: () => this.setState({ barcodeFail:false, scan:'' }),
+      reqNewSku: () => this.setState({ barcodeFail:false, scan:'' }, () => this.say('ส่งคำขอเปิดรหัสอะไหล่แล้ว', 'คำขอ SKU-REQ-0088 · ฝ่ายจัดซื้อจะตรวจสอบและเปิดรหัสให้ภายใน 1 วันทำการ')),
+      linkBarcode: () => this.setState({ barcodeFail:false, scan:'', view:'catalog' }, () => this.say('เลือกอะไหล่ที่ต้องการผูกบาร์โค้ด', 'เปิดรายการอะไหล่แล้ว — เลือกรหัสที่ตรงกับของจริงในมือ', 'warn')),
+
+      lowN: lowList.length,
+      tileCols: mgr ? 'repeat(7,minmax(0,1fr))' : 'repeat(6,minmax(0,1fr))',
+      tiles: [
+        { label:'จำนวนรหัสอะไหล่', n:'248', sub:'ใช้งานอยู่ 231 · หยุดใช้ 17', accent:'#1B6BE3', fg:'#1552B3', border:'#E3E8EF', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8', v:'catalog' },
+        { label:'ต่ำกว่าจุดสั่งซื้อ', n: String(lowList.length), sub:'ควรสั่งซื้อภายในวันนี้', accent:'#E0930C', fg:'#8A5A00', border:'#F0D9AC', path:'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01', v:'low' },
+        { label:'ของหมด', n: String(parts.filter(p => p.onHand === 0).length), sub:'มีงานรออะไหล่ 2 งาน', accent:'#C02626', fg:'#A31D1D', border:'#F0C2C2', path:'M6 6l12 12M18 6L6 18', v:'low' },
+        { label:'จองไว้กับงานซ่อม', n: String(parts.reduce((n, p) => n + p.reserved, 0)), sub:'ยังอยู่ในคลัง แต่ใช้กับงานอื่นไม่ได้', accent:'#8A5A00', fg:'#8A5A00', border:'#E3E8EF', path:'M6 2h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4M6 22h12', v:'catalog' },
+        { label:'กำลังสั่ง (ยังไม่รับ)', n: String(parts.reduce((n, p) => n + p.onOrder, 0)), sub:'ไม่นับเป็นของที่ใช้ได้', accent:'#C2410C', fg:'#A8380A', border:'#E3E8EF', path:'M6 6h15l-2 9H8zM6 6L5 3H2', v:'po' },
+        { label:'ชำรุด / กักกัน', n: String(parts.reduce((n, p) => n + p.damaged, 0)), sub:'รอส่งคืนผู้จำหน่าย', accent:'#C02626', fg:'#A31D1D', border:'#E3E8EF', path:'M12 3l9.5 17h-19z', v:'catalog' }
+      ].concat(mgr ? [{ label:'มูลค่าสต็อก', n:'1.84M', sub:'ต้นทุนรวมทั้งสาขา (บาท)', accent:'#0E9F8C', fg:'#0B6D5E', border:'#E3E8EF', path:'M12 3v18M7 7h6a3 3 0 0 1 0 6H8a3 3 0 0 0 0 6h7', v:'catalog' }] : [])
+        .map(t => Object.assign({}, t, { tap: () => this.setState({ view: t.v, filters: t.v === 'low' ? [] : s.filters }) })),
+
+      adjustments: [
+        { code:'P-ENG-2044', name:'ยางแท่นเครื่อง (ขวา)', tag:'ชำรุด', qty:'−1', reason:'ชำรุดจากการขนส่ง · แนบรูป 2 รูป', who:'ประยุทธ์ คลังสินค้า' },
+        { code:'P-BRK-0421', name:'ผ้าเบรกหน้า Bendix MKT', tag:'นับเกิน', qty:'+1', reason:'ตรวจนับประจำเดือน · ผู้จัดการอนุมัติ', who:'กัญญารัตน์ ดีสมบัติ' },
+        { code:'P-AC-0777', name:'น้ำยาแอร์ R134a', tag:'เบิกเพิ่ม', qty:'−1', reason:'เบิกใช้งาน JB-6712 (ไม่มีในใบเสนอราคา)', who:'อนุชา แก้วมณี' },
+        { code:'P-FLT-0501', name:'กรองน้ำมันเครื่อง', tag:'รับคืน', qty:'+2', reason:'ช่างคืนของที่ไม่ได้ใช้ · JB-6709', who:'ธีรศักดิ์ บุญมี' },
+        { code:'P-OIL-1001', name:'น้ำมันเครื่อง 5W-30', tag:'นับขาด', qty:'−2', reason:'นับประจำเดือนแล้วขาด · รออนุมัติ', who:'ประยุทธ์ คลังสินค้า' }
+      ].map(a => Object.assign({}, a, {
+        tagBg: a.qty.indexOf('+') === 0 ? '#E3F5F1' : (a.tag === 'ชำรุด' ? '#FEF6F6' : '#FFFBF3'),
+        tagFg: a.qty.indexOf('+') === 0 ? '#0B6D5E' : (a.tag === 'ชำรุด' ? '#A31D1D' : '#8A5A00'),
+        qtyFg: a.qty.indexOf('+') === 0 ? '#0B6D5E' : '#A31D1D'
+      })),
+
+      listTitle: s.view === 'low' ? 'อะไหล่ต่ำกว่าจุดสั่งซื้อ' : 'แคตตาล็อกอะไหล่',
+      listSub: s.view === 'low' ? 'เลือกรายการเพื่อสร้างร่างใบสั่งซื้อ · เกณฑ์: คงเหลือใช้ได้ < จุดสั่งซื้อ' : 'ค้นด้วยรหัส ชื่อ แบรนด์ หรือรุ่นรถที่ใช้ได้',
+      allBg: s.view === 'catalog' ? '#0F2440' : '#fff', allFg: s.view === 'catalog' ? '#fff' : '#1B3557',
+      lowBg: s.view === 'low' ? '#E0930C' : '#FFFBF3', lowFg: s.view === 'low' ? '#fff' : '#8A5A00',
+      q: s.q, onQ: (e) => this.setState({ q: e.target.value }),
+      filters: [
+        { key:'out', label:'ของหมด' }, { key:'low', label:'ใช้ได้ต่ำ' }, { key:'onorder', label:'มีของกำลังสั่ง' },
+        { key:'damaged', label:'มีของชำรุด' }, { key:'brake', label:'หมวดเบรก' }, { key:'fluid', label:'หมวดของเหลว' }
+      ].map(f => Object.assign({ label:f.label, tap: () => this.setState(st => ({ filters: st.filters.indexOf(f.key) > -1 ? st.filters.filter(x => x !== f.key) : st.filters.concat([f.key]) })) }, chip(s.filters.indexOf(f.key) > -1))),
+      hasFilters: s.filters.length > 0 || !!s.q.trim(),
+      clearFilters: () => this.setState({ filters:[], q:'' }),
+      cols: mgr ? '44px 132px 1.5fr 66px 56px 62px 70px 62px 76px 92px 96px 128px' : '44px 132px 1.6fr 66px 56px 62px 70px 62px 76px 96px 128px',
+      rowN: rows.length, emptyList: rows.length === 0,
+      rows: rows.map(p => {
+        const st = this.status(p);
+        const a = avail(p);
+        return {
+          code: p.code, barcode: p.barcode, name: p.name, brand: p.brand, cat: p.cat,
+          onHand: p.onHand, reserved: p.reserved, available: a, onOrder: p.onOrder, damaged: p.damaged, rop: p.rop,
+          cost: money(p.cost), price: money(p.price),
+          availFg: a <= 0 ? '#A31D1D' : (a < p.rop ? '#A8380A' : '#0B6D5E'),
+          onOrderFg: p.onOrder ? '#A8380A' : '#CBD5E1',
+          dmgFg: p.damaged ? '#A31D1D' : '#CBD5E1',
+          stLabel: st.label, stBg: st.bg, stFg: st.fg, stPath: st.path,
+          bg: st.key === 'out' ? '#FFFDFD' : (st.key === 'low' || st.key === 'reserved' ? '#FFFDF8' : '#fff'),
+          selBg: s.sel[p.code] ? '#1B6BE3' : '#fff', selBorder: s.sel[p.code] ? '#1B6BE3' : '#C9D6E6',
+          toggleSel: () => this.setState(st2 => ({ sel: Object.assign({}, st2.sel, { [p.code]: !st2.sel[p.code] }) })),
+          open: () => this.setState({ view:'part', code:p.code, dupWarn: !!p.dup, stale:false })
+        };
+      }),
+      allSelBg: selCodes.length === lowList.length && lowList.length ? '#1B6BE3' : '#fff',
+      allSelBorder: selCodes.length ? '#1B6BE3' : '#C9D6E6',
+      selectAll: () => this.setState(st => {
+        const all = {};
+        if (selCodes.length !== lowList.length) lowList.forEach(p => { all[p.code] = true; });
+        return { sel: all };
+      }),
+      hasSel: selCodes.length > 0, selN: selCodes.length,
+      selQty: selParts.reduce((n, p) => n + suggestQty(p), 0),
+      selValue: mgr ? money(selParts.reduce((n, p) => n + suggestQty(p) * p.cost, 0)) + ' บาท' : 'ซ่อนต้นทุนไว้',
+      clearSel: () => this.setState({ sel:{} }),
+      makePo: () => this.setState({ view:'po' }, () => this.say('สร้างร่างใบสั่งซื้อ PR-0319 แล้ว', selCodes.length + ' รายการ · ตรวจจำนวนและผู้จำหน่ายก่อนส่งให้ฝ่ายจัดซื้อ')),
+      makePoOne: () => this.setState({ sel:{ [part.code]:true }, view:'po' }),
+
+      p: {
+        code: part.code, name: part.name, brand: part.brand, cat: part.cat, barcode: part.barcode, unit: part.unit,
+        onHand: part.onHand, reserved: part.reserved, available: avail(part), onOrder: part.onOrder, damaged: part.damaged,
+        rop: part.rop, pq: part.pq, usage: part.usage,
+        price: money(part.price), cost: money(part.cost), margin: money(part.price - part.cost) + ' (' + Math.round(((part.price - part.cost) / part.price) * 100) + '%)',
+        reservedJobs: part.reservedJobs, poRef: part.poRef,
+        compat: part.compat.map(c => ({ label:c })),
+        suppliers: part.suppliers.map(v => Object.assign({}, v, {
+          border: v.tag === 'หลัก' ? '#BCD3F5' : '#E3E8EF',
+          tagBg: v.tag === 'หลัก' ? '#E6EFFC' : '#EEF1F5',
+          tagFg: v.tag === 'หลัก' ? '#1552B3' : '#475569',
+          price: mgr ? v.price : 'ซ่อนไว้'
+        })),
+        stLabel: this.status(part).label, stBg: this.status(part).bg, stFg: this.status(part).fg, stPath: this.status(part).path,
+        availBg: avail(part) <= 0 ? '#FEF6F6' : (avail(part) < part.rop ? '#FFFBF3' : '#F7FCFA'),
+        availBorder: avail(part) <= 0 ? '#F0C2C2' : (avail(part) < part.rop ? '#F0D9AC' : '#B6E3DA'),
+        availFg: avail(part) <= 0 ? '#A31D1D' : (avail(part) < part.rop ? '#8A5A00' : '#0B6D5E'),
+        equation: 'คงเหลือใช้ได้ = ' + part.onHand + ' − ' + part.reserved + ' = ' + avail(part) + ' ' + part.unit + '   |   กำลังสั่ง ' + part.onOrder + ' (ไม่นับรวม)   |   ชำรุด ' + part.damaged + ' (กันออก)'
+      },
+      backList: () => this.setState({ view:'catalog' }),
+
+      ledger: led.map(l => Object.assign({}, l, {
+        qty: l.qty === 0 ? '—' : (l.qty > 0 ? '+' + l.qty : String(l.qty)),
+        qtyFg: l.qty > 0 ? '#0B6D5E' : (l.qty < 0 ? '#A31D1D' : '#94A3B8'),
+        bg: l.docType === 'ปรับสต็อก' ? '#FFFDF8' : '#fff'
+      })),
+      ledgerN: led.length, hasLedger: led.length > 0, noLedger: led.length === 0,
+
+      stale: s.stale, refresh: () => this.setState({ stale:false }, () => this.say('โหลดยอดล่าสุดแล้ว', 'คงคลังตรงกับที่ช่างเบิกจากแอปมือถือ ณ 15:42:08')),
+      demoStale: () => this.setState({ view:'part', code:'P-BRK-0421', stale:true }),
+      dupWarn: s.dupWarn,
+      demoDup: () => this.setState({ view:'part', code:'P-BRK-0423', dupWarn:true }),
+      demoNoHistory: () => this.setState({ view:'part', code:'P-WIP-0220', dupWarn:false, stale:false }),
+      demoBarcode: () => this.setState({ barcodeFail:true, scanCode:'8859999912345', view:'catalog' }),
+      mergeSku: () => this.setState({ dupWarn:false, view:'part', code:'P-BRK-0421' }, () => this.say('ส่งคำขอรวมรหัสอะไหล่แล้ว', 'ต้องให้ผู้จัดการอนุมัติก่อนย้ายยอด 3 ชุดจาก P-BRK-0423 ไปที่ P-BRK-0421', 'warn')),
+      keepSku: () => this.setState({ dupWarn:false }, () => this.say('บันทึกว่าเป็นของต่างกัน', 'ระบบจะไม่เตือนซ้ำ แต่บันทึกการยืนยันไว้ในประวัติของรหัสนี้')),
+
+      askAdjust: () => this.setState({ adjOpen:true, adjType:'damaged', adjQty:'1', adjReason:'', evidence:false, adjErrorText:'' }),
+      adjOpen: s.adjOpen, closeAdj: () => this.setState({ adjOpen:false }),
+      adjTypes: ADJ_TYPES.map(t => Object.assign({ label:t.label, tap: () => this.setState({ adjType:t.key, adjReason:'', adjErrorText:'' }) },
+        s.adjType === t.key ? { bg:'#E6EFFC', border:'#1B6BE3', fg:'#1552B3' } : { bg:'#fff', border:'#C9D6E6', fg:'#334155' })),
+      adjQty: s.adjQty, onAdjQty: (e) => this.setState({ adjQty: e.target.value.replace(/[^0-9]/g, ''), adjErrorText:'' }),
+      adjQtyBorder: negative ? '1.5px solid #C02626' : '1.5px solid #1B6BE3',
+      adjPreview: 'คงคลัง ' + part.onHand + ' → ' + Math.max(0, after) + ' ' + part.unit + ' · ใช้ได้ ' + Math.max(0, after - part.reserved) + (s.adjType === 'damaged' ? ' · ชำรุด ' + part.damaged + ' → ' + (part.damaged + adjQtyN) : ''),
+      adjError: negative || overAvail || !!s.adjErrorText,
+      adjErrorText: s.adjErrorText || (negative
+        ? 'ปรับไม่ได้ · จะทำให้คงคลังติดลบ (มี ' + part.onHand + ' ' + part.unit + ' แต่ตัด ' + adjQtyN + ') — ระบบไม่อนุญาตให้สต็อกเป็นลบ'
+        : (overAvail ? 'จำนวนที่ตัดมากกว่าของที่ใช้ได้ (' + avail(part) + ' ' + part.unit + ') เพราะมี ' + part.reserved + ' ที่จองไว้กับงานซ่อม — ต้องปลดการจองก่อน' : '')),
+      adjReasons: (ADJ_REASONS[s.adjType] || []).map(v => Object.assign({ label:v, tap: () => this.setState({ adjReason:v, adjErrorText:'' }) },
+        s.adjReason === v ? { bg:'#E6EFFC', border:'#1B6BE3', fg:'#1552B3' } : { bg:'#fff', border:'#C9D6E6', fg:'#334155' })),
+      hasEvidence: s.evidence,
+      evLabel: s.evidence ? 'แนบหลักฐานแล้ว 2 รูป' : 'แนบรูปหลักฐาน (บังคับสำหรับของชำรุด)',
+      evNote: s.evidence ? 'damaged-2044-01.jpg · damaged-2044-02.jpg' : 'ถ่ายรูปของที่ชำรุดหรือใบตรวจนับ',
+      attachEvidence: () => this.setState({ evidence:true, adjErrorText:'' }),
+      apprBg: needsApproval ? '#FFFBF3' : '#F7FCFA',
+      apprBorder: needsApproval ? '#F0D9AC' : '#B6E3DA',
+      apprFg: needsApproval ? '#8A5A00' : '#0B6D5E',
+      apprPath: needsApproval ? 'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01' : 'M4 12.5l5 5L20 7',
+      apprText: needsApproval
+        ? (mgr ? 'การปรับนี้ต้องได้รับอนุมัติจากผู้จัดการ — คุณมีสิทธิ์อนุมัติได้เอง ระบบจะบันทึกชื่อคุณเป็นผู้อนุมัติ' : 'การปรับจำนวนตั้งแต่ 2 หน่วยขึ้นไป หรือการนับเกิน ต้องให้ผู้จัดการสาขาอนุมัติ — จะบันทึกเป็นคำขอรออนุมัติ')
+        : 'การปรับนี้อยู่ในอำนาจของเจ้าหน้าที่คลัง · บันทึกลงบัญชีเคลื่อนไหวทันทีพร้อมชื่อผู้ทำและเวลา',
+      adjBtnLabel: needsApproval && !mgr ? 'ส่งคำขอให้ผู้จัดการอนุมัติ' : 'ยืนยันการปรับสต็อก',
+      adjBtnBg: (negative || overAvail) ? '#9BB0CB' : (needsApproval ? '#E0930C' : '#1B6BE3'),
+      submitAdj: () => {
+        if (negative || overAvail) { this.say('ปรับสต็อกไม่ได้', 'แก้จำนวนให้ไม่ทำให้สต็อกติดลบหรือเกินของที่ใช้ได้', 'err'); return; }
+        if (!adjQtyN) { this.setState({ adjErrorText:'ต้องระบุจำนวนที่ปรับ' }); return; }
+        if (!s.adjReason) { this.setState({ adjErrorText:'ต้องเลือกเหตุผลของการปรับสต็อก' }); return; }
+        if (s.adjType === 'damaged' && !s.evidence) { this.setState({ adjErrorText:'การตัดของชำรุดต้องแนบรูปหลักฐาน' }); return; }
+        const dir = adjType.dir;
+        this.setState(st => ({
+          adjOpen:false,
+          parts: st.parts.map(x => x.code === part.code
+            ? Object.assign({}, x, { onHand: Math.max(0, x.onHand + dir * adjQtyN), damaged: st.adjType === 'damaged' ? x.damaged + adjQtyN : x.damaged })
+            : x)
+        }), () => this.say(needsApproval && !mgr ? 'ส่งคำขอปรับสต็อกแล้ว' : 'ปรับสต็อกเรียบร้อย',
+          part.code + ' · ' + (dir > 0 ? '+' : '−') + adjQtyN + ' ' + part.unit + ' · เหตุผล: ' + s.adjReason + ' · บันทึกในบัญชีเคลื่อนไหวพร้อมผู้ทำและเวลา', needsApproval && !mgr ? 'warn' : 'ok'));
+      },
+
+      poRows, poN: poRows.length, poQty, poValue,
+      sendPo: () => this.setState({ view:'low', sel:{} }, () => this.say('ส่งร่างใบสั่งซื้อให้ฝ่ายจัดซื้อแล้ว', 'PR-0319 · ' + poRows.length + ' รายการ · รอผู้จัดการอนุมัติวงเงินก่อนออก PO')),
+
+      goDash: () => this.setState({ view:'dash', barcodeFail:false }),
+      goCatalog: () => this.setState({ view:'catalog', filters:[], barcodeFail:false }),
+      goLow: () => this.setState({ view:'low', filters:[], q:'', barcodeFail:false }),
+      resetAll: () => this.setState({ view:'dash', role:'manager', q:'', filters:[], sel:{}, code:'P-BRK-0421', scan:'', barcodeFail:false, stale:false, dupWarn:false, adjOpen:false, parts: PARTS.map(p => Object.assign({}, p)) }),
+
+      toast: !!s.toast, toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      toastBg: s.toast ? (s.toast.kind === 'err' ? '#C02626' : (s.toast.kind === 'warn' ? '#E0930C' : '#0E9F8C')) : '#0E9F8C',
+      toastPath: s.toast && s.toast.kind === 'err' ? 'M6 6l12 12M18 6L6 18' : (s.toast && s.toast.kind === 'warn' ? 'M12 3l9.5 17h-19zM12 10v4' : 'M4 12.5l5 5L20 7'),
+      clearToast: () => this.setState({ toast:null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

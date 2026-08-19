@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF2F7; font-family:'IBM Plex Sans Thai', sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#12489C; text-decoration:underline; }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:34px; padding:44px 48px 72px; max-width:1420px">
+
+  <div style="background:#0F2440; border-radius:16px; padding:30px 32px; display:flex; flex-direction:column; gap:10px">
+    <span style="font-size:12px; font-weight:700; color:#7FB0F2; letter-spacing:.16em">GARAGEPRO SERVICE OPS · FLUTTER MOBILE · DEVICE PASS</span>
+    <span style="font-size:31px; font-weight:700; color:#fff; line-height:1.3">ปรับทุกหน้าจอมือถือเป็น iPhone 15 Pro Max</span>
+    <span style="font-size:13.5px; color:#A9BDD6; line-height:1.85; max-width:1010px">พื้นที่แสดงผล 430 × 932 pt แนวตั้ง · ขอบบนปลอดภัย 59 pt (มี Dynamic Island 126 × 37 pt) · ขอบล่างปลอดภัย 34 pt (แถบ home indicator) · มุมจอโค้ง 47 pt · กรอบเครื่องเป็นเพียงการนำเสนอ ไม่ใช่ส่วนของ UI แอป · ตรรกะธุรกิจ ลำดับหน้าจอ คำศัพท์ และข้อมูลตัวอย่างไม่เปลี่ยน · ไม่แตะกรอบเว็บ Next.js</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px">
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:17px; display:flex; flex-direction:column; gap:4px">
+      <span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">430 × 932</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.6">พื้นที่แสดงผลตามหน่วย pt · ทุกกรอบใช้ค่าเดียวกัน</span>
+    </div>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:17px; display:flex; flex-direction:column; gap:4px">
+      <span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">59 / 34</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.6">ขอบปลอดภัยบน / ล่าง · ไม่มีปุ่ม ข้อความชั่วคราว หรือชื่อหน้าอยู่ใต้ Island และ home indicator</span>
+    </div>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:17px; display:flex; flex-direction:column; gap:4px">
+      <span style="font-size:26px; font-weight:700; color:#0E9F8C; font-family:'IBM Plex Mono',monospace">3 ไฟล์</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.6">Mobile · Repair QC · Demo (ฝั่งมือถือ) — ปรับครบทุกกรอบ · กรอบตัวอย่างใน Foundation ปรับตามด้วย (ย่อ 70%)</span>
+    </div>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:17px; display:flex; flex-direction:column; gap:4px">
+      <span style="font-size:26px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{screenCount}} หน้าจอ/สถานะ</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.6">ปรับเป็น iPhone 15 Pro Max แล้วทั้งหมด</span>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <span style="font-size:20px; font-weight:700; color:#0F2440">1 · กติกาของกรอบเครื่อง</span>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:14px; padding:22px; display:flex; gap:28px; align-items:flex-start">
+      <div style="flex:none; box-sizing:content-box; width:215px; height:466px; border:7px solid #0B1526; border-radius:31px; background:#F1F4F9; overflow:hidden; display:flex; flex-direction:column; position:relative">
+        <div style="height:30px; background:#0F2440; position:relative; flex:none; display:flex; align-items:flex-start; justify-content:space-between; padding:13px 15px 0; font-size:7px; color:#A9BDD6; font-family:'IBM Plex Mono',monospace">
+          <span>14:32</span><span>ออนไลน์</span>
+          <div style="position:absolute; left:50%; top:6px; transform:translateX(-50%); width:63px; height:18px; border-radius:10px; background:#05080F"></div>
+        </div>
+        <div style="flex:none; background:#0F2440; padding:0 15px 9px; display:flex; flex-direction:column; gap:3px">
+          <span style="font-size:7px; color:#7FB0F2; font-family:'IBM Plex Mono',monospace">ชื่อหน้าอยู่ต่ำกว่า 59 pt เสมอ</span>
+          <span style="font-size:11px; font-weight:700; color:#fff">พื้นที่เนื้อหา</span>
+        </div>
+        <div style="flex:1; padding:9px 15px; display:flex; flex-direction:column; gap:7px; overflow:hidden">
+          <div style="border:1px dashed #B9C8DA; border-radius:7px; flex:1; display:flex; align-items:center; justify-content:center; text-align:center; padding:8px"><span style="font-size:8px; color:#64748B; line-height:1.7">พื้นที่เลื่อนได้<br>เผื่อขอบล่าง 46 pt</span></div>
+        </div>
+        <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:7px 15px 20px; display:flex; flex-direction:column; gap:4px">
+          <div style="height:27px; border-radius:7px; background:#1B6BE3; display:flex; align-items:center; justify-content:center"><span style="font-size:8px; font-weight:700; color:#fff">ปุ่มหลัก ≥ 48 pt (จริง 54–56)</span></div>
+        </div>
+        <div style="position:absolute; left:0; right:0; bottom:0; height:17px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:5px; pointer-events:none">
+          <div style="width:72px; height:3px; border-radius:2px; background:rgba(120,140,165,.75)"></div>
+        </div>
+      </div>
+      <div style="flex:1; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:11px">
+        <sc-for list="{{rules}}" as="r" hint-placeholder-count="8">
+          <div style="border:1px solid #E3E8EF; border-radius:11px; padding:13px 14px; display:flex; flex-direction:column; gap:4px; background:#F9FBFD">
+            <span style="font-size:12.5px; font-weight:700; color:#0F2440">{{r.t}}</span>
+            <span style="font-size:11.5px; color:#475569; line-height:1.7">{{r.d}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">2 · บัญชีหน้าจอมือถือ</span>
+      <span style="font-size:12.5px; color:#64748B">ทุกแถวปรับกรอบแล้ว · คอลัมน์สุดท้ายบอกว่าเป็นการจัดวางใหม่จริงหรือแค่ขยายกรอบ</span>
+    </div>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+      <div style="display:grid; grid-template-columns:118px 1fr 128px 92px 232px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+        <div style="padding:10px 12px">โมดูล</div><div style="padding:10px 10px">หน้าจอ / สถานะ</div><div style="padding:10px 10px">ไฟล์</div><div style="padding:10px 10px">กรอบใหม่</div><div style="padding:10px 10px">การจัดวาง</div>
+      </div>
+      <sc-for list="{{screens}}" as="s" hint-placeholder-count="20">
+        <div style="display:grid; grid-template-columns:118px 1fr 128px 92px 232px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch; background:{{s.bg}}">
+          <div style="padding:10px 12px; font-weight:700; color:#0F2440; line-height:1.5">{{s.mod}}</div>
+          <div style="padding:10px 10px; color:#334155; line-height:1.6">{{s.name}}</div>
+          <div style="padding:10px 10px; color:#64748B; font-family:'IBM Plex Mono',monospace; line-height:1.5">{{s.file}}</div>
+          <div style="padding:10px 10px"><span style="background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; white-space:nowrap">ปรับแล้ว</span></div>
+          <div style="padding:10px 10px; display:flex; flex-direction:column; gap:3px">
+            <span style="font-size:11px; font-weight:700; color:{{s.kFg}}">{{s.kind}}</span>
+            <span style="font-size:11px; color:#64748B; line-height:1.6">{{s.note}}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <span style="font-size:20px; font-weight:700; color:#0F2440">3 · หน้าจอที่ต้องจัดวางใหม่จริง ไม่ใช่แค่ขยาย</span>
+    <div style="display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:13px">
+      <sc-for list="{{reflow}}" as="r" hint-placeholder-count="6">
+        <div style="background:#fff; border:1px solid #D4DDE8; border-left:4px solid #E0930C; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:6px">
+          <span style="font-size:13.5px; font-weight:700; color:#0F2440; line-height:1.5">{{r.t}}</span>
+          <span style="font-size:11.5px; color:#475569; line-height:1.75">{{r.d}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">4 · คอนแทคชีตตามโมดูล</span>
+      <span style="font-size:12.5px; color:#64748B">ผังกรอบทุกหน้าจอในสัดส่วน 430 × 932 · แตะชื่อไฟล์เพื่อเปิดต้นแบบจริง</span>
+    </div>
+    <sc-for list="{{sheet}}" as="g" hint-placeholder-count="6">
+      <div style="display:flex; flex-direction:column; gap:9px">
+        <div style="display:flex; align-items:baseline; gap:10px">
+          <span style="font-size:14px; font-weight:700; color:#1B3557">{{g.mod}}</span>
+          <span style="font-size:11.5px; color:#64748B">{{g.count}} หน้าจอ · <a href="{{g.href}}">{{g.file}}</a></span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:11px">
+          <sc-for list="{{g.items}}" as="it" hint-placeholder-count="6">
+            <div style="flex:none; box-sizing:content-box; width:108px; height:234px; border:5px solid #0B1526; border-radius:19px; background:#F1F4F9; overflow:hidden; display:flex; flex-direction:column; position:relative">
+              <div style="height:17px; background:#0F2440; flex:none; position:relative">
+                <div style="position:absolute; left:50%; top:4px; transform:translateX(-50%); width:34px; height:9px; border-radius:5px; background:#05080F"></div>
+              </div>
+              <div style="flex:none; background:{{it.hBg}}; padding:6px 8px 7px; display:flex; flex-direction:column; gap:2px">
+                <span style="font-size:6.5px; color:{{it.hSub}}; font-family:'IBM Plex Mono',monospace">{{it.tag}}</span>
+                <span style="font-size:8.5px; font-weight:700; color:{{it.hFg}}; line-height:1.35">{{it.name}}</span>
+              </div>
+              <div style="flex:1; padding:7px 8px; display:flex; flex-direction:column; gap:4px; overflow:hidden">
+                <sc-for list="{{it.rows}}" as="rw" hint-placeholder-count="3">
+                  <div style="height:{{rw.h}}; border-radius:4px; background:{{rw.bg}}; border:{{rw.bd}}"></div>
+                </sc-for>
+              </div>
+              <sc-if value="{{it.hasBar}}" hint-placeholder-val="{{true}}">
+                <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:5px 8px 12px">
+                  <div style="height:15px; border-radius:4px; background:{{it.barBg}}"></div>
+                </div>
+              </sc-if>
+              <div style="position:absolute; left:0; right:0; bottom:0; height:9px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:3px; pointer-events:none">
+                <div style="width:38px; height:2px; border-radius:2px; background:rgba(120,140,165,.75)"></div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <span style="font-size:20px; font-weight:700; color:#0F2440">5 · ทดสอบเส้นทางหลักบนกรอบใหม่</span>
+    <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+      <sc-for list="{{path}}" as="p" hint-placeholder-count="10">
+        <div style="display:grid; grid-template-columns:38px 1fr 168px; border-bottom:1px solid #F5F8FB; align-items:center; font-size:11.5px">
+          <div style="padding:9px 0 9px 14px; color:#64748B; font-family:'IBM Plex Mono',monospace; font-weight:600">{{p.n}}</div>
+          <div style="padding:9px 10px; color:#334155; line-height:1.6">{{p.t}}</div>
+          <div style="padding:9px 12px"><span style="background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{p.r}}</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:12px">
+    <span style="font-size:20px; font-weight:700; color:#0F2440">6 · ปัญหาที่พบและแก้ไปแล้วในรอบนี้</span>
+    <div style="display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px">
+      <sc-for list="{{fixes}}" as="f" hint-placeholder-count="6">
+        <div style="background:#fff; border:1px solid #D4DDE8; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:flex-start">
+          <span style="width:20px; height:20px; border-radius:6px; background:#0E9F8C; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">{{f.n}}</span>
+          <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+            <span style="font-size:12.5px; font-weight:700; color:#0F2440; line-height:1.5">{{f.t}}</span>
+            <span style="font-size:11.5px; color:#475569; line-height:1.75">{{f.d}}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:15px 17px; display:flex; flex-direction:column; gap:5px">
+      <span style="font-size:12.5px; font-weight:700; color:#8A5A00">ยังต้องยืนยันกับทีมพัฒนา</span>
+      <span style="font-size:11.5px; color:#6B4A0B; line-height:1.8">ตัวเลข 430 × 932 คือขนาดอ้างอิงในการออกแบบ ไม่ใช่การล็อกขนาด — ทุกหน้าจอยังใช้ flex เต็มความกว้าง ปุ่มหลักยืดเต็มบรรทัด และเนื้อหาเลื่อนได้ จึงย่อลงถึง 360 pt ได้ตามที่ระบุในเอกสารส่งมอบ · ข้อกำหนดข้อความไทยที่ 200% และการใช้งานด้วยคีย์บอร์ด/โปรแกรมอ่านหน้าจอ ยังเป็นงานค้างเหมือนเดิม ไม่ได้แก้ในรอบนี้</span>
+    </div>
+  </div>
+
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1420,&quot;height&quot;:1000}}">
+const M = 'GaragePro Mobile.dc.html', Q = 'GaragePro Repair QC.dc.html', D = 'GaragePro Demo.dc.html';
+const RE = { kind:'จัดวางใหม่', kFg:'#8A5A00', bg:'#FFFDF8' };
+const RZ = { kind:'ขยายกรอบ', kFg:'#0B6D5E', bg:'#fff' };
+
+const S = (mod, name, file, k, note) => Object.assign({ mod, name, file, note }, k);
+
+const SCREENS = [
+  S('เข้าใช้งาน','เข้าสู่ระบบด้วยรหัสพนักงาน', M, RE, 'ฟอร์มยาวขึ้น · เผื่อขอบล่าง 46 pt ให้ปุ่มและเลขเวอร์ชันไม่ทับ home indicator'),
+  S('เข้าใช้งาน','เลือกสาขาและกะทำงาน', M, RZ, 'รายการสาขาเลื่อนได้ · การ์ดกว้างขึ้น 40 pt'),
+  S('เข้าใช้งาน','ไม่มีสาขา/กะให้เลือก (ว่าง)', M, RZ, 'ข้อความว่างอยู่กลางพื้นที่ปลอดภัย'),
+  S('หน้าหลัก','หน้าหลัก + ทางลัด 3 ปุ่ม + คิววันนี้', M, RE, 'แถบแท็บล่างเพิ่มระยะ 38 pt · ทางลัดสูงขึ้นเป็น 88 pt'),
+  S('หน้าหลัก','งานของฉัน', M, RZ, 'การ์ดงานยืดตามความกว้างใหม่'),
+  S('หน้าหลัก','คิวงานทั้งสาขา + ตัวกรอง', M, RZ, 'ชิปตัวกรองเลื่อนแนวนอนเหมือนเดิม'),
+  S('หน้าหลัก','กำลังโหลดคิวงาน', M, RZ, 'โครงร่างโหลดยาวขึ้นตามจอ'),
+  S('หน้าหลัก','คิวงานว่าง', M, RZ, '—'),
+  S('หน้าหลัก','ออฟไลน์ + มีข้อมูลรอซิงก์', M, RZ, 'แถบเตือนอยู่ใต้ชื่อหน้า ไม่ชนขอบบน'),
+  S('หน้าหลัก','ไม่มีสิทธิ์เข้าถึง (PERM-4031)', M, RE, 'ไดอะล็อกยกขึ้น 46 pt เหนือ home indicator'),
+  S('ค้นหา','ค้นหา — ยังไม่พิมพ์', M, RZ, 'ตัวอย่างคำค้นกว้างขึ้น'),
+  S('ค้นหา','ผลการค้นหา', M, RZ, '—'),
+  S('ค้นหา','ค้นไม่พบ + ทางออก', M, RZ, '—'),
+  S('สแกน QR','กล้องสแกน (เต็มจอ)', M, RE, 'กรอบเล็ง 248 → 300 pt และเส้นสแกนยาวขึ้น เพราะจอสูงกว่าเดิม 88 pt'),
+  S('สแกน QR','สแกนไม่พบใบสั่งซ่อม', M, RZ, 'ไดอะล็อกอยู่เหนือขอบล่าง'),
+  S('แจ้งเตือน','ศูนย์แจ้งเตือน 6 รายการ', M, RZ, 'แถบแท็บล่างยกเหนือ home indicator'),
+  S('แจ้งเตือน','ไม่มีแจ้งเตือน', M, RZ, '—'),
+  S('รับรถ','ขั้น 1 ค้นหาลูกค้าและรถ', M, RE, 'แถบปุ่มติดล่างเผื่อ 42 pt · ชิปช่องทางค้นหาเลื่อนแนวนอน'),
+  S('รับรถ','ขั้น 2 ข้อมูลรถ + เลขไมล์', M, RE, 'ฟอร์มพร้อมคีย์บอร์ด — ช่องที่แก้ ข้อความเตือน และปุ่มถัดไปยังเห็นครบ'),
+  S('รับรถ','เตือนเลขไมล์ผิดปกติ', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('รับรถ','ขั้น 3 อาการที่ลูกค้าแจ้ง', M, RZ, 'พื้นที่พิมพ์สูงขึ้นตามจอ'),
+  S('รับรถ','ขั้น 4 ถ่ายรูปตามมุมที่กำหนด', M, RE, 'ตารางรูป 4 ช่องกว้างขึ้น · ปุ่มถ่ายอยู่ในพื้นที่ปลอดภัย'),
+  S('รับรถ','ขั้น 5 ตรวจทานก่อนเปิดงาน', M, RZ, '—'),
+  S('รับรถ','ขั้น 6 เปิดงานสำเร็จ + QR ติดรถ', M, RZ, 'QR 200 pt อยู่กลางจอ'),
+  S('รับรถ','ออกจากการรับรถ (ยืนยัน)', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('ตรวจเช็ค','ภาพรวมใบตรวจเช็ค 25/31', M, RE, 'แถบสรุปติดล่างเผื่อ 42 pt'),
+  S('ตรวจเช็ค','รายการตามหมวด', M, RZ, '—'),
+  S('ตรวจเช็ค','รายละเอียดสิ่งที่พบ (bottom sheet)', M, RE, 'ชีตสูงสุด 84% + ขอบล่าง 34 pt ในตัวชีต'),
+  S('ตรวจเช็ค','ระบุเหตุผล “ไม่เกี่ยวข้อง”', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('ตรวจเช็ค','สรุปผล + ยืนยันส่งธุรการ', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('ตรวจเช็ค','ส่งผลตรวจแล้ว', M, RZ, '—'),
+  S('อนุมัติราคา','รายการซ่อมและราคา (เลือกทีละข้อ)', M, RE, 'แถบยอดรวมติดล่างเผื่อ 42 pt · ราคาชิดขวาในคอลัมน์กว้างขึ้น'),
+  S('อนุมัติราคา','รายละเอียดรายการ + รูปที่ช่างถ่าย', M, RE, 'ชีต 84% + ขอบล่าง 34 pt'),
+  S('อนุมัติราคา','เหตุผลที่ยังไม่ซ่อม', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('อนุมัติราคา','ตรวจทานก่อนเซ็นยืนยัน', M, RZ, '—'),
+  S('อนุมัติราคา','แผ่นเซ็นชื่อ (เต็มจอ)', M, RE, 'พื้นที่เซ็น 230 → 300 pt ใช้ความสูงที่เพิ่มมา · ปุ่มลบ/บันทึกอยู่เหนือ home indicator'),
+  S('อนุมัติราคา','ลบลายเซ็นและเซ็นใหม่', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('อนุมัติราคา','ออกจากหน้าเซ็นชื่อ', M, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('อนุมัติราคา','อนุมัติบางรายการสำเร็จ', M, RZ, '—'),
+  S('อนุมัติราคา','ใบเสนอราคามีเวอร์ชันใหม่กว่า', M, RZ, 'แถบเตือนอยู่บนสุดของพื้นที่เลื่อน'),
+  S('ซ่อม · QC','งานของฉัน (ช่างเทคนิค)', Q, RE, 'ไม่มีแถบติดล่าง จึงเผื่อท้ายรายการ 46 pt'),
+  S('ซ่อม · QC','รายละเอียดงาน + จับเวลา + รูปก่อน/หลัง', Q, RE, 'ปุ่มรูปก่อน/หลังเป็นตาราง 2 ช่องกว้างขึ้น · แถบบันทึกเผื่อ 42 pt'),
+  S('ซ่อม · QC','แจ้งรออะไหล่ (bottom sheet)', Q, RE, 'ชีต 84% + ขอบล่าง 34 pt'),
+  S('ซ่อม · QC','พบงานเพิ่มเติม (bottom sheet)', Q, RE, 'ชีต 84% + ขอบล่าง 34 pt'),
+  S('ซ่อม · QC','ส่งตรวจ QC (ยืนยัน)', Q, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('ซ่อม · QC','เช็คลิสต์ QC + ทดลองวิ่ง', Q, RE, 'แถบปุ่ม QC เผื่อ 42 pt'),
+  S('ซ่อม · QC','QC ไม่ผ่าน — ตีกลับให้ช่าง', Q, RE, 'ไดอะล็อกยกขึ้น 46 pt'),
+  S('ซ่อม · QC','QC ผ่าน — พร้อมส่งมอบ', Q, RZ, '—'),
+  S('ซิงก์','ศูนย์ซิงก์ข้อมูล + คิวรูป 19 ไฟล์', Q, RE, 'ปุ่มซิงก์ติดล่างเผื่อ 42 pt'),
+  S('ซิงก์','อัปโหลดล้มเหลว + ลองใหม่', Q, RZ, '—'),
+  S('ซิงก์','ข้อมูลขัดแย้ง — เลือกฉบับที่ใช้', Q, RZ, '—'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 1 รับรถเข้าอู่', D, RE, 'ปุ่มขั้นตอนเผื่อ 42 pt · ทุกขั้นใช้กรอบเดียวกัน'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 2 ใบตรวจเช็คสภาพรถ', D, RZ, '—'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 5 อนุมัติราคา + เซ็นชื่อ', D, RE, 'บล็อกเซ็นชื่ออยู่เหนือปุ่มยืนยัน'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 7 เริ่มงานซ่อม / ขั้น 10 ได้อะไหล่แล้ว', D, RZ, '—'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 11 QC ผ่าน', D, RZ, '—'),
+  S('เดโมข้ามอุปกรณ์','ขั้น 13 เสร็จสมบูรณ์ + ไทม์ไลน์สองอุปกรณ์', D, RE, 'ไม่มีปุ่มท้ายจอ จึงเผื่อท้ายไทม์ไลน์ 46 pt'),
+  S('เดโมข้ามอุปกรณ์','หน้ารอสลับอุปกรณ์', D, RZ, '—'),
+  S('เดโมข้ามอุปกรณ์','ข้อความแจ้งชั่วคราว (toast)', D, RE, 'ยกจากขอบล่าง 100 → 130 pt ให้พ้นแถบปุ่มและ home indicator')
+];
+
+const RULES = [
+  { t:'ขอบบน 59 pt', d:'แถบสถานะสูง 59 pt · เวลาอยู่ซ้าย สถานะเครือข่ายอยู่ขวา · Dynamic Island 126 × 37 pt อยู่กลาง ไม่มีอะไรวางทับ' },
+  { t:'ขอบล่าง 34 pt', d:'home indicator เป็นชั้นบนสุดของกรอบ · แถบปุ่มติดล่างเผื่อ 42 pt แถบแท็บเผื่อ 38 pt' },
+  { t:'มุมจอ 47 pt', d:'ตัดเนื้อหาด้วยความโค้งของจอจริง ไม่มีการ์ดใดถูกมุมจอบัง' },
+  { t:'เป้าแตะ ≥ 48 pt', d:'ปุ่มหลัก 54–56 pt · ปุ่มไอคอน 44–48 pt · แถบแท็บสูง 48 pt' },
+  { t:'พื้นที่เลื่อน', d:'ทุกหน้าที่เลื่อนได้เผื่อท้ายเนื้อหา 42–46 pt ฟิลด์หรือปุ่มสุดท้ายจึงไม่ถูกบัง' },
+  { t:'ชีตและไดอะล็อก', d:'bottom sheet สูงสุด 84% พร้อมขอบล่าง 34 pt ในตัวชีต · ไดอะล็อกลอยเหนือขอบล่าง 46 pt' },
+  { t:'กรอบเครื่องไม่ใช่ UI', d:'สีขอบ ความโค้ง Island และ home indicator อยู่นอกพื้นที่เนื้อหา ไม่มี component ของแอปอ้างอิงค่าเหล่านี้' },
+  { t:'กรอบตัวอย่างในบอร์ดอื่น', d:'กรอบมือถือย่อส่วนใน GaragePro Foundation ใช้สัดส่วนและขอบปลอดภัยชุดเดียวกัน จึงไม่มีสองรูปแบบอุปกรณ์ในโครงการ' },
+  { t:'ยังยืดหยุ่นได้', d:'ไม่มีการล็อกความกว้างในเนื้อหา — ปุ่มหลักเต็มบรรทัด การ์ดใช้ flex ย่อถึง 360 pt ได้ตามเอกสารส่งมอบ' }
+];
+
+const REFLOW = [
+  { t:'เข้าสู่ระบบ', d:'ฟอร์มเดิมชิดขอบล่าง 24 pt · เปลี่ยนเป็นเผื่อ 46 pt แล้วดันบล็อกเวอร์ชัน/เบอร์ไอทีขึ้น ปุ่มเข้าสู่ระบบจึงไม่อยู่ในระยะ home indicator' },
+  { t:'กล้องสแกน QR', d:'กรอบเล็งขยาย 248 → 300 pt และเส้นสแกนวิ่งไกลขึ้น เพราะพื้นที่สูงขึ้น 88 pt ถ้าคงขนาดเดิมจะดูลอยกลางจอ' },
+  { t:'แผ่นเซ็นชื่อ', d:'พื้นที่เซ็นขยาย 230 → 300 pt ใช้ความสูงที่ได้มาจริง ลูกค้าเซ็นได้เต็มมือ ปุ่มลบ/ยืนยันยังอยู่เหนือขอบล่าง' },
+  { t:'bottom sheet ทั้งหมด (5 ชุด)', d:'จากสูงสุด 86–88% ปรับเป็น 84% + ขอบล่างในตัวชีต 34 pt ปุ่มท้ายชีตจึงพ้น home indicator' },
+  { t:'ไดอะล็อกยืนยันทั้งหมด (11 ชุด)', d:'จากลอยห่างขอบ 16 pt เป็น 46 pt ปุ่มคู่ล่างไม่ทับแถบ home indicator อีก' },
+  { t:'แถบแท็บล่างและแถบปุ่มติดล่าง', d:'ระยะล่าง 16–18 pt เดิมทับพื้นที่ปลอดภัย ปรับเป็น 38 pt (แท็บ) และ 42 pt (แถบปุ่ม) ทุกหน้าจอ' },
+  { t:'งานของฉัน (ช่าง) และไทม์ไลน์เดโมขั้น 13', d:'สองหน้านี้ไม่มีแถบปุ่มติดล่าง เดิมเนื้อหาไหลถึงขอบจอ · เพิ่มระยะท้ายรายการ 46 pt' },
+  { t:'ข้อความแจ้งชั่วคราวในเดโม', d:'toast เดิมอยู่ 100 pt จากขอบล่าง ทับแถบปุ่มบนจอที่สูงขึ้น · ย้ายไป 130 pt' },
+  { t:'ฟอร์มพร้อมคีย์บอร์ด (รับรถขั้น 1–3, แจ้งรออะไหล่, QC)', d:'ตรวจกับคีย์บอร์ดเปิด: ช่องที่กำลังแก้ ข้อความตรวจสอบ และปุ่มหลักยังอยู่ในพื้นที่ที่เลื่อนถึงได้ ไม่มีปุ่มถูกคีย์บอร์ดทับแบบถาวร' }
+];
+
+const G = (mod, count, file, href, items) => ({ mod, count: items.length, file, href, items });
+const dark = { hBg:'#0F2440', hFg:'#fff', hSub:'#7FB0F2' };
+const lite = { hBg:'#1B3557', hFg:'#fff', hSub:'#A9BDD6' };
+const row = (h, bg, bd) => ({ h, bg, bd: bd || '1px solid #E3E8EF' });
+const body = [row('26px','#fff'), row('40px','#fff'), row('30px','#fff'), row('22px','#F7F9FC')];
+const bodyAlt = [row('34px','#fff'), row('26px','#FFFBF3','1px solid #F0D9AC'), row('34px','#fff'), row('18px','#F7F9FC')];
+const sheetRows = [row('16px','#F7F9FC'), row('50px','#fff'), row('34px','#fff')];
+const F = (name, tag, o) => Object.assign({ name, tag, rows: body, hasBar:true, barBg:'#1B6BE3' }, dark, o || {});
+
+const SHEET = [
+  G('เข้าใช้งาน · หน้าหลัก · ค้นหา · แจ้งเตือน', 15, M, './GaragePro Mobile.dc.html', [
+    F('เข้าสู่ระบบ','EMP-10248',{ rows:[row('30px','#1B3557','1px solid #2A4970'), row('34px','#fff'), row('34px','#fff'), row('20px','#1B3557','1px solid #2A4970')], hasBar:false }),
+    F('เลือกสาขา/กะ','3 สาขา'),
+    F('ไม่มีสาขา/กะให้เลือก','empty',{ rows:[row('56px','#F7F9FC')], hasBar:false }),
+    F('หน้าหลัก','คิววันนี้',{ barBg:'#E3E8EF' }),
+    F('งานของฉัน','3 งาน',{ barBg:'#E3E8EF' }),
+    F('คิวงานทั้งสาขา','ตัวกรอง',{ barBg:'#E3E8EF' }),
+    F('กำลังโหลด','skeleton',{ rows:[row('26px','#EEF2F7'), row('26px','#EEF2F7'), row('26px','#EEF2F7'), row('26px','#EEF2F7')], barBg:'#E3E8EF' }),
+    F('คิวว่าง','empty',{ rows:[row('60px','#F7F9FC')], barBg:'#E3E8EF' }),
+    F('ออฟไลน์ + รอซิงก์','2 รายการ',{ rows:bodyAlt, barBg:'#E3E8EF' }),
+    F('ไม่มีสิทธิ์','PERM-4031',{ rows:[row('30px','#fff'), row('64px','#FBE9E9','1px solid #F0C2C2')], hasBar:false }),
+    F('ค้นหา','ยังไม่พิมพ์',{ hasBar:false }),
+    F('ผลการค้นหา','2 รายการ',{ hasBar:false }),
+    F('ค้นไม่พบ','ทางออก',{ rows:[row('44px','#F7F9FC')], hasBar:false }),
+    F('ศูนย์แจ้งเตือน','6 รายการ',{ rows:bodyAlt, barBg:'#E3E8EF' }),
+    F('ไม่มีแจ้งเตือน','empty',{ rows:[row('56px','#F7F9FC')], barBg:'#E3E8EF' })
+  ]),
+  G('สแกน QR · รับรถ 6 ขั้น', 10, M, './GaragePro Mobile.dc.html', [
+    F('กล้องสแกน','เต็มจอ',{ rows:[row('92px','#132437','1px solid #1B6BE3'), row('20px','#132437')], hasBar:false }),
+    F('สแกนไม่พบ','ลองใหม่',{ rows:[row('40px','#fff'), row('44px','#FBE9E9','1px solid #F0C2C2')], hasBar:false }),
+    F('ขั้น 1 ค้นหาลูกค้า','1/6'),
+    F('ขั้น 2 ข้อมูลรถ','1/6',{ rows:bodyAlt }),
+    F('เตือนเลขไมล์','ยืนยัน',{ rows:[row('30px','#fff'), row('50px','#FFFBF3','1px solid #F0D9AC')] }),
+    F('ขั้น 3 อาการที่แจ้ง','3/6'),
+    F('ขั้น 4 ถ่ายรูป','4/6',{ rows:[row('44px','#D8DEE7'), row('44px','#D8DEE7')] }),
+    F('ขั้น 5 ตรวจทาน','5/6'),
+    F('ขั้น 6 เปิดงานสำเร็จ','QR ติดรถ',{ rows:[row('60px','#fff'), row('26px','#fff')] }),
+    F('ออกจากการรับรถ','ยืนยัน',{ rows:[row('30px','#fff'), row('44px','#FBE9E9','1px solid #F0C2C2')] })
+  ]),
+  G('ใบตรวจเช็คสภาพรถ', 6, M, './GaragePro Mobile.dc.html', [
+    F('ภาพรวม 25/31','JB-6712'),
+    F('รายการตามหมวด','เบรก 5/5'),
+    F('รายละเอียดที่พบ','sheet',{ rows:sheetRows, barBg:'#1B6BE3' }),
+    F('ระบุเหตุผล','ไม่เกี่ยวข้อง',{ rows:[row('30px','#fff'), row('40px','#F7F9FC')] }),
+    F('สรุปผล','ส่งธุรการ'),
+    F('ส่งผลแล้ว','สำเร็จ',{ rows:[row('54px','#fff')], hasBar:false })
+  ]),
+  G('อนุมัติราคากับลูกค้า', 9, M, './GaragePro Mobile.dc.html', [
+    F('รายการซ่อมและราคา','QT-6712-01',{ rows:bodyAlt }),
+    F('รายละเอียดรายการ','sheet',{ rows:sheetRows }),
+    F('ยังไม่ซ่อม','เหตุผล',{ rows:[row('30px','#fff'), row('40px','#F7F9FC')] }),
+    F('ตรวจทานก่อนเซ็น','4 รายการ'),
+    F('แผ่นเซ็นชื่อ','เต็มจอ',{ rows:[row('96px','#F7F9FC','1.5px dashed #C9D6E6'), row('20px','#fff')] }),
+    F('ลบลายเซ็น','ยืนยัน',{ rows:[row('30px','#fff'), row('40px','#FFFBF3','1px solid #F0D9AC')] }),
+    F('ออกจากหน้าเซ็น','ยืนยัน',{ rows:[row('30px','#fff'), row('40px','#FBE9E9','1px solid #F0C2C2')] }),
+    F('อนุมัติบางรายการ','สำเร็จ',{ rows:[row('54px','#fff')], hasBar:false }),
+    F('มีเวอร์ชันใหม่','QT-6712-02',{ rows:[row('44px','#FEF6F6','1.5px solid #F0C2C2'), row('30px','#fff')] })
+  ]),
+  G('งานซ่อม · QC · ซิงก์ (ช่างเทคนิค)', 11, Q, './GaragePro Repair QC.dc.html', [
+    F('งานของฉัน','3 งาน',{ hasBar:false, rows:[row('40px','#fff','1.5px solid #F0C2C2'), row('34px','#fff'), row('34px','#fff')] }),
+    F('รายละเอียดงาน','จับเวลา',{ rows:bodyAlt }),
+    F('รูปก่อน/หลัง','ต่อรายการ',{ rows:[row('30px','#fff'), row('34px','#D8DEE7'), row('26px','#fff')] }),
+    F('แจ้งรออะไหล่','sheet',{ rows:sheetRows }),
+    F('พบงานเพิ่มเติม','sheet',{ rows:sheetRows }),
+    F('ส่งตรวจ QC','ยืนยัน',{ rows:[row('30px','#fff'), row('44px','#F7F9FC')] }),
+    F('เช็คลิสต์ QC','6 ข้อ + ทดลองวิ่ง'),
+    F('QC ไม่ผ่าน','ตีกลับ',{ rows:[row('30px','#fff'), row('44px','#FBE9E9','1px solid #F0C2C2')] }),
+    F('QC ผ่าน','พร้อมส่งมอบ',{ rows:[row('54px','#fff')], hasBar:false }),
+    F('ศูนย์ซิงก์','19 รูป · 32.4 MB',{ rows:bodyAlt }),
+    F('ข้อมูลขัดแย้ง','เลือกฉบับ',{ rows:[row('40px','#FFFBF3','1px solid #F0D9AC'), row('34px','#fff')] })
+  ]),
+  G('เดโมข้ามอุปกรณ์ (ฝั่งมือถือ)', 8, D, './GaragePro Demo.dc.html', [
+    F('ขั้น 1 รับรถ','JB-7042'),
+    F('ขั้น 2 ตรวจเช็ค','JB-7042'),
+    F('ขั้น 5 อนุมัติ + เซ็น','QT-7042-01',{ rows:[row('34px','#fff'), row('44px','#F7F9FC','1.5px dashed #C9D6E6')] }),
+    F('ขั้น 7 เริ่มซ่อม','JB-7042'),
+    F('ขั้น 10 ได้อะไหล่','GRN-0771'),
+    F('ขั้น 11 QC ผ่าน','JB-7042'),
+    F('ขั้น 13 เสร็จสมบูรณ์','ไทม์ไลน์',{ hasBar:false, rows:[row('30px','#fff'), row('34px','#fff'), row('34px','#fff'), row('26px','#fff')] }),
+    F('รอสลับอุปกรณ์','ไปที่เว็บ',{ rows:[row('54px','#F7F9FC')], hasBar:false })
+  ])
+];
+
+const PATH = [
+  'เข้าสู่ระบบ EMP-10248 → เลือกสาขาบางนา กะเช้า',
+  'หน้าหลัก → รับรถใหม่ ขั้น 1 ค้นหาลูกค้าเดิม 081-234-5678',
+  'ขั้น 2 ยืนยันเลขไมล์ 78,940 → ผ่านการเตือนเลขไมล์',
+  'ขั้น 3 อาการที่ลูกค้าแจ้ง → ขั้น 4 ถ่ายรูป 4 มุม',
+  'ขั้น 5 ตรวจทาน → ขั้น 6 เปิดงาน JB-6712 + QR ติดรถ',
+  'ใบตรวจเช็ค 31 ข้อ → รายละเอียดที่พบ → ส่งผลให้ธุรการ',
+  'อนุมัติราคา: ปฏิเสธ 1 รายการ → ตรวจทาน → เซ็นชื่อ → อนุมัติ 4 รายการ',
+  'งานของฉัน (ช่าง) → เริ่มงาน → รูปก่อน/หลัง → ปิดรายการ',
+  'แจ้งรออะไหล่ → งานเดินต่อได้ → ได้อะไหล่ → ปิดครบ',
+  'ส่งตรวจ QC → QC ไม่ผ่าน → แก้ไข → QC ผ่าน → พร้อมส่งมอบ',
+  'ศูนย์ซิงก์: อัปโหลดล้มเหลว → ลองใหม่ → แก้ข้อมูลขัดแย้ง',
+  'เดโมข้ามอุปกรณ์ 13 ขั้น: สลับมือถือ ↔ เว็บ ครบทุกจุด ตัวเลขตรงกันทุกจอ'
+];
+
+const FIXES = [
+  { t:'แถบปุ่มติดล่างทับ home indicator', d:'ทุกแถบปุ่มและแถบแท็บมีระยะล่างแค่ 16–18 pt · ปรับเป็น 38–42 pt ทั้ง 3 ไฟล์' },
+  { t:'ไดอะล็อกยืนยันชิดขอบล่างเกินไป', d:'11 ไดอะล็อกลอยห่างขอบเพียง 16 pt · ยกขึ้นเป็น 46 pt' },
+  { t:'bottom sheet ยาวถึงขอบจอ', d:'5 ชีตสูง 86–88% และไม่มีขอบล่างในตัว · ปรับเป็น 84% + 34 pt' },
+  { t:'ท้ายรายการถูกแถบ indicator บัง', d:'หน้าที่ไม่มีแถบปุ่ม (เข้าสู่ระบบ, งานของฉันฝั่งช่าง, รับรถ, เดโมขั้น 13) เพิ่มระยะท้าย 46 pt' },
+  { t:'toast ในเดโมทับแถบปุ่ม', d:'ย้ายจาก 100 pt เป็น 130 pt จากขอบล่าง' },
+  { t:'กรอบเล็ง QR และแผ่นเซ็นเล็กเกินจอใหม่', d:'ขยายเป็น 300 pt ทั้งคู่ พร้อมยืดระยะเส้นสแกนให้ตรงกับกรอบใหม่' },
+  { t:'กรอบตัวอย่างในบอร์ดรากฐาน (BOARD 1b) ยังเป็นรูปแบบเก่า', d:'เดิม 300 × 600 ไม่มีขอบบนปลอดภัยและแถบแท็บชิดขอบ 12 pt · ปรับเป็นสัดส่วน 430 × 932 ย่อ 70% พร้อม Island และ home indicator แถบแท็บเผื่อ 27 pt (= 38 pt ที่สัดส่วนเต็ม)' }
+];
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      screenCount: SCREENS.length,
+      rules: RULES,
+      screens: SCREENS,
+      reflow: REFLOW,
+      sheet: SHEET,
+      path: PATH.map((t, i) => ({ n: String(i + 1).padStart(2, '0'), t, r: 'ผ่าน' })),
+      fixes: FIXES.map((f, i) => ({ n: i + 1, t: f.t, d: f.d }))
+    };
+  }
+}
+</script>
+</body>
+</html>

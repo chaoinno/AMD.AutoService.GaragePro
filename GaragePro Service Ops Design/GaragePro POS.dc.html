@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  input { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+  @keyframes gpSpin { to { transform:rotate(360deg) } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:16px; padding:{{pagePad}}; align-items:{{pageAlign}}">
+
+  <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+    <div style="width:1440px; max-width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px; background:#0B1526; border-radius:0 0 12px 12px; padding:10px 16px">
+      <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · เว็บ NEXT.JS · ต้นแบบ ไม่ใช่ระบบจริง</span>
+      <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+    <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">WEB · POS &amp; PAYMENT</span>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{beCashier}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{cashBg}}; color:{{cashFg}}">แคชเชียร์</span>
+      <span onClick="{{beManager}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mgrBg}}; color:{{mgrFg}}">ผู้จัดการ</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <span onClick="{{goQueue}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">คิวรอชำระ</span>
+      <span onClick="{{goRecon}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">กระทบยอดก่อนปิดงาน</span>
+      <span onClick="{{goCheckout}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">หน้ารับชำระ</span>
+      <span onClick="{{demoSplit}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">แบ่งจ่าย เงินสด+บัตร</span>
+      <span onClick="{{demoDecline}}" style="font-size:12px; font-weight:600; color:#A31D1D; background:#FEF6F6; border:1px solid #F0C2C2; padding:7px 11px; border-radius:8px; cursor:pointer">บัตรถูกปฏิเสธ</span>
+      <span onClick="{{demoTimeout}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">QR หมดเวลา</span>
+      <span onClick="{{demoPrinter}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">เครื่องพิมพ์ออฟไลน์</span>
+      <span onClick="{{goAudit}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ประวัติพิมพ์ซ้ำ</span>
+      <span onClick="{{resetAll}}" style="font-size:12px; font-weight:600; color:#C02626; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">รีเซ็ต</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+  <div style="width:1440px; height:940px; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:14px; overflow:hidden; box-shadow:0 26px 64px rgba(15,36,64,.14); display:flex; position:relative">
+
+    <div style="width:68px; flex:none; background:#0F2440; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; margin-bottom:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+        <div onClick="{{n.tap}}" style="width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{n.bg}}; position:relative">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.path}}"/></svg>
+          <sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{false}}">
+            <span style="position:absolute; top:5px; right:4px; background:#E0930C; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center">{{n.badge}}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+      <div style="height:54px; flex:none; background:#fff; border-bottom:1px solid #E3E8EF; display:flex; align-items:center; gap:14px; padding:0 18px">
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748B">
+          <span onClick="{{goQueue}}" style="cursor:pointer">สาขาบางนา</span><span style="color:#CBD5E1">/</span>
+          <span onClick="{{goQueue}}" style="cursor:pointer">การเงินและ POS</span>
+          <sc-if value="{{inJob}}" hint-placeholder-val="{{false}}">
+            <span style="color:#CBD5E1">/</span><span style="color:#0F2440; font-weight:600">{{jbNo}} · {{reg}}</span>
+          </sc-if>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="display:inline-flex; align-items:center; gap:6px; background:{{printerBg}}; border:1px solid {{printerBorder}}; color:{{printerFg}}; font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:7px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 9V3h10v6M7 19H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 15h10v6H7z"/></svg>{{printerLabel}}</span>
+          <span style="font-size:11.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">กะ 08:05 · เงินสดในลิ้นชัก 12,400</span>
+          <div style="display:flex; align-items:center; gap:9px; padding-left:14px; border-left:1px solid #E3E8EF">
+            <div style="width:29px; height:29px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:#fff">{{initials}}</div>
+            <div style="display:flex; flex-direction:column"><span style="font-size:12.5px; font-weight:700; color:#0F2440">{{userName}}</span><span style="font-size:11px; color:#64748B">{{roleLabel}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{isQueue}}" hint-placeholder-val="{{true}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between">
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <span style="font-size:22px; font-weight:700; color:#0F2440">คิวรอส่งมอบและรับชำระเงิน</span>
+              <span style="font-size:13px; color:#64748B">งานที่ผ่าน QC แล้ว · เรียงตามลูกค้าที่มาถึงก่อน</span>
+            </div>
+            <div style="display:flex; gap:10px">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; color:#64748B">รับเงินแล้ววันนี้</span><span style="font-size:17px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">184,320.00</span></div>
+              <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; gap:2px"><span style="font-size:11px; color:#8A5A00">ค้างชำระ</span><span style="font-size:17px; font-weight:700; color:#8A5A00; font-family:'IBM Plex Mono',monospace">78,940.00</span></div>
+            </div>
+          </div>
+          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:104px 1.1fr 1fr 140px 130px 130px 140px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+              <div style="padding:11px 14px">เลขงาน</div><div style="padding:11px 14px">ทะเบียน / รุ่นรถ</div><div style="padding:11px 14px">ลูกค้า</div><div style="padding:11px 14px">สถานะ</div><div style="padding:11px 14px; text-align:right">ยอดสุทธิ</div><div style="padding:11px 14px; text-align:right">มัดจำ</div><div style="padding:11px 14px; text-align:right">การกระทำ</div>
+            </div>
+            <sc-for list="{{queue}}" as="r" hint-placeholder-count="4">
+              <div onClick="{{r.open}}" style="display:grid; grid-template-columns:104px 1.1fr 1fr 140px 130px 130px 140px; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; cursor:pointer; background:{{r.bg}}">
+                <div style="padding:12px 14px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.no}}</div>
+                <div style="padding:12px 14px; display:flex; flex-direction:column; gap:2px"><span style="font-weight:700; color:#0F2440">{{r.reg}}</span><span style="font-size:11.5px; color:#64748B">{{r.model}}</span></div>
+                <div style="padding:12px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#334155">{{r.customer}}</span><span style="font-size:11px; color:#94A3B8">{{r.arrive}}</span></div>
+                <div style="padding:12px 14px"><span style="display:inline-flex; align-items:center; gap:5px; background:{{r.stBg}}; color:{{r.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="{{r.stPath}}"/></svg>{{r.stLabel}}</span></div>
+                <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{r.total}}</div>
+                <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#0B6D5E">{{r.deposit}}</div>
+                <div style="padding:12px 14px; text-align:right"><span style="display:inline-flex; align-items:center; background:{{r.ctaBg}}; color:{{r.ctaFg}}; font-size:12px; font-weight:700; padding:7px 11px; border-radius:7px">{{r.cta}}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:15px; font-size:12.5px; color:#64748B; line-height:1.8">เรียกเก็บเงินได้เฉพาะงานที่ผ่าน QC และเปลี่ยนสถานะเป็น “พร้อมส่งมอบ” แล้ว — งานที่ยังมีรายการค้างจะขึ้นปุ่ม “ตรวจกระทบยอด” ให้ตรวจก่อนเปิดหน้ารับชำระ</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isRecon}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px">
+            <div style="display:flex; flex-direction:column; gap:5px">
+              <span style="font-size:22px; font-weight:700; color:#0F2440">กระทบยอดก่อนปิดงาน · {{reg}}</span>
+              <span style="font-size:13px; color:#64748B">{{jbNo}} · เทียบใบเสนอราคาที่ลูกค้าอนุมัติ กับงานที่ทำจริงและอะไหล่ที่เบิก</span>
+            </div>
+            <div style="display:flex; gap:9px">
+              <button onClick="{{goQueue}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">กลับคิว</button>
+              <button onClick="{{toCheckout}}" style="height:42px; padding:0 18px; background:{{reconBtnBg}}; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{reconBtnLabel}}</button>
+            </div>
+          </div>
+
+          <sc-if value="{{hasDiff}}" hint-placeholder-val="{{true}}">
+            <div style="background:#FFFBF3; border:1.5px solid #F0D9AC; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:flex-start">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+              <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                <span style="font-size:14.5px; font-weight:700; color:#8A5A00">พบ {{diffN}} รายการที่ไม่ตรงกัน — ต้องตัดสินใจก่อนเรียกเก็บเงิน</span>
+                <span style="font-size:13px; color:#8A5A00; line-height:1.7">ระบบไม่อนุญาตให้เปิดหน้ารับชำระจนกว่าจะเลือกวิธีจัดการทุกรายการ เพื่อไม่ให้เก็บเงินเกินหรือขาดจากที่ลูกค้าอนุมัติ</span>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{noDiff}}" hint-placeholder-val="{{false}}">
+            <div style="background:#F7FCFA; border:1.5px solid #B6E3DA; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:center">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#0B6D5E" stroke-width="2.8" stroke-linecap="round" style="flex:none"><path d="M4 12.5l5 5L20 7"/></svg>
+              <span style="font-size:14px; font-weight:700; color:#0B6D5E; flex:1">ทุกรายการตรงกันแล้ว · ยอดที่จะเรียกเก็บ {{due}} บาท</span>
+            </div>
+          </sc-if>
+
+          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:1.5fr 120px 120px 120px 130px 1.1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+              <div style="padding:11px 14px">รายการ</div><div style="padding:11px 12px; text-align:center">อนุมัติไว้</div><div style="padding:11px 12px; text-align:center">ทำจริง</div><div style="padding:11px 12px; text-align:center">อะไหล่เบิก</div><div style="padding:11px 12px; text-align:right">ยอดที่จะเก็บ</div><div style="padding:11px 14px">สถานะ / การจัดการ</div>
+            </div>
+            <sc-for list="{{reconRows}}" as="r" hint-placeholder-count="7">
+              <div style="display:grid; grid-template-columns:1.5fr 120px 120px 120px 130px 1.1fr; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; background:{{r.bg}}">
+                <div style="padding:12px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600; line-height:1.45">{{r.name}}</span><span style="font-size:11px; color:#94A3B8">{{r.src}}</span></div>
+                <div style="padding:12px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{r.approved}}</div>
+                <div style="padding:12px; text-align:center; font-family:'IBM Plex Mono',monospace; color:{{r.actualFg}}; font-weight:600">{{r.actual}}</div>
+                <div style="padding:12px; text-align:center; font-family:'IBM Plex Mono',monospace; color:{{r.issuedFg}}">{{r.issued}}</div>
+                <div style="padding:12px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{r.amountFg}}; text-decoration:{{r.strike}}">{{r.amount}}</div>
+                <div style="padding:12px 14px; display:flex; flex-direction:column; gap:6px">
+                  <span style="align-self:flex-start; display:inline-flex; align-items:center; gap:5px; background:{{r.stBg}}; color:{{r.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{r.stLabel}}</span>
+                  <sc-if value="{{r.needsFix}}" hint-placeholder-val="{{false}}">
+                    <div style="display:flex; gap:6px; flex-wrap:wrap">
+                      <span onClick="{{r.fixA}}" style="font-size:11px; font-weight:700; color:#fff; background:#1B6BE3; padding:6px 10px; border-radius:6px; cursor:pointer">{{r.fixALabel}}</span>
+                      <span onClick="{{r.fixB}}" style="font-size:11px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:6px 10px; border-radius:6px; cursor:pointer">{{r.fixBLabel}}</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{r.resolved}}" hint-placeholder-val="{{false}}">
+                    <span style="font-size:11px; color:#64748B; line-height:1.5">{{r.resolvedNote}}</span>
+                  </sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 340px; gap:14px; align-items:start">
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+              <span style="font-size:14px; font-weight:700; color:#0F2440">บันทึกการตรวจสอบของการกระทบยอด</span>
+              <sc-for list="{{reconLog}}" as="l" hint-placeholder-count="3">
+                <div style="display:flex; gap:11px; padding:9px 0; border-top:1px solid #F1F4F9">
+                  <span style="width:8px; height:8px; border-radius:50%; background:{{l.dot}}; margin-top:6px; flex:none"></span>
+                  <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12.5px; color:#0F2440; font-weight:600; line-height:1.5">{{l.text}}</span><span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{l.who}} · {{l.time}}</span></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="background:#0F2440; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:12.5px; color:#8FA6C4; font-weight:600">ยอดที่จะเรียกเก็บ</span>
+              <div style="display:flex; flex-direction:column; gap:7px; font-size:12.5px">
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าอะไหล่</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">{{parts}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ค่าแรง</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">{{labor}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">งานเพิ่มที่อนุมัติแล้ว</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">{{extra}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ส่วนลด</span><span style="color:#F0AE55; font-family:'IBM Plex Mono',monospace">−{{discount}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#fff; font-family:'IBM Plex Mono',monospace">{{vat}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">หักมัดจำ</span><span style="color:#7DD3C4; font-family:'IBM Plex Mono',monospace">−{{deposit}}</span></div>
+              </div>
+              <div style="border-top:1px solid #1B3557; padding-top:11px; display:flex; align-items:baseline; justify-content:space-between"><span style="font-size:13px; color:#A9BDD6; font-weight:600">ยอดที่ต้องชำระ</span><span style="font-size:24px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ {{due}}</span></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isCheckout}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; display:flex; overflow:hidden">
+          <div style="flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:14px">
+
+            <sc-if value="{{dupRisk}}" hint-placeholder-val="{{false}}">
+              <div style="flex:none; background:#FEF6F6; border:1.5px solid #F0C2C2; border-radius:12px; padding:14px; display:flex; gap:11px; align-items:flex-start">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+                <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                  <span style="font-size:14px; font-weight:700; color:#A31D1D">เสี่ยงเก็บเงินซ้ำ</span>
+                  <span style="font-size:12.5px; color:#A31D1D; line-height:1.65">พบรายการรับชำระ {{dupAmount}} บาท ด้วยวิธีเดียวกันเมื่อ 1 นาทีที่แล้ว (REF {{dupRef}}) — ตรวจสลิปก่อนบันทึกซ้ำ</span>
+                </div>
+                <span onClick="{{dismissDup}}" style="font-size:11.5px; font-weight:700; color:#A31D1D; background:#fff; border:1px solid #F0C2C2; padding:7px 11px; border-radius:7px; cursor:pointer; white-space:nowrap; flex:none">ตรวจแล้ว ไม่ซ้ำ</span>
+              </div>
+            </sc-if>
+
+            <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; align-items:center; gap:18px">
+              <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                <div style="display:flex; align-items:center; gap:9px">
+                  <span style="font-size:20px; font-weight:700; color:#0F2440">{{reg}}</span>
+                  <span style="font-size:12.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span>
+                  <span style="display:inline-flex; align-items:center; gap:5px; background:#D8F3EE; color:#0A6355; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">พร้อมส่งมอบ · QC ผ่าน</span>
+                </div>
+                <span style="font-size:13px; color:#475569">{{model}} · {{customer}} · {{phone}}</span>
+              </div>
+              <div style="display:flex; gap:8px; flex:none">
+                <span onClick="{{goRecon}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:7px; cursor:pointer">ดูการกระทบยอด</span>
+                <span onClick="{{askVoid}}" style="font-size:12px; font-weight:700; color:#C02626; background:#fff; border:1px solid #F0C2C2; padding:8px 12px; border-radius:7px; cursor:pointer">ยกเลิก/คืนเงิน</span>
+              </div>
+            </div>
+
+            <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+              <div style="padding:13px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">รายการที่เรียกเก็บ</span>
+                <span style="background:#E3F5F1; color:#0B6D5E; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">มีเฉพาะรายการที่ลูกค้าอนุมัติ</span>
+                <span style="margin-left:auto; font-size:11.5px; color:#64748B">{{billN}} รายการ</span>
+              </div>
+              <sc-for list="{{billRows}}" as="b" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1fr 76px 110px 120px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                  <div style="padding:10px 16px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{b.name}}</span><span style="font-size:11px; color:#94A3B8">{{b.meta}}</span></div>
+                  <div style="padding:10px 8px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.qty}}</div>
+                  <div style="padding:10px 8px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.price}}</div>
+                  <div style="padding:10px 16px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{b.amount}}</div>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:13px">
+              <div style="display:flex; align-items:center; gap:10px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">เลือกวิธีชำระเงิน</span>
+                <span style="font-size:11.5px; color:#64748B">แบ่งจ่ายหลายวิธีได้ · กดปุ่มลัดบนคีย์บอร์ดได้ทันที</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px">
+                <sc-for list="{{methods}}" as="m" hint-placeholder-count="4">
+                  <div onClick="{{m.tap}}" style="min-height:78px; border:{{m.border}}; background:{{m.bg}}; border-radius:11px; padding:12px; display:flex; flex-direction:column; gap:7px; cursor:pointer">
+                    <div style="display:flex; align-items:center; justify-content:space-between">
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{m.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{m.path}}"/></svg>
+                      <span style="font-size:10.5px; font-weight:700; color:{{m.keyFg}}; background:{{m.keyBg}}; padding:2px 6px; border-radius:4px; font-family:'IBM Plex Mono',monospace">{{m.key}}</span>
+                    </div>
+                    <span style="font-size:14px; font-weight:700; color:{{m.fg}}">{{m.label}}</span>
+                    <span style="font-size:11px; color:{{m.subFg}}">{{m.sub}}</span>
+                  </div>
+                </sc-for>
+              </div>
+
+              <sc-if value="{{isCash}}" hint-placeholder-val="{{true}}">
+                <div style="border:1px solid #E3E8EF; border-radius:11px; padding:15px; display:flex; flex-direction:column; gap:13px; background:#F7F9FC">
+                  <span style="font-size:13.5px; font-weight:700; color:#0F2440">เงินสด</span>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px">
+                    <div style="display:flex; flex-direction:column; gap:6px">
+                      <label style="font-size:12px; font-weight:600; color:#334155">รับเงินมา (บาท)</label>
+                      <input value="{{cashIn}}" onChange="{{onCashIn}}" placeholder="0.00" style="height:52px; border:1.5px solid #1B6BE3; border-radius:9px; padding:0 14px; font-size:22px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace; text-align:right"/>
+                      <div style="display:flex; gap:6px; flex-wrap:wrap">
+                        <sc-for list="{{cashQuick}}" as="c" hint-placeholder-count="4">
+                          <span onClick="{{c.tap}}" style="font-size:11.5px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:7px 11px; border-radius:7px; cursor:pointer; font-family:'IBM Plex Mono',monospace">{{c.label}}</span>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:6px">
+                      <label style="font-size:12px; font-weight:600; color:#334155">เงินทอน</label>
+                      <div style="height:52px; border:1px solid #E3E8EF; border-radius:9px; padding:0 14px; display:flex; align-items:center; justify-content:flex-end; background:{{changeBg}}"><span style="font-size:22px; font-weight:700; color:{{changeFg}}; font-family:'IBM Plex Mono',monospace">{{change}}</span></div>
+                      <span style="font-size:11.5px; color:{{changeFg}}">{{changeNote}}</span>
+                    </div>
+                  </div>
+                  <button onClick="{{addCash}}" style="height:48px; background:{{cashBtnBg}}; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">บันทึกรับเงินสด</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{isCard}}" hint-placeholder-val="{{false}}">
+                <div style="border:1px solid #E3E8EF; border-radius:11px; padding:15px; display:flex; flex-direction:column; gap:13px; background:#F7F9FC">
+                  <div style="display:flex; align-items:center; gap:10px"><span style="font-size:13.5px; font-weight:700; color:#0F2440">บัตรเครดิต/เดบิต</span><span style="font-size:11.5px; color:#64748B">เครื่อง EDC · KBank T-042</span></div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px">
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">จำนวนเงิน</label><input value="{{cardAmt}}" onChange="{{onCardAmt}}" style="height:46px; border:1.5px solid #1B6BE3; border-radius:9px; padding:0 12px; font-size:17px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace; text-align:right"/></div>
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">เลขที่อ้างอิงเครื่อง</label><input value="{{cardRef}}" onChange="{{onCardRef}}" placeholder="เช่น 004821" style="height:46px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; font-size:15px; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">ประเภทบัตร</label><div onClick="{{cycleCard}}" style="height:46px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:#fff"><span style="font-size:14px; color:#0F2440; font-weight:600">{{cardType}}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></div></div>
+                  </div>
+                  <sc-if value="{{cardProcessing}}" hint-placeholder-val="{{false}}">
+                    <div style="background:#E6EFFC; border:1px solid #BCD3F5; border-radius:9px; padding:12px 14px; display:flex; align-items:center; gap:11px">
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.6" stroke-linecap="round" style="flex:none; animation:gpSpin 1s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".4"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+                      <span style="font-size:13px; font-weight:700; color:#1552B3; flex:1">กำลังรอผลจากเครื่อง EDC · ห้ามกดซ้ำหรือรูดบัตรใหม่</span>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{cardDeclined}}" hint-placeholder-val="{{false}}">
+                    <div style="background:#FEF6F6; border:1px solid #F0C2C2; border-radius:9px; padding:13px 14px; display:flex; flex-direction:column; gap:9px">
+                      <div style="display:flex; align-items:center; gap:10px">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.6" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>
+                        <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:13.5px; font-weight:700; color:#A31D1D">ธนาคารปฏิเสธรายการ (รหัส 51 · วงเงินไม่พอ)</span><span style="font-size:12px; color:#A31D1D">ไม่มีการตัดเงิน ไม่ต้องออกใบเสร็จ · REF {{cardRef}}</span></div>
+                      </div>
+                      <div style="display:flex; gap:9px">
+                        <span onClick="{{retryCard}}" style="font-size:12px; font-weight:700; color:#fff; background:#1B6BE3; padding:8px 12px; border-radius:7px; cursor:pointer">รูดใหม่ด้วยบัตรอื่น</span>
+                        <span onClick="{{switchToQr}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:7px; cursor:pointer">เปลี่ยนไปจ่ายด้วย PromptPay</span>
+                        <span onClick="{{switchToCash}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:8px 12px; border-radius:7px; cursor:pointer">เปลี่ยนไปเงินสด</span>
+                      </div>
+                    </div>
+                  </sc-if>
+                  <button onClick="{{runCard}}" style="height:48px; background:{{cardBtnBg}}; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:15px; font-weight:700; cursor:{{cardBtnCursor}}">{{cardBtnLabel}}</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{isTransfer}}" hint-placeholder-val="{{false}}">
+                <div style="border:1px solid #E3E8EF; border-radius:11px; padding:15px; display:flex; flex-direction:column; gap:13px; background:#F7F9FC">
+                  <span style="font-size:13.5px; font-weight:700; color:#0F2440">โอนเงินเข้าบัญชีบริษัท</span>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px">
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">จำนวนเงิน</label><input value="{{trAmt}}" onChange="{{onTrAmt}}" style="height:46px; border:1.5px solid #1B6BE3; border-radius:9px; padding:0 12px; font-size:17px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace; text-align:right"/></div>
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">ธนาคารผู้โอน</label><div onClick="{{cycleBank}}" style="height:46px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:#fff"><span style="font-size:14px; color:#0F2440; font-weight:600">{{bank}}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></div></div>
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">เลขที่อ้างอิง / เลขสลิป</label><input value="{{trRef}}" onChange="{{onTrRef}}" placeholder="เช่น 202607291542001" style="height:46px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                    <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">เวลาที่โอน</label><input value="{{trTime}}" onChange="{{onTrTime}}" style="height:46px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                  </div>
+                  <div onClick="{{attachSlip}}" style="border:1.5px dashed #C9D6E6; border-radius:10px; padding:14px; display:flex; align-items:center; gap:12px; cursor:pointer; background:#fff">
+                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1B6BE3" stroke-width="2.2" stroke-linecap="round" style="flex:none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 3v13M7 8l5-5 5 5"/></svg>
+                    <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:13px; font-weight:700; color:#0F2440">{{slipLabel}}</span><span style="font-size:11.5px; color:#64748B">{{slipNote}}</span></div>
+                    <sc-if value="{{hasSlip}}" hint-placeholder-val="{{false}}">
+                      <div style="width:54px; height:54px; border-radius:8px; background:#D8DEE7; flex:none"></div>
+                    </sc-if>
+                  </div>
+                  <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:11px 13px; font-size:12px; color:#8A5A00; line-height:1.65; font-weight:600">รายการโอนจะถูกบันทึกเป็น “รอตรวจสอบยอดเข้าบัญชี” จนกว่าฝ่ายบัญชีจะกระทบยอด — ส่งมอบรถได้แต่ยังไม่ปิดเป็นชำระครบ</div>
+                  <button onClick="{{addTransfer}}" style="height:48px; background:#1B6BE3; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">บันทึกการโอน (รอตรวจสอบ)</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{isQr}}" hint-placeholder-val="{{false}}">
+                <div style="border:1px solid #E3E8EF; border-radius:11px; padding:15px; display:flex; gap:18px; background:#F7F9FC">
+                  <div style="width:210px; flex:none; display:flex; flex-direction:column; gap:10px; align-items:center">
+                    <div style="width:190px; height:190px; background:#fff; border:1px solid #E3E8EF; border-radius:11px; display:flex; align-items:center; justify-content:center; position:relative">
+                      <svg viewBox="0 0 21 21" style="width:160px; height:160px" shape-rendering="crispEdges"><rect width="21" height="21" fill="#fff"/><path d="{{qrPath}}" fill="#0F2440"/></svg>
+                      <sc-if value="{{qrDead}}" hint-placeholder-val="{{false}}">
+                        <div style="position:absolute; inset:0; background:rgba(255,255,255,.86); border-radius:11px; display:flex; align-items:center; justify-content:center"><span style="font-size:13px; font-weight:700; color:#A31D1D">QR หมดเวลา</span></div>
+                      </sc-if>
+                    </div>
+                    <span style="font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">PromptPay · GaragePro Co., Ltd.</span>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:12px">
+                    <div style="display:flex; align-items:baseline; justify-content:space-between">
+                      <span style="font-size:13.5px; font-weight:700; color:#0F2440">PromptPay QR</span>
+                      <span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">฿ {{qrAmt}}</span>
+                    </div>
+                    <sc-if value="{{qrWaiting}}" hint-placeholder-val="{{true}}">
+                      <div style="background:#E6EFFC; border:1px solid #BCD3F5; border-radius:10px; padding:13px; display:flex; flex-direction:column; gap:9px">
+                        <div style="display:flex; align-items:center; gap:10px">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.6" stroke-linecap="round" style="flex:none; animation:gpSpin 1.1s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".4"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+                          <span style="font-size:13.5px; font-weight:700; color:#1552B3; flex:1">รอลูกค้าสแกนและยืนยันการโอน</span>
+                          <span style="font-size:17px; font-weight:700; color:#1552B3; font-family:'IBM Plex Mono',monospace">{{countdown}}</span>
+                        </div>
+                        <div style="height:7px; border-radius:4px; background:#fff; overflow:hidden"><div style="height:100%; width:{{qrBarW}}; background:#1B6BE3; border-radius:4px"></div></div>
+                        <span style="font-size:11.5px; color:#1552B3">ระบบจะยืนยันอัตโนมัติเมื่อได้รับแจ้งจากธนาคาร · อย่าปิดหน้านี้</span>
+                      </div>
+                      <div style="display:flex; gap:9px">
+                        <span onClick="{{qrPaid}}" style="font-size:12px; font-weight:700; color:#fff; background:#0E9F8C; padding:9px 13px; border-radius:8px; cursor:pointer">จำลอง: ธนาคารแจ้งรับเงินแล้ว</span>
+                        <span onClick="{{qrExpire}}" style="font-size:12px; font-weight:700; color:#8A5A00; background:#fff; border:1px solid #F0D9AC; padding:9px 13px; border-radius:8px; cursor:pointer">จำลอง: หมดเวลา</span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{qrChecking}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#FFFBF3; border:1.5px solid #F0D9AC; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px">
+                        <div style="display:flex; align-items:center; gap:10px">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.6" stroke-linecap="round" style="flex:none; animation:gpSpin 1.1s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".4"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+                          <span style="font-size:13.5px; font-weight:700; color:#8A5A00; flex:1">กำลังตรวจสอบสถานะกับธนาคาร</span>
+                        </div>
+                        <span style="font-size:12.5px; color:#8A5A00; line-height:1.7">QR หมดเวลาแล้วแต่ <b>ยังไม่ถือว่าไม่สำเร็จ</b> — ลูกค้าอาจโอนสำเร็จก่อนหมดเวลา ห้ามให้ลูกค้าจ่ายใหม่จนกว่าผลตรวจสอบจะออก (ปกติไม่เกิน 2 นาที)</span>
+                        <div style="display:flex; gap:9px">
+                          <span onClick="{{qrFound}}" style="font-size:12px; font-weight:700; color:#fff; background:#0E9F8C; padding:9px 13px; border-radius:8px; cursor:pointer">ผลตรวจสอบ: พบยอดเข้าแล้ว</span>
+                          <span onClick="{{qrNotFound}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:9px 13px; border-radius:8px; cursor:pointer">ผลตรวจสอบ: ไม่พบยอดเข้า</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{qrNone}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#EEF1F5; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px">
+                        <span style="font-size:13px; font-weight:700; color:#475569">ไม่พบยอดเข้าในบัญชี · ยังไม่มีการตัดเงินของลูกค้า</span>
+                        <div style="display:flex; gap:9px">
+                          <span onClick="{{qrNew}}" style="font-size:12px; font-weight:700; color:#fff; background:#1B6BE3; padding:9px 13px; border-radius:8px; cursor:pointer">สร้าง QR ใหม่</span>
+                          <span onClick="{{switchToCash}}" style="font-size:12px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:9px 13px; border-radius:8px; cursor:pointer">เปลี่ยนไปเงินสด</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <div style="background:#fff; border:1px solid #E3E8EF; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:6px; font-size:12px">
+                      <div style="display:flex; justify-content:space-between"><span style="color:#64748B">อ้างอิงรายการ</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{qrRef}}</span></div>
+                      <div style="display:flex; justify-content:space-between"><span style="color:#64748B">สร้างเมื่อ</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">15:42:10</span></div>
+                      <div style="display:flex; justify-content:space-between"><span style="color:#64748B">อายุ QR</span><span style="color:#0F2440; font-weight:600">5 นาที</span></div>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{hasPayments}}" hint-placeholder-val="{{false}}">
+              <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                <div style="padding:13px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px"><span style="font-size:14px; font-weight:700; color:#0F2440">การชำระที่บันทึกไว้</span><span style="margin-left:auto; font-size:11.5px; color:#64748B">แบ่งจ่าย {{payN}} รายการ</span></div>
+                <sc-for list="{{payments}}" as="p" hint-placeholder-count="2">
+                  <div style="padding:12px 16px; border-bottom:1px solid #F5F8FB; display:flex; align-items:center; gap:12px">
+                    <div style="width:32px; height:32px; border-radius:9px; background:{{p.iconBg}}; display:flex; align-items:center; justify-content:center; flex:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{p.iconFg}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="{{p.path}}"/></svg></div>
+                    <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:13px; font-weight:700; color:#0F2440">{{p.label}}</span><span style="font-size:11.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{p.meta}}</span></div>
+                    <span style="display:inline-flex; align-items:center; gap:5px; background:{{p.stBg}}; color:{{p.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none">{{p.stLabel}}</span>
+                    <span style="font-size:15px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; flex:none; width:110px; text-align:right">{{p.amount}}</span>
+                    <div onClick="{{p.remove}}" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C02626" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="width:340px; flex:none; border-left:1px solid #E3E8EF; background:#fff; display:flex; flex-direction:column; overflow:hidden">
+            <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:13px">
+              <div style="background:#0F2440; border-radius:12px; padding:15px; display:flex; flex-direction:column; gap:9px; position:sticky; top:0">
+                <span style="font-size:12px; color:#8FA6C4; font-weight:600">ยอดที่ต้องชำระ</span>
+                <span style="font-size:30px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace; line-height:1">฿ {{due}}</span>
+                <div style="border-top:1px solid #1B3557; padding-top:10px; display:flex; flex-direction:column; gap:6px; font-size:12.5px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6">รับชำระแล้ว</span><span style="color:#7DD3C4; font-weight:700; font-family:'IBM Plex Mono',monospace">{{paid}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#A9BDD6; font-weight:600">คงเหลือ</span><span style="color:{{remainFg}}; font-weight:700; font-size:16px; font-family:'IBM Plex Mono',monospace">{{remaining}}</span></div>
+                </div>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:7px; font-size:12.5px">
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ค่าอะไหล่</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{parts}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ค่าแรง</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{labor}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">งานเพิ่มที่อนุมัติ</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{extra}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ส่วนลด</span><span style="color:#C02626; font-family:'IBM Plex Mono',monospace">−{{discount}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{vat}}</span></div>
+                <div style="display:flex; justify-content:space-between; border-top:1px solid #EDF1F6; padding-top:7px"><span style="color:#64748B">รวมทั้งใบ</span><span style="color:#0F2440; font-weight:700; font-family:'IBM Plex Mono',monospace">{{total}}</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หักมัดจำ (RC-24-0688)</span><span style="color:#0B6D5E; font-family:'IBM Plex Mono',monospace">−{{deposit}}</span></div>
+              </div>
+
+              <sc-if value="{{partial}}" hint-placeholder-val="{{false}}">
+                <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:10px; padding:12px; display:flex flex-direction:column; display:flex; flex-direction:column; gap:8px">
+                  <span style="font-size:12.5px; font-weight:700; color:#8A5A00">ยังชำระไม่ครบ · เหลือ {{remaining}} บาท</span>
+                  <span style="font-size:11.5px; color:#8A5A00; line-height:1.65">ปิดการขายไม่ได้จนกว่ายอดคงเหลือเป็น 0 — หรือเลือกบันทึกเป็นลูกหนี้ซึ่งต้องได้รับอนุมัติ</span>
+                  <div onClick="{{toggleCredit}}" style="display:flex; align-items:center; gap:9px; cursor:pointer; background:#fff; border:1px solid #F0D9AC; border-radius:8px; padding:9px 10px">
+                    <div style="width:20px; height:20px; border-radius:5px; background:{{creditBox}}; border:2px solid {{creditBorder}}; display:flex; align-items:center; justify-content:center; flex:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+                    <span style="font-size:12px; font-weight:700; color:#8A5A00; flex:1">บันทึกส่วนที่ขาดเป็นลูกหนี้การค้า</span>
+                  </div>
+                  <sc-if value="{{credit}}" hint-placeholder-val="{{false}}">
+                    <div style="background:{{creditNoteBg}}; border-radius:8px; padding:9px 10px; font-size:11.5px; color:{{creditNoteFg}}; line-height:1.6; font-weight:600">{{creditNote}}</div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:7px">
+                <span style="font-size:11.5px; font-weight:700; color:#64748B; letter-spacing:.05em">ปุ่มลัดคีย์บอร์ด</span>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:5px; font-size:11.5px; color:#475569">
+                  <span><b style="font-family:'IBM Plex Mono',monospace">F2</b> เงินสด</span>
+                  <span><b style="font-family:'IBM Plex Mono',monospace">F3</b> บัตร</span>
+                  <span><b style="font-family:'IBM Plex Mono',monospace">F4</b> โอนเงิน</span>
+                  <span><b style="font-family:'IBM Plex Mono',monospace">F5</b> PromptPay</span>
+                  <span><b style="font-family:'IBM Plex Mono',monospace">Enter</b> ยืนยัน</span>
+                  <span><b style="font-family:'IBM Plex Mono',monospace">Esc</b> ยกเลิกช่อง</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="flex:none; border-top:1px solid #E3E8EF; padding:14px 16px; display:flex; flex-direction:column; gap:9px; background:#F7F9FC">
+              <sc-if value="{{processing}}" hint-placeholder-val="{{false}}">
+                <div style="background:#E6EFFC; border-radius:9px; padding:10px 12px; display:flex; align-items:center; gap:9px">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.6" stroke-linecap="round" style="flex:none; animation:gpSpin 1s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".4"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+                  <span style="font-size:12px; font-weight:700; color:#1552B3">กำลังบันทึกการชำระ · ปุ่มถูกล็อกเพื่อกันเก็บซ้ำ</span>
+                </div>
+              </sc-if>
+              <button onClick="{{finish}}" style="height:52px; background:{{finishBg}}; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:16px; font-weight:700; cursor:{{finishCursor}}">{{finishLabel}}</button>
+              <span style="font-size:11px; color:#94A3B8; line-height:1.6; text-align:center">{{finishNote}}</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isCustomer}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; align-items:center">
+          <div style="width:840px; display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <span style="font-size:22px; font-weight:700; color:#0F2440">ตรวจข้อมูลผู้รับเอกสาร</span>
+                <span style="font-size:13px; color:#64748B">รับเงินแล้ว {{paid}} บาท · ต้องยืนยันข้อมูลก่อนออกเอกสาร</span>
+              </div>
+              <span style="display:inline-flex; align-items:center; gap:6px; background:#E3F5F1; color:#0B6D5E; font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M4 12.5l5 5L20 7"/></svg>ชำระครบแล้ว</span>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:14px">
+              <div style="display:flex; gap:10px">
+                <div onClick="{{docReceipt}}" style="flex:1; border:{{rcBorder}}; background:{{rcBg}}; border-radius:11px; padding:14px; display:flex; flex-direction:column; gap:5px; cursor:pointer">
+                  <span style="font-size:14px; font-weight:700; color:{{rcFg}}">ใบเสร็จรับเงิน</span>
+                  <span style="font-size:11.5px; color:{{rcSubFg}}; line-height:1.55">ออกให้ทุกกรณี · ไม่ต้องมีเลขผู้เสียภาษี</span>
+                </div>
+                <div onClick="{{docTax}}" style="flex:1; border:{{txBorder}}; background:{{txBg}}; border-radius:11px; padding:14px; display:flex; flex-direction:column; gap:5px; cursor:pointer">
+                  <span style="font-size:14px; font-weight:700; color:{{txFg}}">ใบกำกับภาษีแบบเต็ม</span>
+                  <span style="font-size:11.5px; color:{{txSubFg}}; line-height:1.55">ต้องมีชื่อ-ที่อยู่ตามทะเบียน และเลขผู้เสียภาษี 13 หลัก</span>
+                </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px">
+                <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">ชื่อผู้รับเอกสาร</label><input value="{{cName}}" onChange="{{onCName}}" style="height:44px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none"/></div>
+                <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">เบอร์โทรศัพท์</label><input value="{{cPhone}}" onChange="{{onCPhone}}" style="height:44px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                <div style="display:flex; flex-direction:column; gap:6px; grid-column:span 2"><label style="font-size:12px; font-weight:600; color:#334155">ที่อยู่ {{addrReq}}</label><input value="{{cAddr}}" onChange="{{onCAddr}}" placeholder="บ้านเลขที่ ถนน แขวง เขต จังหวัด รหัสไปรษณีย์" style="height:44px; border:{{addrBorder}}; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none"/></div>
+                <sc-if value="{{needTax}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">เลขผู้เสียภาษี 13 หลัก</label><input value="{{cTax}}" onChange="{{onCTax}}" placeholder="0-0000-00000-00-0" style="height:44px; border:{{taxBorder}}; border-radius:9px; padding:0 12px; font-size:14px; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                </sc-if>
+                <sc-if value="{{needTax}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; flex-direction:column; gap:6px"><label style="font-size:12px; font-weight:600; color:#334155">สำนักงาน</label><div onClick="{{cycleBranchType}}" style="height:44px; border:1px solid #C9D6E6; border-radius:9px; padding:0 12px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440; font-weight:600">{{branchType}}</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></div></div>
+                </sc-if>
+              </div>
+
+              <sc-if value="{{docErr}}" hint-placeholder-val="{{false}}">
+                <div style="background:#FEF6F6; border:1px solid #F0C2C2; border-radius:9px; padding:12px 14px; display:flex; align-items:center; gap:10px">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.6" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+                  <span style="font-size:12.5px; font-weight:600; color:#A31D1D">{{docErrText}}</span>
+                </div>
+              </sc-if>
+
+              <div style="display:flex; gap:10px; justify-content:flex-end">
+                <button onClick="{{goCheckout}}" style="height:44px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ย้อนกลับ</button>
+                <button onClick="{{openPreview}}" style="height:44px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ดูตัวอย่างเอกสาร</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isSuccess}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; align-items:center; gap:16px">
+          <div style="width:760px; display:flex; flex-direction:column; gap:16px">
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:26px; display:flex; flex-direction:column; align-items:center; gap:12px">
+              <div style="width:60px; height:60px; border-radius:50%; background:#0E9F8C; display:flex; align-items:center; justify-content:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+              <span style="font-size:21px; font-weight:700; color:#0F2440">ปิดการขายเรียบร้อย</span>
+              <span style="font-size:30px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">฿ {{paid}}</span>
+              <div style="display:flex; gap:9px; flex-wrap:wrap; justify-content:center">
+                <span style="background:#E3F5F1; color:#0B6D5E; font-size:12px; font-weight:700; padding:5px 11px; border-radius:6px; font-family:'IBM Plex Mono',monospace">{{docNo}}</span>
+                <span style="background:#E8EDF4; color:#1B3557; font-size:12px; font-weight:700; padding:5px 11px; border-radius:6px">{{docKind}}</span>
+                <span style="background:#EEF1F5; color:#475569; font-size:12px; font-weight:700; padding:5px 11px; border-radius:6px; font-family:'IBM Plex Mono',monospace">29 ก.ค. 2569 15:47</span>
+              </div>
+              <span style="font-size:12.5px; color:#64748B; line-height:1.7; text-align:center">{{payLine}}<br>งาน {{jbNo}} เปลี่ยนสถานะเป็น “เสร็จสมบูรณ์” · ผู้รับเงิน {{userName}}</span>
+            </div>
+
+            <sc-if value="{{printerOff}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FFFBF3; border:1.5px solid #F0D9AC; border-radius:12px; padding:15px; display:flex; gap:12px; align-items:flex-start">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M7 9V3h10v6M7 19H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 15h10v6H7zM3 3l18 18"/></svg>
+                <div style="display:flex; flex-direction:column; gap:5px; flex:1">
+                  <span style="font-size:14px; font-weight:700; color:#8A5A00">เครื่องพิมพ์ใบเสร็จออฟไลน์</span>
+                  <span style="font-size:12.5px; color:#8A5A00; line-height:1.7">เอกสารถูกออกเลขที่และบันทึกในระบบเรียบร้อยแล้ว — เก็บไว้ในคิวพิมพ์ 1 งาน จะพิมพ์อัตโนมัติเมื่อเครื่องกลับมาออนไลน์ หรือส่งไฟล์ให้ลูกค้าทางไลน์/อีเมลได้ทันที</span>
+                  <div style="display:flex; gap:9px; margin-top:3px">
+                    <span onClick="{{fixPrinter}}" style="font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:8px 12px; border-radius:7px; cursor:pointer">ลองเชื่อมต่อเครื่องพิมพ์ใหม่</span>
+                    <span onClick="{{sendDoc}}" style="font-size:12px; font-weight:700; color:#8A5A00; background:#fff; border:1px solid #F0D9AC; padding:8px 12px; border-radius:7px; cursor:pointer">ส่งไฟล์ให้ลูกค้า</span>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px">
+              <button onClick="{{printDoc}}" style="height:52px; background:#1B6BE3; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer">พิมพ์เอกสาร</button>
+              <button onClick="{{downloadDoc}}" style="height:52px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:10px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer">ดาวน์โหลด PDF</button>
+              <button onClick="{{sendDoc}}" style="height:52px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:10px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer">ส่งให้ลูกค้า</button>
+              <button onClick="{{openPreview}}" style="height:48px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:10px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ดูเอกสาร</button>
+              <button onClick="{{askReprint}}" style="height:48px; background:#fff; border:1px solid #F0D9AC; color:#8A5A00; border-radius:10px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">พิมพ์ซ้ำ (ต้องระบุเหตุผล)</button>
+              <button onClick="{{goQueue}}" style="height:48px; background:#F1F4F9; border:1px solid #E3E8EF; color:#334155; border-radius:10px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">กลับไปที่คิว</button>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+              <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#0F2440">ประวัติการพิมพ์เอกสารฉบับนี้</span><span onClick="{{goAudit}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">ดูประวัติทั้งสาขา</span></div>
+              <sc-for list="{{prints}}" as="p" hint-placeholder-count="2">
+                <div style="display:flex; align-items:flex-start; gap:11px; padding:10px 0; border-top:1px solid #F1F4F9">
+                  <span style="background:{{p.tagBg}}; color:{{p.tagFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none">{{p.tag}}</span>
+                  <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12.5px; color:#0F2440; font-weight:600">{{p.text}}</span><span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{p.who}} · {{p.time}}</span></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isAudit}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; flex-direction:column; gap:4px">
+            <span style="font-size:22px; font-weight:700; color:#0F2440">ประวัติการพิมพ์ซ้ำ ยกเลิก และคืนเงิน</span>
+            <span style="font-size:13px; color:#64748B">บันทึกถาวร · ทุกรายการต้องมีเหตุผลและผู้ดำเนินการ · ใช้ตรวจสอบภาษีย้อนหลัง 7 ปี</span>
+          </div>
+          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:110px 150px 130px 1.2fr 1fr 150px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+              <div style="padding:11px 14px">ประเภท</div><div style="padding:11px 14px">เลขที่เอกสาร</div><div style="padding:11px 14px">งาน</div><div style="padding:11px 14px">เหตุผล</div><div style="padding:11px 14px">ผู้ดำเนินการ / ผู้อนุมัติ</div><div style="padding:11px 14px">เวลา</div>
+            </div>
+            <sc-for list="{{auditRows}}" as="a" hint-placeholder-count="5">
+              <div style="display:grid; grid-template-columns:110px 150px 130px 1.2fr 1fr 150px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; background:{{a.bg}}">
+                <div style="padding:12px 14px"><span style="background:{{a.tagBg}}; color:{{a.tagFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">{{a.tag}}</span></div>
+                <div style="padding:12px 14px; font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:600">{{a.doc}}</div>
+                <div style="padding:12px 14px; font-family:'IBM Plex Mono',monospace; color:#64748B">{{a.job}}</div>
+                <div style="padding:12px 14px; color:#334155; line-height:1.55">{{a.reason}}</div>
+                <div style="padding:12px 14px; color:#475569; line-height:1.55">{{a.who}}</div>
+                <div style="padding:12px 14px; font-family:'IBM Plex Mono',monospace; color:#64748B">{{a.time}}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:15px; font-size:12.5px; color:#64748B; line-height:1.8">การพิมพ์ซ้ำจะพิมพ์คำว่า “สำเนา / REPRINT” บนเอกสารทุกครั้ง และไม่สร้างเลขที่เอกสารใหม่ · การยกเลิกหรือคืนเงินต้องอนุมัติโดยผู้จัดการสาขาและระบุเหตุผลเสมอ</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{previewOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:26px">
+          <div style="width:700px; max-height:100%; background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 30px 70px rgba(15,36,64,.3); animation:gpIn .14s ease-out">
+            <div style="padding:14px 20px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:12px; flex:none">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">ตัวอย่างเอกสาร</span>
+              <div style="display:flex; gap:5px; background:#F1F4F9; border-radius:8px; padding:3px">
+                <span onClick="{{docReceipt}}" style="font-size:12px; font-weight:700; padding:6px 11px; border-radius:6px; cursor:pointer; background:{{tabRcBg}}; color:{{tabRcFg}}">ใบเสร็จรับเงิน</span>
+                <span onClick="{{docTax}}" style="font-size:12px; font-weight:700; padding:6px 11px; border-radius:6px; cursor:pointer; background:{{tabTxBg}}; color:{{tabTxFg}}">ใบกำกับภาษีเต็มรูป</span>
+              </div>
+              <div onClick="{{closePreview}}" style="margin-left:auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding:26px 30px; display:flex; flex-direction:column; gap:16px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:20px">
+                <div style="display:flex; flex-direction:column; gap:3px">
+                  <span style="font-size:18px; font-weight:700; color:#0F2440">{{docTitle}}</span>
+                  <span style="font-size:12px; color:#64748B">{{docSub}}</span>
+                  <span style="font-size:12px; color:#475569; line-height:1.6">บริษัท การาจโปร เซอร์วิส จำกัด (สำนักงานใหญ่)<br>เลขผู้เสียภาษี 0-1055-64012-34-5<br>13/5 ถ.บางนา-ตราด แขวงบางนาใต้ เขตบางนา กรุงเทพฯ 10260</span>
+                </div>
+                <div style="text-align:right; display:flex; flex-direction:column; gap:3px">
+                  <span style="font-size:13px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{docNo}}</span>
+                  <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">29 ก.ค. 2569 15:47</span>
+                  <span style="font-size:12px; color:#475569">{{jbNo}} · {{reg}}</span>
+                  <span style="font-size:12px; color:#475569">{{model}}</span>
+                </div>
+              </div>
+              <div style="background:#F7F9FC; border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:5px">
+                <span style="font-size:11px; font-weight:700; color:#64748B">ลูกค้า</span>
+                <span style="font-size:13.5px; font-weight:700; color:#0F2440">{{cName}}</span>
+                <span style="font-size:12px; color:#475569; line-height:1.6">{{cAddr}}</span>
+                <span style="font-size:12px; color:#475569; font-family:'IBM Plex Mono',monospace">{{cPhone}}</span>
+                <sc-if value="{{needTax}}" hint-placeholder-val="{{false}}">
+                  <span style="font-size:12px; color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">เลขผู้เสียภาษี {{cTax}} · {{branchType}}</span>
+                </sc-if>
+              </div>
+              <div style="border:1px solid #E3E8EF; border-radius:10px; overflow:hidden">
+                <div style="display:grid; grid-template-columns:1fr 66px 100px 110px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                  <div style="padding:9px 12px">รายการ</div><div style="padding:9px 12px; text-align:center">จำนวน</div><div style="padding:9px 12px; text-align:right">ราคา</div><div style="padding:9px 12px; text-align:right">รวม</div>
+                </div>
+                <sc-for list="{{billRows}}" as="b" hint-placeholder-count="6">
+                  <div style="display:grid; grid-template-columns:1fr 66px 100px 110px; border-bottom:1px solid #F5F8FB; font-size:12px; align-items:center">
+                    <div style="padding:9px 12px; color:#0F2440">{{b.name}}</div>
+                    <div style="padding:9px 12px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.qty}}</div>
+                    <div style="padding:9px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#475569">{{b.price}}</div>
+                    <div style="padding:9px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{b.amount}}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; justify-content:flex-end">
+                <div style="width:290px; display:flex; flex-direction:column; gap:6px; font-size:12.5px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">มูลค่าก่อนภาษี</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{beforeVat}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{vat}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หักมัดจำ</span><span style="color:#0B6D5E; font-family:'IBM Plex Mono',monospace">−{{deposit}}</span></div>
+                  <div style="display:flex; justify-content:space-between; border-top:1px solid #E3E8EF; padding-top:7px"><span style="color:#0F2440; font-weight:700">รวมรับชำระ</span><span style="color:#0F2440; font-weight:700; font-size:16px; font-family:'IBM Plex Mono',monospace">฿ {{paid}}</span></div>
+                </div>
+              </div>
+              <div style="background:#F7F9FC; border-radius:10px; padding:13px; font-size:11.5px; color:#475569; line-height:1.8">{{payLine}} · ผู้รับเงิน {{userName}}<br>{{docFooter}}</div>
+            </div>
+            <div style="flex:none; padding:13px 20px; border-top:1px solid #EDF1F6; display:flex; gap:10px; justify-content:flex-end; background:#F7F9FC">
+              <button onClick="{{closePreview}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ปิด</button>
+              <button onClick="{{confirmDoc}}" style="height:42px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{confirmDocLabel}}</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{reprintOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.55); display:flex; align-items:center; justify-content:center; z-index:55">
+          <div style="width:520px; background:#fff; border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:14px; box-shadow:0 26px 60px rgba(15,36,64,.3)">
+            <div style="display:flex; flex-direction:column; gap:5px"><span style="font-size:18px; font-weight:700; color:#0F2440">ยืนยันการพิมพ์ซ้ำ</span><span style="font-size:13px; color:#64748B; line-height:1.7">เอกสารจะพิมพ์คำว่า “สำเนา / REPRINT” และบันทึกเหตุผลกับชื่อผู้ดำเนินการไว้ถาวร</span></div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:12.5px; font-weight:700; color:#334155">เหตุผล</span>
+              <sc-for list="{{reprintReasons}}" as="r" hint-placeholder-count="4">
+                <div onClick="{{r.tap}}" style="min-height:44px; border:1px solid {{r.border}}; background:{{r.bg}}; border-radius:9px; padding:0 12px; display:flex; align-items:center; cursor:pointer"><span style="font-size:13.5px; color:{{r.fg}}; font-weight:600">{{r.label}}</span></div>
+              </sc-for>
+            </div>
+            <div style="background:#F7F9FC; border-radius:9px; padding:11px 13px; font-size:12px; color:#64748B; line-height:1.6">ผู้ดำเนินการ {{userName}} · {{roleLabel}} · 29 ก.ค. 2569 15:49</div>
+            <div style="display:flex; gap:10px">
+              <button onClick="{{closeReprint}}" style="flex:1; height:46px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ยกเลิก</button>
+              <button onClick="{{doReprint}}" style="flex:1.3; height:46px; background:{{reprintBtnBg}}; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ยืนยันพิมพ์ซ้ำ</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{voidOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.55); display:flex; align-items:center; justify-content:center; z-index:55">
+          <div style="width:520px; background:#fff; border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:14px; box-shadow:0 26px 60px rgba(15,36,64,.3)">
+            <sc-if value="{{voidDenied}}" hint-placeholder-val="{{true}}">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:13px; text-align:center">
+                <div style="width:52px; height:52px; border-radius:14px; background:#FBE9E9; display:flex; align-items:center; justify-content:center"><svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#C02626" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+                <span style="font-size:18px; font-weight:700; color:#0F2440">ไม่มีสิทธิ์ยกเลิกหรือคืนเงิน</span>
+                <span style="font-size:13px; color:#475569; line-height:1.8">บทบาท <b style="color:#0F2440">แคชเชียร์</b> ไม่สามารถยกเลิกใบเสร็จหรือคืนเงินได้<br>ต้องให้ผู้จัดการสาขาเข้ารหัสอนุมัติที่เครื่องนี้ พร้อมระบุเหตุผล</span>
+                <span style="font-size:11.5px; color:#64748B; background:#F7F9FC; border-radius:8px; padding:9px 13px; font-family:'IBM Plex Mono',monospace">ref: PERM-4102 · EMP-10077 · 15:48</span>
+                <div style="display:flex; gap:10px; width:100%">
+                  <button onClick="{{closeVoid}}" style="flex:1; height:46px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ปิด</button>
+                  <button onClick="{{beManager}}" style="flex:1.2; height:46px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ให้ผู้จัดการเข้าอนุมัติ</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{voidAllowed}}" hint-placeholder-val="{{false}}">
+              <div style="display:flex; flex-direction:column; gap:13px">
+                <div style="display:flex; flex-direction:column; gap:5px"><span style="font-size:18px; font-weight:700; color:#0F2440">ยกเลิก / คืนเงิน</span><span style="font-size:13px; color:#64748B; line-height:1.7">การยกเลิกจะไม่ลบเอกสารเดิม แต่ออกใบลดหนี้อ้างอิงและบันทึกเหตุผลถาวร</span></div>
+                <div style="display:flex; flex-direction:column; gap:8px">
+                  <span style="font-size:12.5px; font-weight:700; color:#334155">เหตุผล</span>
+                  <sc-for list="{{voidReasons}}" as="r" hint-placeholder-count="3">
+                    <div onClick="{{r.tap}}" style="min-height:44px; border:1px solid {{r.border}}; background:{{r.bg}}; border-radius:9px; padding:0 12px; display:flex; align-items:center; cursor:pointer"><span style="font-size:13.5px; color:{{r.fg}}; font-weight:600">{{r.label}}</span></div>
+                  </sc-for>
+                </div>
+                <div style="background:#FEF6F6; border:1px solid #F0C2C2; border-radius:9px; padding:11px 13px; font-size:12px; color:#A31D1D; line-height:1.65; font-weight:600">ผู้อนุมัติ กัญญารัตน์ ดีสมบัติ (ผู้จัดการสาขา) · บันทึกใน audit log และรายงานภาษี</div>
+                <div style="display:flex; gap:10px">
+                  <button onClick="{{closeVoid}}" style="flex:1; height:46px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ยกเลิก</button>
+                  <button onClick="{{doVoid}}" style="flex:1.3; height:46px; background:{{voidBtnBg}}; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">ยืนยันคืนเงิน</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(241,244,249,.86); display:flex; align-items:center; justify-content:center; z-index:60; flex-direction:column; gap:14px">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#1B6BE3" stroke-width="2.6" stroke-linecap="round" style="animation:gpSpin 1s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".35"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+          <span style="font-size:14px; font-weight:700; color:#1B3557">{{loadingText}}</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; right:22px; bottom:22px; background:#1E293B; border-radius:12px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; box-shadow:0 18px 40px rgba(15,36,64,.28); animation:gpIn .15s ease-out; max-width:420px; z-index:70">
+          <div style="width:28px; height:28px; border-radius:8px; background:{{toastBg}}; display:flex; align-items:center; justify-content:center; flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="{{toastPath}}"/></svg></div>
+          <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+            <span style="font-size:13.5px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span>
+            <span style="font-size:12.5px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span>
+          </div>
+          <span onClick="{{clearToast}}" style="font-size:12px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:1080},&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;cashier&quot;,&quot;manager&quot;],&quot;default&quot;:&quot;cashier&quot;,&quot;tsType&quot;:&quot;'cashier' | 'manager'&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const NAV = [
+  { key:'dash', label:'แดชบอร์ด', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', label:'งานซ่อม', path:'M3 5h18v15H3zM3 10h18M8 15h8' },
+  { key:'pos', label:'POS', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z', badge:4 },
+  { key:'report', label:'รายงาน', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+const BILL = [
+  { name:'เปลี่ยนผ้าเบรกหน้า (อะไหล่)', meta:'ผ้าเบรก Bendix · รับประกัน 6 เดือน', qty:'1 ชุด', price:1290, amount:1290 },
+  { name:'ค่าแรงเปลี่ยนผ้าเบรกหน้า', meta:'อนุชา แก้วมณี · 1.5 ชม.', qty:'1 งาน', price:750, amount:750 },
+  { name:'เจียจานเบรกหน้า 2 ข้าง', meta:'ค่าบริการ · รับประกันงาน 3 เดือน', qty:'1 งาน', price:800, amount:800 },
+  { name:'ล้างแอร์และเปลี่ยนกรองแอร์', meta:'กรองแอร์ Denso + ค่าแรง', qty:'1 งาน', price:950, amount:950 },
+  { name:'เปลี่ยนโช้คอัพหน้า 2 ต้น', meta:'KYB Excel-G · รับประกัน 1 ปี', qty:'2 ต้น', price:2400, amount:4800 },
+  { name:'ค่าแรงเปลี่ยนโช้คอัพหน้า', meta:'อนุชา แก้วมณี · 2.0 ชม.', qty:'1 งาน', price:900, amount:900 },
+  { name:'ตั้งศูนย์และถ่วงล้อ', meta:'ค่าบริการหลังเปลี่ยนช่วงล่าง', qty:'1 งาน', price:600, amount:600 },
+  { name:'เปลี่ยนยางแท่นเครื่อง (งานเพิ่ม)', meta:'ลูกค้าอนุมัติเวอร์ชัน 3 · 10 ก.ค. 14:20', qty:'1 ชิ้น', price:1850, amount:1850 }
+];
+
+const M_META = {
+  cash:     { label:'เงินสด', sub:'ทอนเงินได้', key:'F2', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM7 14h4' },
+  card:     { label:'บัตร', sub:'EDC KBank T-042', key:'F3', path:'M2 8h20M2 12h20v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zM2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v2M6 16h4' },
+  transfer: { label:'โอนเงิน', sub:'ต้องแนบสลิป', key:'F4', path:'M4 8h13l-3-3M20 16H7l3 3' },
+  qr:       { label:'PromptPay', sub:'QR แบบระบุยอด', key:'F5', path:'M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 8h3v3H8zM13 13h3v3h-3z' }
+};
+
+const P_ST = {
+  ok:      { label:'สำเร็จ', bg:'#E3F5F1', fg:'#0B6D5E' },
+  pending: { label:'รอตรวจสอบ', bg:'#FDF3E2', fg:'#8A5A00' },
+  checking:{ label:'กำลังตรวจสอบ', bg:'#FFFBF3', fg:'#8A5A00' }
+};
+
+const RECON0 = [
+  { id:'r1', name:'เปลี่ยนผ้าเบรกหน้า', src:'ใบเสนอราคา v3 · ลูกค้าขอ', approved:'1 ชุด', actual:'1 ชุด', issued:'1 ชุด', amount:2040, st:'match' },
+  { id:'r2', name:'เจียจานเบรกหน้า 2 ข้าง', src:'ใบเสนอราคา v3 · ลูกค้าขอ', approved:'1 งาน', actual:'ไม่ได้ทำ', issued:'—', amount:800, st:'notdone' },
+  { id:'r3', name:'ล้างแอร์และเปลี่ยนกรองแอร์', src:'ใบเสนอราคา v3 · ลูกค้าขอ', approved:'1 งาน', actual:'1 งาน', issued:'1 ชิ้น', amount:950, st:'match' },
+  { id:'r4', name:'เปลี่ยนโช้คอัพหน้า 2 ต้น', src:'ใบเสนอราคา v3 · ช่างแนะนำ', approved:'2 ต้น', actual:'2 ต้น', issued:'2 ต้น', amount:5700, st:'match' },
+  { id:'r5', name:'ตั้งศูนย์และถ่วงล้อ', src:'ใบเสนอราคา v3 · ช่างแนะนำ', approved:'1 งาน', actual:'1 งาน', issued:'—', amount:600, st:'match' },
+  { id:'r6', name:'เปลี่ยนยางแท่นเครื่อง', src:'งานเพิ่ม · อนุมัติในเวอร์ชัน 3', approved:'1 ชิ้น', actual:'1 ชิ้น', issued:'1 ชิ้น', amount:1850, st:'match' },
+  { id:'r7', name:'น้ำยาแอร์ R134a เพิ่ม 1 กระป๋อง', src:'เบิกจากคลัง · ไม่มีในใบเสนอราคา', approved:'—', actual:'1 กระป๋อง', issued:'1 กระป๋อง', amount:520, st:'extra' },
+  { id:'r8', name:'เปลี่ยนแบตเตอรี่', src:'ลูกค้าไม่อนุมัติในเวอร์ชัน 2', approved:'ไม่อนุมัติ', actual:'ไม่ได้ทำ', issued:'—', amount:3000, st:'rejected' }
+];
+
+function money(n) { return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+
+function qrPath(seed) {
+  const N = 21;
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0x7fffffff;
+  const rnd = () => { h = (h * 1103515245 + 12345) & 0x7fffffff; return h / 0x7fffffff; };
+  const finder = (x, y, r, c) => (r >= y && r < y + 7 && c >= x && c < x + 7) &&
+    !((r === y + 1 || r === y + 5) && c > x && c < x + 6) && !((c === x + 1 || c === x + 5) && r > y && r < y + 6);
+  let d = '';
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const inF = (r < 8 && c < 8) || (r < 8 && c > N - 9) || (r > N - 9 && c < 8);
+    let on;
+    if (inF) on = finder(0, 0, r, c) || finder(N - 7, 0, r, c) || finder(0, N - 7, r, c);
+    else if (r === 6 || c === 6) on = (r + c) % 2 === 0;
+    else on = rnd() > 0.47;
+    if (on) d += 'M' + c + ' ' + r + 'h1v1h-1z';
+  }
+  return d;
+}
+
+class Component extends DCLogic {
+  state = {
+    view:'queue', role:'cashier', recon: RECON0.map(r => Object.assign({}, r)),
+    method:'cash', payments:[], cashIn:'', cardAmt:'', cardRef:'004821', cardType:'Visa · KBank',
+    cardState:'idle', trAmt:'', bank:'ธนาคารกสิกรไทย', trRef:'', trTime:'15:44', slip:false,
+    qrState:'waiting', qrLeft:300, docType:'receipt',
+    cName:'สมชาย พงษ์เจริญ', cPhone:'081-234-5678', cAddr:'88/12 ซ.บางนา-ตราด 25 แขวงบางนาใต้ เขตบางนา กรุงเทพฯ 10260', cTax:'', branchType:'สำนักงานใหญ่',
+    docErrText:'', processing:false, credit:false, printerOk:true, loading:false, loadingText:'',
+    reprintOpen:false, reprintReason:'', voidOpen:false, voidReason:'',
+    prints:[{ tag:'ต้นฉบับ', text:'พิมพ์ใบเสร็จรับเงินครั้งแรก', who:'จารุวรรณ ผ่องแผ้ว', time:'15:47:20' }],
+    dupRisk:false, preview:false, toast:null
+  };
+
+  componentWillUnmount() { clearInterval(this.tick); clearTimeout(this.tt); }
+
+  say = (title, body, kind) => {
+    this.setState({ toast:{ title, body, kind: kind || 'ok' } });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 6000);
+  };
+
+  startQr = () => {
+    clearInterval(this.tick);
+    this.setState({ qrState:'waiting', qrLeft:300 });
+    this.tick = setInterval(() => {
+      this.setState(s => {
+        if (s.qrState !== 'waiting') { clearInterval(this.tick); return {}; }
+        if (s.qrLeft <= 1) { clearInterval(this.tick); return { qrLeft:0, qrState:'checking' }; }
+        return { qrLeft: s.qrLeft - 1 };
+      });
+    }, 1000);
+  };
+
+  addPay = (method, amount, meta, status) => {
+    if (this.state.processing) return;
+    this.setState({ processing:true });
+    setTimeout(() => {
+      this.setState(s => ({
+        processing:false,
+        payments: s.payments.concat([{ id:'P' + (s.payments.length + 1), method, amount, meta, status: status || 'ok' }]),
+        cashIn:'', cardAmt:'', trAmt:'', cardState:'idle'
+      }));
+    }, 700);
+  };
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '0 0 26px' : '48px', pageAlign: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const mgr = s.role === 'manager';
+    const recon = s.recon;
+
+    const billed = recon.filter(r => r.st === 'match' || r.st === 'charged');
+    const parts = 10450, labor = 6800;
+    const extra = 1850;
+    const discount = 500;
+    const dropped = recon.filter(r => r.st === 'dropped').reduce((n, r) => n + r.amount, 0);
+    const charged = recon.filter(r => r.st === 'charged').reduce((n, r) => n + r.amount, 0);
+    const beforeVat = parts + labor + extra - discount - dropped + charged;
+    const vat = Math.round(beforeVat * 0.07 * 100) / 100;
+    const total = beforeVat + vat;
+    const deposit = 2000;
+    const due = Math.max(0, total - deposit);
+    const paidSum = s.payments.reduce((n, p) => n + p.amount, 0);
+    const remaining = Math.max(0, Math.round((due - paidSum) * 100) / 100);
+    const overpay = paidSum > due;
+
+    const diffs = recon.filter(r => r.st === 'notdone' || r.st === 'extra');
+    const cashInN = parseFloat((s.cashIn || '').replace(/[^0-9.]/g, '')) || 0;
+    const change = Math.max(0, cashInN - Math.min(remaining, cashInN) === 0 ? 0 : cashInN - remaining);
+    const changeVal = cashInN > remaining ? cashInN - remaining : 0;
+
+    const reconRows = recon.map(r => {
+      const meta = {
+        match:    { label:'ตรงกัน', bg:'#E3F5F1', fg:'#0B6D5E' },
+        notdone:  { label:'อนุมัติแล้วแต่ไม่ได้ทำ', bg:'#FDF3E2', fg:'#8A5A00' },
+        extra:    { label:'ทำเกินใบเสนอราคา', bg:'#FDEBE3', fg:'#A8380A' },
+        rejected: { label:'ลูกค้าไม่อนุมัติ · ไม่เก็บเงิน', bg:'#EEF1F5', fg:'#475569' },
+        dropped:  { label:'ตัดออกจากบิลแล้ว', bg:'#EEF1F5', fg:'#475569' },
+        charged:  { label:'อนุมัติเก็บเพิ่มแล้ว', bg:'#E3F5F1', fg:'#0B6D5E' }
+      }[r.st];
+      const needsFix = r.st === 'notdone' || r.st === 'extra';
+      return {
+        name: r.name, src: r.src, approved: r.approved, actual: r.actual, issued: r.issued,
+        amount: money(r.amount),
+        amountFg: (r.st === 'rejected' || r.st === 'dropped') ? '#94A3B8' : '#0F2440',
+        strike: (r.st === 'rejected' || r.st === 'dropped') ? 'line-through' : 'none',
+        actualFg: r.st === 'notdone' ? '#A31D1D' : (r.st === 'extra' ? '#A8380A' : '#0F2440'),
+        issuedFg: r.st === 'extra' ? '#A8380A' : '#475569',
+        stLabel: meta.label, stBg: meta.bg, stFg: meta.fg,
+        bg: needsFix ? '#FFFDF8' : '#fff',
+        needsFix, resolved: r.st === 'dropped' || r.st === 'charged',
+        resolvedNote: r.st === 'dropped' ? 'ตัดออกโดย ' + (mgr ? 'ผู้จัดการ' : 'แคชเชียร์') + ' · 15:43' : 'อนุมัติเก็บเพิ่มโดยผู้จัดการ · 15:43',
+        fixALabel: r.st === 'notdone' ? 'ตัดออกจากบิล' : 'เก็บเงินเพิ่ม (ต้องอนุมัติ)',
+        fixBLabel: r.st === 'notdone' ? 'ให้ช่างทำก่อนส่งมอบ' : 'ไม่เก็บ · ร้านรับภาระ',
+        fixA: () => this.setState(st => ({ recon: st.recon.map(x => x.id === r.id ? Object.assign({}, x, { st: r.st === 'notdone' ? 'dropped' : 'charged' }) : x) }),
+          () => this.say(r.st === 'notdone' ? 'ตัดรายการออกจากบิลแล้ว' : 'บันทึกเก็บเงินเพิ่มแล้ว', r.name + ' · บันทึกผู้ตัดสินใจและเวลาไว้ใน audit log', 'warn')),
+        fixB: () => this.setState(st => ({ recon: st.recon.map(x => x.id === r.id ? Object.assign({}, x, { st: 'dropped' }) : x) }),
+          () => this.say('บันทึกการตัดสินใจแล้ว', r.st === 'notdone' ? 'ส่งเรื่องกลับให้ช่างทำก่อนส่งมอบ · ยังไม่เก็บเงินรายการนี้' : 'ร้านรับภาระค่าใช้จ่ายส่วนนี้ · ไม่เรียกเก็บจากลูกค้า', 'warn'))
+      };
+    });
+
+    const methods = ['cash','card','transfer','qr'].map(k => {
+      const m = M_META[k];
+      const on = s.method === k;
+      return {
+        label: m.label, sub: m.sub, key: m.key, path: m.path,
+        bg: on ? '#E6EFFC' : '#fff', border: on ? '2px solid #1B6BE3' : '1px solid #E3E8EF',
+        fg: on ? '#1552B3' : '#0F2440', subFg: on ? '#1552B3' : '#64748B',
+        keyBg: on ? '#fff' : '#F1F4F9', keyFg: on ? '#1552B3' : '#94A3B8',
+        tap: () => { this.setState({ method:k, cardState:'idle' }); if (k === 'qr') this.startQr(); }
+      };
+    });
+
+    const payments = s.payments.map(p => {
+      const m = M_META[p.method];
+      const st = P_ST[p.status];
+      return {
+        label: m.label, meta: p.meta, amount: money(p.amount),
+        stLabel: st.label, stBg: st.bg, stFg: st.fg,
+        iconBg: p.status === 'ok' ? '#E3F5F1' : '#FDF3E2', iconFg: p.status === 'ok' ? '#0B6D5E' : '#8A5A00',
+        path: m.path,
+        remove: () => this.setState(st2 => ({ payments: st2.payments.filter(x => x.id !== p.id) }))
+      };
+    });
+
+    const canFinish = remaining === 0 || (s.credit && mgr);
+    const mm = Math.floor(s.qrLeft / 60), ss = s.qrLeft % 60;
+
+    const docTax = s.docType === 'tax';
+    const docNo = docTax ? 'IV-24-0712' : 'RC-24-0731';
+
+    return {
+      isQueue: s.view === 'queue', isRecon: s.view === 'recon', isCheckout: s.view === 'checkout',
+      isCustomer: s.view === 'customer', isSuccess: s.view === 'success', isAudit: s.view === 'audit',
+      inJob: s.view !== 'queue' && s.view !== 'audit',
+      cashBg: mgr ? 'transparent' : '#0F2440', cashFg: mgr ? '#475569' : '#fff',
+      mgrBg: mgr ? '#0F2440' : 'transparent', mgrFg: mgr ? '#fff' : '#475569',
+      beCashier: () => this.setState({ role:'cashier', voidOpen:false }),
+      beManager: () => this.setState({ role:'manager', voidOpen: s.voidOpen }),
+      roleLabel: mgr ? 'ผู้จัดการสาขา' : 'แคชเชียร์',
+      userName: mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'จารุวรรณ ผ่องแผ้ว',
+      initials: mgr ? 'กร' : 'จว',
+      nav: NAV.map(n => Object.assign({ label:n.label, path:n.path, hasBadge: !!n.badge, badge:n.badge, tap: () => this.setState({ view:'queue' }) },
+        n.key === 'pos' ? { bg:'#1B6BE3', fg:'#fff' } : { bg:'transparent', fg:'#A9BDD6' })),
+
+      printerOk: s.printerOk, printerOff: !s.printerOk,
+      printerLabel: s.printerOk ? 'เครื่องพิมพ์พร้อม' : 'เครื่องพิมพ์ออฟไลน์',
+      printerBg: s.printerOk ? '#E3F5F1' : '#FFFBF3', printerBorder: s.printerOk ? '#B6E3DA' : '#F0D9AC',
+      printerFg: s.printerOk ? '#0B6D5E' : '#8A5A00',
+      fixPrinter: () => this.setState({ printerOk:true }, () => this.say('เชื่อมต่อเครื่องพิมพ์ได้แล้ว', 'พิมพ์งานที่ค้างในคิว 1 งานให้อัตโนมัติ')),
+      demoPrinter: () => this.setState({ printerOk:false, view:'success' }),
+
+      jbNo:'JB-6712', reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2 Smart', customer:'สมชาย พงษ์เจริญ', phone:'081-234-5678',
+      queue: [
+        { no:'JB-6712', reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2', customer:'สมชาย พงษ์เจริญ', arrive:'ลูกค้ามาถึง 15:40', st:'ready', total: money(due), deposit:'2,000.00', diff:true },
+        { no:'JB-6703', reg:'1ขค-5590', model:'Honda City e:HEV RS', customer:'ปรียานุช อินทรโชติ', arrive:'ลูกค้ามาถึง 15:12', st:'ready', total:'8,240.00', deposit:'—', diff:false },
+        { no:'JB-6710', reg:'5กท-9098', model:'Ford Ranger XLT', customer:'ประเสริฐ มั่นคง', arrive:'นัดรับ 18:00', st:'ready', total:'23,900.00', deposit:'5,000.00', diff:false },
+        { no:'JB-6701', reg:'6กพ-1188', model:'Honda CR-V 2.4 EL', customer:'ชนิดา เรืองศิลป์', arrive:'รับรถแล้ว 14:20', st:'done', total:'31,450.00', deposit:'—', diff:false }
+      ].map(r => ({
+        no:r.no, reg:r.reg, model:r.model, customer:r.customer, arrive:r.arrive,
+        total:r.total, deposit:r.deposit,
+        stLabel: r.st === 'ready' ? 'พร้อมส่งมอบ' : 'เสร็จสมบูรณ์',
+        stBg: r.st === 'ready' ? '#D8F3EE' : '#E3F5F1', stFg: r.st === 'ready' ? '#0A6355' : '#0B6D5E',
+        stPath: r.st === 'ready' ? 'M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5' : 'M2 13l4 4 7-8M11 15l2 2 9-10',
+        bg: r.diff ? '#FFFDF8' : '#fff',
+        cta: r.st === 'done' ? 'ดูใบเสร็จ' : (r.diff ? 'ตรวจกระทบยอด' : 'รับชำระเงิน'),
+        ctaBg: r.st === 'done' ? '#F1F4F9' : (r.diff ? '#E0930C' : '#1B6BE3'),
+        ctaFg: r.st === 'done' ? '#334155' : '#fff',
+        open: () => this.setState({ view: r.st === 'done' ? 'audit' : (r.diff ? 'recon' : 'checkout') })
+      })),
+
+      reconRows, hasDiff: diffs.length > 0, noDiff: diffs.length === 0, diffN: diffs.length,
+      reconBtnLabel: diffs.length ? 'ต้องจัดการ ' + diffs.length + ' รายการก่อน' : 'เปิดหน้ารับชำระเงิน',
+      reconBtnBg: diffs.length ? '#9BB0CB' : '#1B6BE3',
+      toCheckout: () => {
+        if (diffs.length) { this.say('ยังเปิดหน้ารับชำระไม่ได้', 'เหลือ ' + diffs.length + ' รายการที่ยังไม่ตัดสินใจ — เลือกวิธีจัดการให้ครบก่อน', 'err'); return; }
+        this.setState({ loading:true, loadingText:'กำลังตรวจสอบยอดกับใบเสนอราคาและคลังอะไหล่…' });
+        setTimeout(() => this.setState({ loading:false, view:'checkout' }), 900);
+      },
+      reconLog: [
+        { text:'ช่างปิดงานครบทุกรายการที่อนุมัติ (ยกเว้นเจียจานเบรก)', who:'อนุชา แก้วมณี', time:'15:20', dot:'#1B6BE3' },
+        { text:'QC ผ่าน · เปลี่ยนสถานะเป็นพร้อมส่งมอบ', who:'สุรชัย พันธุ์ทอง', time:'15:31', dot:'#0E9F8C' },
+        { text:'เบิกน้ำยาแอร์เพิ่ม 1 กระป๋อง (ไม่มีในใบเสนอราคา)', who:'อนุชา แก้วมณี', time:'13:52', dot:'#C2410C' }
+      ],
+
+      parts: money(parts), labor: money(labor), extra: money(extra), discount: money(discount),
+      vat: money(vat), total: money(total), deposit: money(deposit), due: money(due),
+      beforeVat: money(beforeVat),
+      paid: money(paidSum), remaining: money(remaining),
+      remainFg: remaining === 0 ? '#7DD3C4' : '#F0AE55',
+      partial: paidSum > 0 && remaining > 0,
+      billRows: BILL.map(b => ({ name:b.name, meta:b.meta, qty:b.qty, price: money(b.price), amount: money(b.amount) })),
+      billN: BILL.length,
+
+      methods, isCash: s.method === 'cash', isCard: s.method === 'card', isTransfer: s.method === 'transfer', isQr: s.method === 'qr',
+      cashIn: s.cashIn, onCashIn: (e) => this.setState({ cashIn: e.target.value.replace(/[^0-9.]/g, '') }),
+      cashQuick: [remaining, 1000, 500, 100].filter((v, i) => i === 0 || v).map((v, i) => ({
+        label: i === 0 ? 'พอดี ' + money(v) : '+' + v.toLocaleString('en-US'),
+        tap: () => this.setState(st => ({ cashIn: i === 0 ? String(v) : String((parseFloat(st.cashIn || '0') || 0) + v) }))
+      })),
+      change: money(changeVal),
+      changeBg: changeVal > 0 ? '#E3F5F1' : '#fff',
+      changeFg: changeVal > 0 ? '#0B6D5E' : '#64748B',
+      changeNote: cashInN === 0 ? 'ใส่จำนวนเงินที่รับมา' : (cashInN < remaining ? 'รับไม่พอ — จะบันทึกเป็นชำระบางส่วน เหลือ ' + money(remaining - cashInN) : 'ทอนเงินให้ลูกค้า ' + money(changeVal) + ' บาท'),
+      cashBtnBg: cashInN > 0 ? '#1B6BE3' : '#9BB0CB',
+      addCash: () => {
+        if (!cashInN) { this.say('ใส่จำนวนเงินที่รับมาก่อน', 'ช่องรับเงินยังว่างอยู่', 'err'); return; }
+        const amt = Math.min(cashInN, remaining);
+        this.addPay('cash', amt, 'รับมา ' + money(cashInN) + ' · ทอน ' + money(Math.max(0, cashInN - remaining)), 'ok');
+      },
+
+      cardAmt: s.cardAmt, onCardAmt: (e) => this.setState({ cardAmt: e.target.value.replace(/[^0-9.]/g, '') }),
+      cardRef: s.cardRef, onCardRef: (e) => this.setState({ cardRef: e.target.value }),
+      cardType: s.cardType, cycleCard: () => this.setState(st => ({ cardType: st.cardType === 'Visa · KBank' ? 'Mastercard · SCB' : (st.cardType === 'Mastercard · SCB' ? 'บัตรเดบิต · KTB' : 'Visa · KBank') })),
+      cardProcessing: s.cardState === 'processing', cardDeclined: s.cardState === 'declined',
+      cardBtnLabel: s.cardState === 'processing' ? 'กำลังรอผลจากเครื่อง EDC…' : 'ส่งรายการไปที่เครื่อง EDC',
+      cardBtnBg: s.cardState === 'processing' ? '#9BB0CB' : '#1B6BE3',
+      cardBtnCursor: s.cardState === 'processing' ? 'not-allowed' : 'pointer',
+      runCard: () => {
+        if (s.cardState === 'processing') return;
+        const amt = parseFloat(s.cardAmt || '0') || remaining;
+        this.setState({ cardState:'processing' });
+        setTimeout(() => {
+          if (s.demoDecline) { this.setState({ cardState:'declined', demoDecline:false }); return; }
+          this.setState({ cardState:'idle' });
+          this.addPay('card', Math.min(amt, remaining), s.cardType + ' · REF ' + s.cardRef + ' · อนุมัติ', 'ok');
+        }, 1400);
+      },
+      retryCard: () => this.setState({ cardState:'idle', cardRef:'004822' }),
+      switchToQr: () => { this.setState({ method:'qr', cardState:'idle' }); this.startQr(); },
+      switchToCash: () => this.setState({ method:'cash', cardState:'idle', qrState:'waiting' }),
+
+      trAmt: s.trAmt, onTrAmt: (e) => this.setState({ trAmt: e.target.value.replace(/[^0-9.]/g, '') }),
+      bank: s.bank, cycleBank: () => this.setState(st => ({ bank: st.bank === 'ธนาคารกสิกรไทย' ? 'ธนาคารไทยพาณิชย์' : (st.bank === 'ธนาคารไทยพาณิชย์' ? 'ธนาคารกรุงเทพ' : 'ธนาคารกสิกรไทย') })),
+      trRef: s.trRef, onTrRef: (e) => this.setState({ trRef: e.target.value }),
+      trTime: s.trTime, onTrTime: (e) => this.setState({ trTime: e.target.value }),
+      hasSlip: s.slip, slipLabel: s.slip ? 'แนบสลิปแล้ว 1 ไฟล์' : 'แนบภาพสลิปการโอน',
+      slipNote: s.slip ? 'slip-202607291544.jpg · 240 KB' : 'ลากไฟล์มาวาง หรือคลิกเพื่อเลือกจากเครื่อง',
+      attachSlip: () => this.setState({ slip:true }),
+      addTransfer: () => {
+        const amt = parseFloat(s.trAmt || '0') || remaining;
+        if (!s.trRef.trim() || !s.slip) { this.say('ข้อมูลการโอนไม่ครบ', 'ต้องมีเลขที่อ้างอิงและภาพสลิปก่อนบันทึก', 'err'); return; }
+        this.addPay('transfer', Math.min(amt, remaining), s.bank + ' · REF ' + s.trRef + ' · ' + s.trTime, 'pending');
+      },
+
+      qrAmt: money(parseFloat(s.cardAmt || '0') || remaining),
+      qrPath: qrPath('PP' + Math.round(remaining * 100)),
+      qrRef:'PP-6712-0731',
+      qrWaiting: s.qrState === 'waiting', qrChecking: s.qrState === 'checking', qrNone: s.qrState === 'notfound',
+      qrDead: s.qrState !== 'waiting',
+      countdown: (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss,
+      qrBarW: Math.round((s.qrLeft / 300) * 100) + '%',
+      qrPaid: () => { clearInterval(this.tick); this.setState({ qrState:'paid' }); this.addPay('qr', remaining, 'PromptPay · REF PP-6712-0731 · ธนาคารยืนยัน 15:45', 'ok'); },
+      qrExpire: () => { clearInterval(this.tick); this.setState({ qrState:'checking' }); },
+      qrFound: () => { this.setState({ qrState:'paid' }); this.addPay('qr', remaining, 'PromptPay · พบยอดเข้าเวลา 15:46 · ตรวจสอบย้อนหลัง', 'ok'); this.say('ผลตรวจสอบ: ได้รับเงินแล้ว', 'ระบบบันทึกเป็นชำระสำเร็จ ไม่ต้องให้ลูกค้าโอนซ้ำ'); },
+      qrNotFound: () => this.setState({ qrState:'notfound' }, () => this.say('ผลตรวจสอบ: ไม่พบยอดเข้า', 'ไม่มีการตัดเงินของลูกค้า · ให้สร้าง QR ใหม่หรือเปลี่ยนวิธีชำระ', 'warn')),
+      qrNew: () => this.startQr(),
+
+      hasPayments: s.payments.length > 0, payments, payN: s.payments.length,
+      processing: s.processing,
+      credit: s.credit, toggleCredit: () => this.setState({ credit: !s.credit }),
+      creditBox: s.credit ? '#E0930C' : '#fff', creditBorder: s.credit ? '#E0930C' : '#C9D6E6',
+      creditNoteBg: mgr ? '#F7FCFA' : '#FEF6F6', creditNoteFg: mgr ? '#0B6D5E' : '#A31D1D',
+      creditNote: mgr ? 'ผู้จัดการอนุมัติได้ · จะบันทึกเป็นลูกหนี้ AR-0231 พร้อมกำหนดชำระ 7 วัน และบันทึกผู้อนุมัติ' : 'บทบาทแคชเชียร์อนุมัติลูกหนี้ไม่ได้ — ต้องให้ผู้จัดการเข้ารหัสที่เครื่องนี้',
+      finishLabel: remaining === 0 ? 'ยืนยันและออกเอกสาร' : (s.credit && mgr ? 'ปิดการขายเป็นลูกหนี้' : 'ยังชำระไม่ครบ · เหลือ ' + money(remaining)),
+      finishBg: canFinish ? '#0E9F8C' : '#9BB0CB',
+      finishCursor: canFinish ? 'pointer' : 'not-allowed',
+      finishNote: overpay ? 'รับเงินเกินยอด — ตรวจสอบก่อนปิดการขาย' : (remaining === 0 ? 'ตรวจยอดและวิธีชำระให้ตรงกับสลิปก่อนกดยืนยัน' : 'ยอดคงเหลือต้องเป็น 0 หรือเลือกบันทึกเป็นลูกหนี้ที่ได้รับอนุมัติ'),
+      finish: () => {
+        if (s.processing) return;
+        if (!canFinish) { this.say('ปิดการขายไม่ได้', remaining > 0 && s.credit && !mgr ? 'ต้องให้ผู้จัดการอนุมัติการบันทึกลูกหนี้ก่อน' : 'ยังมียอดคงเหลือ ' + money(remaining) + ' บาท', 'err'); return; }
+        this.setState({ view:'customer' });
+      },
+
+      dupRisk: s.dupRisk, dupAmount: money(remaining), dupRef:'004821',
+      dismissDup: () => this.setState({ dupRisk:false }),
+
+      docType: s.docType, needTax: docTax,
+      docReceipt: () => this.setState({ docType:'receipt', docErrText:'' }),
+      docTax: () => this.setState({ docType:'tax' }),
+      rcBorder: !docTax ? '2px solid #1B6BE3' : '1px solid #E3E8EF', rcBg: !docTax ? '#E6EFFC' : '#fff',
+      rcFg: !docTax ? '#1552B3' : '#0F2440', rcSubFg: !docTax ? '#1552B3' : '#64748B',
+      txBorder: docTax ? '2px solid #1B6BE3' : '1px solid #E3E8EF', txBg: docTax ? '#E6EFFC' : '#fff',
+      txFg: docTax ? '#1552B3' : '#0F2440', txSubFg: docTax ? '#1552B3' : '#64748B',
+      tabRcBg: !docTax ? '#fff' : 'transparent', tabRcFg: !docTax ? '#0F2440' : '#64748B',
+      tabTxBg: docTax ? '#fff' : 'transparent', tabTxFg: docTax ? '#0F2440' : '#64748B',
+      cName: s.cName, onCName: (e) => this.setState({ cName: e.target.value }),
+      cPhone: s.cPhone, onCPhone: (e) => this.setState({ cPhone: e.target.value }),
+      cAddr: s.cAddr, onCAddr: (e) => this.setState({ cAddr: e.target.value }),
+      cTax: s.cTax, onCTax: (e) => this.setState({ cTax: e.target.value.replace(/[^0-9-]/g, '') }),
+      addrReq: docTax ? '(ต้องตรงตามทะเบียนภาษี)' : '(ไม่บังคับ)',
+      addrBorder: docTax && !s.cAddr.trim() ? '1.5px solid #C02626' : '1px solid #C9D6E6',
+      taxBorder: docTax && s.cTax.replace(/[^0-9]/g, '').length !== 13 ? '1.5px solid #C02626' : '1px solid #C9D6E6',
+      branchType: s.branchType, cycleBranchType: () => this.setState(st => ({ branchType: st.branchType === 'สำนักงานใหญ่' ? 'สาขาที่ 00001' : 'สำนักงานใหญ่' })),
+      docErr: !!s.docErrText, docErrText: s.docErrText,
+      openPreview: () => {
+        if (docTax && s.cTax.replace(/[^0-9]/g, '').length !== 13) { this.setState({ docErrText:'ใบกำกับภาษีเต็มรูปต้องมีเลขผู้เสียภาษี 13 หลักที่ถูกต้อง' }); return; }
+        if (docTax && !s.cAddr.trim()) { this.setState({ docErrText:'ใบกำกับภาษีเต็มรูปต้องมีที่อยู่ตามทะเบียนภาษี' }); return; }
+        this.setState({ docErrText:'', preview:true });
+      },
+      previewOpen: s.preview, closePreview: () => this.setState({ preview:false }),
+      docTitle: docTax ? 'ใบกำกับภาษี / ใบเสร็จรับเงิน' : 'ใบเสร็จรับเงิน',
+      docSub: docTax ? 'เอกสารออกเป็นชุด · ต้นฉบับสำหรับลูกค้า' : 'ไม่ใช่ใบกำกับภาษีเต็มรูป',
+      docKind: docTax ? 'ใบกำกับภาษีเต็มรูป' : 'ใบเสร็จรับเงิน',
+      docNo, docFooter: docTax ? 'เอกสารนี้ใช้เป็นใบกำกับภาษีตามประมวลรัษฎากร · เก็บไว้เป็นหลักฐาน 5 ปี' : 'หากต้องการใบกำกับภาษีเต็มรูป กรุณาแจ้งภายในวันเดียวกัน',
+      confirmDocLabel: s.view === 'success' ? 'ปิดหน้าตัวอย่าง' : 'ยืนยันและออกเอกสาร',
+      confirmDoc: () => {
+        if (s.view === 'success') { this.setState({ preview:false }); return; }
+        this.setState({ preview:false, loading:true, loadingText:'กำลังออกเลขที่เอกสารและบันทึกการชำระ…' });
+        setTimeout(() => this.setState({ loading:false, view:'success' }), 1000);
+      },
+      payLine: s.payments.length ? s.payments.map(p => M_META[p.method].label + ' ' + money(p.amount)).join(' + ') : 'เงินสด ' + money(due),
+
+      prints: s.prints.map(p => Object.assign({}, p, {
+        tagBg: p.tag === 'ต้นฉบับ' ? '#E3F5F1' : '#FDF3E2',
+        tagFg: p.tag === 'ต้นฉบับ' ? '#0B6D5E' : '#8A5A00'
+      })),
+      printDoc: () => { if (!s.printerOk) { this.say('เครื่องพิมพ์ออฟไลน์', 'เก็บงานไว้ในคิวพิมพ์แล้ว จะพิมพ์อัตโนมัติเมื่อเชื่อมต่อได้', 'warn'); return; } this.say('ส่งไปที่เครื่องพิมพ์แล้ว', docNo + ' · เครื่องพิมพ์ใบเสร็จ EPSON TM-T82'); },
+      downloadDoc: () => this.say('ดาวน์โหลด PDF แล้ว', docNo + '.pdf'),
+      sendDoc: () => this.say('ส่งเอกสารให้ลูกค้าแล้ว', 'ส่งทาง LINE ที่ผูกกับเบอร์ ' + s.cPhone),
+      askReprint: () => this.setState({ reprintOpen:true, reprintReason:'' }),
+      reprintOpen: s.reprintOpen, closeReprint: () => this.setState({ reprintOpen:false }),
+      reprintReasons: ['ใบเสร็จเดิมพิมพ์ไม่ชัด/กระดาษติด','ลูกค้าขอสำเนาเพิ่ม','ส่งให้ฝ่ายบัญชีของลูกค้า','เอกสารสูญหาย'].map(v => Object.assign(
+        { label:v, tap: () => this.setState({ reprintReason:v }) },
+        s.reprintReason === v ? { bg:'#E6EFFC', border:'#1B6BE3', fg:'#1552B3' } : { bg:'#fff', border:'#C9D6E6', fg:'#334155' })),
+      reprintBtnBg: s.reprintReason ? '#E0930C' : '#9BB0CB',
+      doReprint: () => {
+        if (!s.reprintReason) { this.say('ต้องเลือกเหตุผลก่อน', 'ระบบบังคับให้ระบุเหตุผลของการพิมพ์ซ้ำทุกครั้ง', 'err'); return; }
+        this.setState(st => ({ reprintOpen:false, prints: st.prints.concat([{ tag:'สำเนา', text:'พิมพ์ซ้ำ · ' + st.reprintReason, who: st.role === 'manager' ? 'กัญญารัตน์ ดีสมบัติ' : 'จารุวรรณ ผ่องแผ้ว', time:'15:49:05' }]) }),
+          () => this.say('พิมพ์ซ้ำแล้ว · บันทึกในประวัติ', 'เอกสารมีคำว่า “สำเนา / REPRINT” และไม่สร้างเลขที่ใหม่', 'warn'));
+      },
+      askVoid: () => this.setState({ voidOpen:true, voidReason:'' }),
+      voidOpen: s.voidOpen, closeVoid: () => this.setState({ voidOpen:false }),
+      voidDenied: !mgr, voidAllowed: mgr,
+      voidReasons: ['ลูกค้าขอยกเลิกงานหลังชำระ','เก็บเงินซ้ำ/ผิดจำนวน','ออกเอกสารผิดประเภท'].map(v => Object.assign(
+        { label:v, tap: () => this.setState({ voidReason:v }) },
+        s.voidReason === v ? { bg:'#FEF6F6', border:'#C02626', fg:'#A31D1D' } : { bg:'#fff', border:'#C9D6E6', fg:'#334155' })),
+      voidBtnBg: s.voidReason ? '#C02626' : '#D9A3A3',
+      doVoid: () => {
+        if (!s.voidReason) { this.say('ต้องเลือกเหตุผลก่อน', 'การคืนเงินต้องมีเหตุผลและผู้อนุมัติทุกครั้ง', 'err'); return; }
+        this.setState({ voidOpen:false, view:'audit' }, () => this.say('บันทึกการคืนเงินแล้ว', 'ออกใบลดหนี้ CN-24-0033 อ้างอิง ' + docNo + ' · บันทึกผู้อนุมัติและเหตุผล', 'warn'));
+      },
+
+      auditRows: [
+        { tag:'พิมพ์ซ้ำ', doc:'RC-24-0731', job:'JB-6712', reason:'ลูกค้าขอสำเนาเพิ่มสำหรับเคลมบริษัท', who:'จารุวรรณ ผ่องแผ้ว (แคชเชียร์)', time:'15:49:05' },
+        { tag:'พิมพ์ซ้ำ', doc:'IV-24-0709', job:'JB-6701', reason:'กระดาษติด พิมพ์ไม่ชัด', who:'จารุวรรณ ผ่องแผ้ว (แคชเชียร์)', time:'14:22:40' },
+        { tag:'คืนเงิน', doc:'CN-24-0032', job:'JB-6688', reason:'เก็บเงินซ้ำ 2 ครั้งจากบัตรเดียวกัน', who:'อนุมัติโดย กัญญารัตน์ ดีสมบัติ', time:'11:08:12' },
+        { tag:'ยกเลิก', doc:'RC-24-0722', job:'JB-6695', reason:'ออกเอกสารผิดประเภท (ต้องเป็นใบกำกับภาษีเต็มรูป)', who:'อนุมัติโดย กัญญารัตน์ ดีสมบัติ', time:'10:41:55' },
+        { tag:'พิมพ์ซ้ำ', doc:'RC-24-0718', job:'JB-6690', reason:'เอกสารสูญหาย ลูกค้าแจ้งทางโทรศัพท์', who:'ศักดิ์ชัย เพียรทอง (แคชเชียร์กะบ่าย)', time:'09:33:02' }
+      ].map(a => Object.assign({}, a, {
+        tagBg: a.tag === 'พิมพ์ซ้ำ' ? '#FDF3E2' : (a.tag === 'คืนเงิน' ? '#FBE9E9' : '#EEF1F5'),
+        tagFg: a.tag === 'พิมพ์ซ้ำ' ? '#8A5A00' : (a.tag === 'คืนเงิน' ? '#A31D1D' : '#475569'),
+        bg: a.tag === 'คืนเงิน' || a.tag === 'ยกเลิก' ? '#FFFDFD' : '#fff'
+      })),
+
+      loading: s.loading, loadingText: s.loadingText,
+      goQueue: () => this.setState({ view:'queue', preview:false }),
+      goRecon: () => this.setState({ view:'recon' }),
+      goCheckout: () => this.setState({ view:'checkout' }),
+      goAudit: () => this.setState({ view:'audit' }),
+
+      demoSplit: () => this.setState({ view:'checkout', method:'cash', payments:[{ id:'P1', method:'cash', amount:10000, meta:'รับมา 10,000.00 · ทอน 0.00', status:'ok' }], dupRisk:false },
+        () => this.say('บันทึกเงินสด 10,000 บาทแล้ว', 'เหลืออีก ' + money(Math.max(0, due - 10000)) + ' บาท — เลือกบัตรเพื่อรับส่วนที่เหลือ')),
+      demoDecline: () => this.setState({ view:'checkout', method:'card', cardState:'declined', cardAmt: String(remaining) }),
+      demoTimeout: () => { this.setState({ view:'checkout', method:'qr' }); clearInterval(this.tick); this.setState({ qrState:'checking', qrLeft:0 }); },
+      resetAll: () => { clearInterval(this.tick); this.setState({ view:'queue', recon: RECON0.map(r => Object.assign({}, r)), payments:[], method:'cash', cashIn:'', cardAmt:'', cardState:'idle', trAmt:'', trRef:'', slip:false, qrState:'waiting', qrLeft:300, docType:'receipt', cTax:'', credit:false, printerOk:true, preview:false, dupRisk:false, prints:[{ tag:'ต้นฉบับ', text:'พิมพ์ใบเสร็จรับเงินครั้งแรก', who:'จารุวรรณ ผ่องแผ้ว', time:'15:47:20' }] }); },
+
+      toast: !!s.toast, toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      toastBg: s.toast ? (s.toast.kind === 'err' ? '#C02626' : (s.toast.kind === 'warn' ? '#E0930C' : '#0E9F8C')) : '#0E9F8C',
+      toastPath: s.toast && s.toast.kind === 'err' ? 'M6 6l12 12M18 6L6 18' : (s.toast && s.toast.kind === 'warn' ? 'M12 3l9.5 17h-19zM12 10v4' : 'M4 12.5l5 5L20 7'),
+      clearToast: () => this.setState({ toast:null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

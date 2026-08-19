@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:20px; padding:48px; align-items:flex-start">
+
+  <div style="width:1520px; background:#0F2440; border-radius:16px; padding:30px 34px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px">
+    <div style="display:flex; flex-direction:column; gap:9px">
+      <span style="font-size:12px; font-weight:700; color:#8FA6C4; letter-spacing:.14em">GARAGEPRO SERVICE OPS · ENGINEERING HANDOFF INDEX</span>
+      <span style="font-size:32px; font-weight:700; color:#fff; line-height:1.25">สารบัญส่งมอบงานออกแบบให้ทีมพัฒนา</span>
+      <span style="font-size:14px; color:#A9BDD6; line-height:1.75; max-width:920px">ชื่อหน้าจอ ชื่อคอมโพเนนต์ โทเคนสถานะ และคำศัพท์ไทยถูกจัดให้เป็นชุดเดียวกันทั้งโครงการ · ทุกข้อในเอกสารนี้ติดป้ายว่าเป็นสิ่งที่ตัดสินใจแล้ว สมมติไว้ก่อน หรืออยู่นอก MVP เพื่อไม่ให้ทีมพัฒนาเดาแทน</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px; flex:none">
+      <sc-for list="{{legend}}" as="l" hint-placeholder-count="4">
+        <div style="display:flex; align-items:center; gap:9px; background:#1B3557; border-radius:9px; padding:9px 12px">
+          <span style="background:{{l.bg}}; color:{{l.fg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px; flex:none; white-space:nowrap">{{l.tag}}</span>
+          <span style="font-size:11.5px; color:#C7D6E8; line-height:1.45">{{l.desc}}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">1 · รายการหน้าจอ · Flutter Mobile</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:196px 1fr 136px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">ชื่อหน้าจอ (route)</div><div style="padding:10px 10px">หน้าที่และสถานะที่ต้องมี</div><div style="padding:10px 10px">ไฟล์ต้นทาง</div>
+        </div>
+        <sc-for list="{{mobileScreens}}" as="r" hint-placeholder-count="14">
+          <div style="display:grid; grid-template-columns:196px 1fr 136px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch">
+            <div style="padding:10px 12px; display:flex; flex-direction:column; gap:3px"><span style="font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:700">{{r.route}}</span><span style="color:#64748B; line-height:1.4">{{r.th}}</span></div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.6">{{r.note}}</div>
+            <div style="padding:10px 10px; color:#64748B; font-family:'IBM Plex Mono',monospace; line-height:1.5">{{r.file}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">1 · รายการหน้าจอ · Next.js Web</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:196px 1fr 136px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">ชื่อหน้าจอ (route)</div><div style="padding:10px 10px">หน้าที่และสถานะที่ต้องมี</div><div style="padding:10px 10px">ไฟล์ต้นทาง</div>
+        </div>
+        <sc-for list="{{webScreens}}" as="r" hint-placeholder-count="16">
+          <div style="display:grid; grid-template-columns:196px 1fr 136px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch">
+            <div style="padding:10px 12px; display:flex; flex-direction:column; gap:3px"><span style="font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:700">{{r.route}}</span><span style="color:#64748B; line-height:1.4">{{r.th}}</span></div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.6">{{r.note}}</div>
+            <div style="padding:10px 10px; color:#64748B; font-family:'IBM Plex Mono',monospace; line-height:1.5">{{r.file}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1.3fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">2 · คอมโพเนนต์ที่ใช้ซ้ำและตัวแปร (variants)</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:168px 1fr 1fr 80px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">ชื่อคอมโพเนนต์</div><div style="padding:10px 10px">ตัวแปร / สถานะ</div><div style="padding:10px 10px">กฎการใช้</div><div style="padding:10px 10px">แพลตฟอร์ม</div>
+        </div>
+        <sc-for list="{{components}}" as="c" hint-placeholder-count="18">
+          <div style="display:grid; grid-template-columns:168px 1fr 1fr 80px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch">
+            <div style="padding:10px 12px; font-family:'IBM Plex Mono',monospace; color:#0F2440; font-weight:700; line-height:1.45">{{c.name}}</div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.6">{{c.variants}}</div>
+            <div style="padding:10px 10px; color:#64748B; line-height:1.6">{{c.rule}}</div>
+            <div style="padding:10px 10px"><span style="background:{{c.pBg}}; color:{{c.pFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; white-space:nowrap">{{c.plat}}</span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">3 · โทเคนงานออกแบบ</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:16px; display:flex; flex-direction:column; gap:14px">
+        <div style="display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:12.5px; font-weight:700; color:#334155">สีโครงสร้างและสีการกระทำ</span>
+          <div style="display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px">
+            <sc-for list="{{colorTokens}}" as="t" hint-placeholder-count="8">
+              <div style="display:flex; flex-direction:column; gap:5px">
+                <div style="height:34px; border-radius:8px; background:{{t.hex}}; border:1px solid #E3E8EF"></div>
+                <span style="font-size:11px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{t.name}}</span>
+                <span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{t.hex}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="height:1px; background:#EDF1F6"></div>
+        <div style="display:flex; flex-direction:column; gap:9px">
+          <span style="font-size:12.5px; font-weight:700; color:#334155">โทเคนสถานะงาน (ใช้ชื่อนี้ทั้ง API และ UI)</span>
+          <div style="border:1px solid #E3E8EF; border-radius:10px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:118px 1fr 96px 96px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+              <div style="padding:8px 10px">token</div><div style="padding:8px 10px">ข้อความไทย</div><div style="padding:8px 8px">พื้น</div><div style="padding:8px 8px">ตัวอักษร</div>
+            </div>
+            <sc-for list="{{statusTokens}}" as="s" hint-placeholder-count="10">
+              <div style="display:grid; grid-template-columns:118px 1fr 96px 96px; border-bottom:1px solid #F5F8FB; font-size:11px; align-items:center">
+                <div style="padding:8px 10px; font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:700">{{s.token}}</div>
+                <div style="padding:8px 10px"><span style="background:{{s.bg}}; color:{{s.fg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{s.th}}</span></div>
+                <div style="padding:8px 8px; font-family:'IBM Plex Mono',monospace; color:#64748B">{{s.bg}}</div>
+                <div style="padding:8px 8px; font-family:'IBM Plex Mono',monospace; color:#64748B">{{s.fg}}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:7px">
+          <span style="font-size:12.5px; font-weight:700; color:#334155">มาตราอื่น</span>
+          <div style="background:#F7F9FC; border-radius:9px; padding:12px; font-size:11px; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1.9">
+            <span>space: 4 · 8 · 16 · 24 · 32 · 48 · 64</span><br>
+            <span>radius: chip 6 · input 10 · card 14 · pill 999</span><br>
+            <span>shadow: e1 card · e2 sticky · e3 modal</span><br>
+            <span>type(th): 32/24/20/16/14/12 · line-height 1.6–1.7 · weight ≥400</span><br>
+            <span>numeric: IBM Plex Mono · tabular-nums</span><br>
+            <span>touch: mobile ≥48px · primary CTA 54–56px</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">4 · การเปลี่ยนสถานะงาน (state transition reference)</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:140px 140px 1fr 128px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">จาก</div><div style="padding:10px 10px">ไป</div><div style="padding:10px 10px">เงื่อนไขที่ระบบต้องบังคับ</div><div style="padding:10px 10px">ผู้ทำ / แพลตฟอร์ม</div>
+        </div>
+        <sc-for list="{{transitions}}" as="t" hint-placeholder-count="12">
+          <div style="display:grid; grid-template-columns:140px 140px 1fr 128px; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:center; background:{{t.bg}}">
+            <div style="padding:10px 12px"><span style="background:{{t.fromBg}}; color:{{t.fromFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{t.from}}</span></div>
+            <div style="padding:10px 10px"><span style="background:{{t.toBg}}; color:{{t.toFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{t.to}}</span></div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.6">{{t.rule}}</div>
+            <div style="padding:10px 10px; color:#64748B; line-height:1.5">{{t.who}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">5 · เมทริกซ์บทบาท → หน้าจอและการกระทำ</span>
+      <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; overflow:hidden">
+        <div style="display:grid; grid-template-columns:130px 1fr 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+          <div style="padding:10px 12px">บทบาท</div><div style="padding:10px 10px">เห็นและทำได้</div><div style="padding:10px 10px">ถูกจำกัด</div>
+        </div>
+        <sc-for list="{{roles}}" as="r" hint-placeholder-count="6">
+          <div style="display:grid; grid-template-columns:130px 1fr 1fr; border-bottom:1px solid #F5F8FB; font-size:11.5px; align-items:stretch">
+            <div style="padding:10px 12px; display:flex; flex-direction:column; gap:3px"><span style="color:#0F2440; font-weight:700; line-height:1.4">{{r.role}}</span><span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{r.key}}</span></div>
+            <div style="padding:10px 10px; color:#475569; line-height:1.65">{{r.can}}</div>
+            <div style="padding:10px 10px; color:#A8380A; line-height:1.65">{{r.cannot}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start">
+    <div style="display:flex; flex-direction:column; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">6 · กฎธุรกิจที่ต้นแบบสาธิตไว้แล้ว</span>
+      <div style="display:flex; flex-direction:column; gap:9px">
+        <sc-for list="{{rules}}" as="r" hint-placeholder-count="12">
+          <div style="background:#fff; border:1px solid #D4DDE8; border-left:5px solid {{r.accent}}; border-radius:11px; padding:13px; display:flex; flex-direction:column; gap:5px">
+            <div style="display:flex; align-items:flex-start; gap:9px">
+              <span style="background:{{r.tagBg}}; color:{{r.tagFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none; white-space:nowrap">{{r.tag}}</span>
+              <span style="font-size:12.5px; font-weight:700; color:#0F2440; line-height:1.5; flex:1">{{r.title}}</span>
+            </div>
+            <span style="font-size:11.5px; color:#475569; line-height:1.7">{{r.body}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:18px">
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <span style="font-size:20px; font-weight:700; color:#0F2440">7 · กฎการตอบสนองตามขนาดจอ</span>
+        <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:16px; display:flex; flex-direction:column; gap:11px">
+          <sc-for list="{{responsive}}" as="r" hint-placeholder-count="6">
+            <div style="display:flex; gap:11px; padding:9px 0; border-top:1px solid #F1F4F9">
+              <span style="width:104px; flex:none; font-size:11px; font-weight:700; color:#1B3557; font-family:'IBM Plex Mono',monospace; line-height:1.5">{{r.bp}}</span>
+              <span style="font-size:11.5px; color:#475569; line-height:1.7; flex:1">{{r.rule}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:12px">
+        <span style="font-size:20px; font-weight:700; color:#0F2440">8 · ข้อกำหนดการเข้าถึง</span>
+        <div style="background:#fff; border:1px solid #D4DDE8; border-radius:13px; padding:16px; display:flex; flex-direction:column; gap:10px">
+          <sc-for list="{{a11y}}" as="a" hint-placeholder-count="8">
+            <div style="display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-top:1px solid #F1F4F9">
+              <span style="background:{{a.sBg}}; color:{{a.sFg}}; font-size:11px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none; white-space:nowrap">{{a.state}}</span>
+              <span style="font-size:11.5px; color:#475569; line-height:1.7; flex:1">{{a.text}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="width:1520px; display:flex; flex-direction:column; gap:12px">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span style="font-size:20px; font-weight:700; color:#0F2440">9 · การตัดสินใจเชิงผลิตภัณฑ์ที่ยังไม่สรุป — ห้ามเดาแทน</span>
+      <span style="font-size:12.5px; color:#A31D1D; font-weight:600">ทุกข้อด้านล่างยังไม่มีคำตอบที่อนุมัติในโครงการนี้ · สิ่งที่ต้นแบบแสดงคือสมมติฐานเพื่อให้เดินเรื่องได้เท่านั้น</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px">
+      <sc-for list="{{open}}" as="o" hint-placeholder-count="9">
+        <div style="background:#fff; border:1.5px solid #F0C2C2; border-radius:12px; overflow:hidden; display:flex; flex-direction:column">
+          <div style="padding:12px 14px; background:#FEF6F6; border-bottom:1px solid #F0C2C2; display:flex; align-items:flex-start; gap:9px">
+            <span style="width:20px; height:20px; border-radius:6px; background:#C02626; color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; font-family:'IBM Plex Mono',monospace">{{o.n}}</span>
+            <span style="font-size:12.5px; font-weight:700; color:#A31D1D; line-height:1.5; flex:1">{{o.title}}</span>
+          </div>
+          <div style="padding:13px 14px; display:flex; flex-direction:column; gap:8px; flex:1">
+            <div style="display:flex; flex-direction:column; gap:3px">
+              <span style="font-size:11px; font-weight:700; color:#64748B; letter-spacing:.06em">ต้นแบบสมมติไว้ว่า</span>
+              <span style="font-size:11.5px; color:#475569; line-height:1.7">{{o.assumed}}</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:3px">
+              <span style="font-size:11px; font-weight:700; color:#64748B; letter-spacing:.06em">ต้องได้คำตอบจากใคร / อะไร</span>
+              <span style="font-size:11.5px; color:#0F2440; line-height:1.7; font-weight:500">{{o.need}}</span>
+            </div>
+            <div style="margin-top:auto; background:#F7F9FC; border-radius:8px; padding:9px 10px">
+              <span style="font-size:11px; color:#64748B; line-height:1.6"><b style="color:#1B3557">ผลถ้าเดาผิด:</b> {{o.risk}}</span>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="width:1520px; background:#fff; border:1px dashed #C9D6E6; border-radius:13px; padding:20px; display:flex; flex-direction:column; gap:13px">
+    <span style="font-size:16px; font-weight:700; color:#0F2440">การส่งมอบให้ Claude Code · สิ่งที่แนบไปและวิธีอ่าน</span>
+    <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px">
+      <sc-for list="{{handoff}}" as="h" hint-placeholder-count="3">
+        <div style="display:flex; flex-direction:column; gap:7px">
+          <span style="font-size:12.5px; font-weight:700; color:{{h.fg}}">{{h.title}}</span>
+          <span style="font-size:11.5px; color:#475569; line-height:1.8">{{h.body}}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="background:#F7F9FC; border-radius:10px; padding:13px; display:flex; flex-direction:column; gap:6px">
+      <span style="font-size:11.5px; font-weight:700; color:#334155">ข้อจำกัดที่ต้องเคารพ</span>
+      <span style="font-size:11.5px; color:#475569; line-height:1.8">ต้นแบบนี้ไม่ได้ยืนยันความสามารถของระบบหลังบ้านใด ๆ ที่ไม่มีในโจทย์ — การซิงก์เรียลไทม์ การผูกข้อมูลหลักลูกค้า/รถ การออกเลขเอกสารภาษี และการโอนสต็อกระหว่างสาขา ยังเป็นเพียงพฤติกรรมหน้าจอที่รอการยืนยันจากทีมพัฒนาและฝ่ายบัญชี · ป้าย “สมมติไว้ก่อน” ทุกจุดต้องถูกแทนที่ด้วยคำตอบจริงก่อนเริ่มเขียนโค้ดส่วนนั้น</span>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1620,&quot;height&quot;:1080}}">
+const TAG = {
+  ui:{ label:'UI ตัดสินใจแล้ว', bg:'#E6EFFC', fg:'#1552B3', accent:'#1B6BE3' },
+  biz:{ label:'กฎธุรกิจตัดสินใจแล้ว', bg:'#E3F5F1', fg:'#0B6D5E', accent:'#0E9F8C' },
+  assume:{ label:'สมมติไว้ก่อน', bg:'#FDF3E2', fg:'#8A5A00', accent:'#E0930C' },
+  future:{ label:'นอก MVP', bg:'#EEF1F5', fg:'#475569', accent:'#94A3B8' }
+};
+const PL = { m:{ label:'มือถือ', bg:'#E6EFFC', fg:'#1552B3' }, w:{ label:'เว็บ', bg:'#E4E9F0', fg:'#1B3557' }, b:{ label:'ทั้งสอง', bg:'#E3F5F1', fg:'#0B6D5E' } };
+const ST = {
+  waitinspect:{ th:'รอตรวจเช็ค', bg:'#EEF1F5', fg:'#475569' },
+  waitquote:{ th:'รอเสนอราคา', bg:'#E8EDF4', fg:'#1B3557' },
+  waitapprove:{ th:'รออนุมัติ', bg:'#FDF3E2', fg:'#8A5A00' },
+  approved:{ th:'อนุมัติแล้ว', bg:'#E3F5F1', fg:'#0B6D5E' },
+  inprogress:{ th:'กำลังซ่อม', bg:'#E6EFFC', fg:'#1552B3' },
+  waitparts:{ th:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A' },
+  qc:{ th:'QC ตรวจสอบ', bg:'#E4E9F0', fg:'#0F2440' },
+  ready:{ th:'พร้อมส่งมอบ', bg:'#D8F3EE', fg:'#0A6355' },
+  completed:{ th:'เสร็จสมบูรณ์', bg:'#0E9F8C', fg:'#FFFFFF' },
+  cancelled:{ th:'ยกเลิก', bg:'#FBE9E9', fg:'#A31D1D' }
+};
+
+const M_SCREENS = [
+  ['/auth/login','เข้าสู่ระบบพนักงาน','รหัสพนักงาน + รหัสผ่าน · ข้อความว่าเป็นระบบภายใน · สถานะ: รหัสผิด, ออฟไลน์, กำลังตรวจสอบ','Mobile'],
+  ['/auth/shift','เลือกสาขาและกะ','3 สาขา (ช่างเข้ากะ/งานค้าง) + 3 กะพร้อมหัวหน้ากะ · ค่าที่เลือกกำหนดคิวงานและคลังทั้งวัน','Mobile'],
+  ['/home','หน้าหลักตามบทบาท','ชื่อ+บทบาท+สาขา · สถานะการเชื่อมต่อและจำนวนรอซิงก์ · 3 ปุ่มด่วน · 5 ตัวเลขสถานะ · งานล่าสุด · งานเกินกำหนดเน้นด้วยแถบซ้าย+เหตุผล','Mobile'],
+  ['/jobs/mine','งานของฉัน (ช่าง)','เรียงตามความเร่งด่วนแล้วเวลานัดส่ง · สถานะว่าง/ไม่มีงาน','Mobile · RepairQC'],
+  ['/jobs/queue','คิวงานทั้งหมด','กรองตามสถานะ · สเกเลตัน · แบนเนอร์ออฟไลน์ใช้ข้อมูลแคช','Mobile'],
+  ['/jobs/search','ค้นหางาน','ค้นด้วยเลขงาน ทะเบียน ชื่อ เบอร์ · แสดงเหตุผลที่ตรง · สถานะไม่พบ','Mobile'],
+  ['/scan','สแกน QR ใบสั่งซ่อม','กรอบสแกน + ผลที่พบ · สถานะสแกนไม่พบ (สิทธิ์กล้องยังไม่ออกแบบ)','Mobile'],
+  ['/intake/1..6','รับรถเข้าซ่อม 6 ขั้น','ค้นข้อมูลหลัก → ยืนยันรถ/นัดหมาย → สภาพรถ → รูป 5 มุม → ตรวจทาน → สำเร็จ+QR · แถบล่างตรึง + บันทึกร่างทุกขั้น','Mobile'],
+  ['/inspection/:jobId','ใบตรวจเช็คสภาพรถ','8 หมวด 31 รายการ · 3 ผลลัพธ์ + ไม่เกี่ยวข้องต้องมีเหตุผล · แผ่นรายละเอียด · สถานะซิงก์ 4 แบบ','Mobile'],
+  ['/approval/:quotationId','ลูกค้าอนุมัติราคา','แยกลูกค้าขอ/ช่างแนะนำ · อนุมัติรายบรรทัด · เหตุผลที่ไม่อนุมัติ · สรุปยอดสด · ลายเซ็นเต็มจอ','Mobile'],
+  ['/repair/:jobId','งานซ่อมและจับเวลา','เริ่ม/พัก/ทำต่อ · รูปก่อน-หลังต่อรายการ · แจ้งรออะไหล่ · แจ้งงานเพิ่มเติม · ล็อกหลัง QC ผ่าน','Mobile · RepairQC'],
+  ['/qc/:jobId','ตรวจ QC','เช็กลิสต์ 6 ข้อ + ทดลองขับ + รูป + บันทึก · ตีกลับพร้อมความสำคัญ','Mobile · RepairQC'],
+  ['/sync','ศูนย์ซิงก์ข้อมูล','สถานะการเชื่อมต่อ · จัดกลุ่มตามงาน · จำนวนรูป/ขนาด · ล้มเหลว+ลองใหม่ · ข้อมูลชนกัน · รหัสชั่วคราว','Mobile · RepairQC'],
+  ['/notifications','กล่องแจ้งเตือน','จัดกลุ่มตามประเภท · อ่าน/ไม่อ่าน · กดเข้างานที่เกี่ยวข้อง','Mobile'],
+  ['/profile','โปรไฟล์และกะ','คิวรอซิงก์ · สลับสาขา/กะ · ปิดกะ (ไม่มีสิทธิ์สำหรับช่าง) · ออกจากระบบ','Mobile'],
+  ['/handover/:jobId','ส่งมอบรถ + ลายเซ็นรับคืน','ยังไม่ออกแบบ — ดูช่องว่างในเอกสารตรวจสอบ','ยังไม่มี']
+].map(r => ({ route:r[0], th:r[1], note:r[2], file:r[3] }));
+
+const W_SCREENS = [
+  ['/login · /branch','เข้าสู่ระบบ + เลือกสาขา','เลือกสาขาพร้อมงานค้าง/เกินกำหนด · เข้าใช้งานตามบทบาท','Web'],
+  ['/dashboard','แดชบอร์ดผู้จัดการ','9 ตัวเลขสถานะ · รายได้/ค้างชำระ · แจ้งเตือนสต็อกและ PO · กระดานโรงซ่อมสด · กดตัวเลข→คิวที่กรองแล้ว','Web'],
+  ['/dashboard/cashier','แดชบอร์ดแคชเชียร์','ยอดรับวันนี้ · คิวรอเก็บเงิน · สถานะกะ · เมนูถูกจำกัด','Web'],
+  ['/jobs','คิวงาน (ตาราง)','มุมมองที่บันทึกไว้ · ตัวกรอง · เรียงลำดับ · แบ่งหน้า · แถวอัปเดตสด','Web'],
+  ['/jobs/board','บอร์ดงานตามสถานะ','7 คอลัมน์ · การ์ดเกินกำหนด · กดเข้ารายละเอียด','Web'],
+  ['/jobs/:id','รายละเอียดงาน 8 แท็บ','หัวเรื่องตรึง + การกระทำถัดไปตามสถานะ · ภาพรวม/ตรวจเช็ค/ใบเสนอราคา/ซ่อม/QC/ชำระเงิน/เอกสาร/กิจกรรม','Web'],
+  ['/quotations','คิวรอเสนอราคา','จัดลำดับตามเวลานัดส่งถ่วงเวลารอผลตรวจ','Quotation'],
+  ['/quotations/:id/edit','หน้าสร้างใบเสนอราคา','3 พาเนล · แคตตาล็อกพร้อมสต็อก/ETA/ต้นทุน · ลูกค้าขอ vs ช่างแนะนำ · เตือนของไม่พอ/ซ้ำ/กำไรติดลบ · แก้พร้อมกัน · หมดอายุ','Quotation'],
+  ['/quotations/:id/approval','ผลอนุมัติรายบรรทัด','ผลรายบรรทัด + ลายเซ็น/เวลา/อุปกรณ์/พนักงานรับรอง · บันทึกข้อยกเว้นโดยผู้มีอำนาจ','Quotation'],
+  ['/quotations/:id/revision','ฉบับแก้ไข (เวอร์ชันใหม่)','เหตุผลราคาเปลี่ยนต่อบรรทัด · เวอร์ชันเดิมเป็นถูกแทนที่ · ต้องอนุมัติใหม่ทั้งชุด','Quotation'],
+  ['/pos','คิวรอชำระ + กระทบยอด','เทียบอนุมัติ/ทำจริง/อะไหล่เบิก · ต้องตัดสินใจส่วนต่างก่อนเปิดหน้ารับชำระ','POS'],
+  ['/pos/:jobId/checkout','รับชำระเงิน','4 ช่องทาง + แบ่งจ่าย · ยอดคงเหลือสด · บัตรถูกปฏิเสธ · QR หมดเวลา=กำลังตรวจสอบ · กันเก็บซ้ำ · ลูกหนี้ต้องอนุมัติ','POS'],
+  ['/pos/:jobId/document','เอกสารและใบกำกับภาษี','แยกใบเสร็จกับใบกำกับเต็มรูป · ตรวจข้อมูลผู้รับ · ตัวอย่างก่อนออก · เครื่องพิมพ์ออฟไลน์','POS'],
+  ['/pos/audit','ประวัติพิมพ์ซ้ำ/ยกเลิก/คืนเงิน','เหตุผล + ผู้ดำเนินการ + ผู้อนุมัติ + เวลา','POS'],
+  ['/inventory','คลังอะไหล่','แดชบอร์ด · แคตตาล็อก · รายละเอียดอะไหล่ + บัญชีเคลื่อนไหว · ปรับสต็อกพร้อมหลักฐาน','Inventory'],
+  ['/purchasing','จัดซื้อและรับของ','คิวแนะนำสั่งซื้อ · สร้าง/อนุมัติ PO · GRN รับบางส่วน · ส่วนต่างและของชำรุด','Purchasing'],
+  ['/reports','รายงานผู้บริหาร','6 แท็บ · ทุกกราฟมีตารางเทียบเท่า · เจาะลึกทุกตัวเลข · ส่งออกและสถานะไฟล์','Reports'],
+  ['/settings','ตั้งค่าผู้ใช้ สิทธิ์ ราคา ภาษี','ยังไม่ออกแบบ — มีเพียงสถานะไม่มีสิทธิ์','ยังไม่มี']
+].map(r => ({ route:r[0], th:r[1], note:r[2], file:r[3] }));
+
+const COMPONENTS = [
+  ['JobStatusChip','10 สถานะ × ขนาด sm/md/lg','สี + ไอคอน + ข้อความเสมอ · ห้ามใช้สีเดียวสื่อความหมาย','b'],
+  ['JobCard','ปกติ / เฝ้าระวัง / เกินกำหนด / ล็อก','เกินกำหนดใช้แถบซ้าย 5px + เหตุผลเป็นข้อความ','b'],
+  ['MoneySummary','มือถือแนวตั้ง / เว็บพาเนลขวา / ในเอกสาร','ยอดสุทธิเน้นบนพื้นเข้ม · ตัวเลขใช้ tabular-nums','b'],
+  ['SegmentedOutcome','3 ตัวเลือก (ปกติ/เฝ้าระวัง/ต้องซ่อม) + ไม่เกี่ยวข้อง','ปุ่มสูง ≥52px บนมือถือ · เลือกแล้วเลื่อนโฟกัสรายการถัดไป','m'],
+  ['SignaturePad','ว่าง / มีลายเซ็น / ล็อกแล้ว','ลบต้องยืนยัน · ออกจากหน้าต้องยืนยัน · ผูกกับเวอร์ชันเอกสาร','m'],
+  ['PhotoSlot','ต้องถ่าย / ถ่ายแล้ว / มีมาร์ก / เทียบก่อน-หลัง','เก็บเวลาและชื่อผู้ถ่ายทุกรูป','m'],
+  ['SyncStatusBar','บันทึกในเครื่อง / กำลังซิงก์ / ซิงก์แล้ว / ล้มเหลว / ชนกัน','ข้อความต้องบอกด้วยว่าใครเห็นข้อมูลแล้วหรือยัง','m'],
+  ['StickyActionBar','1 ปุ่มหลัก / ปุ่มหลัก+รอง / ปิดใช้งานพร้อมเหตุผล','ตรึงล่างจอในฟอร์มยาว · แสดงบรรทัดบันทึกร่าง','m'],
+  ['BottomNav','5 ปุ่ม (ปุ่มสแกนยกขึ้น)','แต่ละปุ่ม ≥48px · ป้ายตัวเลขบนแจ้งเตือน','m'],
+  ['AppShell','sidebar เต็ม 212px / ย่อ 68px','topbar: ค้นหา สาขา แจ้งเตือน ผู้ใช้ + เบรดครัมบ์','w'],
+  ['DataTable','แถวปกติ / อัปเดตสด / เกินกำหนด / เลือกได้','หัวตารางเรียงได้ · ซ่อนคอลัมน์รองที่ 1024px','w'],
+  ['SavedViewChips','เลือกอยู่ / ปกติ / + บันทึกมุมมอง','มุมมองที่ให้ผลว่างต้องมีสถานะว่างพร้อมทางออก','w'],
+  ['LineItemEditor','จำนวน/ราคา/ส่วนลด/โปรโมชัน/ช่าง/หมายเหตุ','กริดใช้ minmax(0,1fr) ป้องกันข้อความไทยดันล้น','w'],
+  ['CatalogPicker','ผลค้นหา / ไม่พบ / ของไม่พอ','แสดงคงคลัง จอง ว่าง กำลังสั่ง ETA · ต้นทุนตามสิทธิ์','w'],
+  ['ReconTable','ตรงกัน / ทำเกิน / ไม่ได้ทำ / ตัดออก / เก็บเพิ่ม','ต้องตัดสินใจทุกส่วนต่างก่อนไปหน้ารับชำระ','w'],
+  ['PaymentPanel','เงินสด / บัตร / โอน / PromptPay','สถานะกำลังประมวลผลต้องล็อกปุ่มยืนยัน','w'],
+  ['StateBlock','โหลด / ว่าง / ผิดพลาด / ไม่มีสิทธิ์ / ข้อมูลเก่า','ทุกสถานะต้องมีสาเหตุ + ปุ่มถัดไป + รหัสอ้างอิง','b'],
+  ['ConfirmSheet','ยืนยันปกติ / ทำลายข้อมูล + เหตุผลบังคับ','ยกเลิกงาน ยกเลิก PO คืนเงิน พิมพ์ซ้ำ ปรับสต็อก','b'],
+  ['ActivityTimeline','เหตุการณ์ตามแหล่ง (มือถือ/เว็บ/ระบบ)','ทุกเหตุการณ์มีผู้ทำ เวลา และแหล่งที่มา','b'],
+  ['ChartWithTable','กราฟ / ตารางเทียบเท่า','แกนเดียว มีตัวเลขกำกับทุกแท่ง สลับดูเป็นตารางได้','w']
+].map(c => ({ name:c[0], variants:c[1], rule:c[2], plat:PL[c[3]].label, pBg:PL[c[3]].bg, pFg:PL[c[3]].fg }));
+
+const TRANS = [
+  ['waitinspect','waitquote','ส่งผลตรวจครบทุกรายการที่บังคับ · รายการ “ไม่เกี่ยวข้อง” ต้องมีเหตุผล','ช่าง · มือถือ'],
+  ['waitquote','waitapprove','ใบเสนอราคาผ่านตรวจสอบ (มีราคา/ช่างทุกบรรทัด ไม่มีรายการซ้ำ) และส่งให้ลูกค้า','ธุรการ · เว็บ'],
+  ['waitapprove','approved','ลูกค้าตัดสินใจครบทุกบรรทัด + เซ็นยืนยัน · ลายเซ็นผูกกับเวอร์ชันนั้น','ลูกค้า · มือถือ'],
+  ['waitapprove','waitapprove','ออกเวอร์ชันใหม่ → การอนุมัติเดิมเป็นโมฆะ ทุกบรรทัดกลับเป็นรออนุมัติ','ธุรการ · เว็บ'],
+  ['approved','inprogress','ช่างกดเริ่มงาน (เริ่มจับเวลา) · ทำได้เฉพาะรายการที่อนุมัติ','ช่าง · มือถือ'],
+  ['inprogress','waitparts','แจ้งรออะไหล่ + เหตุผล + ETA · ถ้าเลือก “ทำงานอื่นต่อได้” ล็อกเฉพาะรายการนั้น · งานที่เสร็จแล้วไม่ถูกล้าง','ช่าง · มือถือ'],
+  ['waitparts','inprogress','รับของเข้าคลัง (GRN) และเบิกให้งานนั้น · ของชำรุดไม่นับเป็นของใช้ได้','คลัง · เว็บ'],
+  ['inprogress','qc','ทุกรายการที่อนุมัติต้องเสร็จและมีรูปก่อน-หลังครบ','ช่าง · มือถือ'],
+  ['qc','inprogress','QC ตีกลับ ต้องระบุปัญหาและความสำคัญ · เพิ่มงานแก้ไขให้ช่าง','หัวหน้ากะ · มือถือ'],
+  ['qc','ready','ผ่านทุกหัวข้อ + ผลทดลองขับปกติ · รายการซ่อมถูกล็อก แก้ได้เฉพาะเมื่อเปิดงานใหม่ (ยกเลิกผล QC)','หัวหน้ากะ · มือถือ'],
+  ['ready','completed','ยอดคงเหลือเป็น 0 หรือบันทึกลูกหนี้ที่อนุมัติแล้ว + ออกเอกสาร + ส่งมอบรถ','แคชเชียร์ · เว็บ'],
+  ['ทุกสถานะ','cancelled','ต้องมีเหตุผลและผู้อนุมัติ · อะไหล่ที่สั่งไปแล้วต้องจัดการต่อ · บันทึกถาวรใน audit log','ผู้จัดการ · เว็บ']
+].map(t => {
+  const f = ST[t[0]] || { th:t[0], bg:'#EEF1F5', fg:'#475569' };
+  const to = ST[t[1]] || { th:t[1], bg:'#EEF1F5', fg:'#475569' };
+  return { from:f.th, fromBg:f.bg, fromFg:f.fg, to:to.th, toBg:to.bg, toFg:to.fg, rule:t[2], who:t[3],
+    bg: t[1] === 'cancelled' ? '#FFFDFD' : '#fff' };
+});
+
+const ROLES = [
+  ['พนักงานหน้าร้าน','frontdesk','รับรถ 6 ขั้น · ค้นหางาน · สแกน QR · ยื่นเครื่องให้ลูกค้าอนุมัติและเซ็น · ส่งมอบรถ (รอออกแบบ)','ดูรายงานรายได้ · ปิดกะ/สรุปยอด · แก้ไขข้อมูลหลักลูกค้าโดยตรง'],
+  ['ช่างเทคนิค','technician','งานของฉัน · ใบตรวจเช็ค · บันทึกงานซ่อม+รูป · แจ้งรออะไหล่ · แจ้งงานเพิ่ม · QC (หัวหน้ากะ)','ราคาและยอดเงินทุกชนิด · แก้ไขใบเสนอราคา · เปลี่ยนสถานะข้ามขั้น'],
+  ['ธุรการ / จัดซื้อ','office','ใบเสนอราคาและเวอร์ชัน · คิวงาน · คลังและ PO · GRN รับของ','อนุมัติ PO เกินวงเงิน · อนุมัติส่วนลด >10% · ดูกำไรขั้นต้น · คืนเงิน'],
+  ['แคชเชียร์','cashier','คิวรอชำระ · กระทบยอด · รับชำระและแบ่งจ่าย · ออกใบเสร็จ/ใบกำกับ · พิมพ์ซ้ำพร้อมเหตุผล','ยกเลิก/คืนเงิน (ต้องผู้จัดการ) · บันทึกลูกหนี้ · เมนูสต็อก/จัดซื้อ/รายงานกำไร'],
+  ['ผู้จัดการสาขา','manager','ทุกหน้าจอของสาขา · อนุมัติใบเสนอราคา/PO/ส่วนลด/คืนเงิน/ปรับสต็อก · รายงานทั้ง 6 แท็บรวมต้นทุนและคอมมิชชัน','ตั้งค่าระบบข้ามสาขา (สิทธิ์ผู้จัดการเขต)'],
+  ['หัวหน้าช่าง (รายงาน)','lead','รายงานปฏิบัติการ คุณภาพงาน และผลงานช่างแบบไม่มีตัวเงิน','ต้นทุน กำไร มูลค่าสต็อก ค่าคอมมิชชันรายบุคคล']
+].map(r => ({ role:r[0], key:r[1], can:r[2], cannot:r[3] }));
+
+const RULES = [
+  ['biz','เฉพาะรายการที่ลูกค้าอนุมัติจึงเข้าสู่การซ่อมและการเรียกเก็บเงิน','รายการที่ไม่อนุมัติถูกล็อกออกจาก POS · ถ้าจำเป็นต้องทำจริงต้องบันทึกข้อยกเว้นโดยผู้มีอำนาจพร้อมเหตุผลและเวลา (EXC-xxxx)'],
+  ['biz','ใบเสนอราคาฉบับแก้ไขต้องมีเลขเวอร์ชันใหม่และเก็บฉบับเดิมไว้','ฉบับเดิมเป็น “ถูกแทนที่” · การอนุมัติและลายเซ็นเดิมใช้กับเวอร์ชันใหม่ไม่ได้ · ต้องอธิบายเหตุผลที่ราคาเปลี่ยนทุกบรรทัด'],
+  ['biz','คงเหลือใช้ได้ = คงคลัง − จอง · ของกำลังสั่งไม่ใช่ของที่ใช้ได้','ของชำรุด/กักกันถูกกันออกจากของที่ขายได้ · การรับของทุกครั้งสร้างรายการเคลื่อนไหวที่ตรวจย้อนกลับได้ (GRN → ledger → PO)'],
+  ['biz','รับของบางส่วนทำให้ใบสั่งซื้อยังเปิดอยู่','รับเกินจำนวนที่สั่งต้องมีคำเตือนและสิทธิ์อนุมัติ · ของชำรุดที่รับแล้วไม่เข้าสต็อกที่ใช้ได้และตั้งเรื่องคืนผู้จำหน่าย'],
+  ['biz','ปิดการขายไม่ได้ถ้ายอดคงเหลือไม่เป็นศูนย์','ยกเว้นเลือกบันทึกเป็นลูกหนี้ที่ได้รับอนุมัติจากผู้จัดการ · ปุ่มยืนยันถูกล็อกระหว่างประมวลผลเพื่อกันเก็บเงินซ้ำ'],
+  ['biz','สถานะการชำระที่ไม่ทราบผล ต้องไม่แสดงว่าล้มเหลว','QR หมดเวลาให้แสดง “กำลังตรวจสอบ” และห้ามให้ลูกค้าจ่ายซ้ำจนผลตรวจสอบกับธนาคารออก'],
+  ['biz','การกระทำที่ทำลายข้อมูลต้องมีเหตุผลและผู้ดำเนินการ','ยกเลิกงาน ยกเลิก PO คืนเงิน พิมพ์ซ้ำ ปรับสต็อก · พิมพ์ซ้ำต้องมีคำว่า “สำเนา/REPRINT” และไม่สร้างเลขเอกสารใหม่'],
+  ['biz','งานที่พบเพิ่มระหว่างซ่อมยังไม่ถือว่าอนุมัติ','ล็อกเฉพาะรายการนั้นจนลูกค้าอนุมัติเวอร์ชันใหม่ · งานอื่นที่อนุมัติแล้วทำต่อได้'],
+  ['ui','สถานะทุกอย่างสื่อด้วยสี + ไอคอน + ข้อความ','งานเกินกำหนดใช้แถบซ้ายหนาและระบุเวลาที่เกิน ไม่พึ่งสีแดงเพียงอย่างเดียว'],
+  ['ui','ฟอร์มยาวบนมือถือใช้แถบล่างตรึงและบันทึกร่างทุกขั้น','ออกจากฟอร์มต้องยืนยัน เลือกเก็บหรือทิ้งฉบับร่างได้'],
+  ['ui','ข้อมูลที่สร้างตอนออฟไลน์ใช้รหัสชั่วคราว TMP- และป้าย “รอซิงก์”','ห้ามแสดงเป็นเลขที่งานจริง · เมื่อซิงก์สำเร็จให้แสดงการแทนที่ TMP → เลขจริง'],
+  ['assume','เกณฑ์ตัวเลขในต้นแบบเป็นค่าตั้งต้นเพื่อสาธิต','ส่วนลดต้องอนุมัติ >10% · กำไรขั้นต้นต่ำกว่า 15% เตือน · PO เกิน 10,000 บาทต้องผู้จัดการ · SLA 90% — ทั้งหมดต้องยืนยันกับฝ่ายบริหาร']
+].map(r => ({ tag:TAG[r[0]].label, tagBg:TAG[r[0]].bg, tagFg:TAG[r[0]].fg, accent:TAG[r[0]].accent, title:r[1], body:r[2] }));
+
+const RESPONSIVE = [
+  ['mobile 390×844','เป้าหมายหลักของ Flutter · ปุ่มหลักเต็มความกว้าง 54–56px · เนื้อหาเรียงเดี่ยว ไม่มีตารางแนวนอน'],
+  ['mobile ≥360px','รองรับ Android ทั่วไป · ป้ายสถานะย่อข้อความได้แต่ต้องคงไอคอน · ห้ามลดขนาดตัวอักษรต่ำกว่า 14px'],
+  ['web 1440px','เป้าหมายหลัก · sidebar 212px · พาเนล 3 ช่องในหน้าสร้างใบเสนอราคา · ตารางแสดงคอลัมน์ครบ'],
+  ['web 1024px','sidebar ย่อเหลือ 68px (ไอคอน) · พาเนล 3 ช่อง → 2 ช่อง โดยดันพาเนลสรุปเป็นแผ่นด้านขวา · ตารางซ่อนคอลัมน์รอง (ลูกค้า, ช่าง) ย้ายไปแถวขยาย'],
+  ['web <1024px','ไม่รองรับใน MVP · แสดงข้อความแนะนำให้ใช้เครื่องเดสก์ท็อปหรือแอปมือถือแทน'],
+  ['text scaling 200%','ป้ายสถานะต้องย่อเป็นข้อความสั้น + คำอธิบายบรรทัดถัดไป · ปุ่มใช้ min-height ไม่ตรึงความสูง (ข้อนี้ยังต้องแก้ในบางจอ)']
+].map(r => ({ bp:r[0], rule:r[1] }));
+
+const A11Y = [
+  ['ทำแล้ว','ทุกสถานะสื่อด้วยสี + ไอคอน + ข้อความ · ไม่มีจุดที่ใช้สีเดียวสื่อความหมาย'],
+  ['ทำแล้ว','เป้าแตะมือถือ ≥48px · ปุ่มหลัก 54–56px · แถวในลิสต์กดได้ทั้งแถว'],
+  ['ทำแล้ว','กราฟทุกอันมีตัวเลขกำกับและตารางเทียบเท่าให้สลับดู · ไม่มีแกนคู่และไม่มีกราฟ 3 มิติ'],
+  ['ทำแล้ว','ข้อความไทยบรรทัดฐาน 1.6–1.7 · น้ำหนักตัวอักษรไม่ต่ำกว่า 400 · ตัวเลขใช้ tabular-nums'],
+  ['ต้องทำ','สเปกลำดับ Tab ทุกตารางและฟอร์มบนเว็บ · วงโฟกัสที่มองเห็น 2px สีน้ำเงิน · กัก focus ในโมดัลและลิ้นชัก'],
+  ['ต้องทำ','ปุ่มลัด POS (F2–F5, Enter, Esc) และ ⌘K ต้องผูกการทำงานจริง ไม่ใช่เพียงคำอธิบาย'],
+  ['ต้องทำ','ป้ายข้อความ (aria-label) ให้ปุ่มไอคอนทุกตัว: ถ่ายรูป ลบ พิมพ์ ซิงก์ กรอง'],
+  ['ต้องทำ','ทดสอบข้อความไทยที่ 200% และตรวจคอนทราสต์ทุกป้ายให้ผ่าน AA (≥4.5:1 สำหรับข้อความเล็ก)']
+].map(a => ({ state:a[0], text:a[1], sBg: a[0] === 'ทำแล้ว' ? '#E3F5F1' : '#FBE9E9', sFg: a[0] === 'ทำแล้ว' ? '#0B6D5E' : '#A31D1D' }));
+
+const OPEN = [
+  ['1','หน้าร้านสร้างข้อมูลหลักลูกค้า/รถได้เองหรือไม่','ต้นแบบใช้วิธี “สร้างข้อมูลชั่วคราว + ส่งคำขอเชื่อมข้อมูล (REQ-xxxx)” และถือว่าข้อมูลหลักจาก GaragePro เป็นแบบอ่านอย่างเดียว','เจ้าของระบบข้อมูลหลักต้องยืนยันว่าให้เขียนตรงได้หรือไม่ และใครอนุมัติคำขอเชื่อม','ถ้าให้เขียนตรงได้จริง โฟลว์รับรถจะสั้นลง 1 ขั้น · ถ้าไม่ได้แต่ทีมพัฒนาเขียนตรง จะเกิดข้อมูลลูกค้าซ้ำทั้งระบบ'],
+  ['2','SignalR หรือ polling สำหรับการซิงก์เรียลไทม์','ต้นแบบแสดงการอัปเดตสด (แจ้งเตือน + ป้าย + แถวไฮไลต์) โดยไม่ระบุกลไก · ถือเป็นพฤติกรรมหน้าจอเท่านั้น','ทีมพัฒนาต้องเลือกกลไกและกำหนดความถี่/ความหน่วงที่ยอมรับได้ (เช่น ≤15 วินาที)','ถ้าเป็น polling ห่าง ๆ ป้าย “เชื่อมต่อสด” จะโกหกผู้ใช้ · ต้องเปลี่ยนเป็นเวลาข้อมูลล่าสุดแทน'],
+  ['3','ใครเป็นเจ้าของการตัดสินเมื่อข้อมูลออฟไลน์ชนกัน','ต้นแบบให้ผู้ใช้ที่หน้าจอเลือก “ใช้ของฉัน / ใช้ของเว็บ” ทุกกรณี','ต้องมีนโยบายว่าใครชนะโดยปริยาย (เครื่องที่บันทึกก่อน หรือฝั่งเซิร์ฟเวอร์) และรายการใดห้ามให้ผู้ใช้เลือกเอง เช่น ยอดเงิน','ถ้าปล่อยให้ช่างเลือกทับข้อมูลการเงินได้ จะเกิดยอดไม่ตรงและตรวจสอบย้อนหลังไม่ได้'],
+  ['4','คำแนะนำสั่งซื้อ หรือสร้าง PO อัตโนมัติ','ต้นแบบยืนยันชัดว่าเป็น “คำแนะนำ” เท่านั้น ผู้ใช้ต้องเลือก ตรวจ และกดสร้างเอง','ฝ่ายจัดซื้อต้องยืนยันว่าต้องการอัตโนมัติบางส่วนหรือไม่ (เช่น ของหมุนเร็วราคาต่ำ)','ถ้าทำอัตโนมัติโดยไม่ตกลง จะเกิด PO ซ้ำและงบจัดซื้อบานปลายโดยไม่มีใครอนุมัติ'],
+  ['5','วงเงินอนุมัติ PO และใครเห็นต้นทุน','ต้นแบบตั้งไว้ว่าเกิน 10,000 บาทต้องผู้จัดการ · ต้นทุน/กำไรเห็นได้เฉพาะผู้จัดการ','ฝ่ายบริหารต้องกำหนดวงเงินจริงเป็นขั้น และระบุว่าธุรการจัดซื้อควรเห็นต้นทุนหรือไม่','ตั้งวงเงินผิดจะทำให้งานติดรออนุมัติทั้งวัน หรือปล่อยให้สั่งซื้อเกินอำนาจ'],
+  ['6','ข้อกำหนดใบกำกับภาษีและการออกเลขเอกสาร','ต้นแบบแยกใบเสร็จกับใบกำกับเต็มรูป ใช้เลขตัวอย่าง RC-24-xxxx / IV-24-xxxx และยังไม่รองรับนิติบุคคล/วางบิลประกัน','ฝ่ายบัญชีต้องยืนยันรูปแบบเลขที่ การเรียงลำดับต่อสาขา การยกเลิก/ใบลดหนี้ และข้อมูลบังคับตามกฎหมาย','ออกเลขผิดรูปแบบหรือข้ามลำดับ จะแก้ย้อนหลังไม่ได้และมีปัญหาตอนตรวจภาษี'],
+  ['7','นโยบายคืนเงิน ยกเลิก และใบลดหนี้','ต้นแบบให้ผู้จัดการอนุมัติพร้อมเหตุผล และออกใบลดหนี้อ้างอิงเอกสารเดิม','ต้องมีนโยบายว่าคืนเงินได้ภายในกี่วัน ช่องทางคืนต้องตรงกับช่องทางจ่ายหรือไม่ และใครรับผิดชอบค่าธรรมเนียม','ถ้าไม่มีนโยบาย แคชเชียร์แต่ละสาขาจะทำต่างกัน และยอดกระทบบัญชีไม่ตรง'],
+  ['8','สูตรค่าคอมมิชชันช่าง','ต้นแบบใช้ ค่าแรงเรียกเก็บ × อัตราตามระดับ (8/10/12%) − หักงานที่ QC ตีกลับ 50% ของค่าแรงงานนั้น','ฝ่ายบุคคลและบริหารต้องยืนยันอัตรา ฐานคำนวณ (รวมอะไหล่หรือไม่) และการหักกรณีงานย้อนกลับ','สูตรผิดกระทบค่าจ้างจริงของช่างและความน่าเชื่อถือของระบบทั้งหมด'],
+  ['9','การโอนสต็อกระหว่างสาขา','ต้นแบบระบุชัดว่าอยู่นอก MVP · ปัจจุบันทำผ่านเอกสารภายในและบันทึกเป็นการปรับสต็อก 2 ฝั่ง','ต้องยืนยันว่าจะทำเป็นโฟลว์เต็ม (ใบโอน + ของระหว่างทาง) ในเฟสใด','ถ้าทีมพัฒนาสร้างการโอนแบบง่ายไปก่อน จะได้สต็อกที่ไม่มีของระหว่างทางและยอดสองสาขาไม่ตรงกัน']
+].map(o => ({ n:o[0], title:o[1], assumed:o[2], need:o[3], risk:o[4] }));
+
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      legend: [
+        { tag: TAG.ui.label, bg: TAG.ui.bg, fg: TAG.ui.fg, desc:'พฤติกรรมหน้าจอที่ยืนยันแล้ว · ทำตามได้เลย' },
+        { tag: TAG.biz.label, bg: TAG.biz.bg, fg: TAG.biz.fg, desc:'กฎที่ต้นแบบบังคับไว้และตกลงแล้วในโจทย์' },
+        { tag: TAG.assume.label, bg: TAG.assume.bg, fg: TAG.assume.fg, desc:'ค่า/นโยบายที่ตั้งไว้เพื่อสาธิต ต้องยืนยันก่อนเขียนโค้ด' },
+        { tag: TAG.future.label, bg: TAG.future.bg, fg: TAG.future.fg, desc:'อยู่นอกขอบเขต MVP นี้ชัดเจน' }
+      ],
+      mobileScreens: M_SCREENS, webScreens: W_SCREENS, components: COMPONENTS,
+      colorTokens: [
+        { name:'navy/900', hex:'#0F2440' }, { name:'navy/700', hex:'#1B3557' },
+        { name:'blue/600', hex:'#1B6BE3' }, { name:'blue/50', hex:'#E6EFFC' },
+        { name:'teal/500', hex:'#0E9F8C' }, { name:'amber/500', hex:'#E0930C' },
+        { name:'red/600', hex:'#C02626' }, { name:'orange/600', hex:'#C2410C' }
+      ],
+      statusTokens: Object.keys(ST).map(k => ({ token:k, th:ST[k].th, bg:ST[k].bg, fg:ST[k].fg })),
+      transitions: TRANS, roles: ROLES, rules: RULES, responsive: RESPONSIVE, a11y: A11Y, open: OPEN,
+      handoff: [
+        { title:'ไฟล์ที่ส่งมอบ', fg:'#1552B3', body:'Foundation (โทเคน+คอมโพเนนต์) · Mobile (รับรถ ตรวจเช็ค อนุมัติ) · Repair QC (ซ่อม QC ซิงก์) · Web (เชลล์ แดชบอร์ด คิว รายละเอียดงาน) · Quotation · POS · Inventory · Purchasing · Reports · Demo (เส้นทางข้ามเครื่อง 13 ขั้น) · Audit · Handoff (ไฟล์นี้)' },
+        { title:'วิธีอ่านคู่กัน', fg:'#0B6D5E', body:'เริ่มที่ Demo เพื่อเข้าใจลำดับงานจริง → Foundation สำหรับโทเคนและคอมโพเนนต์ → ไฟล์โมดูลสำหรับรายละเอียดสถานะ → Audit สำหรับช่องว่างที่ยังไม่ออกแบบ → ไฟล์นี้สำหรับชื่อ route กฎสถานะ และข้อที่ยังไม่สรุป' },
+        { title:'สิ่งที่ต้องถามก่อนเริ่มโค้ด', fg:'#A31D1D', body:'9 ข้อในหมวดที่ 9 ทั้งหมด · ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว' }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

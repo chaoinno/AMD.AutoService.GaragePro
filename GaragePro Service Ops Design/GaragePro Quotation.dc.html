@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  input, textarea, select { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+  @keyframes gpFlash { 0% { background:#E6EFFC } 100% { background:#fff } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:16px; padding:{{pagePad}}; align-items:{{pageAlign}}">
+
+  <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+    <div style="width:1440px; max-width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px; background:#0B1526; border-radius:0 0 12px 12px; padding:10px 16px">
+      <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · เว็บ NEXT.JS · ต้นแบบ ไม่ใช่ระบบจริง</span>
+      <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+    <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">WEB · QUOTATION WORKFLOW</span>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{beManager}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mgrBg}}; color:{{mgrFg}}">ผู้จัดการ (เห็นต้นทุน/กำไร)</span>
+      <span onClick="{{beOffice}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{offBg}}; color:{{offFg}}">ธุรการ</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <span onClick="{{goQueue}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">คิวรอเสนอราคา</span>
+      <span onClick="{{goBuilder}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">หน้าสร้างใบเสนอราคา</span>
+      <span onClick="{{goApproval}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ผลอนุมัติรายบรรทัด</span>
+      <span onClick="{{openHistory}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ประวัติเวอร์ชัน</span>
+      <span onClick="{{simConcurrent}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">มีคนแก้ไขพร้อมกัน</span>
+      <span onClick="{{simExpired}}" style="font-size:12px; font-weight:600; color:#A31D1D; background:#FEF6F6; border:1px solid #F0C2C2; padding:7px 11px; border-radius:8px; cursor:pointer">ใบเสนอราคาหมดอายุ</span>
+      <span onClick="{{resetAll}}" style="font-size:12px; font-weight:600; color:#C02626; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">รีเซ็ต</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+  <div style="width:1440px; height:940px; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:14px; overflow:hidden; box-shadow:0 26px 64px rgba(15,36,64,.14); display:flex; position:relative">
+
+    <div style="width:68px; flex:none; background:#0F2440; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; margin-bottom:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="7">
+        <div onClick="{{n.tap}}" style="width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{n.bg}}; position:relative">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.path}}"/></svg>
+          <sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{false}}">
+            <span style="position:absolute; top:5px; right:4px; background:#E0930C; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center">{{n.badge}}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+      <div style="height:56px; flex:none; background:#fff; border-bottom:1px solid #E3E8EF; display:flex; align-items:center; gap:14px; padding:0 18px">
+        <div style="display:flex; align-items:center; gap:8px; font-size:12px; color:#64748B">
+          <span onClick="{{goQueue}}" style="cursor:pointer">สาขาบางนา</span><span style="color:#CBD5E1">/</span>
+          <span onClick="{{goQueue}}" style="cursor:pointer">ใบเสนอราคา</span>
+          <sc-if value="{{inDoc}}" hint-placeholder-val="{{true}}">
+            <span style="color:#CBD5E1">/</span><span style="color:#0F2440; font-weight:600">{{qno}} · {{reg}}</span>
+          </sc-if>
+        </div>
+        <div style="margin-left:auto; display:flex; align-items:center; gap:14px">
+          <span style="font-size:11.5px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">29 ก.ค. 2569 · 15:42 น.</span>
+          <div style="display:flex; align-items:center; gap:9px; padding-left:14px; border-left:1px solid #E3E8EF">
+            <div style="width:29px; height:29px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:11.5px; font-weight:700; color:#fff">{{initials}}</div>
+            <div style="display:flex; flex-direction:column"><span style="font-size:12.5px; font-weight:700; color:#0F2440">{{userName}}</span><span style="font-size:11px; color:#64748B">{{roleLabel}}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{isQueue}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between">
+            <div style="display:flex; flex-direction:column; gap:4px">
+              <span style="font-size:22px; font-weight:700; color:#0F2440">คิวงานรอเสนอราคา</span>
+              <span style="font-size:13px; color:#64748B">เรียงตามเวลานัดส่งมอบ แล้วตามเวลาที่ช่างส่งผลตรวจ · {{queueN}} งาน</span>
+            </div>
+            <div style="display:flex; gap:8px">
+              <span style="display:inline-flex; align-items:center; gap:6px; background:#FDF3E2; border:1px solid #F0D9AC; color:#8A5A00; font-size:12px; font-weight:700; padding:8px 12px; border-radius:8px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/></svg>2 งานใกล้ถึงเวลานัด</span>
+            </div>
+          </div>
+          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+            <div style="display:grid; grid-template-columns:40px 104px 1.2fr 1fr 130px 150px 130px 120px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+              <div style="padding:11px 0 11px 14px">#</div><div style="padding:11px 12px">เลขงาน</div><div style="padding:11px 12px">ทะเบียน / รุ่นรถ</div><div style="padding:11px 12px">ลูกค้า</div><div style="padding:11px 12px">ผลตรวจส่งเมื่อ</div><div style="padding:11px 12px">รายการที่ต้องเสนอ</div><div style="padding:11px 12px">นัดส่งมอบ</div><div style="padding:11px 12px; text-align:right">การกระทำ</div>
+            </div>
+            <sc-for list="{{queue}}" as="r" hint-placeholder-count="5">
+              <div onClick="{{r.open}}" style="display:grid; grid-template-columns:40px 104px 1.2fr 1fr 130px 150px 130px 120px; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; cursor:pointer; background:{{r.bg}}">
+                <div style="padding:12px 0 12px 14px; font-size:12px; font-weight:700; color:{{r.rankFg}}; font-family:'IBM Plex Mono',monospace">{{r.rank}}</div>
+                <div style="padding:12px; font-family:'IBM Plex Mono',monospace; color:#1B6BE3; font-weight:600">{{r.no}}</div>
+                <div style="padding:12px; display:flex; flex-direction:column; gap:2px"><span style="font-weight:700; color:#0F2440">{{r.reg}}</span><span style="font-size:11.5px; color:#64748B">{{r.model}}</span></div>
+                <div style="padding:12px; color:#334155">{{r.customer}}</div>
+                <div style="padding:12px; font-family:'IBM Plex Mono',monospace; color:#475569; font-size:12.5px">{{r.inspAt}}</div>
+                <div style="padding:12px; display:flex; flex-direction:column; gap:3px"><span style="font-size:12.5px; color:#334155">{{r.items}}</span><span style="font-size:11px; color:#94A3B8">{{r.photos}}</span></div>
+                <div style="padding:12px; display:flex; flex-direction:column; gap:2px"><span style="font-family:'IBM Plex Mono',monospace; color:{{r.promiseFg}}; font-weight:{{r.promiseWeight}}">{{r.promise}}</span><span style="font-size:11px; color:{{r.promiseFg}}">{{r.promiseNote}}</span></div>
+                <div style="padding:12px; text-align:right"><span style="display:inline-flex; align-items:center; background:#1B6BE3; color:#fff; font-size:12px; font-weight:700; padding:7px 11px; border-radius:7px">{{r.cta}}</span></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:15px; font-size:12.5px; color:#64748B; line-height:1.8">ลำดับความสำคัญคำนวณจากเวลานัดส่งมอบที่เหลือ ถ่วงน้ำหนักด้วยเวลารอหลังช่างส่งผลตรวจ — งานที่ผลตรวจค้างเกิน 1 ชั่วโมงจะถูกดันขึ้นบนสุดพร้อมป้ายเตือน</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isBuilder}}" hint-placeholder-val="{{true}}">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+
+          <div style="flex:none; background:#fff; border-bottom:1px solid #E3E8EF; padding:14px 18px; display:flex; align-items:flex-start; gap:18px">
+            <div style="display:flex; flex-direction:column; gap:7px; flex:1">
+              <div style="display:flex; align-items:center; gap:9px; flex-wrap:wrap">
+                <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{qno}}</span>
+                <span style="display:inline-flex; align-items:center; gap:5px; background:{{stBg}}; color:{{stFg}}; border:1px solid {{stBorder}}; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{stPath}}"/></svg>{{stLabel}}</span>
+                <span style="background:#E8EDF4; color:#1B3557; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px">เวอร์ชัน {{version}}</span>
+                <span onClick="{{openHistory}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">ประวัติเวอร์ชัน ({{versionsN}})</span>
+              </div>
+              <div style="display:flex; align-items:baseline; gap:14px">
+                <span style="font-size:23px; font-weight:700; color:#0F2440">{{reg}}</span>
+                <span style="font-size:13.5px; color:#475569">{{model}} · {{customer}}</span>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex:none">
+              <button onClick="{{saveDraft}}" style="height:40px; padding:0 15px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">บันทึกฉบับร่าง</button>
+              <button onClick="{{openPreview}}" style="height:40px; padding:0 15px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ดูตัวอย่างที่ลูกค้าเห็น</button>
+              <button onClick="{{sendApproval}}" style="height:40px; padding:0 17px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{sendLabel}}</button>
+            </div>
+          </div>
+
+          <sc-if value="{{concurrent}}" hint-placeholder-val="{{false}}">
+            <div style="flex:none; background:#FFFBF3; border-bottom:1px solid #F0D9AC; padding:11px 18px; display:flex; align-items:center; gap:11px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>
+              <span style="font-size:13px; font-weight:600; color:#8A5A00; flex:1">ณัฐพล ศรีสุวรรณ เปิดแก้ไขใบนี้อยู่ตั้งแต่ 15:39 น. — การบันทึกอาจทับกันของกันและกัน</span>
+              <span onClick="{{takeLock}}" style="font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:6px 12px; border-radius:7px; cursor:pointer">ขอสิทธิ์แก้ไขคนเดียว</span>
+              <span onClick="{{dismissConcurrent}}" style="font-size:12px; font-weight:700; color:#8A5A00; cursor:pointer">ปิด</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{expired}}" hint-placeholder-val="{{false}}">
+            <div style="flex:none; background:#FEF6F6; border-bottom:1px solid #F0C2C2; padding:11px 18px; display:flex; align-items:center; gap:11px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.4" stroke-linecap="round" style="flex:none"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+              <span style="font-size:13px; font-weight:600; color:#A31D1D; flex:1">ใบเสนอราคาหมดอายุแล้ว (ยืนราคาถึง 29 ก.ค. 18:00 น.) — ราคาอะไหล่ 2 รายการเปลี่ยนแปลงตั้งแต่วันนั้น ต้องออกเวอร์ชันใหม่ก่อนส่งให้ลูกค้า</span>
+              <span onClick="{{makeRevision}}" style="font-size:12px; font-weight:700; color:#fff; background:#C02626; padding:6px 12px; border-radius:7px; cursor:pointer">ออกเวอร์ชันใหม่</span>
+            </div>
+          </sc-if>
+
+          <div style="flex:1; display:grid; grid-template-columns:300px 1fr 320px; overflow:hidden">
+
+            <div style="border-right:1px solid #E3E8EF; background:#fff; overflow-y:auto; display:flex; flex-direction:column; gap:0">
+              <div style="padding:15px 16px; border-bottom:1px solid #EDF1F6; display:flex; flex-direction:column; gap:9px">
+                <span style="font-size:13px; font-weight:700; color:#0F2440">ข้อมูลรถและลูกค้า</span>
+                <div style="display:flex; flex-direction:column; gap:6px; font-size:12.5px">
+                  <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#64748B">ทะเบียน</span><span style="color:#0F2440; font-weight:700">{{reg}}</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#64748B">รุ่น / ปี</span><span style="color:#0F2440; font-weight:600; text-align:right">Yaris Ativ 1.2 · 2565</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#64748B">เลขไมล์</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">78,940 กม.</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#64748B">ลูกค้า</span><span style="color:#0F2440; font-weight:600">{{customer}}</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:8px"><span style="color:#64748B">ประเภท</span><span style="color:#0F2440; font-weight:600">หน้าร้าน · ลูกค้าประจำ</span></div>
+                </div>
+              </div>
+              <div style="padding:15px 16px; border-bottom:1px solid #EDF1F6; display:flex; flex-direction:column; gap:9px">
+                <span style="font-size:13px; font-weight:700; color:#0F2440">อาการที่ลูกค้าแจ้ง</span>
+                <div style="background:#FFFBF3; border-radius:8px; padding:9px 11px; font-size:12.5px; color:#8A5A00; line-height:1.6">เบรกมีเสียงดัง เฉพาะตอนเบรกแรงช่วงเช้า</div>
+                <div style="background:#FFFBF3; border-radius:8px; padding:9px 11px; font-size:12.5px; color:#8A5A00; line-height:1.6">แอร์ไม่เย็นช่วงบ่าย ลมออกน้อย</div>
+              </div>
+              <div style="padding:15px 16px; border-bottom:1px solid #EDF1F6; display:flex; flex-direction:column; gap:10px">
+                <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:13px; font-weight:700; color:#0F2440">ผลตรวจของช่าง</span><span style="font-size:11px; color:#64748B">อนุชา แก้วมณี · 09:05</span></div>
+                <sc-for list="{{findings}}" as="f" hint-placeholder-count="4">
+                  <div style="border:1px solid {{f.border}}; border-radius:9px; overflow:hidden">
+                    <div onClick="{{f.toggle}}" style="padding:10px 11px; display:flex; align-items:flex-start; gap:8px; cursor:pointer; background:{{f.bg}}">
+                      <span style="width:7px; height:7px; border-radius:50%; background:{{f.dot}}; margin-top:5px; flex:none"></span>
+                      <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                        <span style="font-size:12.5px; font-weight:700; color:#0F2440; line-height:1.45">{{f.label}}</span>
+                        <span style="font-size:11px; color:{{f.dot}}; font-weight:600">{{f.level}} · {{f.photos}}</span>
+                      </div>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.6" stroke-linecap="round" style="flex:none; margin-top:3px"><path d="{{f.chev}}"/></svg>
+                    </div>
+                    <sc-if value="{{f.open}}" hint-placeholder-val="{{false}}">
+                      <div style="padding:11px; border-top:1px solid #EDF1F6; display:flex; flex-direction:column; gap:9px">
+                        <span style="font-size:12px; color:#475569; line-height:1.65">{{f.note}}</span>
+                        <div style="display:flex; gap:6px">
+                          <div style="flex:1; height:56px; border-radius:7px; background:#D8DEE7; position:relative"><div style="position:absolute; left:16px; top:14px; width:20px; height:20px; border:2px solid #C02626; border-radius:50%"></div></div>
+                          <div style="flex:1; height:56px; border-radius:7px; background:#C9D1DC"></div>
+                        </div>
+                        <div style="background:#F7F9FC; border-radius:8px; padding:9px 10px; display:flex; flex-direction:column; gap:4px">
+                          <span style="font-size:11px; font-weight:700; color:#64748B">ช่างแนะนำ</span>
+                          <span style="font-size:12.5px; color:#0F2440; font-weight:600; line-height:1.5">{{f.suggest}}</span>
+                        </div>
+                        <button onClick="{{f.add}}" style="min-height:40px; background:#1B6BE3; border:none; color:#fff; border-radius:8px; font-family:inherit; font-size:12.5px; font-weight:700; cursor:pointer">{{f.addLabel}}</button>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="padding:15px 16px; display:flex; flex-direction:column; gap:9px">
+                <span style="font-size:13px; font-weight:700; color:#0F2440">ประวัติการเข้าซ่อม</span>
+                <sc-for list="{{history}}" as="h" hint-placeholder-count="3">
+                  <div style="display:flex; flex-direction:column; gap:2px; padding:9px 0; border-top:1px solid #F1F4F9">
+                    <div style="display:flex; justify-content:space-between; gap:8px"><span style="font-size:12.5px; font-weight:600; color:#0F2440">{{h.date}}</span><span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{h.amount}}</span></div>
+                    <span style="font-size:11.5px; color:#64748B; line-height:1.55">{{h.work}}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px">
+
+              <sc-if value="{{hasErrors}}" hint-placeholder-val="{{false}}">
+                <div style="flex:none; background:#FEF6F6; border:1px solid #F0C2C2; border-radius:11px; padding:13px 15px; display:flex; gap:11px; align-items:flex-start">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+                  <div style="display:flex; flex-direction:column; gap:5px; flex:1">
+                    <span style="font-size:13.5px; font-weight:700; color:#A31D1D">ยังส่งขออนุมัติไม่ได้ · พบ {{errorN}} ข้อที่ต้องแก้</span>
+                    <sc-for list="{{errors}}" as="e" hint-placeholder-count="2">
+                      <span style="font-size:12.5px; color:#A31D1D; line-height:1.6">• {{e.text}}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+
+              <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                <div style="padding:13px 15px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:11px">
+                  <span style="font-size:13.5px; font-weight:700; color:#0F2440">ค้นหาอะไหล่และค่าแรงจากแคตตาล็อก</span>
+                  <span style="margin-left:auto; font-size:11.5px; color:#64748B">{{catalogHint}}</span>
+                </div>
+                <div style="padding:13px 15px; display:flex; flex-direction:column; gap:11px">
+                  <div style="height:40px; border:1px solid #C9D6E6; border-radius:9px; display:flex; align-items:center; gap:9px; padding:0 12px; background:#F7F9FC">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.2" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+                    <input value="{{cq}}" onChange="{{onCq}}" placeholder="รหัสอะไหล่ ชื่อ หรือรหัสค่าแรง เช่น P-BRK, โช้คอัพ, ตั้งศูนย์" style="flex:1; border:none; outline:none; background:transparent; font-size:13px; color:#0F2440"/>
+                    <sc-if value="{{hasCq}}" hint-placeholder-val="{{false}}">
+                      <span onClick="{{clearCq}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer; flex:none">ล้าง</span>
+                    </sc-if>
+                  </div>
+                  <div style="display:flex; gap:6px; flex-wrap:wrap">
+                    <sc-for list="{{cqQuick}}" as="k" hint-placeholder-count="4">
+                      <span onClick="{{k.tap}}" style="font-size:11.5px; font-weight:600; color:#475569; background:#EEF1F6; padding:6px 10px; border-radius:7px; cursor:pointer; font-family:'IBM Plex Mono',monospace">{{k.label}}</span>
+                    </sc-for>
+                  </div>
+
+                  <sc-if value="{{showCatalog}}" hint-placeholder-val="{{false}}">
+                    <div style="border:1px solid #E3E8EF; border-radius:10px; overflow:hidden">
+                      <div style="display:grid; grid-template-columns:{{catCols}}; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:10.5px; font-weight:700; color:#64748B">
+                        <div style="padding:8px 10px">รหัส</div><div style="padding:8px 10px">รายการ / ความเข้ากันได้</div><div style="padding:8px 10px; text-align:center">คงคลัง</div><div style="padding:8px 10px; text-align:center">จอง</div><div style="padding:8px 10px; text-align:center">ว่าง</div><div style="padding:8px 10px; text-align:center">กำลังสั่ง</div><div style="padding:8px 10px">ETA ผู้จำหน่าย</div>
+                        <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                          <div style="padding:8px 10px; text-align:right">ต้นทุน</div>
+                        </sc-if>
+                        <div style="padding:8px 10px; text-align:right">ราคาขาย</div><div style="padding:8px 10px"></div>
+                      </div>
+                      <sc-for list="{{catalog}}" as="c" hint-placeholder-count="4">
+                        <div style="display:grid; grid-template-columns:{{catCols}}; border-bottom:1px solid #F5F8FB; font-size:12px; align-items:center; background:{{c.bg}}">
+                          <div style="padding:9px 10px; font-family:'IBM Plex Mono',monospace; color:#1B3557; font-weight:600">{{c.code}}</div>
+                          <div style="padding:9px 10px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600; line-height:1.4">{{c.name}}</span><span style="font-size:10.5px; color:#94A3B8">{{c.compat}}</span></div>
+                          <div style="padding:9px 10px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{c.stock}}</div>
+                          <div style="padding:9px 10px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#94A3B8">{{c.reserved}}</div>
+                          <div style="padding:9px 10px; text-align:center; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{c.availFg}}">{{c.available}}</div>
+                          <div style="padding:9px 10px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{c.onorder}}</div>
+                          <div style="padding:9px 10px; font-size:11px; color:{{c.etaFg}}">{{c.eta}}</div>
+                          <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                            <div style="padding:9px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#64748B">{{c.cost}}</div>
+                          </sc-if>
+                          <div style="padding:9px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{c.price}}</div>
+                          <div style="padding:9px 10px; text-align:right"><span onClick="{{c.add}}" style="display:inline-flex; align-items:center; background:{{c.btnBg}}; color:{{c.btnFg}}; font-size:11.5px; font-weight:700; padding:6px 10px; border-radius:7px; cursor:pointer; white-space:nowrap">{{c.btn}}</span></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{catalogEmpty}}" hint-placeholder-val="{{false}}">
+                    <div style="border:1px dashed #C9D6E6; border-radius:10px; padding:26px; display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M8.5 8.5l5 5M13.5 8.5l-5 5"/></svg>
+                      <span style="font-size:14px; font-weight:700; color:#334155">ไม่พบรายการที่ตรงกับ “{{cq}}”</span>
+                      <span style="font-size:12px; color:#64748B; line-height:1.65">ลองค้นด้วยรหัสบางส่วน เช่น P-BRK หรือ L- สำหรับค่าแรง<br>หากเป็นอะไหล่ใหม่ ให้ขอเปิดรหัสจากฝ่ายจัดซื้อก่อนใส่ในใบเสนอราคา</span>
+                      <span onClick="{{goPo}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">ส่งคำขอเปิดรหัสอะไหล่</span>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+
+              <sc-for list="{{sections}}" as="s" hint-placeholder-count="2">
+                <div style="flex:none; background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+                  <div style="padding:12px 15px; border-bottom:1px solid #EDF1F6; border-left:4px solid {{s.accent}}; display:flex; align-items:center; gap:10px">
+                    <span style="font-size:14px; font-weight:700; color:#0F2440">{{s.label}}</span>
+                    <span style="background:{{s.tagBg}}; color:{{s.tagFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{s.n}} รายการ</span>
+                    <span style="margin-left:auto; font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{s.sum}}</span>
+                  </div>
+                  <sc-for list="{{s.lines}}" as="l" hint-placeholder-count="3">
+                    <div style="border-bottom:1px solid #F5F8FB; padding:12px 15px; display:flex; flex-direction:column; gap:10px; background:{{l.rowBg}}; animation:{{l.anim}}">
+                      <div style="display:flex; align-items:flex-start; gap:11px">
+                        <span style="background:{{l.typeBg}}; color:{{l.typeFg}}; font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px; flex:none; margin-top:2px">{{l.type}}</span>
+                        <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+                          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+                            <span style="font-size:13.5px; font-weight:700; color:#0F2440">{{l.name}}</span>
+                            <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{l.code}}</span>
+                            <sc-if value="{{l.dup}}" hint-placeholder-val="{{false}}">
+                              <span style="display:inline-flex; align-items:center; gap:4px; background:#FDF3E2; color:#8A5A00; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">รายการซ้ำกับบรรทัด {{l.dupWith}}</span>
+                            </sc-if>
+                            <sc-if value="{{l.short}}" hint-placeholder-val="{{false}}">
+                              <span style="display:inline-flex; align-items:center; gap:4px; background:#FDEBE3; color:#A8380A; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/></svg>ของไม่พอ · ว่าง {{l.availText}}</span>
+                            </sc-if>
+                          </div>
+                          <span style="font-size:11.5px; color:#64748B">{{l.meta}}</span>
+                        </div>
+                        <span style="font-size:15px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace; flex:none">{{l.amount}}</span>
+                        <div onClick="{{l.remove}}" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C02626" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></div>
+                      </div>
+
+                      <div style="display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px">
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">จำนวน / หน่วย</span>
+                          <div style="display:flex; align-items:center; border:1px solid #E3E8EF; border-radius:7px; overflow:hidden; height:34px">
+                            <div onClick="{{l.minus}}" style="width:28px; height:32px; display:flex; align-items:center; justify-content:center; color:#1B3557; cursor:pointer; font-size:16px">−</div>
+                            <div style="flex:1; text-align:center; font-size:13px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{l.qty}}</div>
+                            <div onClick="{{l.plus}}" style="width:28px; height:32px; display:flex; align-items:center; justify-content:center; color:#1B3557; cursor:pointer; font-size:16px">+</div>
+                          </div>
+                          <span style="font-size:10.5px; color:#64748B">{{l.unit}}</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">ราคา/หน่วย</span>
+                          <input value="{{l.price}}" onChange="{{l.onPrice}}" style="height:34px; border:1px solid #E3E8EF; border-radius:7px; padding:0 9px; font-size:13px; font-weight:600; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/>
+                          <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                            <span style="font-size:10.5px; color:{{l.marginFg}}">{{l.marginText}}</span>
+                          </sc-if>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">ส่วนลด %</span>
+                          <input value="{{l.disc}}" onChange="{{l.onDisc}}" style="height:34px; border:{{l.discBorder}}; border-radius:7px; padding:0 9px; font-size:13px; font-weight:600; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/>
+                          <sc-if value="{{l.bigDisc}}" hint-placeholder-val="{{false}}">
+                            <span style="font-size:10.5px; font-weight:700; color:#8A5A00">{{l.discNote}}</span>
+                          </sc-if>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">โปรโมชัน</span>
+                          <div onClick="{{l.cyclePromo}}" style="height:34px; border:1px solid #E3E8EF; border-radius:7px; padding:0 9px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; background:{{l.promoBg}}">
+                            <span style="font-size:11.5px; color:{{l.promoFg}}; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">{{l.promo}}</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                          <span style="font-size:10.5px; color:#64748B">ภาษี {{l.tax}}</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">ช่างผู้ทำ</span>
+                          <div onClick="{{l.cycleTech}}" style="height:34px; border:{{l.techBorder}}; border-radius:7px; padding:0 9px; display:flex; align-items:center; justify-content:space-between; cursor:pointer">
+                            <span style="font-size:11.5px; color:{{l.techFg}}; font-weight:600; white-space:nowrap; overflow:hidden">{{l.tech}}</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round" style="flex:none"><path d="M6 9l6 6 6-6"/></svg>
+                          </div>
+                          <span style="font-size:10.5px; color:#64748B">{{l.hours}}</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:10.5px; font-weight:700; color:#94A3B8">หมายเหตุถึงลูกค้า</span>
+                          <input value="{{l.note}}" onChange="{{l.onNote}}" placeholder="เช่น รับประกัน 6 เดือน" style="height:34px; border:1px solid #E3E8EF; border-radius:7px; padding:0 9px; font-size:12px; color:#0F2440; outline:none"/>
+                        </div>
+                      </div>
+
+                      <sc-if value="{{l.short}}" hint-placeholder-val="{{false}}">
+                        <div style="background:#FFFAF7; border:1px solid #F5C9B3; border-radius:9px; padding:10px 12px; display:flex; align-items:center; gap:10px">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#A8380A" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M21 8l-9-5-9 5 9 5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+                          <span style="font-size:12px; color:#A8380A; line-height:1.6; flex:1; font-weight:600">{{l.shortText}}</span>
+                          <span onClick="{{goPo}}" style="font-size:11.5px; font-weight:700; color:#fff; background:#C2410C; padding:6px 11px; border-radius:7px; cursor:pointer; white-space:nowrap">เปิดใบขอซื้อ</span>
+                        </div>
+                      </sc-if>
+                      <sc-if value="{{l.dup}}" hint-placeholder-val="{{false}}">
+                        <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:10px 12px; display:flex; align-items:center; gap:10px">
+                          <span style="font-size:12px; color:#8A5A00; line-height:1.6; flex:1; font-weight:600">มีรายการรหัสเดียวกันอยู่แล้วในใบนี้ — รวมจำนวนเข้าด้วยกันหรือลบบรรทัดที่ซ้ำ</span>
+                          <span onClick="{{l.merge}}" style="font-size:11.5px; font-weight:700; color:#fff; background:#E0930C; padding:6px 11px; border-radius:7px; cursor:pointer">รวมบรรทัด</span>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{s.empty}}" hint-placeholder-val="{{false}}">
+                    <div style="padding:26px; text-align:center; font-size:12.5px; color:#64748B; line-height:1.7">ยังไม่มีรายการในส่วนนี้ — เพิ่มจากผลตรวจของช่างด้านซ้าย หรือค้นจากแคตตาล็อกด้านบน</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="border-left:1px solid #E3E8EF; background:#fff; display:flex; flex-direction:column; overflow:hidden">
+              <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">สรุปยอด</span>
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:13px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ค่าอะไหล่</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{sumParts}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ค่าแรง</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{sumLabor}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">รวมก่อนส่วนลด</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{gross}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ส่วนลดรายบรรทัด</span><span style="color:#C02626; font-weight:600; font-family:'IBM Plex Mono',monospace">−{{lineDisc}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">โปรโมชัน</span><span style="color:#C02626; font-weight:600; font-family:'IBM Plex Mono',monospace">−{{promoDisc}}</span></div>
+                  <div style="display:flex; justify-content:space-between; border-top:1px solid #EDF1F6; padding-top:8px"><span style="color:#64748B">ยอดก่อนภาษี</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{net}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{vat}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หักมัดจำที่รับแล้ว</span><span style="color:#0B6D5E; font-weight:600; font-family:'IBM Plex Mono',monospace">−{{deposit}}</span></div>
+                </div>
+                <div style="background:#0F2440; border-radius:11px; padding:14px; display:flex; flex-direction:column; gap:5px">
+                  <span style="font-size:12px; color:#8FA6C4">ยอดที่ลูกค้าต้องจ่าย</span>
+                  <span style="font-size:26px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">฿ {{grand}}</span>
+                  <span style="font-size:11.5px; color:#A9BDD6">รวมทั้งใบ {{total}} บาท · {{lineN}} รายการ</span>
+                </div>
+
+                <sc-if value="{{seeCost}}" hint-placeholder-val="{{true}}">
+                  <div style="border:1px solid {{marginBorder}}; background:{{marginBg}}; border-radius:11px; padding:13px; display:flex; flex-direction:column; gap:8px">
+                    <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:12.5px; font-weight:700; color:{{marginFg}}">กำไรขั้นต้น (เห็นเฉพาะผู้จัดการ)</span><span style="font-size:16px; font-weight:700; color:{{marginFg}}; font-family:'IBM Plex Mono',monospace">{{marginPct}}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">ต้นทุนรวม</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{costTotal}}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">กำไรเป็นเงิน</span><span style="color:{{marginFg}}; font-weight:700; font-family:'IBM Plex Mono',monospace">{{marginBaht}}</span></div>
+                    <sc-if value="{{marginWarn}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#fff; border-radius:8px; padding:9px 10px; display:flex; gap:8px; align-items:flex-start"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{marginFg}}" stroke-width="2.6" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4"/></svg><span style="font-size:11.5px; color:{{marginFg}}; line-height:1.6; font-weight:600">{{marginMsg}}</span></div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{hideCost}}" hint-placeholder-val="{{false}}">
+                  <div style="border:1px dashed #C9D6E6; border-radius:11px; padding:13px; display:flex; gap:9px; align-items:flex-start">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" style="flex:none; margin-top:2px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                    <span style="font-size:11.5px; color:#64748B; line-height:1.65">ต้นทุนและกำไรขั้นต้นถูกซ่อนสำหรับบทบาทธุรการ · ส่วนลดเกิน 10% ต้องให้ผู้จัดการอนุมัติก่อนส่ง</span>
+                  </div>
+                </sc-if>
+
+                <div style="border:1px solid #E3E8EF; border-radius:11px; padding:13px; display:flex; flex-direction:column; gap:9px">
+                  <span style="font-size:12.5px; font-weight:700; color:#0F2440">เงื่อนไขใบเสนอราคา</span>
+                  <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">ยืนราคาถึง</span><span style="color:{{expiryFg}}; font-weight:600; font-family:'IBM Plex Mono',monospace">{{expiry}}</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">เวลาซ่อมประมาณ</span><span style="color:#0F2440; font-weight:600">{{durationText}}</span></div>
+                  <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">ผู้จัดทำ</span><span style="color:#0F2440; font-weight:600">{{userName}}</span></div>
+                </div>
+              </div>
+
+              <div style="flex:none; border-top:1px solid #E3E8EF; padding:13px 16px; display:flex; flex-direction:column; gap:9px; background:#F7F9FC">
+                <sc-if value="{{dirty}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:9px 11px; display:flex; align-items:center; gap:9px">
+                    <span style="width:7px; height:7px; border-radius:50%; background:#E0930C; animation:gpPulse 1.5s ease-in-out infinite; flex:none"></span>
+                    <span style="font-size:11.5px; font-weight:600; color:#8A5A00; flex:1">มีการแก้ไขที่ยังไม่บันทึก</span>
+                    <span onClick="{{discard}}" style="font-size:11.5px; font-weight:700; color:#C02626; cursor:pointer">ทิ้งการแก้ไข</span>
+                  </div>
+                </sc-if>
+                <button onClick="{{sendApproval}}" style="height:46px; background:#1B6BE3; border:none; color:#fff; border-radius:10px; font-family:inherit; font-size:14.5px; font-weight:700; cursor:pointer">{{sendLabel}}</button>
+                <div style="display:flex; gap:8px">
+                  <button onClick="{{saveDraft}}" style="flex:1; height:40px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer">บันทึกฉบับร่าง</button>
+                  <button onClick="{{makeRevision}}" style="flex:1; height:40px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer">ออกฉบับแก้ไข</button>
+                </div>
+                <span style="font-size:11px; color:#94A3B8; line-height:1.6">มีเพียงรายการที่ลูกค้าอนุมัติเท่านั้นที่ไหลเข้าสู่การเรียกเก็บเงินที่ POS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isApproval}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px">
+            <div style="display:flex; flex-direction:column; gap:6px">
+              <div style="display:flex; align-items:center; gap:9px">
+                <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{qno}}</span>
+                <span style="display:inline-flex; align-items:center; gap:5px; background:#FDF3E2; border:1px solid #F0D9AC; color:#8A5A00; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px">อนุมัติบางส่วน</span>
+                <span style="background:#E8EDF4; color:#1B3557; font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:5px">เวอร์ชัน {{version}}</span>
+              </div>
+              <span style="font-size:22px; font-weight:700; color:#0F2440">ผลการอนุมัติของลูกค้า · {{reg}}</span>
+              <span style="font-size:13px; color:#64748B">อนุมัติ {{apOk}} รายการ · ไม่อนุมัติ {{apNo}} รายการ · ยอดที่อนุมัติ {{apTotal}} บาท</span>
+            </div>
+            <div style="display:flex; gap:8px">
+              <button onClick="{{goBuilder}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">กลับหน้าแก้ไข</button>
+              <button onClick="{{makeRevision}}" style="height:42px; padding:0 16px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ออกฉบับแก้ไขสำหรับงานเพิ่ม</button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1.6fr 1fr; gap:14px; align-items:start">
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+              <div style="display:grid; grid-template-columns:1.5fr 120px 130px 1fr 120px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                <div style="padding:11px 14px">รายการ</div><div style="padding:11px 14px">ส่วน</div><div style="padding:11px 14px">ผลอนุมัติ</div><div style="padding:11px 14px">เหตุผล / หมายเหตุ</div><div style="padding:11px 14px; text-align:right">ยอด</div>
+              </div>
+              <sc-for list="{{apRows}}" as="r" hint-placeholder-count="6">
+                <div style="display:grid; grid-template-columns:1.5fr 120px 130px 1fr 120px; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; background:{{r.bg}}">
+                  <div style="padding:12px 14px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600; line-height:1.45">{{r.name}}</span><span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">{{r.code}}</span></div>
+                  <div style="padding:12px 14px"><span style="background:{{r.secBg}}; color:{{r.secFg}}; font-size:10.5px; font-weight:700; padding:3px 7px; border-radius:4px">{{r.sec}}</span></div>
+                  <div style="padding:12px 14px"><span style="display:inline-flex; align-items:center; gap:5px; background:{{r.apBg}}; color:{{r.apFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="{{r.apPath}}"/></svg>{{r.apLabel}}</span></div>
+                  <div style="padding:12px 14px; font-size:12px; color:#64748B; line-height:1.6">{{r.reason}}</div>
+                  <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:{{r.amountFg}}; text-decoration:{{r.strike}}">{{r.amount}}</div>
+                </div>
+              </sc-for>
+              <div style="padding:14px; background:#F7F9FC; display:flex; flex-direction:column; gap:9px">
+                <div style="display:flex; align-items:center; gap:10px; background:#FFFBF3; border:1px solid #F0D9AC; border-radius:9px; padding:11px 13px">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                  <span style="font-size:12.5px; color:#8A5A00; line-height:1.6; flex:1; font-weight:600">รายการที่ไม่อนุมัติจะถูกล็อกไม่ให้เข้า POS · หากต้องซ่อมจริง ต้องบันทึกข้อยกเว้นโดยผู้มีอำนาจพร้อมเหตุผล</span>
+                  <span onClick="{{addException}}" style="font-size:11.5px; font-weight:700; color:#fff; background:#E0930C; padding:7px 11px; border-radius:7px; cursor:pointer; white-space:nowrap">บันทึกข้อยกเว้น</span>
+                </div>
+                <sc-if value="{{hasException}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#fff; border:1px solid #F0D9AC; border-radius:9px; padding:11px 13px; display:flex; flex-direction:column; gap:4px">
+                    <span style="font-size:12px; font-weight:700; color:#8A5A00">บันทึกข้อยกเว้นแล้ว · EXC-0142</span>
+                    <span style="font-size:11.5px; color:#64748B; line-height:1.6">อนุมัติโดย กัญญารัตน์ ดีสมบัติ (ผู้จัดการสาขา) · 15:44 น. · เหตุผล: ลูกค้าโทรยืนยันทางโทรศัพท์ให้ทำแบตเตอรี่เพิ่ม บันทึกเสียงไว้ในระบบ CRM</span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:14px">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">หลักฐานการอนุมัติ</span>
+                <div style="background:#F7F9FC; border-radius:10px; height:120px; display:flex; align-items:center; justify-content:center">
+                  <svg viewBox="0 0 300 110" style="width:86%; height:78%"><path d="M28 84c22-44 34-50 44-21s16 36 28 8 20-44 32-13 16 32 28 9 24-36 36-9 20 28 36 7" fill="none" stroke="#0F2440" stroke-width="3.2" stroke-linecap="round"/></svg>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:12.5px">
+                  <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">ผู้เซ็น</span><span style="color:#0F2440; font-weight:700">{{customer}}</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">วันเวลา</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">29 ก.ค. 2569 10:12:35</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">อุปกรณ์</span><span style="color:#0F2440; font-weight:600; text-align:right">มือถือหน้าร้าน #FD-02<br><span style="font-size:11px; color:#64748B; font-family:'IBM Plex Mono',monospace">Android · app 1.0.0</span></span></div>
+                  <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">พนักงานผู้รับรอง</span><span style="color:#0F2440; font-weight:600; text-align:right">พิมพ์ชนก วัฒนกุล</span></div>
+                  <div style="display:flex; justify-content:space-between; gap:10px"><span style="color:#64748B">สถานะการซิงก์</span><span style="color:#0B6D5E; font-weight:700">ยืนยันกับระบบแล้ว 10:19</span></div>
+                </div>
+                <div style="background:#E6EFFC; border-radius:9px; padding:10px 12px; font-size:11.5px; color:#1552B3; line-height:1.65">ลายเซ็นถูกเก็บพร้อม hash ของรายการที่อนุมัติ — หากมีการแก้ไขรายการภายหลัง ระบบจะถือว่าลายเซ็นนี้ใช้กับเวอร์ชัน {{version}} เท่านั้น</div>
+              </div>
+
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">สิ่งที่ต้องทำต่อ</span>
+                <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">1</span><span style="font-size:12.5px; color:#475569; line-height:1.65">ส่งงานให้ช่างเริ่มซ่อม 5 รายการที่อนุมัติ</span></div>
+                <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#FDEBE3; color:#A8380A; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">2</span><span style="font-size:12.5px; color:#475569; line-height:1.65">ออกใบสั่งซื้อโช้คอัพหน้า 2 ต้น (ของไม่พอในสาขา)</span></div>
+                <div style="display:flex; gap:10px; align-items:flex-start"><span style="width:20px; height:20px; border-radius:50%; background:#FDF3E2; color:#8A5A00; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none">3</span><span style="font-size:12.5px; color:#475569; line-height:1.65">ช่างแจ้งงานเพิ่ม “ยางแท่นเครื่อง” — ต้องออกเวอร์ชัน {{nextVersion}} ให้ลูกค้าอนุมัติใหม่</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isRevision}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px">
+          <div style="display:flex; flex-direction:column; gap:5px">
+            <span style="font-size:22px; font-weight:700; color:#0F2440">ออกใบเสนอราคาฉบับแก้ไข · เวอร์ชัน {{version}}</span>
+            <span style="font-size:13px; color:#64748B">เวอร์ชัน {{prevVersion}} ถูกทำเครื่องหมาย “ถูกแทนที่” และเก็บไว้ในประวัติทั้งฉบับ พร้อมลายเซ็นเดิม</span>
+          </div>
+          <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:15px; display:flex; gap:11px; align-items:flex-start">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+            <span style="font-size:13px; color:#8A5A00; line-height:1.75; flex:1">การอนุมัติของลูกค้าในเวอร์ชัน {{prevVersion}} ใช้กับเวอร์ชันนี้ไม่ได้ — รายการทั้งหมดกลับเป็น “รออนุมัติ” และต้องให้ลูกค้าเซ็นใหม่ที่หน้าร้านหรือผ่านเครื่องพนักงาน</span>
+          </div>
+          <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+            <div style="padding:14px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#0F2440">สิ่งที่เปลี่ยนจากเวอร์ชัน {{prevVersion}}</span><span style="font-size:12px; color:#64748B">ผู้แก้ไข {{userName}} · 15:45 น.</span></div>
+            <div style="display:grid; grid-template-columns:1.4fr 150px 150px 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+              <div style="padding:10px 16px">รายการ</div><div style="padding:10px 14px; text-align:right">เวอร์ชัน {{prevVersion}}</div><div style="padding:10px 14px; text-align:right">เวอร์ชัน {{version}}</div><div style="padding:10px 16px">เหตุผลที่เปลี่ยน</div>
+            </div>
+            <sc-for list="{{diffs}}" as="d" hint-placeholder-count="4">
+              <div style="display:grid; grid-template-columns:1.4fr 150px 150px 1fr; border-bottom:1px solid #F5F8FB; font-size:13px; align-items:center; background:{{d.bg}}">
+                <div style="padding:12px 16px; display:flex; align-items:center; gap:8px"><span style="background:{{d.tagBg}}; color:{{d.tagFg}}; font-size:10px; font-weight:700; padding:3px 7px; border-radius:4px">{{d.tag}}</span><span style="color:#0F2440; font-weight:600">{{d.name}}</span></div>
+                <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#94A3B8">{{d.before}}</div>
+                <div style="padding:12px 14px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:{{d.afterFg}}">{{d.after}}</div>
+                <div style="padding:12px 16px; font-size:12px; color:#475569; line-height:1.6">{{d.why}}</div>
+              </div>
+            </sc-for>
+            <div style="padding:14px 16px; display:flex; align-items:center; gap:14px; background:#F7F9FC">
+              <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:12px; color:#64748B">ยอดรวมใหม่</span><span style="font-size:20px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">฿ {{total}}</span></div>
+              <div style="display:flex; flex-direction:column; gap:2px"><span style="font-size:12px; color:#64748B">เปลี่ยนจากเดิม</span><span style="font-size:15px; font-weight:700; color:#C2410C; font-family:'IBM Plex Mono',monospace">+1,850.00</span></div>
+              <div style="margin-left:auto; display:flex; gap:9px">
+                <button onClick="{{goBuilder}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">แก้ไขรายการต่อ</button>
+                <button onClick="{{sendApproval}}" style="height:42px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ส่งขออนุมัติเวอร์ชัน {{version}}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{previewOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.55); display:flex; align-items:center; justify-content:center; z-index:50; padding:30px">
+          <div style="width:720px; max-height:100%; background:#fff; border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 30px 70px rgba(15,36,64,.3); animation:gpIn .14s ease-out">
+            <div style="padding:15px 20px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:12px; flex:none">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">ตัวอย่างที่ลูกค้าเห็น</span>
+              <span style="background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">ซ่อนต้นทุนและกำไรทั้งหมด</span>
+              <div onClick="{{closePreview}}" style="margin-left:auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding:26px 30px; display:flex; flex-direction:column; gap:18px">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:20px">
+                <div style="display:flex; flex-direction:column; gap:4px">
+                  <span style="font-size:19px; font-weight:700; color:#0F2440">ใบเสนอราคา</span>
+                  <span style="font-size:12.5px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{qno}} · เวอร์ชัน {{version}}</span>
+                  <span style="font-size:12.5px; color:#64748B">ศูนย์บริการ GaragePro สาขาบางนา · โทร 02-118-4400</span>
+                </div>
+                <div style="text-align:right; display:flex; flex-direction:column; gap:3px">
+                  <span style="font-size:13px; font-weight:700; color:#0F2440">{{reg}}</span>
+                  <span style="font-size:12.5px; color:#475569">{{model}}</span>
+                  <span style="font-size:12.5px; color:#475569">{{customer}}</span>
+                  <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{expiry}}</span>
+                </div>
+              </div>
+              <div style="border:1px solid #E3E8EF; border-radius:10px; overflow:hidden">
+                <div style="display:grid; grid-template-columns:1fr 70px 110px 110px; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11.5px; font-weight:700; color:#64748B">
+                  <div style="padding:9px 12px">รายการ</div><div style="padding:9px 12px; text-align:center">จำนวน</div><div style="padding:9px 12px; text-align:right">ราคา/หน่วย</div><div style="padding:9px 12px; text-align:right">รวม</div>
+                </div>
+                <sc-for list="{{previewRows}}" as="p" hint-placeholder-count="6">
+                  <div style="display:grid; grid-template-columns:1fr 70px 110px 110px; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center">
+                    <div style="padding:10px 12px; display:flex; flex-direction:column; gap:2px"><span style="color:#0F2440; font-weight:600">{{p.name}}</span><span style="font-size:11px; color:#64748B">{{p.note}}</span></div>
+                    <div style="padding:10px 12px; text-align:center; font-family:'IBM Plex Mono',monospace; color:#475569">{{p.qty}}</div>
+                    <div style="padding:10px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#475569">{{p.price}}</div>
+                    <div style="padding:10px 12px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:600; color:#0F2440">{{p.amount}}</div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex; justify-content:flex-end">
+                <div style="width:300px; display:flex; flex-direction:column; gap:7px; font-size:13px">
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">รวมก่อนส่วนลด</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{gross}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ส่วนลด</span><span style="color:#C02626; font-family:'IBM Plex Mono',monospace">−{{allDisc}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ภาษีมูลค่าเพิ่ม 7%</span><span style="color:#0F2440; font-family:'IBM Plex Mono',monospace">{{vat}}</span></div>
+                  <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หักมัดจำ</span><span style="color:#0B6D5E; font-family:'IBM Plex Mono',monospace">−{{deposit}}</span></div>
+                  <div style="display:flex; justify-content:space-between; border-top:1px solid #E3E8EF; padding-top:8px"><span style="color:#0F2440; font-weight:700">ยอดที่ต้องจ่าย</span><span style="color:#0F2440; font-weight:700; font-size:17px; font-family:'IBM Plex Mono',monospace">฿ {{grand}}</span></div>
+                </div>
+              </div>
+              <div style="background:#F7F9FC; border-radius:10px; padding:14px; font-size:12px; color:#475569; line-height:1.8">ลูกค้าสามารถเลือกอนุมัติเฉพาะบางรายการได้ · ราคานี้ยืนถึง {{expiry}} · หากพบงานเพิ่มระหว่างซ่อม ทางร้านจะแจ้งและขออนุมัติก่อนทำทุกครั้ง</div>
+            </div>
+            <div style="flex:none; padding:14px 20px; border-top:1px solid #EDF1F6; display:flex; gap:10px; justify-content:flex-end; background:#F7F9FC">
+              <button onClick="{{closePreview}}" style="height:42px; padding:0 16px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ปิด</button>
+              <button onClick="{{sendApproval}}" style="height:42px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">{{sendLabel}}</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{historyOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.5); display:flex; justify-content:flex-end; z-index:50">
+          <div style="width:520px; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 50px rgba(15,36,64,.24)">
+            <div style="padding:16px 20px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:12px; flex:none">
+              <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:15px; font-weight:700; color:#0F2440">ประวัติเวอร์ชันและการตรวจสอบ</span><span style="font-size:12px; color:#64748B">{{qno}} · เก็บทุกเวอร์ชันตามข้อกำหนดภาษี 7 ปี</span></div>
+              <div onClick="{{closeHistory}}" style="margin-left:auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding:18px 20px; display:flex; flex-direction:column; gap:12px">
+              <sc-for list="{{versions}}" as="v" hint-placeholder-count="3">
+                <div style="border:{{v.border}}; border-radius:12px; overflow:hidden">
+                  <div style="padding:13px 15px; background:{{v.headBg}}; display:flex; align-items:center; gap:10px">
+                    <span style="font-size:14px; font-weight:700; color:#0F2440">เวอร์ชัน {{v.n}}</span>
+                    <span style="display:inline-flex; align-items:center; gap:5px; background:{{v.stBg}}; color:{{v.stFg}}; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">{{v.st}}</span>
+                    <span style="margin-left:auto; font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{v.total}}</span>
+                  </div>
+                  <div style="padding:13px 15px; display:flex; flex-direction:column; gap:8px">
+                    <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">จัดทำโดย</span><span style="color:#0F2440; font-weight:600">{{v.by}}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">เวลา</span><span style="color:#0F2440; font-weight:600; font-family:'IBM Plex Mono',monospace">{{v.at}}</span></div>
+                    <div style="display:flex; justify-content:space-between; font-size:12px"><span style="color:#64748B">ผลจากลูกค้า</span><span style="color:#0F2440; font-weight:600; text-align:right">{{v.result}}</span></div>
+                    <div style="background:#F7F9FC; border-radius:8px; padding:10px 11px; display:flex; flex-direction:column; gap:4px">
+                      <span style="font-size:11px; font-weight:700; color:#64748B">เหตุผลที่ราคาเปลี่ยน</span>
+                      <span style="font-size:12px; color:#475569; line-height:1.7">{{v.reason}}</span>
+                    </div>
+                    <span onClick="{{closeHistory}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">เปิดดูเวอร์ชันนี้แบบอ่านอย่างเดียว</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; right:22px; bottom:22px; background:#1E293B; border-radius:12px; padding:14px 16px; display:flex; align-items:flex-start; gap:12px; box-shadow:0 18px 40px rgba(15,36,64,.28); animation:gpIn .15s ease-out; max-width:420px; z-index:60">
+          <div style="width:28px; height:28px; border-radius:8px; background:{{toastBg}}; display:flex; align-items:center; justify-content:center; flex:none"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><path d="{{toastPath}}"/></svg></div>
+          <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+            <span style="font-size:13.5px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span>
+            <span style="font-size:12.5px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span>
+          </div>
+          <span onClick="{{clearToast}}" style="font-size:12px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:1080},&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;manager&quot;,&quot;office&quot;],&quot;default&quot;:&quot;manager&quot;,&quot;tsType&quot;:&quot;'manager' | 'office'&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const CATALOG = [
+  { code:'P-BRK-0421', type:'part', name:'ผ้าเบรกหน้า Bendix MKT', compat:'Yaris Ativ 2563–2566 · Vios', stock:6, reserved:2, onorder:0, eta:'—', cost:890, price:1290, unit:'ชุด' },
+  { code:'P-BRK-0422', type:'part', name:'ผ้าเบรกหน้า แท้ศูนย์ Toyota', compat:'Yaris Ativ 2563–2566', stock:2, reserved:2, onorder:4, eta:'ออโต้พาร์ท · 31 ก.ค.', cost:1320, price:1850, unit:'ชุด' },
+  { code:'P-SUS-1188', type:'part', name:'โช้คอัพหน้า KYB Excel-G', compat:'Yaris Ativ / Vios 2560–2566', stock:0, reserved:0, onorder:2, eta:'ออโต้พาร์ท · 31 ก.ค.', cost:1780, price:2400, unit:'ต้น' },
+  { code:'P-AC-0310', type:'part', name:'กรองแอร์ Denso', compat:'Yaris / Vios / City', stock:14, reserved:1, onorder:0, eta:'—', cost:260, price:450, unit:'ชิ้น' },
+  { code:'P-ENG-2044', type:'part', name:'ยางแท่นเครื่อง (ขวา)', compat:'Yaris Ativ 1.2', stock:1, reserved:1, onorder:0, eta:'สั่งได้ 2 วัน', cost:1240, price:1850, unit:'ชิ้น' },
+  { code:'P-BAT-0755', type:'part', name:'แบตเตอรี่ GS 60B24L', compat:'รถเก๋งขนาดเล็ก', stock:5, reserved:0, onorder:0, eta:'—', cost:2010, price:2750, unit:'ลูก' },
+  { code:'L-BRK-01', type:'labor', name:'ค่าแรงเปลี่ยนผ้าเบรกหน้า', compat:'มาตรฐาน 1.5 ชม.', stock:'—', reserved:'—', onorder:'—', eta:'—', cost:450, price:750, unit:'งาน', hours:'1.5' },
+  { code:'L-BRK-05', type:'labor', name:'ค่าแรงเจียจานเบรกหน้า 2 ข้าง', compat:'มาตรฐาน 1.0 ชม.', stock:'—', reserved:'—', onorder:'—', eta:'—', cost:420, price:800, unit:'งาน', hours:'1.0' },
+  { code:'L-SUS-02', type:'labor', name:'ค่าแรงเปลี่ยนโช้คอัพหน้า (คู่)', compat:'มาตรฐาน 2.0 ชม.', stock:'—', reserved:'—', onorder:'—', eta:'—', cost:520, price:900, unit:'งาน', hours:'2.0' },
+  { code:'L-AC-03', type:'labor', name:'ล้างแอร์และเปลี่ยนกรองแอร์', compat:'มาตรฐาน 1.0 ชม.', stock:'—', reserved:'—', onorder:'—', eta:'—', cost:280, price:500, unit:'งาน', hours:'1.0' },
+  { code:'L-ALN-04', type:'labor', name:'ตั้งศูนย์และถ่วงล้อ', compat:'มาตรฐาน 1.0 ชม.', stock:'—', reserved:'—', onorder:'—', eta:'—', cost:320, price:600, unit:'งาน', hours:'1.0' }
+];
+
+const PROMOS = ['ไม่มีโปรโมชัน','ลูกค้าประจำ −5%','โปรเบรกครบชุด −300','ประกันคู่สัญญา −10%'];
+const TECHS = ['ยังไม่กำหนด','อนุชา แก้วมณี','ธีรศักดิ์ บุญมี','สุรชัย พันธุ์ทอง','ณัฐพล ศรีสุวรรณ'];
+
+const FINDINGS = [
+  { id:'f1', label:'ผ้าเบรกหน้าเหลือ 2 มม.', level:'ต้องซ่อม', dot:'#C02626', photos:'รูป 2 รูป',
+    note:'วัดความหนาได้ 2 มม. ต่ำกว่าค่ามาตรฐาน 3 มม. เป็นสาเหตุของเสียงดังที่ลูกค้าแจ้ง หากใช้ต่อจะกินจานเบรก',
+    suggest:'เปลี่ยนผ้าเบรกหน้า + ค่าแรง 1.5 ชม.', add:['P-BRK-0421','L-BRK-01'], sec:'cust' },
+  { id:'f2', label:'จานเบรกหน้าเป็นคลื่น', level:'ต้องซ่อม', dot:'#C02626', photos:'รูป 1 รูป',
+    note:'จานเบรกมีคลื่นเล็กน้อย ทำให้สั่นเวลาเบรกแรง ยังไม่ต้องเปลี่ยน เจียให้เรียบได้',
+    suggest:'เจียจานเบรกหน้า 2 ข้าง (ค่าบริการ)', add:['L-BRK-05'], sec:'cust' },
+  { id:'f3', label:'กรองแอร์อุดตัน ลมออกน้อย', level:'ต้องซ่อม', dot:'#C02626', photos:'รูป 2 รูป',
+    note:'กรองแอร์ตันมาก น้ำยาแอร์ปกติ ตรงกับอาการแอร์ไม่เย็นช่วงบ่ายที่ลูกค้าแจ้ง',
+    suggest:'ล้างแอร์ + เปลี่ยนกรองแอร์', add:['P-AC-0310','L-AC-03'], sec:'cust' },
+  { id:'f4', label:'โช้คอัพหน้าซ้ายมีน้ำมันซึม', level:'ต้องซ่อม', dot:'#C02626', photos:'รูป 3 รูป + วิดีโอ',
+    note:'ยุบตัวช้า มีน้ำมันซึมชัดเจน แนะนำเปลี่ยนเป็นคู่เพื่อให้การทรงตัวเท่ากัน และควรตั้งศูนย์ใหม่หลังเปลี่ยน',
+    suggest:'เปลี่ยนโช้คอัพหน้า 2 ต้น + ค่าแรง + ตั้งศูนย์', add:['P-SUS-1188','L-SUS-02','L-ALN-04'], sec:'tech' },
+  { id:'f5', label:'แบตเตอรี่ใกล้ครบอายุ (12.1V)', level:'ควรเฝ้าระวัง', dot:'#E0930C', photos:'รูป 1 รูป',
+    note:'ใช้งานมา 3 ปี ยังสตาร์ทได้ปกติแต่มีโอกาสดับกลางทาง แจ้งลูกค้าให้ทราบไว้',
+    suggest:'เปลี่ยนแบตเตอรี่ 60B24L', add:['P-BAT-0755'], sec:'tech' }
+];
+
+const ST_META = {
+  draft:      { label:'ฉบับร่าง', bg:'#EEF1F5', fg:'#475569', border:'#D4DBE4', path:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5' },
+  sent:       { label:'ส่งให้ลูกค้าแล้ว', bg:'#E6EFFC', fg:'#1552B3', border:'#BCD3F5', path:'M3 11l18-8-8 18-2-8z' },
+  partial:    { label:'อนุมัติบางส่วน', bg:'#FDF3E2', fg:'#8A5A00', border:'#F0D9AC', path:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 12h4' },
+  approved:   { label:'อนุมัติครบ', bg:'#E3F5F1', fg:'#0B6D5E', border:'#B6E3DA', path:'M4 12.5l5 5L20 7' },
+  rejected:   { label:'ลูกค้าไม่อนุมัติ', bg:'#FBE9E9', fg:'#A31D1D', border:'#F0C2C2', path:'M6 6l12 12M18 6L6 18' },
+  superseded: { label:'ถูกแทนที่', bg:'#E4E9F0', fg:'#0F2440', border:'#C2CDDC', path:'M4 8h13l-3-3M20 16H7l3 3' },
+  expired:    { label:'หมดอายุ', bg:'#FBE9E9', fg:'#A31D1D', border:'#F0C2C2', path:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7.5v5l3 2' }
+};
+
+const NAV = [
+  { key:'dash', label:'แดชบอร์ด', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', label:'งานซ่อม', path:'M3 5h18v15H3zM3 10h18M8 15h8' },
+  { key:'quote', label:'ใบเสนอราคา', path:'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6', badge:5 },
+  { key:'pos', label:'POS', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z' },
+  { key:'stock', label:'สต็อก', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  { key:'po', label:'จัดซื้อ', path:'M6 6h15l-2 9H8zM6 6L5 3H2' },
+  { key:'report', label:'รายงาน', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+function money(n) { return n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+let LID = 100;
+
+function mkLine(code, sec, qty) {
+  const c = CATALOG.filter(x => x.code === code)[0];
+  return { id:'L' + (++LID), code:c.code, name:c.name, type:c.type, sec:sec, qty: qty || 1, unit:c.unit,
+    price:c.price, cost:c.cost, disc:'0', promo:0, tech: c.type === 'labor' ? 1 : 0, hours: c.hours || '', note:'' };
+}
+
+class Component extends DCLogic {
+  state = {
+    view:'builder', role:'manager', version:2, status:'draft',
+    lines:[ mkLine('P-BRK-0421','cust'), mkLine('L-BRK-01','cust'), mkLine('L-BRK-05','cust'),
+            mkLine('P-AC-0310','cust'), mkLine('L-AC-03','cust'),
+            mkLine('P-SUS-1188','tech',2), mkLine('L-SUS-02','tech') ],
+    open:{ f4:true }, cq:'', dirty:false, concurrent:false, expired:false,
+    preview:false, history:false, errors:[], toast:null, flash:'', exception:false, added:{}
+  };
+
+  componentWillUnmount() { clearTimeout(this.tt); }
+
+  say = (title, body, kind) => {
+    this.setState({ toast:{ title, body, kind: kind || 'ok' } });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 6000);
+  };
+
+  setLine = (id, patch) => this.setState(s => ({ dirty:true, lines: s.lines.map(l => l.id === id ? Object.assign({}, l, patch) : l) }));
+
+  addCode = (code, sec) => {
+    const line = mkLine(code, sec);
+    this.setState(s => ({ lines: s.lines.concat([line]), dirty:true, flash: line.id }));
+    setTimeout(() => this.setState({ flash:'' }), 2500);
+    const c = CATALOG.filter(x => x.code === code)[0];
+    const avail = c.type === 'part' ? c.stock - c.reserved : 99;
+    if (c.type === 'part' && avail <= 0) this.say('เพิ่ม ' + c.name + ' แล้ว · ของไม่พอ', 'คงคลังว่าง 0 ' + c.unit + ' · ต้องเปิดใบขอซื้อก่อนยืนยันวันส่งมอบ', 'warn');
+    else this.say('เพิ่ม ' + c.name + ' เข้าใบเสนอราคาแล้ว', 'ตรวจจำนวน ราคา และช่างผู้ทำก่อนส่งขออนุมัติ');
+  };
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '0 0 26px' : '48px', pageAlign: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const mgr = s.role === 'manager';
+    const lines = s.lines;
+    const cat = (code) => CATALOG.filter(x => x.code === code)[0] || {};
+
+    const calc = (l) => {
+      const c = cat(l.code);
+      const gross = l.price * l.qty;
+      const d = Math.max(0, Math.min(100, parseFloat(l.disc || '0') || 0));
+      const afterDisc = gross * (1 - d / 100);
+      let promoAmt = 0;
+      if (l.promo === 1) promoAmt = afterDisc * 0.05;
+      else if (l.promo === 2) promoAmt = Math.min(300, afterDisc);
+      else if (l.promo === 3) promoAmt = afterDisc * 0.10;
+      const net = afterDisc - promoAmt;
+      const cost = (l.cost || 0) * l.qty;
+      return { gross, d, discAmt: gross - afterDisc, promoAmt, net, cost, margin: net - cost };
+    };
+
+    const dupMap = {};
+    lines.forEach((l, i) => { dupMap[l.code] = (dupMap[l.code] || []).concat([i + 1]); });
+
+    const decorate = (l, idx) => {
+      const c = cat(l.code);
+      const k = calc(l);
+      const avail = c.type === 'part' ? (c.stock - c.reserved) : 99;
+      const short = c.type === 'part' && l.qty > avail;
+      const dupIdx = dupMap[l.code] || [];
+      const isDup = dupIdx.length > 1;
+      const marginPct = k.net ? Math.round((k.margin / k.net) * 100) : 0;
+      const bigDisc = k.d >= 10 || l.promo === 3;
+      return {
+        id: l.id, code: l.code, name: l.name, qty: l.qty, unit: l.unit + ' · หน่วยขาย',
+        type: l.type === 'part' ? 'อะไหล่' : 'ค่าแรง',
+        typeBg: l.type === 'part' ? '#E6EFFC' : '#E8EDF4', typeFg: l.type === 'part' ? '#1552B3' : '#1B3557',
+        meta: l.type === 'part' ? ('คงคลัง ' + c.stock + ' · จอง ' + c.reserved + ' · ว่าง ' + avail + (c.onorder ? ' · กำลังสั่ง ' + c.onorder : '')) : ('เวลามาตรฐาน ' + (c.hours || '-') + ' ชม.'),
+        price: String(l.price), disc: String(l.disc),
+        amount: money(k.net),
+        marginText: k.margin < 0 ? 'ขาดทุน ' + money(Math.abs(k.margin)) : 'กำไร ' + money(k.margin) + ' (' + marginPct + '%)',
+        marginFg: k.margin < 0 ? '#A31D1D' : (marginPct < 15 ? '#8A5A00' : '#64748B'),
+        discBorder: bigDisc ? '1.5px solid #E0930C' : '1px solid #E3E8EF',
+        bigDisc, discNote: k.d >= 10 ? 'ส่วนลดเกิน 10% ต้องให้ผู้จัดการอนุมัติ' : 'โปรโมชันลด 10% ต้องอนุมัติ',
+        promo: PROMOS[l.promo], promoBg: l.promo ? '#FFFBF3' : '#fff', promoFg: l.promo ? '#8A5A00' : '#334155',
+        tax:'VAT 7%',
+        tech: TECHS[l.tech], techFg: l.tech === 0 && l.type === 'labor' ? '#A31D1D' : '#334155',
+        techBorder: l.tech === 0 && l.type === 'labor' ? '1.5px solid #E08A8A' : '1px solid #E3E8EF',
+        hours: l.type === 'labor' ? ('ประมาณ ' + (c.hours || '-') + ' ชม.') : 'ไม่ใช้เวลาช่างเพิ่ม',
+        note: l.note,
+        short, availText: avail + ' ' + l.unit,
+        shortText:'ต้องใช้ ' + l.qty + ' ' + l.unit + ' แต่ในสาขาว่าง ' + avail + ' ' + l.unit + (c.onorder ? ' · กำลังสั่ง ' + c.onorder + ' (' + c.eta + ')' : ' · ยังไม่มีใบสั่งซื้อ'),
+        dup: isDup, dupWith: dupIdx.filter(n => n !== idx + 1).join(', '),
+        rowBg: s.flash === l.id ? '#F4F8FE' : (short ? '#FFFDFB' : '#fff'),
+        anim: s.flash === l.id ? 'gpFlash 2.4s ease-out' : 'none',
+        minus: () => this.setLine(l.id, { qty: Math.max(1, l.qty - 1) }),
+        plus: () => this.setLine(l.id, { qty: l.qty + 1 }),
+        onPrice: (e) => this.setLine(l.id, { price: parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0 }),
+        onDisc: (e) => this.setLine(l.id, { disc: e.target.value.replace(/[^0-9.]/g, '') }),
+        onNote: (e) => this.setLine(l.id, { note: e.target.value }),
+        cyclePromo: () => this.setLine(l.id, { promo: (l.promo + 1) % PROMOS.length }),
+        cycleTech: () => this.setLine(l.id, { tech: (l.tech + 1) % TECHS.length }),
+        remove: () => this.setState(st => ({ lines: st.lines.filter(x => x.id !== l.id), dirty:true })),
+        merge: () => this.setState(st => {
+          const same = st.lines.filter(x => x.code === l.code);
+          const total = same.reduce((n, x) => n + x.qty, 0);
+          const keep = same[0];
+          return { dirty:true, lines: st.lines.filter(x => x.code !== l.code || x.id === keep.id).map(x => x.id === keep.id ? Object.assign({}, x, { qty: total }) : x) };
+        })
+      };
+    };
+
+    const dec = lines.map(decorate);
+    const secLines = (sec) => dec.filter((d, i) => lines[i].sec === sec);
+    const secSum = (sec) => lines.filter(l => l.sec === sec).reduce((n, l) => n + calc(l).net, 0);
+
+    const sections = [
+      { key:'cust', label:'ลูกค้าขอ', accent:'#E0930C', tagBg:'#FDF3E2', tagFg:'#8A5A00' },
+      { key:'tech', label:'ช่างแนะนำ', accent:'#1B6BE3', tagBg:'#E6EFFC', tagFg:'#1552B3' }
+    ].map(x => ({
+      label: x.label, accent: x.accent, tagBg: x.tagBg, tagFg: x.tagFg,
+      n: lines.filter(l => l.sec === x.key).length,
+      sum: money(secSum(x.key)) + ' บาท',
+      lines: secLines(x.key), empty: lines.filter(l => l.sec === x.key).length === 0
+    }));
+
+    const totals = lines.reduce((a, l) => {
+      const k = calc(l);
+      const c = cat(l.code);
+      a.gross += k.gross; a.disc += k.discAmt; a.promo += k.promoAmt; a.net += k.net; a.cost += k.cost;
+      if (c.type === 'part') a.parts += k.net; else a.labor += k.net;
+      if (c.type === 'labor') a.hours += parseFloat(c.hours || 0);
+      return a;
+    }, { gross:0, disc:0, promo:0, net:0, cost:0, parts:0, labor:0, hours:0 });
+    const vat = Math.round(totals.net * 0.07 * 100) / 100;
+    const total = totals.net + vat;
+    const deposit = 2000;
+    const grand = Math.max(0, total - deposit);
+    const marginBaht = totals.net - totals.cost;
+    const marginPct = totals.net ? Math.round((marginBaht / totals.net) * 100) : 0;
+    const negLine = dec.filter((d, i) => calc(lines[i]).margin < 0).length;
+    const marginWarn = marginPct < 15 || negLine > 0;
+
+    const q = s.cq.trim().toLowerCase();
+    const catalogList = q.length < 2 ? [] : CATALOG.filter(c =>
+      c.code.toLowerCase().indexOf(q) > -1 || c.name.toLowerCase().indexOf(q) > -1 || (c.compat || '').toLowerCase().indexOf(q) > -1);
+
+    const findings = FINDINGS.map(f => {
+      const isOpen = !!s.open[f.id];
+      const done = !!s.added[f.id] || f.add.every(code => lines.some(l => l.code === code));
+      return {
+        label: f.label, level: f.level, photos: f.photos, note: f.note, suggest: f.suggest,
+        dot: f.dot, open: isOpen, chev: isOpen ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6',
+        bg: done ? '#F7FCFA' : '#fff',
+        border: done ? '1px solid #B6E3DA' : '1px solid #E3E8EF',
+        addLabel: done ? 'เพิ่มแล้วในใบเสนอราคา' : 'เพิ่มรายการที่ช่างแนะนำ',
+        toggle: () => this.setState(st => ({ open: Object.assign({}, st.open, { [f.id]: !st.open[f.id] }) })),
+        add: () => {
+          if (done) { this.say('รายการนี้อยู่ในใบเสนอราคาแล้ว', 'ปรับจำนวนหรือราคาได้ที่บรรทัดในพื้นที่ทำงาน', 'warn'); return; }
+          f.add.forEach(code => this.addCode(code, f.sec));
+          this.setState(st => ({ added: Object.assign({}, st.added, { [f.id]: true }) }));
+        }
+      };
+    });
+
+    const errs = [];
+    if (!lines.length) errs.push({ text:'ยังไม่มีรายการในใบเสนอราคา' });
+    lines.forEach((l, i) => {
+      if (!l.price) errs.push({ text:'บรรทัด ' + (i + 1) + ' (' + l.name + ') ยังไม่ได้ใส่ราคา' });
+      if (l.type === 'labor' && l.tech === 0) errs.push({ text:'บรรทัด ' + (i + 1) + ' (' + l.name + ') ต้องระบุช่างผู้ทำ' });
+    });
+    Object.keys(dupMap).forEach(code => { if (dupMap[code].length > 1) errs.push({ text:'รายการซ้ำ: ' + cat(code).name + ' อยู่ในบรรทัด ' + dupMap[code].join(', ') + ' — รวมหรือลบก่อนส่ง' }); });
+    if (!mgr && lines.some(l => (parseFloat(l.disc || '0') || 0) >= 10 || l.promo === 3)) errs.push({ text:'มีส่วนลดเกิน 10% ต้องให้ผู้จัดการอนุมัติก่อนส่งให้ลูกค้า' });
+
+    const stm = ST_META[s.expired ? 'expired' : s.status];
+
+    const approvals = { 'P-BRK-0421':'ok', 'L-BRK-01':'ok', 'L-BRK-05':'ok', 'P-AC-0310':'ok', 'L-AC-03':'ok', 'P-SUS-1188':'ok', 'L-SUS-02':'ok', 'L-ALN-04':'ok', 'P-BAT-0755':'no' };
+    const apSeed = [
+      { code:'P-BRK-0421', name:'เปลี่ยนผ้าเบรกหน้า (อะไหล่)', sec:'ลูกค้าขอ', amount:1290, ap:'ok', reason:'ลูกค้าอนุมัติทันที · ตรงกับอาการที่แจ้ง' },
+      { code:'L-BRK-01', name:'ค่าแรงเปลี่ยนผ้าเบรกหน้า', sec:'ลูกค้าขอ', amount:750, ap:'ok', reason:'—' },
+      { code:'L-BRK-05', name:'เจียจานเบรกหน้า 2 ข้าง', sec:'ลูกค้าขอ', amount:800, ap:'ok', reason:'—' },
+      { code:'P-AC-0310', name:'กรองแอร์ + ล้างแอร์', sec:'ลูกค้าขอ', amount:950, ap:'ok', reason:'—' },
+      { code:'P-SUS-1188', name:'โช้คอัพหน้า 2 ต้น + ค่าแรง', sec:'ช่างแนะนำ', amount:5700, ap:'ok', reason:'ลูกค้าเลือกอะไหล่เทียบคุณภาพดี' },
+      { code:'L-ALN-04', name:'ตั้งศูนย์และถ่วงล้อ', sec:'ช่างแนะนำ', amount:600, ap:'ok', reason:'—' },
+      { code:'P-BAT-0755', name:'เปลี่ยนแบตเตอรี่', sec:'ช่างแนะนำ', amount:3000, ap:'no', reason:'ไม่อนุมัติ · ขอปรึกษาที่บ้านก่อน (ลูกค้าเลือกเหตุผลนี้เอง)' }
+    ];
+
+    return {
+      isQueue: s.view === 'queue', isBuilder: s.view === 'builder', isApproval: s.view === 'approval', isRevision: s.view === 'revision',
+      inDoc: s.view !== 'queue',
+      mgrBg: mgr ? '#0F2440' : 'transparent', mgrFg: mgr ? '#fff' : '#475569',
+      offBg: mgr ? 'transparent' : '#0F2440', offFg: mgr ? '#475569' : '#fff',
+      beManager: () => this.setState({ role:'manager' }), beOffice: () => this.setState({ role:'office' }),
+      seeCost: mgr, hideCost: !mgr,
+      roleLabel: mgr ? 'ผู้จัดการสาขา' : 'ธุรการ',
+      userName: mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'ณัฐพล ศรีสุวรรณ',
+      initials: mgr ? 'กร' : 'ณศ',
+      nav: NAV.map(n => Object.assign({ label:n.label, path:n.path, hasBadge: !!n.badge, badge: n.badge,
+        tap: () => this.setState({ view: n.key === 'quote' ? 'queue' : 'queue' }) },
+        n.key === 'quote' ? { bg:'#1B6BE3', fg:'#fff' } : { bg:'transparent', fg:'#A9BDD6' })),
+
+      qno:'QT-6712-0' + s.version, version: s.version, prevVersion: s.version - 1, nextVersion: s.version + 1,
+      reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2 Smart', customer:'สมชาย พงษ์เจริญ',
+      stLabel: stm.label, stBg: stm.bg, stFg: stm.fg, stBorder: stm.border, stPath: stm.path,
+      expired: s.expired,
+      expiry: s.expired ? '29 ก.ค. 2569 18:00 น. (หมดอายุ)' : '31 ก.ค. 2569 18:00 น.',
+      expiryFg: s.expired ? '#A31D1D' : '#0F2440',
+      durationText: totals.hours.toFixed(1) + ' ชม. (ประมาณ)',
+
+      goQueue: () => this.setState({ view:'queue' }),
+      goBuilder: () => this.setState({ view:'builder' }),
+      goApproval: () => this.setState({ view:'approval', status:'partial' }),
+      goPo: () => this.say('ส่งคำขอไปที่ฝ่ายจัดซื้อแล้ว', 'สร้างใบขอซื้อ PR-0318 · โช้คอัพหน้า KYB × 2 · ผู้จำหน่ายยืนยัน ETA 31 ก.ค.'),
+
+      queueN: 5,
+      queue: [
+        { rank:'1', no:'JB-6712', reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2', customer:'สมชาย พงษ์เจริญ', inspAt:'09:05 (รอ 6 ชม.)', items:'ต้องซ่อม 4 · เฝ้าระวัง 1', photos:'รูป 12 รูป', promise:'29 ก.ค. 16:30', promiseNote:'เหลือ 48 นาที', late:true, cta:'ทำใบเสนอราคา' },
+        { rank:'2', no:'JB-6706', reg:'9กด-3320', model:'Toyota Fortuner 2.8 V', customer:'สุนทร วิไลรัตน์', inspAt:'13:40 (รอ 2 ชม.)', items:'ต้องซ่อม 3', photos:'รูป 8 รูป', promise:'30 ก.ค. 14:00', promiseNote:'พรุ่งนี้', late:false, cta:'ทำใบเสนอราคา' },
+        { rank:'3', no:'JB-6715', reg:'8กจ-1174', model:'Isuzu D-Max Hi-Lander', customer:'ธนกร รัตนพงศ์', inspAt:'14:52 (รอ 50 นาที)', items:'ต้องซ่อม 2 · เฝ้าระวัง 2', photos:'รูป 10 รูป', promise:'30 ก.ค. 11:00', promiseNote:'พรุ่งนี้', late:false, cta:'ทำใบเสนอราคา' },
+        { rank:'4', no:'JB-6716', reg:'3ขก-4408', model:'Toyota Hilux Revo 2.4', customer:'อารีย์ สมบูรณ์ทรัพย์', inspAt:'15:10 (รอ 32 นาที)', items:'เช็คระยะ 6 รายการ', photos:'รูป 6 รูป', promise:'30 ก.ค. 09:30', promiseNote:'พรุ่งนี้', late:false, cta:'ทำใบเสนอราคา' },
+        { rank:'5', no:'JB-6704', reg:'2กฬ-9932', model:'MG ZS EV Plus', customer:'บริษัท ไทยโลจิสติกส์ จำกัด', inspAt:'15:28 (รอ 14 นาที)', items:'ต้องซ่อม 1', photos:'รูป 4 รูป', promise:'31 ก.ค. 10:00', promiseNote:'ยังมีเวลา', late:false, cta:'ทำใบเสนอราคา' }
+      ].map(r => Object.assign({}, r, {
+        bg: r.late ? '#FFFDF8' : '#fff',
+        rankFg: r.late ? '#A31D1D' : '#94A3B8',
+        promiseFg: r.late ? '#A31D1D' : '#475569',
+        promiseWeight: r.late ? '700' : '500',
+        open: () => this.setState({ view:'builder' })
+      })),
+
+      findings,
+      history: [
+        { date:'12 มี.ค. 2569', work:'เปลี่ยนถ่ายน้ำมันเครื่อง + กรองแอร์ · 78,420 กม.', amount:'3,180.00' },
+        { date:'8 ต.ค. 2568', work:'เปลี่ยนยาง 4 เส้น + ตั้งศูนย์ถ่วงล้อ · 71,050 กม.', amount:'18,600.00' },
+        { date:'2 เม.ย. 2568', work:'เช็คระยะ 60,000 กม. · เปลี่ยนผ้าเบรกหลัง', amount:'6,940.00' }
+      ],
+
+      cq: s.cq, hasCq: !!s.cq.trim(), onCq: (e) => this.setState({ cq: e.target.value }),
+      clearCq: () => this.setState({ cq:'' }),
+      cqQuick: ['P-BRK','P-SUS','L-','กรองแอร์','P-XXX-0000'].map(v => ({ label:v, tap: () => this.setState({ cq:v }) })),
+      catalogHint: q.length < 2 ? 'พิมพ์อย่างน้อย 2 ตัวอักษร' : 'พบ ' + catalogList.length + ' รายการ',
+      showCatalog: catalogList.length > 0,
+      catalogEmpty: q.length >= 2 && catalogList.length === 0,
+      catCols: mgr ? '110px 1.5fr 62px 52px 56px 66px 130px 82px 92px 96px' : '110px 1.6fr 62px 52px 56px 66px 140px 92px 96px',
+      catalog: catalogList.map(c => {
+        const avail = c.type === 'part' ? c.stock - c.reserved : '—';
+        const out = c.type === 'part' && avail <= 0;
+        return {
+          code: c.code, name: c.name, compat: c.compat, stock: c.stock, reserved: c.reserved,
+          available: avail, onorder: c.onorder, eta: c.eta,
+          cost: money(c.cost), price: money(c.price),
+          availFg: out ? '#A31D1D' : (avail !== '—' && avail <= 2 ? '#8A5A00' : '#0B6D5E'),
+          etaFg: out ? '#A8380A' : '#94A3B8',
+          bg: out ? '#FFFDFB' : '#fff',
+          btn: out ? 'เพิ่ม (ของไม่พอ)' : 'เพิ่ม',
+          btnBg: out ? '#FDEBE3' : '#E6EFFC', btnFg: out ? '#A8380A' : '#1552B3',
+          add: () => this.addCode(c.code, 'tech')
+        };
+      }),
+
+      sections, lineN: lines.length,
+      sumParts: money(totals.parts), sumLabor: money(totals.labor),
+      gross: money(totals.gross), lineDisc: money(totals.disc), promoDisc: money(totals.promo),
+      allDisc: money(totals.disc + totals.promo),
+      net: money(totals.net), vat: money(vat), total: money(total), deposit: money(deposit), grand: money(grand),
+      costTotal: money(totals.cost), marginBaht: money(marginBaht), marginPct: marginPct + '%',
+      marginWarn,
+      marginBg: marginBaht < 0 ? '#FEF6F6' : (marginPct < 15 ? '#FFFBF3' : '#F7FCFA'),
+      marginBorder: marginBaht < 0 ? '#F0C2C2' : (marginPct < 15 ? '#F0D9AC' : '#B6E3DA'),
+      marginFg: marginBaht < 0 ? '#A31D1D' : (marginPct < 15 ? '#8A5A00' : '#0B6D5E'),
+      marginMsg: negLine > 0 ? 'มี ' + negLine + ' บรรทัดที่ขายต่ำกว่าต้นทุน — ต้องให้ผู้จัดการอนุมัติก่อนส่ง' : 'กำไรขั้นต้นต่ำกว่าเกณฑ์ 15% ของสาขา — ทบทวนส่วนลดหรือเลือกอะไหล่เทียบ',
+
+      hasErrors: s.errors.length > 0, errors: s.errors, errorN: s.errors.length,
+      dirty: s.dirty,
+      discard: () => this.setState({ dirty:false, errors:[] }, () => this.say('ทิ้งการแก้ไขแล้ว', 'กลับไปใช้ฉบับร่างที่บันทึกไว้ล่าสุด 15:31 น.', 'warn')),
+      saveDraft: () => this.setState({ dirty:false, status:'draft' }, () => this.say('บันทึกฉบับร่างแล้ว', 'ยังไม่ส่งให้ลูกค้า · ' + lines.length + ' รายการ · ' + money(total) + ' บาท')),
+      sendLabel: s.status === 'draft' ? 'ส่งขออนุมัติจากลูกค้า' : 'ส่งใหม่ให้ลูกค้าอนุมัติ',
+      sendApproval: () => {
+        if (errs.length) { this.setState({ errors: errs, view:'builder', preview:false }); this.say('ส่งไม่สำเร็จ · พบ ' + errs.length + ' ข้อที่ต้องแก้', 'ดูรายละเอียดที่กล่องแจ้งเตือนด้านบนพื้นที่ทำงาน', 'err'); return; }
+        this.setState({ errors:[], status:'sent', dirty:false, preview:false });
+        this.say('ส่งให้ลูกค้าอนุมัติแล้ว', 'ส่งไปที่เครื่องหน้าร้าน #FD-02 · หน้าร้านจะให้ลูกค้าเลือกรายการและเซ็นยืนยัน');
+        setTimeout(() => this.setState({ view:'approval', status:'partial' }), 1200);
+      },
+      openPreview: () => this.setState({ preview:true }), closePreview: () => this.setState({ preview:false }),
+      previewOpen: s.preview,
+      previewRows: lines.map(l => {
+        const k = calc(l);
+        return { name: l.name, note: l.note || (l.type === 'labor' ? 'ค่าบริการช่าง' : 'อะไหล่พร้อมรับประกัน'), qty: l.qty + ' ' + l.unit, price: money(l.price), amount: money(k.net) };
+      }),
+
+      openHistory: () => this.setState({ history:true }), closeHistory: () => this.setState({ history:false }),
+      historyOpen: s.history, versionsN: s.version,
+      versions: [
+        { n:3, st:'ฉบับร่าง', stBg:'#EEF1F5', stFg:'#475569', total:'22,791.50', by:'กัญญารัตน์ ดีสมบัติ', at:'29 ก.ค. 15:45', result:'ยังไม่ส่ง', reason:'เพิ่มงานยางแท่นเครื่องที่ช่างพบระหว่างซ่อม 1,850 บาท', cur: s.version === 3 },
+        { n:2, st: s.version === 2 ? 'อนุมัติบางส่วน' : 'ถูกแทนที่', stBg: s.version === 2 ? '#FDF3E2' : '#E4E9F0', stFg: s.version === 2 ? '#8A5A00' : '#0F2440', total:'20,941.50', by:'ณัฐพล ศรีสุวรรณ', at:'29 ก.ค. 09:48', result:'อนุมัติ 6 · ไม่อนุมัติ 1 (แบตเตอรี่)', reason:'ปรับราคาโช้คอัพจากแท้ศูนย์ 3,200 เป็น KYB 2,400/ต้น ตามที่ลูกค้าขอทางเลือกที่ถูกลง', cur: s.version === 2 },
+        { n:1, st:'ถูกแทนที่', stBg:'#E4E9F0', stFg:'#0F2440', total:'22,341.50', by:'ณัฐพล ศรีสุวรรณ', at:'29 ก.ค. 09:20', result:'ยังไม่ได้ส่ง (แก้ก่อนส่ง)', reason:'ฉบับแรกจากผลตรวจของช่าง ใช้อะไหล่แท้ศูนย์ทั้งหมด', cur:false }
+      ].filter(v => v.n <= Math.max(s.version, 2)).map(v => Object.assign({}, v, {
+        border: v.cur ? '2px solid #1B6BE3' : '1px solid #E3E8EF',
+        headBg: v.cur ? '#F4F8FE' : '#F7F9FC'
+      })),
+
+      concurrent: s.concurrent,
+      simConcurrent: () => this.setState({ view:'builder', concurrent:true }),
+      dismissConcurrent: () => this.setState({ concurrent:false }),
+      takeLock: () => this.setState({ concurrent:false }, () => this.say('ล็อกใบนี้ให้คุณคนเดียวแล้ว', 'ณัฐพล ศรีสุวรรณ จะเห็นเป็นโหมดอ่านอย่างเดียวจนคุณบันทึกหรือปิดใบ')),
+      simExpired: () => this.setState({ view:'builder', expired:true, status:'sent' }),
+
+      apOk: 6, apNo: 1, apTotal: money(20941.5 - 3000 - 1341.5),
+      apRows: apSeed.map(r => ({
+        name: r.name, code: r.code, sec: r.sec,
+        secBg: r.sec === 'ลูกค้าขอ' ? '#FDF3E2' : '#E6EFFC', secFg: r.sec === 'ลูกค้าขอ' ? '#8A5A00' : '#1552B3',
+        apLabel: r.ap === 'ok' ? 'อนุมัติ' : 'ไม่อนุมัติ',
+        apBg: r.ap === 'ok' ? '#E3F5F1' : '#FBE9E9', apFg: r.ap === 'ok' ? '#0B6D5E' : '#A31D1D',
+        apPath: r.ap === 'ok' ? 'M4 12.5l5 5L20 7' : 'M6 6l12 12M18 6L6 18',
+        reason: r.reason, amount: money(r.amount),
+        amountFg: r.ap === 'ok' ? '#0F2440' : '#94A3B8',
+        strike: r.ap === 'ok' ? 'none' : 'line-through',
+        bg: r.ap === 'ok' ? '#fff' : '#FFFDFD'
+      })),
+      hasException: s.exception,
+      addException: () => this.setState({ exception:true }, () => this.say('บันทึกข้อยกเว้น EXC-0142', 'ผู้จัดการอนุมัติให้ทำรายการที่ลูกค้าไม่อนุมัติ พร้อมเหตุผลและเวลา — บันทึกใน audit log ถาวร', 'warn')),
+
+      makeRevision: () => this.setState(st => ({ view:'revision', version: st.version + 1, status:'draft', expired:false, dirty:false, errors:[],
+        lines: st.lines.concat([mkLine('P-ENG-2044','tech')]) }), () => this.say('สร้างเวอร์ชัน ' + (s.version + 1) + ' แล้ว', 'เวอร์ชัน ' + s.version + ' ถูกทำเครื่องหมาย “ถูกแทนที่” และเก็บในประวัติ · การอนุมัติเดิมใช้ไม่ได้')),
+      diffs: [
+        { tag:'เพิ่ม', tagBg:'#E3F5F1', tagFg:'#0B6D5E', name:'ยางแท่นเครื่อง (ขวา)', before:'—', after:'1,850.00', afterFg:'#0B6D5E', why:'ช่างพบระหว่างถอดช่วงล่าง · ยางแท่นเครื่องขาด ทำให้สั่นตอนเดินเบา', bg:'#F7FCFA' },
+        { tag:'เปลี่ยนราคา', tagBg:'#FDF3E2', tagFg:'#8A5A00', name:'โช้คอัพหน้า KYB (ต้นละ)', before:'2,400.00', after:'2,400.00', afterFg:'#0F2440', why:'ผู้จำหน่ายยืนราคาเดิมถึง 31 ก.ค. · ไม่มีผลกระทบต่อยอด', bg:'#fff' },
+        { tag:'คงเดิม', tagBg:'#EEF1F5', tagFg:'#475569', name:'รายการที่ลูกค้าอนุมัติแล้ว 6 รายการ', before:'20,941.50', after:'20,941.50', afterFg:'#0F2440', why:'ยกมาทั้งชุด แต่ต้องเซ็นยืนยันใหม่เพราะเลขเวอร์ชันเปลี่ยน', bg:'#fff' },
+        { tag:'ไม่อนุมัติ', tagBg:'#FBE9E9', tagFg:'#A31D1D', name:'เปลี่ยนแบตเตอรี่', before:'3,000.00', after:'ตัดออก', afterFg:'#A31D1D', why:'ลูกค้าไม่อนุมัติในเวอร์ชัน 2 · ไม่นำกลับเข้าเวอร์ชันใหม่โดยอัตโนมัติ', bg:'#FFFDFD' }
+      ],
+
+      resetAll: () => this.setState({ view:'builder', version:2, status:'draft', concurrent:false, expired:false, exception:false, dirty:false, errors:[], cq:'', preview:false, history:false, added:{},
+        lines:[ mkLine('P-BRK-0421','cust'), mkLine('L-BRK-01','cust'), mkLine('L-BRK-05','cust'), mkLine('P-AC-0310','cust'), mkLine('L-AC-03','cust'), mkLine('P-SUS-1188','tech',2), mkLine('L-SUS-02','tech') ] }),
+
+      toast: !!s.toast, toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      toastBg: s.toast ? (s.toast.kind === 'err' ? '#C02626' : (s.toast.kind === 'warn' ? '#E0930C' : '#0E9F8C')) : '#0E9F8C',
+      toastPath: s.toast && s.toast.kind === 'err' ? 'M6 6l12 12M18 6L6 18' : (s.toast && s.toast.kind === 'warn' ? 'M12 3l9.5 17h-19zM12 10v4' : 'M4 12.5l5 5L20 7'),
+      clearToast: () => this.setState({ toast:null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

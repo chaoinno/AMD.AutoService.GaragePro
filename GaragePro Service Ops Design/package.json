@@ -1,0 +1,14 @@
+{
+  "name": "garagepro-service-ops-design",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Static server for the GaragePro Service Ops prototype",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

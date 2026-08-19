@@ -1,0 +1,6 @@
+@AMD.AutoService.GaragePro.API_HostAddress = http://localhost:5045
+
+GET {{AMD.AutoService.GaragePro.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

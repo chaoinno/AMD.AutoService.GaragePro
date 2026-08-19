@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { width:0; height:0; }
+  input, textarea { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+</style>
+</helmet>
+
+<section style="display:flex; gap:40px; padding:{{pagePad}}; align-items:flex-start; justify-content:{{pageJust}}">
+
+  <div style="display:flex; flex-direction:column; gap:14px">
+    <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+    <div style="display:flex; align-items:baseline; gap:12px">
+      <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">REPAIR · QC · SYNC</span>
+      <span style="font-size:12px; color:#64748B">430 × 932 · iPhone 15 Pro Max · ช่างเทคนิค</span>
+    </div>
+    </sc-if>
+    <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+      <div style="box-sizing:border-box; width:456px; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#0B1526; border-radius:12px; padding:10px 14px">
+        <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · ช่าง + QC</span>
+        <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+      </div>
+    </sc-if>
+
+
+    <div style="box-sizing:content-box; width:430px; height:932px; border:13px solid #0B1526; border-radius:62px; background:#F1F4F9; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 30px 70px rgba(15,36,64,.28); position:relative">
+
+      <div style="background:#0F2440; color:#fff; box-sizing:border-box; height:59px; padding:26px 30px 0; display:flex; align-items:flex-start; justify-content:space-between; font-size:12px; font-family:'IBM Plex Mono',monospace; flex:none; position:relative"><div style="position:absolute; left:50%; top:12px; transform:translateX(-50%); width:126px; height:37px; border-radius:19px; background:#05080F; z-index:4"></div>
+        <span>15:42</span>
+        <span style="color:{{netFg}}">{{netLabel}}</span>
+      </div>
+
+      <sc-if value="{{isList}}" hint-placeholder-val="{{true}}">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+          <div style="background:#0F2440; padding:12px 16px 16px; flex:none; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:10px">
+              <div style="display:flex; flex-direction:column; gap:3px">
+                <span style="font-size:13px; color:#8FA6C4">อนุชา แก้วมณี · ช่างเทคนิค</span>
+                <span style="font-size:21px; font-weight:700; color:#fff">งานของฉัน</span>
+              </div>
+              <span style="font-size:13px; color:#8FA6C4; font-family:'IBM Plex Mono',monospace">{{listCount}} งาน</span>
+            </div>
+            <span style="font-size:12px; color:#BFD6F5">เรียงตามความเร่งด่วนและเวลานัดส่งมอบ</span>
+          </div>
+          <div style="flex:1; overflow-y:auto; padding:14px 16px 46px; display:flex; flex-direction:column; gap:12px">
+            <sc-if value="{{hasListNote}}" hint-placeholder-val="{{false}}">
+              <div onClick="{{clearListNote}}" style="background:#E6EFFC; border:1px solid #BCD3F5; border-radius:12px; padding:12px 14px; font-size:13px; color:#1552B3; line-height:1.65; font-weight:600; cursor:pointer">{{listNote}}</div>
+            </sc-if>
+            <sc-for list="{{list}}" as="j" hint-placeholder-count="3">
+              <div onClick="{{j.open}}" style="background:{{j.cardBg}}; border:{{j.cardBorder}}; border-left:{{j.cardBar}}; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:10px; cursor:pointer">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px">
+                  <div style="display:flex; flex-direction:column; gap:3px">
+                    <span style="font-size:22px; font-weight:700; color:#0F2440">{{j.reg}}</span>
+                    <span style="font-size:14px; color:#475569">{{j.model}}</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; background:{{j.stBg}}; color:{{j.stFg}}; font-size:12px; font-weight:700; padding:5px 9px; border-radius:6px; flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{j.stPath}}"/></svg>{{j.stLabel}}</span>
+                </div>
+                <sc-if value="{{j.urgent}}" hint-placeholder-val="{{false}}">
+                  <div style="display:flex; align-items:center; gap:7px; background:{{j.uBg}}; border-radius:8px; padding:7px 10px">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{j.uFg}}" stroke-width="2.6" stroke-linecap="round" style="flex:none"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+                    <span style="font-size:13px; font-weight:700; color:{{j.uFg}}">{{j.uText}}</span>
+                  </div>
+                </sc-if>
+                <div style="background:#F7F9FC; border-radius:10px; padding:11px; display:flex; flex-direction:column; gap:6px">
+                  <span style="font-size:14px; color:#334155">{{j.task}}</span>
+                  <div style="display:flex; justify-content:space-between"><span style="font-size:13px; color:#64748B">คืบหน้า {{j.done}}/{{j.total}} รายการ</span><span style="font-size:13px; color:#64748B; font-family:'IBM Plex Mono',monospace">นัดส่ง {{j.promise}}</span></div>
+                  <div style="height:7px; border-radius:4px; background:#E3E8EF; overflow:hidden"><div style="height:100%; width:{{j.pct}}; background:{{j.bar}}; border-radius:4px"></div></div>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between">
+                  <span style="font-size:13px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{j.no}} · {{j.elapsed}}</span>
+                  <span style="font-size:13px; font-weight:700; color:#1B6BE3">{{j.cta}}</span>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isJob}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+          <div style="background:#0F2440; padding:12px 16px 16px; flex:none; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:center; gap:10px">
+              <div onClick="{{goList}}" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:-8px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                <span style="font-size:12px; color:#8FA6C4; font-family:'IBM Plex Mono',monospace">{{jbNo}}</span>
+                <span style="font-size:20px; font-weight:700; color:#fff">{{jbReg}}</span>
+              </div>
+              <span style="display:inline-flex; align-items:center; gap:5px; background:{{jbStBg}}; color:{{jbStFg}}; font-size:12px; font-weight:700; padding:6px 10px; border-radius:7px; flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{jbStPath}}"/></svg>{{jbStLabel}}</span>
+            </div>
+            <div style="background:#1B3557; border-radius:12px; padding:12px 14px; display:flex; align-items:center; gap:12px">
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                <span style="font-size:12px; color:#8FA6C4">เวลาที่ใช้ไป</span>
+                <span style="font-size:22px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">{{jbElapsed}}</span>
+              </div>
+              <span style="font-size:12px; color:#BFD6F5; text-align:right; line-height:1.5">นัดส่งมอบ<br><b style="font-family:'IBM Plex Mono',monospace">{{jbPromise}}</b></span>
+            </div>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding:14px 16px 20px; display:flex; flex-direction:column; gap:14px">
+            <sc-if value="{{jbHasAlert}}" hint-placeholder-val="{{false}}">
+              <div onClick="{{clearAlert}}" style="background:#FBE9E9; border:1px solid #F0C2C2; border-radius:12px; padding:12px 14px; display:flex; gap:10px; align-items:flex-start; cursor:pointer">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg>
+                <span style="font-size:14px; font-weight:600; color:#A31D1D; line-height:1.6; flex:1">{{jbAlert}}</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{jbQcFailed}}" hint-placeholder-val="{{false}}">
+              <div style="background:#FEF6F6; border:1.5px solid #F0C2C2; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:7px">
+                <div style="display:flex; align-items:center; gap:8px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#A31D1D" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span style="font-size:15px; font-weight:700; color:#A31D1D; flex:1">QC ตีกลับ · ความสำคัญ {{jbFailPri}}</span></div>
+                <span style="font-size:14px; color:#A31D1D; line-height:1.7">{{jbFailNote}}</span>
+                <span style="font-size:12px; color:#A31D1D; font-family:'IBM Plex Mono',monospace">ผู้ตรวจ {{jbTester}} · 15:31 น.</span>
+              </div>
+            </sc-if>
+
+            <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:12px; padding:12px 14px; display:flex; flex-direction:column; gap:3px">
+              <span style="font-size:12px; font-weight:700; color:#8A5A00">คำสั่งซ่อมจากธุรการ</span>
+              <span style="font-size:14px; color:#8A5A00; line-height:1.7">{{jbInstruction}}</span>
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between">
+              <span style="font-size:16px; font-weight:700; color:#0F2440">งานที่ลูกค้าอนุมัติ</span>
+              <span style="font-size:13px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{jbDone}}/{{jbRequired}} เสร็จ</span>
+            </div>
+
+            <sc-for list="{{tasks}}" as="t" hint-placeholder-count="5">
+              <div style="background:#fff; border:{{t.border}}; border-left:{{t.bar}}; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:11px">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px">
+                  <div style="display:flex; flex-direction:column; gap:5px; flex:1">
+                    <span style="font-size:16px; font-weight:700; color:#0F2440; line-height:1.45">{{t.label}}</span>
+                    <span style="font-size:13px; color:#64748B">{{t.partText}}</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; background:{{t.stBg}}; color:{{t.stFg}}; font-size:11px; font-weight:700; padding:4px 8px; border-radius:5px; flex:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{t.stPath}}"/></svg>{{t.stLabel}}</span>
+                </div>
+
+                <sc-if value="{{t.isPending}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#FFFBF3; border-radius:9px; padding:10px 11px; display:flex; gap:8px; align-items:flex-start">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.6" stroke-linecap="round" style="flex:none; margin-top:2px"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5l3 2"/></svg>
+                    <span style="font-size:13px; color:#8A5A00; line-height:1.6; font-weight:600">งานเพิ่มเติม · ส่งให้ธุรการออกใบเสนอราคาใหม่แล้ว ยังไม่ถือว่าลูกค้าอนุมัติ ห้ามลงมือทำรายการนี้</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{t.isBlocked}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#FDEBE3; border-radius:9px; padding:10px 11px; display:flex; flex-direction:column; gap:3px">
+                    <span style="font-size:13px; font-weight:700; color:#A8380A">รออะไหล่: {{t.blockPart}}</span>
+                    <span style="font-size:12px; color:#A8380A; line-height:1.6">{{t.blockReason}} · คาดว่าได้ {{t.blockEta}}</span>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{t.workable}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex; flex-direction:column; gap:9px">
+                    <div style="display:flex; gap:8px">
+                      <div onClick="{{t.shotBefore}}" style="flex:1; min-height:66px; border-radius:10px; border:{{t.beforeBorder}}; background:{{t.beforeBg}}; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{t.beforeFg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <span style="font-size:12px; font-weight:700; color:{{t.beforeFg}}">{{t.beforeText}}</span>
+                      </div>
+                      <div onClick="{{t.shotAfter}}" style="flex:1; min-height:66px; border-radius:10px; border:{{t.afterBorder}}; background:{{t.afterBg}}; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{{t.afterFg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                        <span style="font-size:12px; font-weight:700; color:{{t.afterFg}}">{{t.afterText}}</span>
+                      </div>
+                    </div>
+                    <div style="display:flex; gap:8px">
+                      <button onClick="{{t.toggleDone}}" style="flex:1.3; min-height:50px; background:{{t.doneBg}}; border:1.5px solid {{t.doneBorder}}; color:{{t.doneFg}}; border-radius:11px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">{{t.doneLabel}}</button>
+                      <button onClick="{{t.askParts}}" style="flex:1; min-height:50px; background:#fff; border:1px solid #F5C9B3; color:#A8380A; border-radius:11px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer">แจ้งรออะไหล่</button>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+
+            <sc-if value="{{showExtraBtn}}" hint-placeholder-val="{{true}}">
+              <button onClick="{{askExtra}}" style="min-height:52px; background:#fff; border:1px dashed #C9D6E6; color:#1B6BE3; border-radius:12px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">+ พบงานเพิ่มเติมนอกใบเสนอราคา</button>
+            </sc-if>
+            <sc-if value="{{jbReady}}" hint-placeholder-val="{{false}}">
+              <div style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:13px 14px; display:flex; gap:9px; align-items:flex-start">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.3" stroke-linecap="round" style="flex:none; margin-top:2px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                <span style="font-size:13px; color:#475569; line-height:1.7">งานผ่าน QC แล้ว รายการทั้งหมดถูกล็อกเพื่อรักษาหลักฐาน — หากต้องแก้เพิ่ม ต้องเปิดงานซ่อมใหม่และส่งตรวจ QC อีกครั้ง</span>
+              </div>
+            </sc-if>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:11px">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">ผู้รับผิดชอบ</span>
+              <div style="display:flex; flex-direction:column; gap:7px; font-size:14px">
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ช่างหลัก</span><span style="color:#0F2440; font-weight:600">อนุชา แก้วมณี</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">ช่างช่วย</span><span style="color:#0F2440; font-weight:600">วีระพงษ์ ทองดี</span></div>
+                <div style="display:flex; justify-content:space-between"><span style="color:#64748B">หัวหน้ากะ</span><span style="color:#0F2440; font-weight:600">สุรชัย พันธุ์ทอง</span></div>
+              </div>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:11px">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">ประวัติกิจกรรม</span>
+              <sc-for list="{{timeline}}" as="e" hint-placeholder-count="4">
+                <div style="display:flex; gap:11px">
+                  <div style="display:flex; flex-direction:column; align-items:center; flex:none"><div style="width:10px; height:10px; border-radius:50%; background:{{e.dot}}; margin-top:5px"></div><div style="flex:1; width:2px; background:#E3E8EF"></div></div>
+                  <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:13px">
+                    <span style="font-size:14px; font-weight:600; color:#0F2440; line-height:1.5">{{e.text}}</span>
+                    <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{e.who}} · {{e.time}}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:11px 16px 42px; display:flex; flex-direction:column; gap:9px; box-shadow:0 -6px 18px rgba(15,36,64,.10)">
+            <div style="display:flex; align-items:center; gap:7px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="{{saveFg}}" stroke-width="2.8" stroke-linecap="round" style="flex:none"><path d="{{savePath}}"/></svg>
+              <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace; flex:1">{{saveText}}</span>
+              <span onClick="{{goSync}}" style="font-size:12px; font-weight:700; color:#1B6BE3; cursor:pointer">ศูนย์ซิงก์</span>
+            </div>
+            <div style="display:flex; gap:9px">
+              <sc-if value="{{canStart}}" hint-placeholder-val="{{true}}">
+                <button onClick="{{startWork}}" style="flex:1; min-height:56px; background:#1B6BE3; color:#fff; border:none; border-radius:14px; font-family:inherit; font-size:17px; font-weight:700; cursor:pointer">เริ่มงานซ่อม</button>
+              </sc-if>
+              <sc-if value="{{canPause}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{pauseWork}}" style="width:118px; min-height:56px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">พักงาน</button>
+              </sc-if>
+              <sc-if value="{{canResume}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{resumeWork}}" style="width:118px; min-height:56px; background:#0E9F8C; border:none; color:#fff; border-radius:14px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">ทำต่อ</button>
+              </sc-if>
+              <sc-if value="{{showQcBtn}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{submitQc}}" style="flex:1; min-height:56px; background:{{qcBtnBg}}; color:{{qcBtnFg}}; border:{{qcBtnBorder}}; border-radius:14px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">{{qcBtnLabel}}</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{jbReady}}" hint-placeholder-val="{{false}}">
+              <div style="background:#D8F3EE; border:1px solid #8FD9CC; border-radius:12px; padding:12px 14px; display:flex; gap:9px; align-items:center">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0A6355" stroke-width="2.6" stroke-linecap="round" style="flex:none"><path d="M4 12.5l5 5L20 7"/></svg>
+                <span style="font-size:14px; font-weight:700; color:#0A6355; flex:1">QC ผ่าน · สถานะงานเป็น “พร้อมส่งมอบ”</span>
+              </div>
+              <button onClick="{{reopenJob}}" style="min-height:50px; background:#fff; border:1px solid #F5C9B3; color:#A8380A; border-radius:12px; font-family:inherit; font-size:15px; font-weight:700; cursor:pointer">เปิดงานซ่อมใหม่ (ยกเลิกผล QC · ต้องตรวจใหม่)</button>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isQc}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+          <div style="background:#0F2440; padding:12px 16px 16px; flex:none; display:flex; flex-direction:column; gap:10px">
+            <div style="display:flex; align-items:center; gap:10px">
+              <div onClick="{{goJob}}" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:-8px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1"><span style="font-size:12px; color:#8FA6C4; font-family:'IBM Plex Mono',monospace">{{jbNo}} · {{jbReg}}</span><span style="font-size:20px; font-weight:700; color:#fff">ตรวจ QC ก่อนส่งมอบ</span></div>
+              <span style="font-size:15px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">{{qcDone}}/{{qcTotal}}</span>
+            </div>
+            <div style="background:#1B3557; border-radius:10px; padding:11px 13px; display:flex; align-items:center; gap:10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#BFD6F5" stroke-width="2.3" stroke-linecap="round" style="flex:none"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 21c0-3.9 3.4-6 7.5-6s7.5 2.1 7.5 6"/></svg>
+              <span style="font-size:13px; color:#BFD6F5; flex:1">ผู้ตรวจ</span>
+              <span style="font-size:14px; font-weight:700; color:#fff">{{qcTester}}</span>
+            </div>
+          </div>
+          <div style="flex:1; overflow-y:auto; padding:14px 16px 20px; display:flex; flex-direction:column; gap:12px">
+            <sc-if value="{{qcHasAlert}}" hint-placeholder-val="{{false}}">
+              <div onClick="{{clearAlert}}" style="background:#FDF3E2; border:1px solid #F0D9AC; border-radius:12px; padding:12px 14px; font-size:14px; font-weight:600; color:#8A5A00; line-height:1.6; cursor:pointer">{{jbAlert}}</div>
+            </sc-if>
+            <sc-for list="{{qcItems}}" as="q" hint-placeholder-count="6">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:10px">
+                <span style="font-size:15px; font-weight:700; color:#0F2440; line-height:1.45">{{q.label}}</span>
+                <div style="display:flex; gap:8px">
+                  <div onClick="{{q.pass}}" style="flex:1; min-height:48px; background:{{q.passBg}}; border:1.5px solid {{q.passBorder}}; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{q.passFg}}" stroke-width="3" stroke-linecap="round"><path d="M4 12.5l5 5L20 7"/></svg><span style="font-size:14px; font-weight:700; color:{{q.passFg}}">ผ่าน</span></div>
+                  <div onClick="{{q.fail}}" style="flex:1; min-height:48px; background:{{q.failBg}}; border:1.5px solid {{q.failBorder}}; border-radius:10px; display:flex; align-items:center; justify-content:center; gap:6px; cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{{q.failFg}}" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg><span style="font-size:14px; font-weight:700; color:{{q.failFg}}">ไม่ผ่าน</span></div>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:10px">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">ผลทดลองขับ</span>
+              <div style="display:flex; gap:8px">
+                <div onClick="{{roadPass}}" style="flex:1; min-height:48px; background:{{roadPassBg}}; border:1.5px solid {{roadPassBorder}}; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer"><span style="font-size:14px; font-weight:700; color:{{roadPassFg}}">ปกติดี</span></div>
+                <div onClick="{{roadFail}}" style="flex:1; min-height:48px; background:{{roadFailBg}}; border:1.5px solid {{roadFailBorder}}; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer"><span style="font-size:14px; font-weight:700; color:{{roadFailFg}}">ยังมีอาการ</span></div>
+              </div>
+              <span style="font-size:13px; color:#64748B">ระยะทดลองขับ 3.2 กม. · ความเร็วสูงสุด 60 กม./ชม.</span>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:10px">
+              <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:15px; font-weight:700; color:#0F2440">รูปหลังซ่อม</span><span style="font-size:13px; color:#64748B">{{qcPhotoText}}</span></div>
+              <div style="display:flex; gap:8px">
+                <div onClick="{{addQcPhoto}}" style="width:80px; height:80px; border-radius:10px; border:1.5px dashed #C9D6E6; background:#F7F9FC; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; flex:none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1B6BE3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span style="font-size:11px; font-weight:700; color:#1B6BE3">ถ่ายรูป</span></div>
+                <div style="flex:1; height:80px; border-radius:10px; background:#D8DEE7"></div>
+                <div style="flex:1; height:80px; border-radius:10px; background:#C9D1DC"></div>
+              </div>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:15px; font-weight:700; color:#0F2440">บันทึกผู้ตรวจ</span>
+              <textarea value="{{qcNote}}" onChange="{{onQcNote}}" rows="3" placeholder="เช่น เบรกนิ่ม ไม่มีเสียงดัง ตรวจรอยรั่วซึมแล้วไม่พบ" style="border:1px solid #C9D6E6; border-radius:12px; padding:12px 14px; font-size:15px; color:#0F2440; outline:none; resize:none; line-height:1.6"></textarea>
+            </div>
+          </div>
+          <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:11px 16px 42px; display:flex; flex-direction:column; gap:9px; box-shadow:0 -4px 16px rgba(15,36,64,.08)">
+            <span style="font-size:12px; color:#64748B">{{qcHint}}</span>
+            <div style="display:flex; gap:9px">
+              <button onClick="{{askQcFail}}" style="flex:1; min-height:56px; background:#fff; border:1px solid #F0C2C2; color:#C02626; border-radius:14px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">ตีกลับให้ช่าง</button>
+              <button onClick="{{qcPass}}" style="flex:1.2; min-height:56px; background:{{passBtnBg}}; border:none; color:#fff; border-radius:14px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">QC ผ่าน</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isSync}}" hint-placeholder-val="{{false}}">
+        <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+          <div style="background:#0F2440; padding:12px 16px 16px; flex:none; display:flex; flex-direction:column; gap:12px">
+            <div style="display:flex; align-items:center; gap:10px">
+              <div onClick="{{goList}}" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-left:-8px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M14 6l-6 6 6 6"/></svg></div>
+              <span style="font-size:20px; font-weight:700; color:#fff; flex:1">ศูนย์ซิงก์ข้อมูล</span>
+            </div>
+            <div style="background:{{connBg}}; border-radius:12px; padding:13px 14px; display:flex; align-items:center; gap:11px">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{connFg}}" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="{{connPath}}"/></svg>
+              <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                <span style="font-size:15px; font-weight:700; color:{{connFg}}">{{connLabel}}</span>
+                <span style="font-size:12px; color:#A9BDD6">ซิงก์สำเร็จล่าสุด {{lastSync}}</span>
+              </div>
+              <span onClick="{{toggleNet}}" style="font-size:12px; font-weight:700; color:#BFD6F5; cursor:pointer">สลับ</span>
+            </div>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding:14px 16px 20px; display:flex; flex-direction:column; gap:14px">
+            <div style="display:flex; gap:8px">
+              <div style="flex:1; background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:3px"><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{pendingRecords}}</span><span style="font-size:12px; color:#64748B">รายการรอซิงก์</span></div>
+              <div style="flex:1; background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:3px"><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{pendingPhotos}}</span><span style="font-size:12px; color:#64748B">รูปรออัปโหลด</span></div>
+              <div style="flex:1; background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:3px"><span style="font-size:22px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{pendingSize}}</span><span style="font-size:12px; color:#64748B">ขนาดรวม</span></div>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:9px">
+              <span style="font-size:13px; font-weight:700; color:#0F2440">ความหมายของสถานะ</span>
+              <div style="display:flex; align-items:center; gap:9px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.6" stroke-linecap="round" style="flex:none"><path d="M4 12.5l5 5L20 7"/></svg><span style="font-size:13px; color:#475569"><b>บันทึกในเครื่องแล้ว</b> — ปลอดภัยจากการปิดแอป แต่ระบบกลางยังไม่เห็น</span></div>
+              <div style="display:flex; align-items:center; gap:9px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1552B3" stroke-width="2.6" stroke-linecap="round" style="flex:none"><path d="M12 3v10l4-4M4 17a8 8 0 0 0 16 0"/></svg><span style="font-size:13px; color:#475569"><b>กำลังซิงก์</b> — กำลังส่งขึ้นเซิร์ฟเวอร์ ห้ามปิดแอป</span></div>
+              <div style="display:flex; align-items:center; gap:9px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0B6D5E" stroke-width="2.6" stroke-linecap="round" style="flex:none"><path d="M2 13l4 4 7-8M11 15l2 2 9-10"/></svg><span style="font-size:13px; color:#475569"><b>ซิงก์กับระบบแล้ว</b> — ธุรการและผู้จัดการเห็นข้อมูลนี้แล้ว</span></div>
+            </div>
+
+            <sc-if value="{{syncing}}" hint-placeholder-val="{{false}}">
+              <div style="background:#E6EFFC; border:1px solid #BCD3F5; border-radius:12px; padding:13px; display:flex; flex-direction:column; gap:9px">
+                <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#1552B3">กำลังซิงก์…</span><span style="font-size:14px; font-weight:700; color:#1552B3; font-family:'IBM Plex Mono',monospace">{{progress}}%</span></div>
+                <div style="height:9px; border-radius:5px; background:#fff; overflow:hidden"><div style="height:100%; width:{{progressW}}; background:#1B6BE3; border-radius:5px"></div></div>
+                <span style="font-size:12px; color:#1552B3">{{progressText}}</span>
+              </div>
+            </sc-if>
+
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:14px; overflow:hidden">
+                <div style="padding:13px 14px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px">
+                  <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+                    <div style="display:flex; align-items:center; gap:7px">
+                      <span style="font-size:16px; font-weight:700; color:#0F2440">{{g.reg}}</span>
+                      <sc-if value="{{g.temp}}" hint-placeholder-val="{{false}}">
+                        <span style="background:#FDF3E2; color:#8A5A00; font-size:10px; font-weight:700; padding:3px 7px; border-radius:5px">รหัสชั่วคราวในเครื่อง</span>
+                      </sc-if>
+                    </div>
+                    <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace">{{g.no}}</span>
+                  </div>
+                  <span style="display:inline-flex; align-items:center; gap:5px; background:{{g.stBg}}; color:{{g.stFg}}; font-size:11px; font-weight:700; padding:4px 8px; border-radius:5px; flex:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{g.stPath}}"/></svg>{{g.stLabel}}</span>
+                </div>
+                <sc-for list="{{g.items}}" as="r" hint-placeholder-count="2">
+                  <div style="padding:11px 14px; border-bottom:1px solid #F5F8FB; display:flex; flex-direction:column; gap:6px">
+                    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:9px">
+                      <span style="font-size:14px; color:#334155; flex:1; line-height:1.5">{{r.label}}</span>
+                      <span style="font-size:12px; color:#64748B; font-family:'IBM Plex Mono',monospace; flex:none">{{r.size}}</span>
+                    </div>
+                    <sc-if value="{{r.isFailed}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#FEF6F6; border-radius:9px; padding:9px 11px; display:flex; flex-direction:column; gap:7px">
+                        <span style="font-size:12px; color:#A31D1D; line-height:1.6; font-weight:600">{{r.reason}}</span>
+                        <span onClick="{{r.retry}}" style="align-self:flex-start; background:#C02626; color:#fff; font-size:12px; font-weight:700; min-height:40px; display:inline-flex; align-items:center; padding:0 12px; border-radius:8px; cursor:pointer">ลองส่งใหม่</span>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{r.isConflict}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#FFFBF3; border-radius:9px; padding:9px 11px; display:flex; flex-direction:column; gap:8px">
+                        <span style="font-size:12px; color:#8A5A00; line-height:1.6; font-weight:600">{{r.reason}}</span>
+                        <div style="display:flex; gap:7px">
+                          <span onClick="{{r.mine}}" style="flex:1; min-height:40px; display:inline-flex; align-items:center; justify-content:center; background:#1B6BE3; color:#fff; font-size:12px; font-weight:700; border-radius:8px; cursor:pointer">ใช้ของฉัน</span>
+                          <span onClick="{{r.theirs}}" style="flex:1; min-height:40px; display:inline-flex; align-items:center; justify-content:center; background:#fff; border:1px solid #C9D6E6; color:#1B3557; font-size:12px; font-weight:700; border-radius:8px; cursor:pointer">ใช้ของเว็บ</span>
+                        </div>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:11px 16px 42px; display:flex; gap:9px; box-shadow:0 -4px 16px rgba(15,36,64,.08)">
+            <button onClick="{{syncAll}}" style="flex:1; min-height:56px; background:{{syncBtnBg}}; color:#fff; border:none; border-radius:14px; font-family:inherit; font-size:17px; font-weight:700; cursor:pointer">{{syncBtnLabel}}</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="flex:none; background:#fff; border-top:1px solid #E3E8EF; padding:8px 6px 38px; display:flex; justify-content:space-around">
+        <div onClick="{{goList}}" style="min-width:56px; min-height:48px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; color:{{navList}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 15h8"/></svg><span style="font-size:11px; font-weight:700">งานของฉัน</span></div>
+        <div onClick="{{goQcTab}}" style="min-width:56px; min-height:48px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; color:{{navQc}}"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span style="font-size:11px; font-weight:700">QC</span></div>
+        <div onClick="{{goSync}}" style="min-width:56px; min-height:48px; display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; color:{{navSync}}; position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 13-6M20 12a8 8 0 0 1-13 6"/><path d="M17 3v3.5h-3.5M7 21v-3.5h3.5"/></svg><span style="font-size:11px; font-weight:700">ศูนย์ซิงก์</span><span style="position:absolute; top:-2px; right:6px; background:#E0930C; color:#fff; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:999px; display:flex; align-items:center; justify-content:center">{{pendingRecords}}</span></div>
+      </div>
+
+      <sc-if value="{{partsOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.58); display:flex; align-items:flex-end">
+          <div style="width:100%; max-height:84%; background:#fff; border-radius:20px 20px 0 0; padding-bottom:34px; display:flex; flex-direction:column; overflow:hidden">
+            <div style="padding:16px 18px 12px; border-bottom:1px solid #EDF1F6; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex:none">
+              <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:18px; font-weight:700; color:#0F2440">แจ้งรออะไหล่</span><span style="font-size:13px; color:#64748B">{{partsTask}}</span></div>
+              <div onClick="{{closeParts}}" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin:-6px -8px 0 0; flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding:16px 18px 18px; display:flex; flex-direction:column; gap:15px">
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">อะไหล่ที่ขาด</span>
+                <sc-for list="{{partOptions}}" as="p" hint-placeholder-count="3">
+                  <div onClick="{{p.tap}}" style="min-height:52px; background:{{p.bg}}; border:1px solid {{p.border}}; border-radius:10px; padding:0 14px; display:flex; align-items:center; cursor:pointer"><span style="font-size:15px; font-weight:600; color:{{p.fg}}">{{p.label}}</span></div>
+                </sc-for>
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">จำนวนที่ต้องใช้</span>
+                <div style="display:flex; align-items:center; border:1px solid #C9D6E6; border-radius:10px; overflow:hidden">
+                  <div onClick="{{qtyMinus}}" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#1B3557; cursor:pointer; border-right:1px solid #E3E8EF">−</div>
+                  <div style="width:52px; text-align:center; font-size:18px; font-weight:700; color:#0F2440; font-family:'IBM Plex Mono',monospace">{{qty}}</div>
+                  <div onClick="{{qtyPlus}}" style="width:48px; height:48px; display:flex; align-items:center; justify-content:center; font-size:22px; color:#1B3557; cursor:pointer; border-left:1px solid #E3E8EF">+</div>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">เหตุผล</span>
+                <div style="display:flex; flex-wrap:wrap; gap:7px">
+                  <sc-for list="{{partReasons}}" as="m" hint-placeholder-count="4">
+                    <span onClick="{{m.tap}}" style="background:{{m.bg}}; color:{{m.fg}}; border:1px solid {{m.border}}; font-size:14px; font-weight:600; min-height:44px; display:inline-flex; align-items:center; padding:0 13px; border-radius:10px; cursor:pointer">{{m.label}}</span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">กำหนดที่คาดว่าจะได้ของ</span>
+                <div style="display:flex; gap:7px">
+                  <sc-for list="{{etaOptions}}" as="m" hint-placeholder-count="3">
+                    <span onClick="{{m.tap}}" style="flex:1; background:{{m.bg}}; color:{{m.fg}}; border:1px solid {{m.border}}; font-size:13px; font-weight:600; min-height:48px; display:inline-flex; align-items:center; justify-content:center; text-align:center; border-radius:10px; cursor:pointer">{{m.label}}</span>
+                  </sc-for>
+                </div>
+              </div>
+              <div onClick="{{toggleContinue}}" style="background:#F7F9FC; border:1px solid #E3E8EF; border-radius:12px; padding:13px 14px; display:flex; align-items:center; gap:12px; cursor:pointer">
+                <div style="display:flex; flex-direction:column; gap:3px; flex:1"><span style="font-size:14px; font-weight:700; color:#0F2440">ทำงานรายการอื่นต่อได้</span><span style="font-size:12px; color:#64748B; line-height:1.55">{{continueLabel}}</span></div>
+                <div style="width:52px; height:30px; border-radius:999px; background:{{continueBg}}; display:flex; align-items:center; justify-content:{{continueKnob}}; padding:3px; flex:none"><div style="width:24px; height:24px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(15,36,64,.3)"></div></div>
+              </div>
+              <div style="background:#E3F5F1; border-radius:10px; padding:11px 13px; font-size:13px; color:#0B6D5E; line-height:1.65; font-weight:600">งานที่ทำเสร็จแล้ว {{jbDone}} รายการจะถูกเก็บไว้ ไม่ถูกล้างเมื่อเปลี่ยนเป็นรออะไหล่</div>
+              <button onClick="{{submitParts}}" style="min-height:56px; background:#E0930C; color:#fff; border:none; border-radius:14px; font-family:inherit; font-size:17px; font-weight:700; cursor:pointer">ส่งคำขออะไหล่ให้ธุรการ</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{extraOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.58); display:flex; align-items:flex-end">
+          <div style="width:100%; max-height:84%; background:#fff; border-radius:20px 20px 0 0; padding-bottom:34px; display:flex; flex-direction:column; overflow:hidden">
+            <div style="padding:16px 18px 12px; border-bottom:1px solid #EDF1F6; display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex:none">
+              <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:18px; font-weight:700; color:#0F2440">พบงานเพิ่มเติม</span><span style="font-size:13px; color:#64748B">ส่งให้ธุรการออกใบเสนอราคาใหม่</span></div>
+              <div onClick="{{closeExtra}}" style="width:44px; height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin:-6px -8px 0 0; flex:none"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+            </div>
+            <div style="flex:1; overflow-y:auto; padding:16px 18px 18px; display:flex; flex-direction:column; gap:15px">
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">สิ่งที่พบ</span>
+                <div style="display:flex; flex-wrap:wrap; gap:7px">
+                  <sc-for list="{{extraFindings}}" as="m" hint-placeholder-count="4">
+                    <span onClick="{{m.tap}}" style="background:{{m.bg}}; color:{{m.fg}}; border:1px solid {{m.border}}; font-size:14px; font-weight:600; min-height:44px; display:inline-flex; align-items:center; padding:0 13px; border-radius:10px; cursor:pointer">{{m.label}}</span>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">เหตุผลที่ต้องทำ</span>
+                <textarea value="{{extraNote}}" onChange="{{onExtraNote}}" rows="3" placeholder="อธิบายให้ลูกค้าเข้าใจได้" style="border:1px solid #C9D6E6; border-radius:12px; padding:12px 14px; font-size:15px; color:#0F2440; outline:none; resize:none; line-height:1.6"></textarea>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px">
+                <div style="display:flex; align-items:center; justify-content:space-between"><span style="font-size:14px; font-weight:700; color:#0F2440">รูปหลักฐาน</span><span style="font-size:12px; color:#64748B">{{extraPhotoText}}</span></div>
+                <div style="display:flex; gap:8px">
+                  <div onClick="{{addExtraPhoto}}" style="width:80px; height:80px; border-radius:10px; border:1.5px dashed #C9D6E6; background:#F7F9FC; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; cursor:pointer; flex:none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#1B6BE3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><span style="font-size:11px; font-weight:700; color:#1B6BE3">ถ่ายรูป</span></div>
+                  <sc-if value="{{extraHasPhoto}}" hint-placeholder-val="{{false}}">
+                    <div style="flex:1; height:80px; border-radius:10px; background:#D8DEE7"></div>
+                  </sc-if>
+                </div>
+              </div>
+              <div style="display:flex; gap:10px">
+                <div style="flex:1; display:flex; flex-direction:column; gap:8px"><span style="font-size:14px; font-weight:700; color:#0F2440">ค่าอะไหล่ (บาท)</span><input value="{{extraPart}}" onChange="{{onExtraPart}}" style="height:52px; border:1px solid #C9D6E6; border-radius:10px; padding:0 14px; font-size:16px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:8px"><span style="font-size:14px; font-weight:700; color:#0F2440">ค่าแรง (ชม.)</span><input value="{{extraLabor}}" onChange="{{onExtraLabor}}" style="height:52px; border:1px solid #C9D6E6; border-radius:10px; padding:0 14px; font-size:16px; font-weight:700; color:#0F2440; outline:none; font-family:'IBM Plex Mono',monospace"/></div>
+              </div>
+              <div style="background:#FFFBF3; border:1px solid #F0D9AC; border-radius:10px; padding:11px 13px; font-size:13px; color:#8A5A00; line-height:1.65; font-weight:600">งานนี้จะยังไม่ถือว่าอนุมัติจนกว่าลูกค้าจะเซ็นใบเสนอราคาฉบับใหม่ · งานอื่นที่อนุมัติแล้วทำต่อได้ตามปกติ</div>
+              <button onClick="{{submitExtra}}" style="min-height:56px; background:#1B6BE3; color:#fff; border:none; border-radius:14px; font-family:inherit; font-size:17px; font-weight:700; cursor:pointer">ส่งให้ธุรการออกใบเสนอราคาใหม่</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{qcFailOpen}}" hint-placeholder-val="{{false}}">
+        <div style="position:absolute; inset:0; background:rgba(10,22,38,.58); display:flex; align-items:flex-end; padding:16px 16px 46px">
+          <div style="width:100%; background:#fff; border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:13px">
+            <div style="display:flex; flex-direction:column; gap:4px"><span style="font-size:18px; font-weight:700; color:#0F2440">ตีกลับให้ช่างแก้ไข</span><span style="font-size:13px; color:#64748B; line-height:1.65">ระบุปัญหาให้ชัดเจน ช่างจะเห็นเป็นงานแก้ไขที่ต้องทำก่อนส่ง QC อีกครั้ง</span></div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:14px; font-weight:700; color:#0F2440">ปัญหาที่พบ</span>
+              <div style="display:flex; flex-direction:column; gap:7px">
+                <sc-for list="{{failIssues}}" as="m" hint-placeholder-count="3">
+                  <span onClick="{{m.tap}}" style="min-height:48px; display:inline-flex; align-items:center; padding:0 14px; background:{{m.bg}}; color:{{m.fg}}; border:1px solid {{m.border}}; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer">{{m.label}}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px">
+              <span style="font-size:14px; font-weight:700; color:#0F2440">ความสำคัญ</span>
+              <div style="display:flex; gap:7px">
+                <sc-for list="{{failPri}}" as="m" hint-placeholder-count="3">
+                  <span onClick="{{m.tap}}" style="flex:1; min-height:48px; display:inline-flex; align-items:center; justify-content:center; background:{{m.bg}}; color:{{m.fg}}; border:1px solid {{m.border}}; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer">{{m.label}}</span>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex; gap:10px">
+              <button onClick="{{closeQcFail}}" style="flex:1; min-height:52px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:12px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">ยกเลิก</button>
+              <button onClick="{{doQcFail}}" style="flex:1.3; min-height:52px; background:#C02626; border:none; color:#fff; border-radius:12px; font-family:inherit; font-size:16px; font-weight:700; cursor:pointer">ยืนยันตีกลับ</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="position:absolute; left:0; right:0; bottom:0; height:34px; display:flex; align-items:flex-end; justify-content:center; padding-bottom:9px; pointer-events:none; z-index:95">
+        <div style="width:144px; height:5px; border-radius:3px; background:rgba(120,140,165,.75)"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+  <div style="width:300px; background:#fff; border:1px solid #DCE3EC; border-radius:16px; padding:22px; display:flex; flex-direction:column; gap:18px; box-shadow:0 16px 40px rgba(15,36,64,.10)">
+    <div style="display:flex; flex-direction:column; gap:4px">
+      <span style="font-size:15px; font-weight:700; color:#0F2440">แผงควบคุมเดโม</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.6">เส้นทางที่เตรียมไว้ให้ทดลอง — ไม่ใช่ส่วนของแอปจริง</span>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:8px">
+      <span style="font-size:12px; font-weight:700; color:#94A3B8; letter-spacing:.08em">เส้นทางทดลอง</span>
+      <div onClick="{{demoRepair}}" style="min-height:44px; border:1px solid #E3E8EF; border-radius:10px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440">ซ่อมครบทุกรายการ</span><span style="font-size:12px; color:#1B6BE3; font-weight:600">เล่น</span></div>
+      <div onClick="{{demoParts}}" style="min-height:44px; border:1px solid #E3E8EF; border-radius:10px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440">เส้นทางรออะไหล่</span><span style="font-size:12px; color:#1B6BE3; font-weight:600">เปิด</span></div>
+      <div onClick="{{demoQcFail}}" style="min-height:44px; border:1px solid #E3E8EF; border-radius:10px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440">วน QC ไม่ผ่าน</span><span style="font-size:12px; color:#1B6BE3; font-weight:600">เปิด</span></div>
+      <div onClick="{{demoSync}}" style="min-height:44px; border:1px solid #E3E8EF; border-radius:10px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440">กู้คืนการซิงก์</span><span style="font-size:12px; color:#1B6BE3; font-weight:600">เปิด</span></div>
+      <div onClick="{{resetAll}}" style="min-height:44px; border:1px solid #E3E8EF; border-radius:10px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; cursor:pointer"><span style="font-size:14px; color:#0F2440">รีเซ็ตทั้งหมด</span><span style="font-size:12px; color:#C02626; font-weight:600">รีเซ็ต</span></div>
+    </div>
+    <div style="height:1px; background:#EDF1F6"></div>
+    <div style="display:flex; flex-direction:column; gap:6px">
+      <span style="font-size:12px; font-weight:700; color:#94A3B8; letter-spacing:.08em">กฎการเปลี่ยนสถานะ</span>
+      <span style="font-size:12px; color:#64748B; line-height:1.8">ส่ง QC ได้เมื่องานที่อนุมัติเสร็จครบ · พร้อมส่งมอบได้เมื่อ QC ผ่าน · รออะไหล่ไม่ล้างงานที่ทำเสร็จ · งานเพิ่มเติมยังไม่นับเป็นงานที่อนุมัติ</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:820,&quot;height&quot;:1000},&quot;startOnline&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const T_META = {
+  todo:    { label:'ยังไม่เริ่ม', bg:'#EEF1F5', fg:'#475569', path:'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M12 7.5v5l3 2' },
+  doing:   { label:'กำลังทำ', bg:'#E6EFFC', fg:'#1552B3', path:'M14.7 6.3a4 4 0 0 0 5 5l-8.4 8.4a2.8 2.8 0 0 1-4-4z' },
+  done:    { label:'เสร็จแล้ว', bg:'#E3F5F1', fg:'#0B6D5E', path:'M4 12.5l5 5L20 7' },
+  blocked: { label:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  pending: { label:'รอลูกค้าอนุมัติ', bg:'#FDF3E2', fg:'#8A5A00', path:'M6 2h12M8 2v4l4 4 4-4V2M8 22v-4l4-4 4 4v4M6 22h12' },
+  fix:     { label:'แก้ไขจาก QC', bg:'#FBE9E9', fg:'#A31D1D', path:'M12 3l9.5 17h-19zM12 10v4M12 17.5v.01' }
+};
+
+const J_META = {
+  repair:  { label:'กำลังซ่อม', bg:'#E6EFFC', fg:'#1552B3', path:'M14.7 6.3a4 4 0 0 0 5 5l-8.4 8.4a2.8 2.8 0 0 1-4-4z' },
+  parts:   { label:'รออะไหล่', bg:'#FDEBE3', fg:'#A8380A', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  qc:      { label:'QC ตรวจสอบ', bg:'#E4E9F0', fg:'#0F2440', path:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4' },
+  ready:   { label:'พร้อมส่งมอบ', bg:'#D8F3EE', fg:'#0A6355', path:'M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5' },
+  waitqc:  { label:'รอตรวจ QC', bg:'#E4E9F0', fg:'#0F2440', path:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z' }
+};
+
+const TASKS0 = [
+  { id:'T1', label:'เปลี่ยนผ้าเบรกหน้า', part:'ผ้าเบรกหน้า Bendix · เบิกแล้ว', status:'todo', before:false, after:false, req:true },
+  { id:'T2', label:'เจียจานเบรกหน้า 2 ข้าง', part:'ไม่ใช้อะไหล่', status:'todo', before:false, after:false, req:true },
+  { id:'T3', label:'ล้างแอร์และเปลี่ยนกรองแอร์', part:'กรองแอร์ · เบิกแล้ว', status:'todo', before:false, after:false, req:true },
+  { id:'T4', label:'เปลี่ยนโช้คอัพหน้า 2 ต้น', part:'โช้คอัพหน้า KYB × 2 · สั่งซื้อแล้ว', status:'todo', before:false, after:false, req:true },
+  { id:'T5', label:'ตั้งศูนย์และถ่วงล้อ', part:'ไม่ใช้อะไหล่', status:'todo', before:false, after:false, req:true }
+];
+
+const QC0 = [
+  { id:'q1', label:'เบรกทำงานปกติ ไม่มีเสียงดัง' },
+  { id:'q2', label:'ระดับของเหลวครบและไม่มีรอยรั่ว' },
+  { id:'q3', label:'ช่วงล่างแน่น ไม่มีเสียงเคาะ' },
+  { id:'q4', label:'แรงดันลมยางและน็อตล้อครบตามค่ากำหนด' },
+  { id:'q5', label:'แอร์เย็นปกติ ไม่มีกลิ่น' },
+  { id:'q6', label:'ความสะอาดภายใน-ภายนอกและเก็บของคืนครบ' }
+];
+
+const PART_OPTS = ['โช้คอัพหน้า KYB (ต้นละ)','ลูกหมากปีกนกล่าง','กรองแอร์','ยางแท่นเครื่อง'];
+const PART_REASONS = ['ของหมดสต็อกสาขา','สั่งผิดรุ่น','ของที่ได้มาชำรุด','ต้องสั่งจากศูนย์'];
+const ETA_OPTS = ['ได้พรุ่งนี้','ภายใน 3 วัน','ยังไม่ทราบกำหนด'];
+const EXTRA_FINDINGS = ['ยางแท่นเครื่องขาด','ลูกหมากปีกนกหลวม','ท่อยางหม้อน้ำบวม','สายพานแตกลายงา'];
+const FAIL_ISSUES = ['ยังมีเสียงดังจากช่วงล่างด้านซ้าย','เบรกยังมีจังหวะสั่นเมื่อเบรกแรง','พบรอยน้ำมันซึมใต้ท้องรถ'];
+const FAIL_PRI = ['สูง','ปานกลาง','ต่ำ'];
+
+class Component extends DCLogic {
+  state = {
+    view: 'list', online: false, elapsed: 84, timer: 'idle',
+    tasks: TASKS0.map(t => Object.assign({}, t)),
+    qc: {}, road: '', qcNote: '', qcPhotos: 2, qcStage: 'none',
+    failIssue: FAIL_ISSUES[0], failPriority: 'สูง', qcFailOpen: false, failedOnce: false,
+    partsFor: null, part: PART_OPTS[0], qty: 2, partReason: PART_REASONS[0], eta: ETA_OPTS[1], canContinue: true,
+    extraOpen: false, extraFinding: EXTRA_FINDINGS[0], extraNote: 'ยางแท่นเครื่องขาด ทำให้สั่นตอนเดินเบา ควรเปลี่ยนพร้อมงานช่วงล่าง', extraPhotos: 1, extraPart: '1,850', extraLabor: '1.5',
+    alert: '', progress: 0, syncing: false, lastSync: '13:58 น.',
+    failedItem: true, conflictItem: true, synced: false,
+    log: [
+      { text:'ลูกค้าอนุมัติใบเสนอราคา 5 รายการ · 17,601.50 บาท', who:'พิมพ์ชนก วัฒนกุล', time:'10:12 น.', dot:'#0E9F8C' },
+      { text:'มอบหมายงานให้ อนุชา แก้วมณี', who:'สุรชัย พันธุ์ทอง', time:'10:20 น.', dot:'#1B6BE3' },
+      { text:'เบิกอะไหล่ ผ้าเบรกหน้า และกรองแอร์', who:'อนุชา แก้วมณี', time:'10:44 น.', dot:'#94A3B8' }
+    ]
+  };
+
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      if (this.state.timer === 'running') this.setState(s => ({ elapsed: s.elapsed + 1 }));
+    }, 4000);
+  }
+  componentWillUnmount() { clearInterval(this.tick); clearInterval(this.syncTick); }
+
+  addLog = (text, dot) => this.setState(s => ({
+    log: [{ text, who:'อนุชา แก้วมณี', time:'15:4' + (s.log.length % 9) + ' น.', dot: dot || '#1B6BE3' }].concat(s.log)
+  }));
+
+  setTask = (id, patch) => this.setState(s => ({ tasks: s.tasks.map(t => t.id === id ? Object.assign({}, t, patch) : t) }));
+
+  hhmm = (m) => Math.floor(m / 60) + ' ชม. ' + (m % 60) + ' นาที';
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '30px 24px 40px' : '48px', pageJust: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const tasks = s.tasks;
+    const req = tasks.filter(t => t.req);
+    const doneN = req.filter(t => t.status === 'done').length;
+    const blocked = tasks.filter(t => t.status === 'blocked');
+    const chip = (on) => on ? { bg:'#1B6BE3', fg:'#FFFFFF', border:'#1B6BE3' } : { bg:'#FFFFFF', fg:'#334155', border:'#C9D6E6' };
+
+    let jstate = 'repair';
+    if (s.qcStage === 'pass') jstate = 'ready';
+    else if (s.qcStage === 'wait') jstate = 'waitqc';
+    else if (blocked.length && !s.canContinue) jstate = 'parts';
+    const jm = J_META[jstate];
+
+    const decorate = (t) => {
+      const m = T_META[t.status];
+      const workable = s.qcStage !== 'pass' && (t.status === 'todo' || t.status === 'doing' || t.status === 'done' || t.status === 'fix');
+      const isDone = t.status === 'done';
+      return {
+        label: t.label, partText: t.part,
+        stLabel: m.label, stBg: m.bg, stFg: m.fg, stPath: m.path,
+        isPending: t.status === 'pending', isBlocked: t.status === 'blocked', workable,
+        blockPart: t.blockPart || '', blockReason: t.blockReason || '', blockEta: t.blockEta || '',
+        border: t.status === 'fix' ? '1.5px solid #F0C2C2' : '1px solid #E3E8EF',
+        bar: isDone ? '5px solid #0E9F8C' : (t.status === 'blocked' ? '5px solid #C2410C' : (t.status === 'fix' ? '5px solid #C02626' : '1px solid #E3E8EF')),
+        beforeText: t.before ? 'รูปก่อนซ่อม ✓' : 'ถ่ายรูปก่อนซ่อม',
+        afterText: t.after ? 'รูปหลังซ่อม ✓' : 'ถ่ายรูปหลังซ่อม',
+        beforeBg: t.before ? '#E3F5F1' : '#F7F9FC', beforeFg: t.before ? '#0B6D5E' : '#1B6BE3',
+        beforeBorder: t.before ? '1.5px solid #B6E3DA' : '1.5px dashed #C9D6E6',
+        afterBg: t.after ? '#E3F5F1' : '#F7F9FC', afterFg: t.after ? '#0B6D5E' : '#1B6BE3',
+        afterBorder: t.after ? '1.5px solid #B6E3DA' : '1.5px dashed #C9D6E6',
+        doneLabel: isDone ? 'ทำเสร็จแล้ว · แตะเพื่อแก้' : 'ทำรายการนี้เสร็จ',
+        doneBg: isDone ? '#0E9F8C' : '#fff', doneFg: isDone ? '#fff' : '#0B6D5E', doneBorder: isDone ? '#0E9F8C' : '#B6E3DA',
+        shotBefore: () => { this.setTask(t.id, { before: true, status: t.status === 'todo' ? 'doing' : t.status }); },
+        shotAfter: () => this.setTask(t.id, { after: true }),
+        toggleDone: () => {
+          if (isDone) { this.setTask(t.id, { status:'doing' }); return; }
+          if (!t.before || !t.after) { this.setState({ alert:'ต้องมีรูปก่อนและหลังซ่อมของ “' + t.label + '” ก่อนปิดงานรายการนี้' }); return; }
+          this.setTask(t.id, { status:'done' });
+          this.addLog('ปิดงาน: ' + t.label, '#0E9F8C');
+          this.setState({ alert:'' });
+        },
+        askParts: () => this.setState({ partsFor: t.id, alert:'' })
+      };
+    };
+
+    const jobs = [
+      { no:'JB-6709', reg:'ขข-8431', model:'Mazda BT-50 PRO 2.2', st:'parts', promise:'วันนี้ 12:00', urgent:'เกินกำหนดส่งมอบ 3 ชม. 42 นาที', level:'late', done:4, total:7, task:'รอปั๊มติ๊กจากผู้จำหน่าย ถึง 31 ก.ค.', elapsed:'ใช้เวลาไป 6 ชม. 10 นาที', cta:'ดูอะไหล่' },
+      { no:'JB-6712', reg:'4กก-2871', model:'Toyota Yaris Ativ 1.2 Smart', st:jstate, promise:'วันนี้ 16:30', urgent: s.failedOnce && s.qcStage !== 'pass' ? 'QC ตีกลับ · ต้องแก้ไขก่อนส่งตรวจใหม่' : '', level:'warn', done:doneN, total:req.length, task: tasks.filter(t => t.status === 'doing')[0] ? tasks.filter(t => t.status === 'doing')[0].label : 'เปลี่ยนผ้าเบรกหน้าและช่วงล่าง', elapsed:'ใช้เวลาไป ' + this.hhmm(s.elapsed), cta:'เปิดงาน' },
+      { no:'JB-6708', reg:'7กฉ-2210', model:'Mitsubishi Xpander Cross', st:'repair', promise:'วันนี้ 17:30', urgent:'', level:'', done:2, total:4, task:'เปลี่ยนถ่ายน้ำมันเครื่องและกรอง', elapsed:'ใช้เวลาไป 1 ชม. 05 นาที', cta:'เปิดงาน' }
+    ].map(j => {
+      const m = J_META[j.st];
+      const late = j.level === 'late', warn = !!j.urgent && j.level === 'warn';
+      return Object.assign({}, j, {
+        stLabel: m.label, stBg: m.bg, stFg: m.fg, stPath: m.path,
+        urgent: !!j.urgent, uText: j.urgent,
+        uBg: late ? '#FBE9E9' : '#FDF3E2', uFg: late ? '#A31D1D' : '#8A5A00',
+        cardBg: late ? '#FFFDFD' : (warn ? '#FFFDF8' : '#fff'),
+        cardBorder: late ? '1px solid #F0C2C2' : (warn ? '1px solid #F0D9AC' : '1px solid #E3E8EF'),
+        cardBar: late ? '5px solid #C02626' : (warn ? '5px solid #E0930C' : '1px solid #E3E8EF'),
+        pct: Math.round((j.done / j.total) * 100) + '%',
+        bar: j.done === j.total ? '#0E9F8C' : '#1B6BE3',
+        open: () => j.no === 'JB-6712'
+          ? this.setState({ view:'job', listNote:'' })
+          : this.setState({ listNote: 'เดโมนี้เปิดรายละเอียดได้เฉพาะงาน JB-6712 (4กก-2871) — งาน ' + j.no + ' ใช้แสดงการจัดลำดับคิวเท่านั้น' })
+      });
+    });
+
+    const qcDone = QC0.filter(q => s.qc[q.id]).length;
+    const qcAllPass = QC0.every(q => s.qc[q.id] === 'pass') && s.road === 'pass';
+    const qcItems = QC0.map(q => {
+      const v = s.qc[q.id];
+      return {
+        label: q.label,
+        passBg: v === 'pass' ? '#0E9F8C' : '#fff', passFg: v === 'pass' ? '#fff' : '#0B6D5E', passBorder: v === 'pass' ? '#0E9F8C' : '#B6E3DA',
+        failBg: v === 'fail' ? '#C02626' : '#fff', failFg: v === 'fail' ? '#fff' : '#A31D1D', failBorder: v === 'fail' ? '#C02626' : '#F0C2C2',
+        pass: () => this.setState(st => ({ qc: Object.assign({}, st.qc, { [q.id]:'pass' }) })),
+        fail: () => this.setState(st => ({ qc: Object.assign({}, st.qc, { [q.id]:'fail' }) }))
+      };
+    });
+
+    const groups = [
+      { no:'JB-6712', reg:'4กก-2871', temp:false, stKey: s.synced ? 'ok' : 'local',
+        items:[
+          { label:'ปิดงาน 3 รายการ + เวลาทำงาน', size:'8 KB' },
+          { label:'รูปก่อน/หลังซ่อม 9 รูป', size:'14.2 MB' },
+          s.conflictItem ? { label:'สถานะงาน (ธุรการแก้ไขจากเว็บ 15:02)', size:'2 KB', conflict:'ธุรการเปลี่ยนช่างผู้รับผิดชอบจากเว็บ ขณะที่เครื่องนี้แก้สถานะงาน — เลือกเวอร์ชันที่จะเก็บไว้' } : null
+        ].filter(Boolean) },
+      { no:'JB-6709', reg:'ขข-8431', temp:false, stKey:'local',
+        items:[
+          { label:'คำขออะไหล่ ปั๊มติ๊ก × 1', size:'3 KB' },
+          s.failedItem ? { label:'รูปอะไหล่ชำรุด 4 รูป', size:'6.8 MB', failed:'อัปโหลดไม่สำเร็จ: สัญญาณหลุดกลางทาง (ครั้งที่ 2) — ไฟล์ยังอยู่ในเครื่อง' } : null
+        ].filter(Boolean) },
+      { no:'TMP-240729-014', reg:'3ขก-4408', temp:true, stKey:'local',
+        items:[{ label:'งานรับรถใหม่ + รูปรอบคัน 6 รูป', size:'11.4 MB' }] }
+    ].map(g => {
+      const meta = g.stKey === 'ok'
+        ? { label:'ซิงก์กับระบบแล้ว', bg:'#E3F5F1', fg:'#0B6D5E', path:'M2 13l4 4 7-8M11 15l2 2 9-10' }
+        : (s.syncing ? { label:'กำลังซิงก์', bg:'#E6EFFC', fg:'#1552B3', path:'M12 3v10l4-4M4 17a8 8 0 0 0 16 0' }
+                     : { label:'บันทึกในเครื่องแล้ว', bg:'#EEF1F5', fg:'#475569', path:'M4 12.5l5 5L20 7' });
+      return {
+        no: g.no, reg: g.reg, temp: g.temp,
+        stLabel: meta.label, stBg: meta.bg, stFg: meta.fg, stPath: meta.path,
+        items: g.items.map(r => ({
+          label: r.label, size: r.size,
+          isFailed: !!r.failed, isConflict: !!r.conflict, reason: r.failed || r.conflict || '',
+          retry: () => { this.setState({ failedItem:false }); this.startSync(); },
+          mine: () => this.setState({ conflictItem:false }),
+          theirs: () => this.setState({ conflictItem:false })
+        }))
+      };
+    });
+
+    const pendingRecords = groups.reduce((n, g) => n + g.items.length, 0);
+
+    return {
+      isList: s.view === 'list', isJob: s.view === 'job', isQc: s.view === 'qc', isSync: s.view === 'sync',
+      netLabel: s.online ? 'ออนไลน์ · 4G' : 'ออฟไลน์',
+      netFg: s.online ? '#7DD3C4' : '#F0AE55',
+      navList: s.view === 'list' || s.view === 'job' ? '#1B6BE3' : '#94A3B8',
+      navQc: s.view === 'qc' ? '#1B6BE3' : '#94A3B8',
+      navSync: s.view === 'sync' ? '#1B6BE3' : '#94A3B8',
+      goList: () => this.setState({ view:'list', alert:'' }),
+      goJob: () => this.setState({ view:'job', alert:'' }),
+      goQcTab: () => this.setState({ view:'qc', alert:'' }),
+      goSync: () => this.setState({ view:'sync', alert:'' }),
+
+      list: jobs, listCount: jobs.length,
+      listNote: s.listNote || '', hasListNote: !!s.listNote, clearListNote: () => this.setState({ listNote:'' }),
+
+      jbNo:'JB-6712', jbReg:'4กก-2871', jbPromise:'วันนี้ 16:30',
+      jbStLabel: jm.label, jbStBg: jm.bg, jbStFg: jm.fg, jbStPath: jm.path,
+      jbElapsed: this.hhmm(s.elapsed),
+      jbInstruction:'ลูกค้าอนุมัติ 5 รายการ ห้ามทำเกินรายการที่อนุมัติ · ถ่ายรูปก่อน-หลังทุกรายการ · ส่งคืนของเก่าให้ลูกค้าดูตอนรับรถ',
+      jbDone: doneN, jbRequired: req.length,
+      jbHasAlert: !!s.alert, jbAlert: s.alert, clearAlert: () => this.setState({ alert:'' }),
+      jbQcFailed: s.failedOnce && s.qcStage !== 'pass',
+      jbFailNote: s.failIssue, jbFailPri: s.failPriority, jbTester:'สุรชัย พันธุ์ทอง',
+      jbReady: s.qcStage === 'pass',
+      tasks: tasks.map(decorate),
+      timeline: s.log,
+
+      saveFg: s.online ? '#0E9F8C' : '#E0930C',
+      savePath: s.online ? 'M2 13l4 4 7-8M11 15l2 2 9-10' : 'M4 12.5l5 5L20 7',
+      saveText: s.online ? 'ซิงก์กับระบบแล้ว · ' + s.lastSync : 'บันทึกในเครื่องแล้ว · ' + pendingRecords + ' รายการรอซิงก์',
+
+      canStart: s.timer === 'idle' && s.qcStage === 'none',
+      canPause: s.timer === 'running' && s.qcStage !== 'pass',
+      canResume: s.timer === 'paused' && s.qcStage !== 'pass',
+      showExtraBtn: s.qcStage !== 'pass',
+      reopenJob: () => { this.setState({ qcStage:'none', timer:'paused', qc:{}, road:'', alert:'' }); this.addLog('เปิดงานซ่อมใหม่ · ยกเลิกผล QC เดิม ต้องส่งตรวจ QC อีกครั้ง', '#C2410C'); },
+      showQcBtn: s.timer !== 'idle' && s.qcStage !== 'pass',
+      qcBtnLabel: s.qcStage === 'wait' ? 'เปิดหน้าตรวจ QC' : 'ส่งตรวจ QC',
+      qcBtnBg: doneN === req.length ? '#1B6BE3' : '#EEF1F6',
+      qcBtnFg: doneN === req.length ? '#fff' : '#94A3B8',
+      qcBtnBorder: doneN === req.length ? 'none' : '1px solid #E3E8EF',
+      startWork: () => { this.setState({ timer:'running' }); this.setTask('T1', { status:'doing' }); this.addLog('เริ่มงานซ่อม', '#1B6BE3'); },
+      pauseWork: () => { this.setState({ timer:'paused' }); this.addLog('พักงาน (พักเบรก)', '#94A3B8'); },
+      resumeWork: () => { this.setState({ timer:'running' }); this.addLog('กลับมาทำงานต่อ', '#1B6BE3'); },
+      submitQc: () => {
+        if (s.qcStage === 'wait') { this.setState({ view:'qc' }); return; }
+        const left = req.filter(t => t.status !== 'done');
+        if (left.length) { this.setState({ alert:'ส่ง QC ไม่ได้ · ยังเหลือ ' + left.length + ' รายการที่อนุมัติแล้วแต่ยังไม่เสร็จ: ' + left.map(t => t.label).join(' · ') }); return; }
+        this.setState({ qcStage:'wait', timer:'paused', view:'qc', alert:'' });
+        this.addLog('ส่งงานเข้า QC', '#0F2440');
+      },
+
+      qcItems, qcDone, qcTotal: QC0.length, qcTester:'สุรชัย พันธุ์ทอง (หัวหน้ากะ)',
+      qcHasAlert: !!s.alert,
+      roadPassBg: s.road === 'pass' ? '#0E9F8C' : '#fff', roadPassFg: s.road === 'pass' ? '#fff' : '#0B6D5E', roadPassBorder: s.road === 'pass' ? '#0E9F8C' : '#B6E3DA',
+      roadFailBg: s.road === 'fail' ? '#C02626' : '#fff', roadFailFg: s.road === 'fail' ? '#fff' : '#A31D1D', roadFailBorder: s.road === 'fail' ? '#C02626' : '#F0C2C2',
+      roadPass: () => this.setState({ road:'pass' }), roadFail: () => this.setState({ road:'fail' }),
+      qcNote: s.qcNote, onQcNote: (e) => this.setState({ qcNote: e.target.value }),
+      qcPhotoText:'ถ่ายไว้ ' + s.qcPhotos + ' รูป', addQcPhoto: () => this.setState(st => ({ qcPhotos: st.qcPhotos + 1 })),
+      qcHint: qcAllPass ? 'ทุกหัวข้อผ่านและทดลองขับปกติ · กด QC ผ่าน เพื่อเปลี่ยนสถานะเป็นพร้อมส่งมอบ' : 'ต้องให้ผลทุกหัวข้อและผลทดลองขับก่อนสรุป QC',
+      passBtnBg: qcAllPass ? '#0E9F8C' : '#9BC3BC',
+      qcPass: () => {
+        if (!qcAllPass) { this.setState({ alert:'ยังสรุป QC ผ่านไม่ได้ · ต้องผ่านทุกหัวข้อและผลทดลองขับต้องปกติ' }); return; }
+        this.setState({ qcStage:'pass', view:'job', alert:'' });
+        this.addLog('QC ผ่าน · เปลี่ยนสถานะเป็นพร้อมส่งมอบ', '#0E9F8C');
+      },
+      askQcFail: () => this.setState({ qcFailOpen:true }),
+      qcFailOpen: s.qcFailOpen, closeQcFail: () => this.setState({ qcFailOpen:false }),
+      failIssues: FAIL_ISSUES.map(v => Object.assign({ label:v, tap: () => this.setState({ failIssue:v }) }, chip(s.failIssue === v))),
+      failPri: FAIL_PRI.map(v => Object.assign({ label:v, tap: () => this.setState({ failPriority:v }) }, chip(s.failPriority === v))),
+      doQcFail: () => {
+        this.setState(st => ({
+          qcFailOpen:false, qcStage:'none', failedOnce:true, view:'job', timer:'paused', road:'', qc:{},
+          tasks: st.tasks.concat([{ id:'FIX1', label:'แก้ไขตาม QC: ' + st.failIssue, part:'งานแก้ไข · ความสำคัญ ' + st.failPriority, status:'fix', before:false, after:false, req:true }])
+        }));
+        this.addLog('QC ตีกลับ · เพิ่มงานแก้ไข', '#C02626');
+      },
+
+      partsOpen: !!s.partsFor,
+      partsTask: s.partsFor ? (tasks.filter(t => t.id === s.partsFor)[0] || {}).label : '',
+      closeParts: () => this.setState({ partsFor:null }),
+      partOptions: PART_OPTS.map(v => Object.assign({ label:v, tap: () => this.setState({ part:v }) }, chip(s.part === v))),
+      partReasons: PART_REASONS.map(v => Object.assign({ label:v, tap: () => this.setState({ partReason:v }) }, chip(s.partReason === v))),
+      etaOptions: ETA_OPTS.map(v => Object.assign({ label:v, tap: () => this.setState({ eta:v }) }, chip(s.eta === v))),
+      qty: s.qty, qtyMinus: () => this.setState(st => ({ qty: Math.max(1, st.qty - 1) })), qtyPlus: () => this.setState(st => ({ qty: st.qty + 1 })),
+      canContinue: s.canContinue,
+      continueBg: s.canContinue ? '#1B6BE3' : '#EEF1F6', continueKnob: s.canContinue ? 'flex-end' : 'flex-start',
+      continueLabel: s.canContinue ? 'สถานะงานยังเป็น “กำลังซ่อม” และล็อกเฉพาะรายการนี้' : 'สถานะงานทั้งใบจะเป็น “รออะไหล่”',
+      toggleContinue: () => this.setState(st => ({ canContinue: !st.canContinue })),
+      submitParts: () => {
+        const id = s.partsFor;
+        this.setTask(id, { status:'blocked', blockPart: s.part + ' × ' + s.qty, blockReason: s.partReason, blockEta: s.eta });
+        this.setState({ partsFor:null, alert:'' });
+        this.addLog('แจ้งรออะไหล่: ' + s.part + ' × ' + s.qty + ' (' + s.partReason + ')', '#C2410C');
+      },
+
+      extraOpen: s.extraOpen,
+      askExtra: () => this.setState({ extraOpen:true }),
+      closeExtra: () => this.setState({ extraOpen:false }),
+      extraFindings: EXTRA_FINDINGS.map(v => Object.assign({ label:v, tap: () => this.setState({ extraFinding:v }) }, chip(s.extraFinding === v))),
+      extraNote: s.extraNote, onExtraNote: (e) => this.setState({ extraNote: e.target.value }),
+      extraPhotoText:'ถ่ายไว้ ' + s.extraPhotos + ' รูป', extraHasPhoto: s.extraPhotos > 0,
+      addExtraPhoto: () => this.setState(st => ({ extraPhotos: st.extraPhotos + 1 })),
+      extraPart: s.extraPart, onExtraPart: (e) => this.setState({ extraPart: e.target.value }),
+      extraLabor: s.extraLabor, onExtraLabor: (e) => this.setState({ extraLabor: e.target.value }),
+      submitExtra: () => {
+        this.setState(st => ({
+          extraOpen:false,
+          tasks: st.tasks.concat([{ id:'EX' + st.tasks.length, label: st.extraFinding, part:'งานเพิ่มเติม · ประเมิน ' + st.extraPart + ' บาท + ค่าแรง ' + st.extraLabor + ' ชม.', status:'pending', before:false, after:false, req:false }])
+        }));
+        this.addLog('ส่งงานเพิ่มเติมให้ธุรการออกใบเสนอราคาใหม่', '#8A5A00');
+      },
+
+      connBg: s.online ? '#1B3557' : '#3A2A16',
+      connFg: s.online ? '#7DD3C4' : '#F0AE55',
+      connLabel: s.online ? 'ออนไลน์ · Wi-Fi สาขาบางนา' : 'ออฟไลน์ · ไม่มีสัญญาณในโรงซ่อม',
+      connPath: s.online ? 'M2 8.5a15 15 0 0 1 20 0M5 12a10 10 0 0 1 14 0M8.5 15.5a5 5 0 0 1 7 0' : 'M2 8.5a15 15 0 0 1 8-3.9M14 4.7a15 15 0 0 1 8 3.8M8.5 15.5a5 5 0 0 1 7 0M3 3l18 18',
+      toggleNet: () => this.setState(st => ({ online: !st.online })),
+      lastSync: s.lastSync,
+      groups, pendingRecords, pendingPhotos: 19, pendingSize:'32.4 MB',
+      syncing: s.syncing, progress: s.progress, progressW: s.progress + '%',
+      progressText: s.progress < 40 ? 'กำลังส่งข้อมูลงาน JB-6712' : (s.progress < 80 ? 'กำลังอัปโหลดรูป 9/19' : 'กำลังยืนยันกับเซิร์ฟเวอร์'),
+      syncBtnLabel: s.syncing ? 'กำลังซิงก์… ' + s.progress + '%' : (s.online ? 'ซิงก์ทั้งหมดตอนนี้' : 'เชื่อมต่อแล้วจึงซิงก์ได้'),
+      syncBtnBg: s.syncing ? '#94A3B8' : (s.online ? '#1B6BE3' : '#9BB0CB'),
+      syncAll: () => { if (!s.online) { this.setState({ online:true }); } this.startSync(); },
+
+      demoRepair: () => {
+        this.setState({ view:'job', timer:'running', alert:'',
+          tasks: TASKS0.map(t => Object.assign({}, t, { status:'done', before:true, after:true })) });
+        this.addLog('ปิดงานครบทุกรายการที่อนุมัติ', '#0E9F8C');
+      },
+      demoParts: () => this.setState({ view:'job', timer:'running', partsFor:'T4', canContinue:true, alert:'' }),
+      demoQcFail: () => this.setState({ view:'qc', timer:'paused', qcStage:'wait', qc:{ q1:'fail', q2:'pass', q3:'pass', q4:'pass', q5:'pass', q6:'pass' }, road:'fail',
+        tasks: TASKS0.map(t => Object.assign({}, t, { status:'done', before:true, after:true })), alert:'' }),
+      demoSync: () => this.setState({ view:'sync', online:false, failedItem:true, conflictItem:true, synced:false, syncing:false, progress:0 }),
+      resetAll: () => { clearInterval(this.syncTick); this.setState({ view:'list', online:false, elapsed:84, timer:'idle', tasks: TASKS0.map(t => Object.assign({}, t)), qc:{}, road:'', qcStage:'none', failedOnce:false, alert:'', syncing:false, progress:0, synced:false, failedItem:true, conflictItem:true }); }
+    };
+  }
+
+  startSync() {
+    clearInterval(this.syncTick);
+    this.setState({ syncing:true, progress:0 });
+    this.syncTick = setInterval(() => {
+      this.setState(s => {
+        const p = s.progress + 10;
+        if (p >= 100) { clearInterval(this.syncTick); return { progress:100, syncing:false, synced:true, lastSync:'15:47 น.' }; }
+        return { progress:p };
+      });
+    }, 260);
+  }
+}
+
+</script>
+</body>
+</html>

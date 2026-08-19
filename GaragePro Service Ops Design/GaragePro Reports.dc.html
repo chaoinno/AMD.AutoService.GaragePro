@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; background:#EEF1F6; font-family:'Noto Sans Thai','IBM Plex Sans',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:#1B6BE3; text-decoration:none; }
+  a:hover { color:#0F2440; text-decoration:underline; }
+  *::-webkit-scrollbar { height:8px; width:8px; }
+  *::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:4px; }
+  input { font-family:inherit; }
+  @keyframes gpPulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+  @keyframes gpIn { from { transform:translateY(10px); opacity:0 } to { transform:none; opacity:1 } }
+  @keyframes gpSpin { to { transform:rotate(360deg) } }
+</style>
+</helmet>
+
+<section style="display:flex; flex-direction:column; gap:16px; padding:{{pagePad}}; align-items:{{pageAlign}}">
+
+  <sc-if value="{{appMode}}" hint-placeholder-val="{{false}}">
+    <div style="width:1440px; max-width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:14px; background:#0B1526; border-radius:0 0 12px 12px; padding:10px 16px">
+      <span style="font-size:11px; font-weight:700; color:#8FA6C4; letter-spacing:.1em">โหมดเล่นอิสระ · เว็บ NEXT.JS · ต้นแบบ ไม่ใช่ระบบจริง</span>
+      <a href="GaragePro Launcher.dc.html" style="display:inline-flex; align-items:center; gap:7px; border:1.5px dashed #7DD3C4; color:#7DD3C4; font-size:12px; font-weight:700; padding:8px 13px; border-radius:8px; text-decoration:none">&#8592; กลับหน้ารวมเดโม</a>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{notApp}}" hint-placeholder-val="{{true}}">
+
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap">
+    <span style="font-size:12px; font-weight:700; color:#1B6BE3; letter-spacing:.14em">WEB · MANAGER REPORTS</span>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{setWide}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{wideBg}}; color:{{wideFg}}">1440px</span>
+      <span onClick="{{setNarrow}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{narrowBg}}; color:{{narrowFg}}">1024px</span>
+    </div>
+    <div style="display:flex; gap:6px; background:#fff; border:1px solid #DCE3EC; border-radius:9px; padding:4px">
+      <span onClick="{{beManager}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{mgBg}}; color:{{mgFg}}">ผู้จัดการสาขา</span>
+      <span onClick="{{beLead}}" style="font-size:12px; font-weight:700; padding:6px 12px; border-radius:6px; cursor:pointer; background:{{ldBg}}; color:{{ldFg}}">หัวหน้าช่าง (จำกัดสิทธิ์)</span>
+    </div>
+    <div style="display:flex; gap:6px; flex-wrap:wrap">
+      <span onClick="{{demoEmpty}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">ไม่มีข้อมูล</span>
+      <span onClick="{{demoPartial}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">ข้อมูลไม่ครบ</span>
+      <span onClick="{{demoDelay}}" style="font-size:12px; font-weight:600; color:#8A5A00; background:#FFFBF3; border:1px solid #F0D9AC; padding:7px 11px; border-radius:8px; cursor:pointer">รีเฟรชล่าช้า</span>
+      <span onClick="{{doExport}}" style="font-size:12px; font-weight:600; color:#1B3557; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">กำลังส่งออก</span>
+      <span onClick="{{demoExportFail}}" style="font-size:12px; font-weight:600; color:#A31D1D; background:#FEF6F6; border:1px solid #F0C2C2; padding:7px 11px; border-radius:8px; cursor:pointer">ส่งออกล้มเหลว</span>
+      <span onClick="{{resetAll}}" style="font-size:12px; font-weight:600; color:#C02626; background:#fff; border:1px solid #DCE3EC; padding:7px 11px; border-radius:8px; cursor:pointer">รีเซ็ต</span>
+    </div>
+  </div>
+
+  </sc-if>
+
+  <div style="width:{{frameW}}; height:940px; background:#F1F4F9; border:1px solid #D4DDE8; border-radius:14px; overflow:hidden; box-shadow:0 26px 64px rgba(15,36,64,.14); display:flex; position:relative">
+
+    <div style="width:68px; flex:none; background:#0F2440; display:flex; flex-direction:column; align-items:center; padding:16px 0; gap:6px">
+      <div style="width:30px; height:30px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; margin-bottom:10px"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l2-5.5A2 2 0 0 1 6.9 6h10.2a2 2 0 0 1 1.9 1.5L21 13v5h-3M6 18H3v-5"/></svg></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="5">
+        <div onClick="{{n.tap}}" style="width:44px; height:44px; border-radius:10px; display:flex; align-items:center; justify-content:center; cursor:pointer; background:{{n.bg}}">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="{{n.fg}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.path}}"/></svg>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; overflow:hidden">
+
+      <div style="flex:none; background:#fff; border-bottom:1px solid #E3E8EF; padding:12px 18px; display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+          <div style="display:flex; flex-direction:column; gap:2px">
+            <span style="font-size:16px; font-weight:700; color:#0F2440">รายงานผู้บริหาร</span>
+            <span style="font-size:11.5px; color:#64748B">ใช้ตัดสินใจปฏิบัติการ · ทุกตัวเลขกดดูรายการจริงได้</span>
+          </div>
+          <div style="display:flex; align-items:center gap:8px; display:flex; gap:8px; align-items:center; background:#0F2440; border-radius:9px; padding:8px 12px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FA6C4" stroke-width="2.2" stroke-linecap="round" style="flex:none"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+            <span style="font-size:12.5px; font-weight:700; color:#fff; font-family:'IBM Plex Mono',monospace">{{range}}</span>
+            <span style="width:1px; height:14px; background:#1B3557"></span>
+            <span style="font-size:12.5px; font-weight:700; color:#fff">{{branch}}</span>
+          </div>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:10px">
+            <span style="display:inline-flex; align-items:center; gap:7px; background:{{freshBg}}; border:1px solid {{freshBorder}}; color:{{freshFg}}; font-size:11.5px; font-weight:700; padding:7px 11px; border-radius:8px"><span style="width:7px; height:7px; border-radius:50%; background:{{freshDot}}; animation:gpPulse 1.8s ease-in-out infinite"></span>{{freshLabel}}</span>
+            <span onClick="{{openInfo}}" style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:7px 11px; border-radius:8px; cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M12 11v5"/></svg>นิยามตัวชี้วัด</span>
+            <span onClick="{{doExport}}" style="display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:#fff; background:#1B6BE3; padding:8px 12px; border-radius:8px; cursor:pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M12 3v13M7 11l5 5 5-5"/></svg>ส่งออกรายงาน</span>
+            <div style="display:flex; align-items:center; gap:9px; padding-left:10px; border-left:1px solid #E3E8EF">
+              <div style="width:28px; height:28px; border-radius:50%; background:#1B3557; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff">{{initials}}</div>
+              <div style="display:flex; flex-direction:column"><span style="font-size:12px; font-weight:700; color:#0F2440">{{userName}}</span><span style="font-size:10.5px; color:#64748B">{{roleLabel}}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+          <sc-for list="{{ranges}}" as="r" hint-placeholder-count="4">
+            <span onClick="{{r.tap}}" style="background:{{r.bg}}; color:{{r.fg}}; border:1px solid {{r.border}}; font-size:12px; font-weight:600; padding:7px 11px; border-radius:7px; cursor:pointer">{{r.label}}</span>
+          </sc-for>
+          <span style="width:1px; height:20px; background:#E3E8EF; margin:0 3px"></span>
+          <sc-for list="{{selects}}" as="f" hint-placeholder-count="4">
+            <div onClick="{{f.tap}}" style="height:34px; border:1px solid {{f.border}}; background:{{f.bg}}; border-radius:8px; padding:0 11px; display:flex; align-items:center; gap:8px; cursor:pointer">
+              <span style="font-size:10.5px; color:#94A3B8; font-weight:700">{{f.k}}</span>
+              <span style="font-size:12.5px; font-weight:600; color:{{f.fg}}">{{f.v}}</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
+            </div>
+          </sc-for>
+          <sc-if value="{{hasFilters}}" hint-placeholder-val="{{false}}">
+            <span onClick="{{clearFilters}}" style="font-size:11.5px; font-weight:700; color:#C02626; cursor:pointer">ล้างตัวกรอง</span>
+          </sc-if>
+          <span style="margin-left:auto; font-size:11.5px; color:#64748B">{{compareNote}}</span>
+        </div>
+
+        <div style="display:flex; gap:3px; border-top:1px solid #EDF1F6; padding-top:9px; overflow-x:auto">
+          <sc-for list="{{tabs}}" as="t" hint-placeholder-count="6">
+            <span onClick="{{t.tap}}" style="padding:8px 12px; border-radius:8px; font-size:12.5px; font-weight:{{t.weight}}; color:{{t.fg}}; background:{{t.bg}}; cursor:pointer; white-space:nowrap">{{t.label}}</span>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:14px">
+
+        <sc-if value="{{delayed}}" hint-placeholder-val="{{false}}">
+          <div style="flex:none; background:#FFFBF3; border:1px solid #F0D9AC; border-radius:11px; padding:12px 14px; display:flex; align-items:center; gap:11px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; animation:gpSpin 1.4s linear infinite"><path d="M12 3a9 9 0 1 0 9 9" opacity=".4"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>
+            <span style="font-size:13px; font-weight:600; color:#8A5A00; flex:1">การประมวลผลข้อมูลล่าช้า — ตัวเลขที่เห็นเป็นข้อมูลถึง 14:00 น. (ปกติอัปเดตทุก 15 นาที) รายการหลังเวลานั้นยังไม่รวมอยู่ในรายงาน</span>
+            <span onClick="{{retryRefresh}}" style="font-size:12px; font-weight:700; color:#fff; background:#E0930C; padding:7px 12px; border-radius:7px; cursor:pointer">ลองรีเฟรชอีกครั้ง</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{partial}}" hint-placeholder-val="{{false}}">
+          <div style="flex:none; background:#FFFBF3; border:1px solid #F0D9AC; border-radius:11px; padding:12px 14px; display:flex; gap:11px; align-items:flex-start">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A5A00" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4M12 17.5v.01"/></svg>
+            <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+              <span style="font-size:13px; font-weight:700; color:#8A5A00">ข้อมูลไม่ครบทั้งช่วง</span>
+              <span style="font-size:12.5px; color:#8A5A00; line-height:1.7">สาขาศรีราชาเริ่มใช้ระบบเมื่อ 12 ก.ค. 2569 — ข้อมูล 1–11 ก.ค. ไม่มีในระบบ จึงไม่แสดงการเทียบกับช่วงก่อนหน้าและไม่ควรใช้ค่าเฉลี่ยของทั้งช่วงเป็นตัวตัดสิน</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+          <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:50px 0">
+            <div style="width:520px; background:#fff; border:1px solid #E3E8EF; border-radius:14px; padding:36px; display:flex; flex-direction:column; align-items:center; gap:13px; text-align:center">
+              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="1.6" stroke-linecap="round"><path d="M4 20V10M10 20V6M16 20v-4M22 20H2"/></svg>
+              <span style="font-size:19px; font-weight:700; color:#0F2440">ไม่มีข้อมูลในเงื่อนไขที่เลือก</span>
+              <span style="font-size:13px; color:#64748B; line-height:1.8">ไม่พบงานซ่อมของ <b style="color:#0F2440">{{branch}}</b> ประเภท <b style="color:#0F2440">{{svcType}}</b><br>ในช่วง {{range}} — ลองขยายช่วงวันที่ หรือล้างตัวกรองประเภทงาน</span>
+              <div style="display:flex; gap:9px">
+                <button onClick="{{clearFilters}}" style="height:44px; padding:0 18px; background:#1B6BE3; border:none; color:#fff; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ล้างตัวกรอง</button>
+                <button onClick="{{widen}}" style="height:44px; padding:0 18px; background:#fff; border:1px solid #C9D6E6; color:#1B3557; border-radius:9px; font-family:inherit; font-size:13.5px; font-weight:700; cursor:pointer">ขยายเป็น 90 วัน</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{hasData}}" hint-placeholder-val="{{true}}">
+          <div style="display:flex; flex-direction:column; gap:14px">
+
+            <div style="display:grid; grid-template-columns:{{kpiCols}}; gap:11px">
+              <sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+                <div style="background:#fff; border:1px solid {{k.border}}; border-top:3px solid {{k.accent}}; border-radius:11px; padding:13px; display:flex; flex-direction:column; gap:6px">
+                  <div style="display:flex; align-items:flex-start; gap:6px">
+                    <span style="font-size:11.5px; font-weight:700; color:#64748B; line-height:1.35; flex:1">{{k.label}}</span>
+                    <span onClick="{{k.info}}" style="width:15px; height:15px; border-radius:50%; background:#EEF1F6; color:#64748B; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none">i</span>
+                  </div>
+                  <span style="font-size:21px; font-weight:700; color:{{k.valueFg}}; font-family:'IBM Plex Mono',monospace; line-height:1.1">{{k.value}}</span>
+                  <span style="font-size:11px; color:{{k.deltaFg}}; font-weight:600; line-height:1.4">{{k.delta}}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{restricted}}" hint-placeholder-val="{{false}}">
+              <div style="background:#fff; border:1px dashed #C9D6E6; border-radius:12px; padding:16px; display:flex; gap:12px; align-items:flex-start">
+                <div style="width:36px; height:36px; border-radius:10px; background:#EEF1F5; display:flex; align-items:center; justify-content:center; flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+                <div style="display:flex; flex-direction:column; gap:4px; flex:1">
+                  <span style="font-size:13.5px; font-weight:700; color:#334155">ข้อมูลบางส่วนถูกจำกัดตามบทบาท</span>
+                  <span style="font-size:12.5px; color:#64748B; line-height:1.7">บทบาทหัวหน้าช่างเห็นข้อมูลปฏิบัติการและคุณภาพงานทั้งหมด แต่ <b>ต้นทุน กำไรขั้นต้น มูลค่าสต็อก และค่าคอมมิชชันรายบุคคล</b> ถูกซ่อนไว้ · ขอสิทธิ์เพิ่มได้จากผู้จัดการเขต</span>
+                  <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace">ref: PERM-5001 · EMP-10093</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="display:grid; grid-template-columns:{{chartCols}}; gap:14px; align-items:start">
+              <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:13px">
+                <div style="display:flex; align-items:flex-start; gap:10px">
+                  <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+                    <span style="font-size:14.5px; font-weight:700; color:#0F2440">{{chartTitle}}</span>
+                    <span style="font-size:11.5px; color:#64748B">{{chartSub}}</span>
+                  </div>
+                  <span onClick="{{toggleTable}}" style="font-size:11.5px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:6px 10px; border-radius:7px; cursor:pointer; flex:none">{{tableToggleLabel}}</span>
+                </div>
+
+                <sc-if value="{{showChart}}" hint-placeholder-val="{{true}}">
+                  <div style="display:flex; flex-direction:column; gap:10px">
+                    <sc-for list="{{bars}}" as="b" hint-placeholder-count="6">
+                      <div style="display:flex; align-items:center; gap:11px">
+                        <span style="width:{{labelW}}; flex:none; font-size:12px; color:#334155; text-align:right; line-height:1.35">{{b.label}}</span>
+                        <div style="flex:1; height:24px; background:#F1F4F9; border-radius:5px; position:relative; overflow:hidden">
+                          <div style="height:100%; width:{{b.w}}; background:{{b.color}}; border-radius:5px"></div>
+                          <sc-if value="{{b.hasMark}}" hint-placeholder-val="{{false}}">
+                            <div style="position:absolute; top:0; bottom:0; left:{{b.markAt}}; width:2px; background:#0F2440"></div>
+                          </sc-if>
+                        </div>
+                        <span style="width:96px; flex:none; font-size:12.5px; font-weight:700; color:{{b.valueFg}}; font-family:'IBM Plex Mono',monospace; text-align:right">{{b.value}}</span>
+                        <span style="width:78px; flex:none; font-size:11px; color:{{b.noteFg}}; font-weight:600">{{b.note}}</span>
+                      </div>
+                    </sc-for>
+                    <sc-if value="{{hasMarkLegend}}" hint-placeholder-val="{{false}}">
+                      <div style="display:flex; align-items:center; gap:8px; padding-top:4px; border-top:1px solid #F1F4F9">
+                        <span style="width:2px; height:12px; background:#0F2440"></span>
+                        <span style="font-size:11px; color:#64748B">{{markLegend}}</span>
+                      </div>
+                    </sc-if>
+                    <span style="font-size:11px; color:#94A3B8; line-height:1.6">แกนเดียวทั้งกราฟ · ทุกแท่งมีตัวเลขกำกับ และมีตารางเทียบเท่าสำหรับผู้ใช้โปรแกรมอ่านหน้าจอ</span>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{showTableView}}" hint-placeholder-val="{{false}}">
+                  <div style="border:1px solid #E3E8EF; border-radius:10px; overflow:hidden">
+                    <div style="display:grid; grid-template-columns:1.4fr 110px 110px 1fr; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                      <div style="padding:9px 12px">รายการ</div><div style="padding:9px 10px; text-align:right">ค่า</div><div style="padding:9px 10px; text-align:right">ช่วงก่อน</div><div style="padding:9px 12px">หมายเหตุ</div>
+                    </div>
+                    <sc-for list="{{bars}}" as="b" hint-placeholder-count="6">
+                      <div style="display:grid; grid-template-columns:1.4fr 110px 110px 1fr; border-bottom:1px solid #F5F8FB; font-size:12px; align-items:center">
+                        <div style="padding:9px 12px; color:#0F2440; font-weight:600">{{b.label}}</div>
+                        <div style="padding:9px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; font-weight:700; color:#0F2440">{{b.value}}</div>
+                        <div style="padding:9px 10px; text-align:right; font-family:'IBM Plex Mono',monospace; color:#64748B">{{b.prev}}</div>
+                        <div style="padding:9px 12px; font-size:11.5px; color:#475569; line-height:1.5">{{b.note}}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:14px">
+                <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px">
+                  <span style="font-size:14px; font-weight:700; color:#0F2440">{{sideTitle}}</span>
+                  <sc-for list="{{sideRows}}" as="r" hint-placeholder-count="5">
+                    <div style="display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-top:1px solid #F1F4F9">
+                      <span style="width:7px; height:7px; border-radius:50%; background:{{r.dot}}; margin-top:6px; flex:none"></span>
+                      <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                        <span style="font-size:12.5px; font-weight:600; color:#0F2440; line-height:1.5">{{r.label}}</span>
+                        <span style="font-size:11.5px; color:#64748B; line-height:1.55">{{r.note}}</span>
+                      </div>
+                      <span style="font-size:13px; font-weight:700; color:{{r.valueFg}}; font-family:'IBM Plex Mono',monospace; flex:none">{{r.value}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{isTech}}" hint-placeholder-val="{{false}}">
+                  <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:11px">
+                    <span style="font-size:14px; font-weight:700; color:#0F2440">วิธีคำนวณค่าคอมมิชชัน</span>
+                    <sc-if value="{{seeMoney}}" hint-placeholder-val="{{true}}">
+                      <div style="background:#F7F9FC; border-radius:9px; padding:12px; display:flex; flex-direction:column; gap:7px; font-size:11.5px; color:#0F2440; font-family:'IBM Plex Mono',monospace; line-height:1.6">
+                        <span>ฐาน = ค่าแรงที่เรียกเก็บจริง (ไม่รวมอะไหล่/VAT)</span>
+                        <span>อัตรา = 12% (ช่างระดับ 3) · 10% (ระดับ 2) · 8% (ระดับ 1)</span>
+                        <span style="color:#A31D1D">หัก = งานที่ QC ตีกลับ × 50% ของค่าแรงงานนั้น</span>
+                        <span style="color:#0B6D5E">คอมมิชชัน = (ฐาน × อัตรา) − หัก</span>
+                      </div>
+                      <span style="font-size:11.5px; color:#64748B; line-height:1.7">ตัวอย่าง อนุชา แก้วมณี: ค่าแรงเรียกเก็บ 38,400 × 12% = 4,608 · หัก QC ตีกลับ 1 งาน (ค่าแรง 900 × 50% = 450) → <b style="color:#0F2440">4,158 บาท</b></span>
+                    </sc-if>
+                    <sc-if value="{{noMoney}}" hint-placeholder-val="{{false}}">
+                      <div style="background:#F7F9FC; border-radius:9px; padding:14px; display:flex; gap:9px; align-items:flex-start">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" style="flex:none; margin-top:2px"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                        <span style="font-size:11.5px; color:#64748B; line-height:1.7">ค่าคอมมิชชันและค่าแรงที่เรียกเก็บถูกซ่อนสำหรับบทบาทนี้ · ยังเห็นจำนวนงาน รายการค่าแรงที่ปิด และอัตรา QC ตีกลับได้ตามปกติ</span>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+
+            <div style="background:#fff; border:1px solid #E3E8EF; border-radius:12px; overflow:hidden">
+              <div style="padding:13px 16px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px flex-wrap:wrap; display:flex; flex-wrap:wrap">
+                <span style="font-size:14px; font-weight:700; color:#0F2440">{{drillTitle}}</span>
+                <span style="background:#E6EFFC; color:#1552B3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:5px">เจาะลึกจากกราฟด้านบน</span>
+                <span style="margin-left:auto; font-size:11.5px; color:#64748B">{{drillN}} แถว · {{range}} · {{branch}}</span>
+              </div>
+              <div style="display:grid; grid-template-columns:{{drillCols}}; background:#F7F9FC; border-bottom:1px solid #E3E8EF; font-size:11px; font-weight:700; color:#64748B">
+                <sc-for list="{{drillHead}}" as="h" hint-placeholder-count="6">
+                  <div style="padding:10px 12px; text-align:{{h.align}}">{{h.label}}</div>
+                </sc-for>
+              </div>
+              <sc-for list="{{drillRows}}" as="r" hint-placeholder-count="8">
+                <div style="display:grid; grid-template-columns:{{drillCols}}; border-bottom:1px solid #F5F8FB; font-size:12.5px; align-items:center; background:{{r.bg}}">
+                  <sc-for list="{{r.cells}}" as="c" hint-placeholder-count="6">
+                    <div style="padding:11px 12px; text-align:{{c.align}}; font-family:{{c.font}}; font-weight:{{c.weight}}; color:{{c.fg}}; line-height:1.45">{{c.v}}</div>
+                  </sc-for>
+                </div>
+              </sc-for>
+              <div style="padding:12px 16px; background:#F7F9FC; display:flex; align-items:center; gap:12px">
+                <span style="font-size:11.5px; color:#64748B">{{drillNote}}</span>
+                <span onClick="{{doExport}}" style="margin-left:auto; font-size:11.5px; font-weight:700; color:#1B6BE3; cursor:pointer">ส่งออกตารางนี้เป็น CSV</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{infoOpen}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute; inset:0; background:rgba(10,22,38,.5); display:flex; justify-content:flex-end; z-index:50">
+        <div style="width:480px; background:#fff; display:flex; flex-direction:column; box-shadow:-20px 0 50px rgba(15,36,64,.24)">
+          <div style="padding:16px 20px; border-bottom:1px solid #EDF1F6; display:flex; align-items:flex-start; gap:12px; flex:none">
+            <div style="display:flex; flex-direction:column; gap:3px"><span style="font-size:15px; font-weight:700; color:#0F2440">นิยามตัวชี้วัด</span><span style="font-size:12px; color:#64748B">ใช้ร่วมกันทุกสาขา · แก้ไขได้ที่ตั้งค่าระบบ</span></div>
+            <div onClick="{{closeInfo}}" style="margin-left:auto; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+          </div>
+          <div style="flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:12px">
+            <sc-for list="{{defs}}" as="d" hint-placeholder-count="6">
+              <div style="border:1px solid #E3E8EF; border-radius:10px; padding:13px; display:flex; flex-direction:column; gap:5px">
+                <span style="font-size:13px; font-weight:700; color:#0F2440">{{d.term}}</span>
+                <span style="font-size:12px; color:#475569; line-height:1.7">{{d.def}}</span>
+                <span style="font-size:11px; color:#94A3B8; font-family:'IBM Plex Mono',monospace; line-height:1.5">{{d.formula}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{exportOpen}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute; right:22px; bottom:22px; width:400px; background:#fff; border:1px solid #E3E8EF; border-radius:13px; box-shadow:0 22px 50px rgba(15,36,64,.24); overflow:hidden; z-index:60; animation:gpIn .15s ease-out">
+        <div style="padding:13px 15px; border-bottom:1px solid #EDF1F6; display:flex; align-items:center; gap:10px">
+          <span style="font-size:13.5px; font-weight:700; color:#0F2440">สถานะการส่งออกรายงาน</span>
+          <div onClick="{{closeExport}}" style="margin-left:auto; width:26px; height:26px; display:flex; align-items:center; justify-content:center; cursor:pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+        </div>
+        <div style="padding:14px 15px; display:flex; flex-direction:column; gap:12px">
+          <sc-for list="{{exports}}" as="e" hint-placeholder-count="2">
+            <div style="border:1px solid {{e.border}}; background:{{e.bg}}; border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px">
+              <div style="display:flex; align-items:flex-start; gap:10px">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{e.fg}}" stroke-width="2.4" stroke-linecap="round" style="flex:none; margin-top:2px; animation:{{e.anim}}"><path d="{{e.path}}"/></svg>
+                <div style="display:flex; flex-direction:column; gap:2px; flex:1">
+                  <span style="font-size:12.5px; font-weight:700; color:#0F2440">{{e.name}}</span>
+                  <span style="font-size:11.5px; color:{{e.fg}}; line-height:1.55">{{e.status}}</span>
+                </div>
+              </div>
+              <sc-if value="{{e.busy}}" hint-placeholder-val="{{false}}">
+                <div style="height:7px; border-radius:4px; background:#fff; overflow:hidden"><div style="height:100%; width:{{e.pct}}; background:#1B6BE3; border-radius:4px"></div></div>
+              </sc-if>
+              <sc-if value="{{e.failed}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex; gap:8px">
+                  <span onClick="{{e.retry}}" style="font-size:11.5px; font-weight:700; color:#fff; background:#C02626; padding:6px 11px; border-radius:6px; cursor:pointer">ลองส่งออกอีกครั้ง</span>
+                  <span onClick="{{e.smaller}}" style="font-size:11.5px; font-weight:700; color:#A31D1D; background:#fff; border:1px solid #F0C2C2; padding:6px 11px; border-radius:6px; cursor:pointer">ลดช่วงข้อมูลเป็น 30 วัน</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{e.done}}" hint-placeholder-val="{{false}}">
+                <div style="display:flex; gap:8px">
+                  <span style="font-size:11.5px; font-weight:700; color:#fff; background:#0E9F8C; padding:6px 11px; border-radius:6px; cursor:pointer">ดาวน์โหลด</span>
+                  <span style="font-size:11.5px; font-weight:700; color:#1B3557; background:#fff; border:1px solid #C9D6E6; padding:6px 11px; border-radius:6px; cursor:pointer">ส่งเข้าอีเมล</span>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <span style="font-size:11px; color:#94A3B8; line-height:1.6">ไฟล์ที่ส่งออกจะมีช่วงวันที่ สาขา และตัวกรองที่ใช้กำกับไว้ในหัวเอกสารเสมอ เพื่อไม่ให้นำตัวเลขไปใช้ผิดบริบท</span>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{toast}}" hint-placeholder-val="{{false}}">
+      <div style="position:absolute; left:22px; bottom:22px; background:#1E293B; border-radius:12px; padding:13px 15px; display:flex; align-items:flex-start; gap:11px; box-shadow:0 18px 40px rgba(15,36,64,.28); animation:gpIn .15s ease-out; max-width:400px; z-index:70">
+        <div style="width:26px; height:26px; border-radius:8px; background:#1B6BE3; display:flex; align-items:center; justify-content:center; flex:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v.01M12 11v5"/></svg></div>
+        <div style="display:flex; flex-direction:column; gap:3px; flex:1">
+          <span style="font-size:13px; font-weight:700; color:#fff; line-height:1.5">{{toastTitle}}</span>
+          <span style="font-size:12px; color:#A9BDD6; line-height:1.6">{{toastBody}}</span>
+        </div>
+        <span onClick="{{clearToast}}" style="font-size:11.5px; font-weight:700; color:#7FB0F2; cursor:pointer; flex:none">ปิด</span>
+      </div>
+    </sc-if>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1540,&quot;height&quot;:1080},&quot;startRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;manager&quot;,&quot;lead&quot;],&quot;default&quot;:&quot;manager&quot;,&quot;tsType&quot;:&quot;'manager' | 'lead'&quot;,&quot;section&quot;:&quot;เดโม&quot;}}">
+const NAV = [
+  { key:'dash', path:'M3 11l9-7 9 7v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z' },
+  { key:'jobs', path:'M3 5h18v15H3zM3 10h18M8 15h8' },
+  { key:'pos', path:'M3 10h18M5 6h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z' },
+  { key:'stock', path:'M21 8l-9-5-9 5 9 5zM3 8v8l9 5 9-5V8' },
+  { key:'report', path:'M4 20V10M10 20V4M16 20v-7M22 20H2' }
+];
+
+const TABS = [
+  { key:'sales', label:'ยอดขายและการรับเงิน' },
+  { key:'ops', label:'ปฏิบัติการและ SLA' },
+  { key:'funnel', label:'ช่องทางงานตามสถานะ' },
+  { key:'stock', label:'สต็อกอะไหล่' },
+  { key:'po', label:'จัดซื้อและผู้จำหน่าย' },
+  { key:'tech', label:'ผลงานช่างและคอมมิชชัน' }
+];
+
+const DEFS = [
+  { term:'รอบเวลางาน (Turnaround)', def:'เวลาจากรับรถเข้าอู่ถึงลูกค้ารับรถกลับ นับเฉพาะเวลาทำการ ไม่รวมช่วงที่รออะไหล่', formula:'= เวลาที่ส่งมอบ − เวลารับรถ − เวลารออะไหล่' },
+  { term:'SLA เวลานัดส่งมอบ', def:'สัดส่วนงานที่ส่งมอบไม่เกินเวลาที่นัดกับลูกค้าครั้งล่าสุด (นับเวลาที่แก้ไขแล้วถ้าลูกค้ายอมรับ)', formula:'= งานที่ส่งทันเวลา ÷ งานที่ส่งมอบทั้งหมด' },
+  { term:'อัตรา QC ไม่ผ่าน', def:'สัดส่วนงานที่ถูก QC ตีกลับอย่างน้อย 1 ครั้งก่อนส่งมอบ', formula:'= งานที่ถูกตีกลับ ÷ งานที่เข้า QC' },
+  { term:'งานย้อนกลับ (Comeback)', def:'งานที่ลูกค้านำรถกลับมาด้วยอาการเดิมภายใน 30 วันหลังส่งมอบ', formula:'= งานซ้ำอาการเดิม ÷ งานที่ส่งมอบ (30 วัน)' },
+  { term:'ค่าซ่อมเฉลี่ยต่อคัน', def:'ยอดสุทธิที่เรียกเก็บได้จริงเฉลี่ยต่อใบสั่งซ่อมที่ปิดแล้ว ไม่รวมภาษีมูลค่าเพิ่ม', formula:'= ยอดสุทธิรวม ÷ จำนวนงานที่ปิด' },
+  { term:'Fill rate ผู้จำหน่าย', def:'สัดส่วนจำนวนชิ้นที่ได้รับครบตามใบสั่งซื้อในรอบส่งแรก', formula:'= จำนวนที่รับครั้งแรก ÷ จำนวนที่สั่ง' },
+  { term:'ส่วนต่างราคา (Price variance)', def:'ส่วนต่างระหว่างต้นทุนที่จ่ายจริงกับต้นทุนอ้างอิงล่าสุดของอะไหล่นั้น', formula:'= (ต้นทุนจริง − ต้นทุนอ้างอิง) ÷ ต้นทุนอ้างอิง' },
+  { term:'ค่าคอมมิชชันช่าง', def:'คำนวณจากค่าแรงที่เรียกเก็บได้จริงตามระดับช่าง หักงานที่ QC ตีกลับ', formula:'= (ค่าแรงเรียกเก็บ × อัตราตามระดับ) − หัก QC' }
+];
+
+const TECH_ALT = {
+  chartTitle:'รายการค่าแรงที่ปิดงานต่อช่าง', chartSub:'หน่วย: รายการ · วัดปริมาณงานที่ทำเสร็จ (ข้อมูลค่าเงินถูกจำกัดตามบทบาท)',
+  markLegend:'เส้นทึบ = ค่าเฉลี่ยของสาขา 44.7 รายการ', max:75, mark:44.7, fmt:'items',
+  bars:[
+    { label:'อนุชา แก้วมณี', v:68, prev:'62', note:'สูงกว่าเฉลี่ย', ok:true },
+    { label:'ธีรศักดิ์ บุญมี', v:59, prev:'63', note:'QC ตีกลับ 2 งาน', ok:false },
+    { label:'สุรชัย พันธุ์ทอง', v:52, prev:'49', note:'ใกล้เฉลี่ย', ok:true },
+    { label:'ณัฐพล ศรีสุวรรณ', v:44, prev:'41', note:'ใกล้เฉลี่ย', ok:true },
+    { label:'วีระพงษ์ ทองดี', v:30, prev:'27', note:'ช่างช่วย · งานน้อยกว่า', ok:true },
+    { label:'พิชิต ยั่งยืน', v:15, prev:'—', note:'เข้าใหม่ 12 ก.ค.', ok:true }
+  ]
+};
+
+const money = (n) => n.toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+const int = (n) => n.toLocaleString('en-US');
+
+const DATA = {
+  sales: {
+    chartTitle:'ยอดขายสุทธิรายวัน (ก.ค. 2569)', chartSub:'หน่วย: บาท · แกนเดียว · เทียบเป้าหมายรายวัน 160,000 บาท',
+    markLegend:'เส้นทึบ = เป้าหมายรายวัน 160,000 บาท',
+    bars:[
+      { label:'23 ก.ค.', v:142300, prev:'138,900', note:'ต่ำกว่าเป้า', ok:false },
+      { label:'24 ก.ค.', v:168400, prev:'151,200', note:'เกินเป้า', ok:true },
+      { label:'25 ก.ค.', v:174900, prev:'160,400', note:'เกินเป้า', ok:true },
+      { label:'26 ก.ค.', v:121600, prev:'133,800', note:'วันหยุดชดเชย', ok:false },
+      { label:'27 ก.ค.', v:158200, prev:'149,600', note:'ใกล้เป้า', ok:false },
+      { label:'28 ก.ค.', v:181500, prev:'162,100', note:'เกินเป้า', ok:true },
+      { label:'29 ก.ค.', v:184320, prev:'164,700', note:'สูงสุดของสัปดาห์', ok:true }
+    ],
+    max:200000, mark:160000, fmt:'money',
+    sideTitle:'องค์ประกอบของยอดรับเงิน',
+    side:[
+      { label:'ยอดขายก่อนส่วนลด', value:'1,196,420.00', note:'จาก 78 ใบสั่งซ่อมที่ปิดแล้ว', dot:'#1B6BE3' },
+      { label:'ส่วนลดที่ให้ลูกค้า', value:'−38,600.00', note:'3.2% ของยอดขาย · เกินเกณฑ์ 3% ที่ตั้งไว้', dot:'#E0930C', warn:true },
+      { label:'ภาษีมูลค่าเพิ่ม 7%', value:'81,047.40', note:'นำส่งกรมสรรพากรรอบ ก.ค.', dot:'#94A3B8' },
+      { label:'มัดจำที่รับล่วงหน้า', value:'46,000.00', note:'12 งาน · ตัดกับยอดเมื่อส่งมอบ', dot:'#0E9F8C' },
+      { label:'คืนเงิน / ยกเลิกใบเสร็จ', value:'−9,240.00', note:'2 รายการ · มีเหตุผลและผู้อนุมัติครบ', dot:'#C02626', warn:true }
+    ],
+    drillTitle:'รายการรับเงินรายใบ (เจาะจากยอดขายรายวัน)',
+    head:[
+      { label:'เลขที่เอกสาร', align:'left' }, { label:'งาน / ทะเบียน', align:'left' }, { label:'ประเภทงาน', align:'left' },
+      { label:'ยอดก่อนลด', align:'right' }, { label:'ส่วนลด', align:'right' }, { label:'ยอดสุทธิ', align:'right' },
+      { label:'ช่องทาง', align:'left' }, { label:'ผู้รับเงิน', align:'left' }
+    ],
+    cols:'130px 1fr 130px 110px 100px 120px 130px 130px',
+    rows:[
+      ['RC-24-0731','JB-6712 · 4กก-2871','ซ่อมทั่วไป','19,100.00','−500.00','19,902.00','เงินสด + บัตร','จารุวรรณ ผ่องแผ้ว'],
+      ['IV-24-0712','JB-6703 · 1ขค-5590','เช็คระยะ','7,700.00','−0.00','8,239.00','โอน PromptPay','จารุวรรณ ผ่องแผ้ว'],
+      ['IV-24-0711','JB-6701 · 6กพ-1188','ประกันภัย','29,400.00','−1,200.00','30,174.00','วางบิลประกัน','ศักดิ์ชัย เพียรทอง'],
+      ['RC-24-0729','JB-6699 · 4ขจ-7761','เปลี่ยนถ่ายน้ำมัน','5,590.00','−0.00','5,981.30','เงินสด','ศักดิ์ชัย เพียรทอง'],
+      ['CN-24-0032','JB-6688 · 8กฬ-4412','ซ่อมทั่วไป','−6,400.00','—','−6,848.00','คืนเงินโอน','อนุมัติ: กัญญารัตน์'],
+      ['IV-24-0708','JB-6690 · 3กม-8890','ซ่อมสีและตัวถัง','42,600.00','−2,000.00','43,442.00','บัตรเครดิต','จารุวรรณ ผ่องแผ้ว'],
+      ['RC-24-0726','JB-6685 · 5กด-2210','เช็คระยะ','4,200.00','−200.00','4,280.00','เงินสด','ศักดิ์ชัย เพียรทอง']
+    ],
+    drillNote:'แถวสีอ่อนคือรายการคืนเงิน/ลดหนี้ — รวมอยู่ในยอดสุทธิแล้ว'
+  },
+  ops: {
+    chartTitle:'รอบเวลางานเฉลี่ยตามประเภทงาน', chartSub:'หน่วย: ชั่วโมงทำการ · ไม่รวมเวลารออะไหล่',
+    markLegend:'เส้นทึบ = เป้าหมายภายใน 8 ชั่วโมงทำการ',
+    bars:[
+      { label:'เปลี่ยนถ่ายน้ำมัน', v:2.4, prev:'2.6', note:'ดีกว่าเป้า', ok:true },
+      { label:'เช็คระยะ', v:5.1, prev:'5.4', note:'ตามเป้า', ok:true },
+      { label:'ซ่อมเบรก/ช่วงล่าง', v:9.6, prev:'8.9', note:'เกินเป้า 1.6 ชม.', ok:false },
+      { label:'ซ่อมแอร์', v:7.8, prev:'8.2', note:'ตามเป้า', ok:true },
+      { label:'ซ่อมสีและตัวถัง', v:31.5, prev:'29.8', note:'ต้องแยกเกณฑ์', ok:false },
+      { label:'งานประกันภัย', v:18.2, prev:'21.4', note:'ดีขึ้น 3.2 ชม.', ok:true }
+    ],
+    max:34, mark:8, fmt:'hours',
+    sideTitle:'ตัวชี้วัดปฏิบัติการหลัก',
+    side:[
+      { label:'รับรถเข้าอู่', value:'104 คัน', note:'เฉลี่ย 14.9 คัน/วัน · สูงสุดวันเสาร์', dot:'#1B6BE3' },
+      { label:'ปิดงานสำเร็จ', value:'78 งาน', note:'ค้างในระบบ 26 งาน', dot:'#0E9F8C' },
+      { label:'ส่งมอบตรงเวลา (SLA)', value:'82%', note:'เป้าหมาย 90% · หลุด 14 งาน', dot:'#E0930C', warn:true },
+      { label:'เวลารออะไหล่เฉลี่ย', value:'19.4 ชม.', note:'คิดเป็น 34% ของเวลาที่งานค้างในอู่', dot:'#C2410C', warn:true },
+      { label:'QC ไม่ผ่านครั้งแรก', value:'11.5%', note:'9 จาก 78 งาน · ช่วงล่างเป็นสาเหตุหลัก', dot:'#C02626', warn:true },
+      { label:'งานย้อนกลับ 30 วัน', value:'3 งาน', note:'3.8% · ทั้งหมดเป็นงานเบรก', dot:'#C02626', warn:true }
+    ],
+    drillTitle:'งานที่หลุด SLA และงานที่ QC ตีกลับ',
+    head:[
+      { label:'เลขงาน', align:'left' }, { label:'ทะเบียน / รุ่น', align:'left' }, { label:'ประเภทงาน', align:'left' },
+      { label:'นัดส่งมอบ', align:'left' }, { label:'ส่งจริง', align:'left' }, { label:'ช้ากว่านัด', align:'right' },
+      { label:'สาเหตุหลัก', align:'left' }, { label:'ช่างผู้รับผิดชอบ', align:'left' }
+    ],
+    cols:'104px 1fr 130px 130px 130px 110px 1.2fr 140px',
+    rows:[
+      ['JB-6709','ขข-8431 · BT-50 PRO','ซ่อมช่วงล่าง','29 ก.ค. 12:00','ยังไม่ส่ง','+3 ชม. 42 น.','รออะไหล่ปั๊มติ๊ก (PO-2471)','ธีรศักดิ์ บุญมี'],
+      ['JB-6710','5กท-9098 · Ranger','ซ่อมช่วงล่าง','29 ก.ค. 18:00','ยังไม่ส่ง','—','QC ตีกลับ 1 ครั้ง (เสียงช่วงล่าง)','ธีรศักดิ์ บุญมี'],
+      ['JB-6688','8กฬ-4412 · Civic','ซ่อมเบรก','26 ก.ค. 16:00','27 ก.ค. 10:20','+18 ชม. 20 น.','งานย้อนกลับจากอาการเดิม','สุรชัย พันธุ์ทอง'],
+      ['JB-6684','2กท-5567 · Almera','ซ่อมแอร์','25 ก.ค. 17:00','26 ก.ค. 09:10','+16 ชม. 10 น.','อะไหล่ผิดรุ่นจากผู้จำหน่าย','ณัฐพล ศรีสุวรรณ'],
+      ['JB-6679','7กจ-1102 · Vios','เช็คระยะ','24 ก.ค. 15:00','24 ก.ค. 17:40','+2 ชม. 40 น.','ช่างไม่พอในกะบ่าย','อนุชา แก้วมณี'],
+      ['JB-6675','1ขน-9080 · City','ซ่อมเบรก','23 ก.ค. 13:00','23 ก.ค. 16:05','+3 ชม. 05 น.','QC ตีกลับ 1 ครั้ง (ผ้าเบรกไม่แนบ)','สุรชัย พันธุ์ทอง']
+    ],
+    drillNote:'เรียงตามความช้ามากสุด · กดแถวเพื่อเปิดงานจริงในโมดูลงานซ่อม'
+  },
+  funnel: {
+    chartTitle:'ช่องทางงานตามสถานะ (ณ ตอนนี้)', chartSub:'หน่วย: จำนวนงาน · ความกว้างแท่งคือจำนวนงานที่ค้างในสถานะนั้น',
+    markLegend:'',
+    bars:[
+      { label:'รอตรวจเช็ค', v:2, prev:'3', note:'รอ 0.8 ชม.', ok:true },
+      { label:'รอเสนอราคา', v:1, prev:'2', note:'รอ 1.2 ชม.', ok:true },
+      { label:'รออนุมัติจากลูกค้า', v:5, prev:'3', note:'รอ 4.6 ชม. · คอขวด', ok:false },
+      { label:'กำลังซ่อม', v:8, prev:'9', note:'รอ 6.1 ชม.', ok:true },
+      { label:'รออะไหล่', v:6, prev:'4', note:'รอ 19.4 ชม. · คอขวด', ok:false },
+      { label:'รอ QC', v:3, prev:'2', note:'รอ 2.1 ชม.', ok:true },
+      { label:'พร้อมส่งมอบ', v:1, prev:'3', note:'รอ 1.4 ชม.', ok:true }
+    ],
+    max:10, mark:0, fmt:'jobs',
+    sideTitle:'คอขวดที่ต้องแก้ก่อน',
+    side:[
+      { label:'รออะไหล่ 6 งาน', value:'19.4 ชม.', note:'ต้นเหตุ: PO-2471 และ PO-2465 เกินกำหนดรับของ', dot:'#C2410C', warn:true },
+      { label:'รออนุมัติจากลูกค้า 5 งาน', value:'4.6 ชม.', note:'2 งานค้างเกิน 2 ชม. ยังไม่มีใครโทรตาม', dot:'#E0930C', warn:true },
+      { label:'กำลังซ่อม 8 งาน', value:'6.1 ชม.', note:'ช่องซ่อมว่าง 2 ช่อง · ช่างว่าง 2 คน', dot:'#1B6BE3' },
+      { label:'อัตราไหลผ่านต่อวัน', value:'11.1 งาน', note:'รับเข้า 14.9 คัน/วัน — งานสะสมเพิ่มขึ้น', dot:'#C02626', warn:true }
+    ],
+    drillTitle:'งานที่ค้างในสถานะคอขวด',
+    head:[
+      { label:'เลขงาน', align:'left' }, { label:'ทะเบียน', align:'left' }, { label:'สถานะ', align:'left' },
+      { label:'ค้างมานาน', align:'right' }, { label:'สาเหตุ', align:'left' }, { label:'ผู้รับผิดชอบถัดไป', align:'left' }
+    ],
+    cols:'104px 130px 150px 120px 1.4fr 160px',
+    rows:[
+      ['JB-6709','ขข-8431','รออะไหล่','2 วัน 4 ชม.','ปั๊มติ๊ก PO-2471 เกินกำหนด 1 วัน','ธุรการจัดซื้อ'],
+      ['JB-6704','2กฬ-9932','รออะไหล่','1 วัน 6 ชม.','ชุดคลัตช์ PO-2469 ผู้จำหน่ายเลื่อนส่ง','ธุรการจัดซื้อ'],
+      ['JB-6714','2ขฉ-7742','รออนุมัติจากลูกค้า','5 ชม. 12 น.','ส่งใบเสนอราคาแล้วแต่ลูกค้ายังไม่ตอบ','หน้าร้าน · โทรตาม'],
+      ['JB-6721','9กก-4471','รออนุมัติจากลูกค้า','3 ชม. 40 น.','รอลูกค้าปรึกษาที่บ้าน','หน้าร้าน · โทรตาม'],
+      ['JB-6717','3ขก-4408','รออะไหล่','8 ชม. 05 น.','ยางแท่นเครื่องต้องสั่งเพิ่ม 2 วัน','ธุรการจัดซื้อ']
+    ],
+    drillNote:'เกณฑ์คอขวด: เวลารอเฉลี่ยในสถานะเกิน 2 เท่าของค่ากลางทั้งสาขา'
+  },
+  stock: {
+    chartTitle:'อะไหล่หมุนเวียนเร็วที่สุด 6 อันดับ', chartSub:'หน่วย: จำนวนที่เบิกใช้ในช่วงที่เลือก',
+    markLegend:'',
+    bars:[
+      { label:'กรองน้ำมันเครื่อง', v:64, prev:'58', note:'หมุนเร็ว', ok:true },
+      { label:'น้ำมันเครื่อง 5W-30', v:52, prev:'47', note:'ต่ำกว่า ROP', ok:false },
+      { label:'กรองแอร์ Denso', v:38, prev:'35', note:'หมุนเร็ว', ok:true },
+      { label:'ผ้าเบรกหน้า Bendix', v:26, prev:'24', note:'หมุนเร็ว', ok:true },
+      { label:'น้ำยาแอร์ R134a', v:21, prev:'18', note:'ปกติ', ok:true },
+      { label:'ยาง 185/55R16', v:16, prev:'22', note:'ถูกจองทั้งหมด', ok:false }
+    ],
+    max:70, mark:0, fmt:'units',
+    sideTitle:'สัญญาณที่ต้องจัดการ',
+    side:[
+      { label:'ของหมด (available = 0)', value:'3 รหัส', note:'โช้คอัพหน้า · ผ้าเบรกแท้ · ใบปัดน้ำฝน', dot:'#C02626', warn:true },
+      { label:'ต่ำกว่าจุดสั่งซื้อ', value:'5 รหัส', note:'2 รหัสมีของกำลังสั่งแล้ว', dot:'#E0930C', warn:true },
+      { label:'ค้างสต็อกเกิน 90 วัน', value:'11 รหัส', note:'มูลค่า 84,200 บาท · ควรคืนหรือลดราคา', dot:'#8A5A00', warn:true, money:true },
+      { label:'มูลค่าสต็อกคงเหลือ', value:'1,842,600', note:'ต้นทุน · จองไว้ 254,200 บาท', dot:'#1B6BE3', money:true },
+      { label:'การปรับสต็อกผิดปกติ', value:'2 ครั้ง', note:'นับขาดซ้ำที่รหัสเดิม 2 เดือนติด — ควรตรวจสอบ', dot:'#C02626', warn:true }
+    ],
+    drillTitle:'อะไหล่ค้างสต็อกและการปรับสต็อกผิดปกติ',
+    head:[
+      { label:'รหัส', align:'left' }, { label:'อะไหล่', align:'left' }, { label:'คงคลัง', align:'right' },
+      { label:'เบิกล่าสุด', align:'left' }, { label:'อายุสต็อก', align:'right' }, { label:'มูลค่าต้นทุน', align:'right' }, { label:'ข้อสังเกต', align:'left' }
+    ],
+    cols:'130px 1fr 90px 130px 110px 130px 1.3fr',
+    rows:[
+      ['P-BRK-0388','ผ้าเบรกหลัง Mitsubishi Triton','8 ชุด','12 มี.ค. 2569','139 วัน','9,840.00','ไม่มีรถรุ่นนี้เข้าซ่อม 4 เดือน · พิจารณาคืนผู้จำหน่าย'],
+      ['P-SUS-0912','ลูกหมากปีกนก Nissan NV','6 ชิ้น','2 เม.ย. 2569','118 วัน','7,020.00','สั่งเกินความต้องการรอบก่อน'],
+      ['P-ENG-1750','ชุดปะเก็นฝาสูบ Isuzu 4JJ1','2 ชุด','18 ก.พ. 2569','162 วัน','12,600.00','ของราคาสูง ค้างนาน · ตรวจสภาพก่อนใช้'],
+      ['P-OIL-1001','น้ำมันเครื่อง 5W-30 (4 ลิตร)','3 แกลลอน','29 ก.ค. 2569','2 วัน','2,460.00','ปรับสต็อกนับขาด 2 แกลลอน 2 เดือนติดกัน — ผิดปกติ'],
+      ['P-AC-0777','น้ำยาแอร์ R134a','9 กระป๋อง','29 ก.ค. 2569','5 วัน','3,060.00','เบิกเพิ่มโดยไม่มีในใบเสนอราคา 3 ครั้งในเดือนนี้']
+    ],
+    drillNote:'อายุสต็อกนับจากวันที่เบิกใช้ครั้งล่าสุด · เกณฑ์ค้างสต็อก 90 วัน'
+  },
+  po: {
+    chartTitle:'Lead time จริงเทียบที่ตกลง ตามผู้จำหน่าย', chartSub:'หน่วย: วัน · แท่งคือเวลาส่งจริงเฉลี่ย',
+    markLegend:'เส้นทึบ = เวลาส่งที่ตกลงไว้ตามสัญญา (เฉลี่ย 2.5 วัน)',
+    bars:[
+      { label:'ออโต้พาร์ท เซ็นเตอร์', v:2.1, prev:'1.9', note:'ตรงเวลา 92%', ok:true },
+      { label:'สยามพาร์ท ซัพพลาย', v:3.4, prev:'3.1', note:'ตรงเวลา 85%', ok:true },
+      { label:'โตโยต้า ศูนย์อะไหล่', v:2.8, prev:'2.6', note:'ตรงเวลา 96%', ok:true },
+      { label:'เคบี ช่วงล่าง', v:6.2, prev:'5.1', note:'ช้ากว่าตกลง 1.2 วัน', ok:false },
+      { label:'ปตท. ลูบริแคนท์ส', v:2.0, prev:'2.0', note:'ตรงเวลา 100%', ok:true },
+      { label:'มิชลิน ดีลเลอร์', v:4.5, prev:'3.8', note:'ช้าลง 0.7 วัน', ok:false }
+    ],
+    max:7, mark:2.5, fmt:'days',
+    sideTitle:'สถานะการจัดซื้อ',
+    side:[
+      { label:'PO ค้างรับของ', value:'4 ใบ', note:'มูลค่า 42,090 บาท', dot:'#1B6BE3', money:false },
+      { label:'เกินกำหนดรับของ', value:'2 ใบ', note:'PO-2471 (1 วัน) · PO-2465 (3 วัน) — กระทบ 2 งาน', dot:'#C02626', warn:true },
+      { label:'Fill rate รอบส่งแรก', value:'88%', note:'เป้าหมาย 95% · ขาดหลักจาก เคบี ช่วงล่าง', dot:'#E0930C', warn:true },
+      { label:'ส่วนต่างราคาเฉลี่ย', value:'+3.4%', note:'สูงขึ้นจากน้ำมันเครื่องและยาง', dot:'#8A5A00', warn:true, money:true },
+      { label:'ของรับแล้วแต่ชำรุด', value:'4 ชิ้น', note:'ตั้งเรื่องคืนผู้จำหน่ายแล้ว 3 ชิ้น', dot:'#C2410C', warn:true }
+    ],
+    drillTitle:'ใบสั่งซื้อค้างรับและส่วนต่างราคา',
+    head:[
+      { label:'เลขที่ PO', align:'left' }, { label:'ผู้จำหน่าย', align:'left' }, { label:'รายการหลัก', align:'left' },
+      { label:'กำหนดรับ', align:'left' }, { label:'สถานะ', align:'left' }, { label:'ส่วนต่างราคา', align:'right' }, { label:'ผลกระทบต่องาน', align:'left' }
+    ],
+    cols:'110px 1fr 1.2fr 130px 130px 120px 1.2fr',
+    rows:[
+      ['PO-2471','ออโต้พาร์ท เซ็นเตอร์','โช้คอัพหน้า KYB × 2','28 ก.ค. 2569','เกิน 1 วัน','+0.0%','JB-6712 เกินนัดส่งมอบแล้ว'],
+      ['PO-2465','ออโต้พาร์ท เซ็นเตอร์','ผ้าเบรก Bendix × 6','26 ก.ค. 2569','เกิน 3 วัน','+1.2%','กระทบสต็อกสำรองผ้าเบรก'],
+      ['PO-2468','ปตท. ลูบริแคนท์ส','น้ำมันเครื่อง × 12','30 ก.ค. 2569','รับ 6/12','+4.9%','ต้นทุนต่อคันเพิ่ม 40 บาท'],
+      ['PO-2472','มิชลิน ดีลเลอร์','ยาง 185/55R16 × 8','1 ส.ค. 2569','ส่งแล้ว','+2.8%','ยังไม่กระทบงาน'],
+      ['PO-2469','เคบี ช่วงล่าง','ชุดคลัตช์ × 1','27 ก.ค. 2569','เลื่อนไม่มีกำหนด','+0.0%','JB-6704 ค้างรออะไหล่ 1 วัน 6 ชม.']
+    ],
+    drillNote:'ส่วนต่างราคาเทียบกับต้นทุนอ้างอิงล่าสุดของแต่ละรหัส'
+  },
+  tech: {
+    chartTitle:'ค่าแรงที่เรียกเก็บได้ต่อช่าง', chartSub:'หน่วย: บาท · เฉพาะค่าแรงที่ปิดงานและเรียกเก็บจริง',
+    markLegend:'เส้นทึบ = ค่าเฉลี่ยของสาขา 31,800 บาท',
+    bars:[
+      { label:'อนุชา แก้วมณี', v:38400, prev:'35,600', note:'สูงกว่าเฉลี่ย', ok:true },
+      { label:'ธีรศักดิ์ บุญมี', v:34200, prev:'36,100', note:'QC ตีกลับ 2 งาน', ok:false },
+      { label:'สุรชัย พันธุ์ทอง', v:29800, prev:'28,400', note:'ใกล้เฉลี่ย', ok:true },
+      { label:'ณัฐพล ศรีสุวรรณ', v:27600, prev:'25,900', note:'ใกล้เฉลี่ย', ok:true },
+      { label:'วีระพงษ์ ทองดี', v:21400, prev:'19,800', note:'ช่างช่วย · งานน้อยกว่า', ok:true },
+      { label:'พิชิต ยั่งยืน', v:18200, prev:'—', note:'เข้าใหม่ 12 ก.ค.', ok:true }
+    ],
+    max:42000, mark:31800, fmt:'money',
+    sideTitle:'คุณภาพงานและงานที่ต้องแก้',
+    side:[
+      { label:'งานที่มอบหมายทั้งหมด', value:'104 งาน', note:'เฉลี่ย 17.3 งาน/ช่าง', dot:'#1B6BE3' },
+      { label:'รายการค่าแรงที่ปิดแล้ว', value:'268 รายการ', note:'เฉลี่ย 3.4 รายการ/งาน', dot:'#0E9F8C' },
+      { label:'งานที่ QC ตีกลับ', value:'9 งาน', note:'ธีรศักดิ์ 2 · สุรชัย 2 · อื่น ๆ 5', dot:'#C02626', warn:true },
+      { label:'คอมมิชชันรวมรอบนี้', value:'20,148.00', note:'คิดจากค่าแรงเรียกเก็บ หัก QC ตีกลับแล้ว', dot:'#8A5A00', money:true },
+      { label:'ชั่วโมงว่างรอสั่งงาน', value:'46 ชม.', note:'ส่วนใหญ่อยู่ในกะบ่ายวันธรรมดา', dot:'#E0930C', warn:true }
+    ],
+    drillTitle:'ผลงานและคอมมิชชันรายช่าง',
+    head:[
+      { label:'ช่าง', align:'left' }, { label:'ระดับ', align:'left' }, { label:'งานที่รับ', align:'right' },
+      { label:'รายการค่าแรงที่ปิด', align:'right' }, { label:'ค่าแรงเรียกเก็บ', align:'right' },
+      { label:'QC ตีกลับ', align:'right' }, { label:'หัก QC', align:'right' }, { label:'คอมมิชชัน', align:'right' }
+    ],
+    cols:'1fr 90px 100px 150px 140px 110px 120px 140px',
+    rows:[
+      ['อนุชา แก้วมณี','ระดับ 3','24','68','38,400.00','1','−450.00','4,158.00'],
+      ['ธีรศักดิ์ บุญมี','ระดับ 3','21','59','34,200.00','2','−1,150.00','2,954.00'],
+      ['สุรชัย พันธุ์ทอง','ระดับ 3','19','52','29,800.00','2','−900.00','2,676.00'],
+      ['ณัฐพล ศรีสุวรรณ','ระดับ 2','18','44','27,600.00','1','−400.00','2,360.00'],
+      ['วีระพงษ์ ทองดี','ระดับ 2','14','30','21,400.00','0','—','2,140.00'],
+      ['พิชิต ยั่งยืน','ระดับ 1','8','15','18,200.00','3','−1,080.00','376.00']
+    ],
+    drillNote:'คอมมิชชัน = (ค่าแรงเรียกเก็บ × อัตราตามระดับ) − หักงานที่ QC ตีกลับ 50% ของค่าแรงงานนั้น'
+  }
+};
+
+class Component extends DCLogic {
+  state = {
+    tab:'sales', role:'manager', w:1440, rangeKey:'7d', branch:0, svc:0, tech:0, status:0,
+    tableView:false, infoOpen:false, exportState:'', exportPct:0,
+    empty:false, partial:false, delayed:false, toast:null
+  };
+
+  componentWillUnmount() { clearInterval(this.tick); clearTimeout(this.tt); }
+
+  say = (title, body) => {
+    this.setState({ toast:{ title, body } });
+    clearTimeout(this.tt);
+    this.tt = setTimeout(() => this.setState({ toast:null }), 6000);
+  };
+
+  runExport = () => {
+    clearInterval(this.tick);
+    this.setState({ exportState:'busy', exportPct:0 });
+    this.tick = setInterval(() => {
+      this.setState(s => {
+        const p = s.exportPct + 12;
+        if (p >= 100) { clearInterval(this.tick); return { exportPct:100, exportState:'done' }; }
+        return { exportPct:p };
+      });
+    }, 260);
+  };
+
+  get _app() { try { return new URLSearchParams(location.search).get('app') === '1'; } catch (e) { return false; } }
+  renderVals() {
+    const app = this._app;
+    return Object.assign({ appMode: app, notApp: !app, pagePad: app ? '0 0 26px' : '48px', pageAlign: app ? 'center' : 'flex-start' }, this.baseVals());
+  }
+  baseVals() {
+    const s = this.state;
+    const mgr = s.role === 'manager';
+    const wide = s.w === 1440;
+    const d = DATA[s.tab];
+    const chip = (on) => on ? { bg:'#1B6BE3', fg:'#FFFFFF', border:'#1B6BE3' } : { bg:'#FFFFFF', fg:'#334155', border:'#C9D6E6' };
+
+    const RANGES = [
+      { key:'today', label:'วันนี้', text:'29 ก.ค. 2569' },
+      { key:'7d', label:'7 วันล่าสุด', text:'23–29 ก.ค. 2569' },
+      { key:'mtd', label:'เดือนนี้', text:'1–29 ก.ค. 2569' },
+      { key:'90d', label:'90 วัน', text:'1 พ.ค.–29 ก.ค. 2569' }
+    ];
+    const range = RANGES.filter(r => r.key === s.rangeKey)[0];
+    const BRANCHES = ['สาขาบางนา','สาขารามอินทรา','สาขาศรีราชา','ทุกสาขา'];
+    const SVC = ['ทุกประเภทงาน','ซ่อมทั่วไป','เช็คระยะ','ซ่อมสีและตัวถัง','งานประกันภัย'];
+    const TECHS = ['ช่างทุกคน','อนุชา แก้วมณี','ธีรศักดิ์ บุญมี','สุรชัย พันธุ์ทอง'];
+    const STATUS = ['ทุกสถานะ','ปิดงานแล้ว','ยังค้างในอู่','ยกเลิก'];
+
+    const comparable = s.rangeKey !== '90d' && !s.partial && s.branch !== 2;
+
+    const cd = (s.tab === 'tech' && !mgr) ? TECH_ALT : d;
+    const fmt = (v) => cd.fmt === 'money' ? int(Math.round(v)) : (cd.fmt === 'hours' ? v.toFixed(1) + ' ชม.' : (cd.fmt === 'days' ? v.toFixed(1) + ' วัน' : (cd.fmt === 'jobs' ? v + ' งาน' : (cd.fmt === 'items' ? v + ' รายการ' : v + ' ชิ้น'))));
+    const bars = cd.bars.map(b => ({
+      label: b.label, value: fmt(b.v), prev: comparable ? b.prev : '—',
+      w: Math.round((b.v / cd.max) * 100) + '%',
+      color: b.ok ? '#1B6BE3' : '#E0930C',
+      valueFg:'#0F2440',
+      note: b.note, noteFg: b.ok ? '#64748B' : '#A8380A',
+      hasMark: !!cd.mark, markAt: cd.mark ? Math.round((cd.mark / cd.max) * 100) + '%' : '0%'
+    }));
+
+    const hideMoney = !mgr;
+    const side = d.side.filter(r => !(r.money && hideMoney)).map(r => ({
+      label: r.label, value: r.value, note: r.note, dot: r.dot,
+      valueFg: r.warn ? '#A31D1D' : '#0F2440'
+    }));
+
+    const KPI = {
+      sales: [
+        { label:'ยอดขายก่อนส่วนลด', value:'1,196,420', delta: comparable ? '+8.4% จากช่วงก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'ส่วนลดที่ให้', value:'38,600', delta:'3.2% ของยอดขาย · เกินเกณฑ์', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'ภาษีมูลค่าเพิ่ม', value:'81,047', delta:'นำส่งรอบ ก.ค.', accent:'#94A3B8', fg:'#0F2440' },
+        { label:'รับเงินสุทธิ', value:'1,238,867', delta: comparable ? '+7.1% จากช่วงก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#0E9F8C', fg:'#0F2440' },
+        { label:'มัดจำคงค้าง', value:'46,000', delta:'12 งานที่ยังไม่ส่งมอบ', accent:'#1B3557', fg:'#0F2440' },
+        { label:'คืนเงิน / ยกเลิก', value:'9,240', delta:'2 รายการ · มีผู้อนุมัติครบ', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'ค่าซ่อมเฉลี่ย/คัน', value:'15,339', delta: comparable ? '+2.6% จากช่วงก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#1B6BE3', fg:'#0F2440' }
+      ],
+      ops: [
+        { label:'รับรถเข้าอู่', value:'104', delta: comparable ? '+11 คัน จากช่วงก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'ปิดงานสำเร็จ', value:'78', delta:'ค้างในระบบ 26 งาน', accent:'#0E9F8C', fg:'#0F2440' },
+        { label:'รอบเวลาเฉลี่ย', value:'11.4 ชม.', delta: comparable ? 'แย่ลง 0.8 ชม.' : 'ไม่เทียบช่วงก่อน', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'SLA ตรงเวลา', value:'82%', delta:'เป้า 90% · หลุด 14 งาน', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'เวลารออะไหล่เฉลี่ย', value:'19.4 ชม.', delta:'34% ของเวลาที่งานค้าง', accent:'#C2410C', fg:'#A31D1D', warn:true },
+        { label:'QC ไม่ผ่านครั้งแรก', value:'11.5%', delta:'9 จาก 78 งาน', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'งานย้อนกลับ 30 วัน', value:'3', delta:'3.8% ของงานที่ส่งมอบ', accent:'#C02626', fg:'#A31D1D', warn:true }
+      ],
+      funnel: [
+        { label:'งานค้างในระบบ', value:'26', delta: comparable ? '+4 งาน จากสัปดาห์ก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'อยู่ในคอขวดรออะไหล่', value:'6', delta:'23% ของงานค้าง', accent:'#C2410C', fg:'#A31D1D', warn:true },
+        { label:'รออนุมัติจากลูกค้า', value:'5', delta:'2 งานค้างเกิน 2 ชม.', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'อัตราไหลผ่าน/วัน', value:'11.1', delta:'รับเข้า 14.9 คัน/วัน', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'งานพร้อมส่งมอบ', value:'1', delta:'รอลูกค้ามารับ', accent:'#0E9F8C', fg:'#0F2440' }
+      ],
+      stock: [
+        { label:'จำนวนรหัสที่ใช้งาน', value:'231', delta:'จากทั้งหมด 248 รหัส', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'ของหมด', value:'3', delta:'กระทบงานที่ค้าง 2 งาน', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'ต่ำกว่าจุดสั่งซื้อ', value:'5', delta:'2 รหัสมีของกำลังสั่งแล้ว', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'ค้างสต็อกเกิน 90 วัน', value:'11', delta:'ควรคืนหรือลดราคา', accent:'#8A5A00', fg:'#A31D1D', warn:true },
+        { label:'มูลค่าสต็อก (ต้นทุน)', value:'1.84M', delta:'จองไว้ 254,200 บาท', accent:'#0E9F8C', fg:'#0F2440', money:true },
+        { label:'ปรับสต็อกผิดปกติ', value:'2', delta:'นับขาดซ้ำรหัสเดิม', accent:'#C02626', fg:'#A31D1D', warn:true }
+      ],
+      po: [
+        { label:'PO ค้างรับของ', value:'4', delta:'มูลค่า 42,090 บาท', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'เกินกำหนดรับของ', value:'2', delta:'กระทบงาน 2 งาน', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'Lead time เฉลี่ย', value:'3.5 วัน', delta: comparable ? 'ช้าลง 0.3 วัน' : 'ไม่เทียบช่วงก่อน', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'Fill rate รอบแรก', value:'88%', delta:'เป้า 95%', accent:'#E0930C', fg:'#A31D1D', warn:true },
+        { label:'ส่วนต่างราคาเฉลี่ย', value:'+3.4%', delta:'ต้นทุนต่อคันเพิ่มขึ้น', accent:'#8A5A00', fg:'#A31D1D', warn:true, money:true },
+        { label:'ของชำรุดจากผู้จำหน่าย', value:'4 ชิ้น', delta:'คืนแล้ว 3 ชิ้น', accent:'#C2410C', fg:'#A31D1D', warn:true }
+      ],
+      tech: [
+        { label:'ช่างเข้ากะเฉลี่ย', value:'5.4 คน', delta:'จากทั้งหมด 6 คน', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'งานที่มอบหมาย', value:'104', delta:'เฉลี่ย 17.3 งาน/ช่าง', accent:'#1B6BE3', fg:'#0F2440' },
+        { label:'รายการค่าแรงที่ปิด', value:'268', delta:'เฉลี่ย 3.4 รายการ/งาน', accent:'#0E9F8C', fg:'#0F2440' },
+        { label:'ค่าแรงเรียกเก็บรวม', value:'169,600', delta: comparable ? '+4.2% จากช่วงก่อน' : 'ไม่เทียบช่วงก่อน', accent:'#0E9F8C', fg:'#0F2440', money:true },
+        { label:'งานที่ QC ตีกลับ', value:'9', delta:'11.5% ของงานที่เข้า QC', accent:'#C02626', fg:'#A31D1D', warn:true },
+        { label:'คอมมิชชันรวม', value:'20,148', delta:'หักงาน QC ตีกลับแล้ว', accent:'#8A5A00', fg:'#0F2440', money:true },
+        { label:'ชั่วโมงว่างรอสั่งงาน', value:'46 ชม.', delta:'ส่วนใหญ่กะบ่ายวันธรรมดา', accent:'#E0930C', fg:'#A31D1D', warn:true }
+      ]
+    };
+    const kpis = KPI[s.tab].filter(k => !(k.money && hideMoney)).map(k => ({
+      label: k.label, value: k.value, delta: k.delta, accent: k.accent,
+      valueFg: k.fg, deltaFg: k.warn ? '#A31D1D' : '#94A3B8',
+      border: k.warn ? '#F0D9AC' : '#E3E8EF',
+      info: () => this.setState({ infoOpen:true })
+    }));
+
+    let head = d.head, rows = d.rows, cols = d.cols;
+    if (s.tab === 'tech' && hideMoney) {
+      const keep = [0, 1, 2, 3, 5];
+      head = keep.map(i => d.head[i]);
+      rows = d.rows.map(r => keep.map(i => r[i]));
+      cols = '1fr 90px 100px 150px 110px';
+    }
+
+    const drillRows = rows.map((r, ri) => ({
+      bg: String(r[0]).indexOf('CN-') === 0 ? '#FFFDFD' : (ri % 2 === 1 ? '#FCFDFE' : '#fff'),
+      cells: r.map((c, ci) => ({
+        v: c, align: head[ci].align,
+        font: head[ci].align === 'right' || ci === 0 ? "'IBM Plex Mono',monospace" : 'inherit',
+        weight: ci === 0 || head[ci].align === 'right' ? '600' : '400',
+        fg: ci === 0 ? '#1B3557' : (String(c).indexOf('เกิน') === 0 || String(c).indexOf('+') === 0 && head[ci].align === 'right' ? '#A31D1D' : '#334155')
+      }))
+    }));
+
+    const exports = [];
+    if (s.exportState === 'busy') exports.push({
+      name:'รายงาน' + (TABS.filter(t => t.key === s.tab)[0] || {}).label + ' · ' + range.text + '.xlsx',
+      status:'กำลังประมวลผล ' + s.exportPct + '% · ประมาณ 20 วินาที (ห้ามปิดหน้านี้)',
+      fg:'#1552B3', bg:'#E6EFFC', border:'#BCD3F5', path:'M12 3a9 9 0 1 0 9 9', anim:'gpSpin 1s linear infinite',
+      busy:true, pct: s.exportPct + '%', failed:false, done:false
+    });
+    if (s.exportState === 'done') exports.push({
+      name:'รายงาน' + (TABS.filter(t => t.key === s.tab)[0] || {}).label + ' · ' + range.text + '.xlsx',
+      status:'พร้อมดาวน์โหลด · 1.8 MB · สร้างเมื่อ 16:12 น. โดย ' + (mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'พิชัย ควบคุมงาน'),
+      fg:'#0B6D5E', bg:'#F7FCFA', border:'#B6E3DA', path:'M4 12.5l5 5L20 7', anim:'none',
+      busy:false, pct:'100%', failed:false, done:true
+    });
+    if (s.exportState === 'failed') exports.push({
+      name:'รายงานรวมทุกสาขา · 1 พ.ค.–29 ก.ค. 2569.xlsx',
+      status:'ส่งออกไม่สำเร็จ · ข้อมูลเกินขนาดที่ประมวลผลได้ในครั้งเดียว (ประมาณ 480,000 แถว) — ยังไม่มีไฟล์ถูกสร้าง',
+      fg:'#A31D1D', bg:'#FEF6F6', border:'#F0C2C2', path:'M12 3l9.5 17h-19zM12 10v4', anim:'none',
+      busy:false, pct:'0%', failed:true, done:false,
+      retry: () => this.runExport(),
+      smaller: () => { this.setState({ rangeKey:'mtd' }); this.runExport(); }
+    });
+    exports.push({
+      name:'รายงานยอดขายรายวัน · 22 ก.ค. 2569.pdf',
+      status:'สร้างเสร็จแล้ว · เก็บไว้ 7 วัน · ดาวน์โหลด 3 ครั้ง',
+      fg:'#64748B', bg:'#F7F9FC', border:'#E3E8EF', path:'M4 12.5l5 5L20 7', anim:'none',
+      busy:false, pct:'100%', failed:false, done:true
+    });
+
+    return {
+      frameW: s.w + 'px', wide,
+      wideBg: wide ? '#0F2440' : 'transparent', wideFg: wide ? '#fff' : '#475569',
+      narrowBg: wide ? 'transparent' : '#0F2440', narrowFg: wide ? '#475569' : '#fff',
+      setWide: () => this.setState({ w:1440 }), setNarrow: () => this.setState({ w:1024 }),
+      mgBg: mgr ? '#0F2440' : 'transparent', mgFg: mgr ? '#fff' : '#475569',
+      ldBg: mgr ? 'transparent' : '#0F2440', ldFg: mgr ? '#475569' : '#fff',
+      beManager: () => this.setState({ role:'manager' }), beLead: () => this.setState({ role:'lead' }),
+      restricted: !mgr, seeMoney: mgr, noMoney: !mgr,
+      roleLabel: mgr ? 'ผู้จัดการสาขา' : 'หัวหน้าช่าง',
+      userName: mgr ? 'กัญญารัตน์ ดีสมบัติ' : 'พิชัย ควบคุมงาน',
+      initials: mgr ? 'กร' : 'พช',
+      nav: NAV.map(n => Object.assign({ path:n.path, tap: () => {} }, n.key === 'report' ? { bg:'#1B6BE3', fg:'#fff' } : { bg:'transparent', fg:'#A9BDD6' })),
+
+      range: range.text, branch: BRANCHES[s.branch], svcType: SVC[s.svc],
+      ranges: RANGES.map(r => Object.assign({ label:r.label, tap: () => this.setState({ rangeKey:r.key, empty:false }) }, chip(s.rangeKey === r.key))),
+      selects: [
+        { k:'สาขา', v: BRANCHES[s.branch], on: s.branch !== 0, tap: () => this.setState(st => ({ branch: (st.branch + 1) % BRANCHES.length, partial: (st.branch + 1) % BRANCHES.length === 2 })) },
+        { k:'ประเภทงาน', v: SVC[s.svc], on: s.svc !== 0, tap: () => this.setState(st => ({ svc: (st.svc + 1) % SVC.length })) },
+        { k:'ช่าง', v: TECHS[s.tech], on: s.tech !== 0, tap: () => this.setState(st => ({ tech: (st.tech + 1) % TECHS.length })) },
+        { k:'สถานะ', v: STATUS[s.status], on: s.status !== 0, tap: () => this.setState(st => ({ status: (st.status + 1) % STATUS.length })) }
+      ].map(f => ({ k:f.k, v:f.v, tap:f.tap,
+        bg: f.on ? '#E6EFFC' : '#fff', border: f.on ? '#BCD3F5' : '#E3E8EF', fg: f.on ? '#1552B3' : '#0F2440' })),
+      hasFilters: s.branch !== 0 || s.svc !== 0 || s.tech !== 0 || s.status !== 0,
+      clearFilters: () => this.setState({ branch:0, svc:0, tech:0, status:0, empty:false, partial:false }),
+      widen: () => this.setState({ rangeKey:'90d', empty:false }),
+      compareNote: comparable ? 'เทียบกับช่วงก่อนหน้า (16–22 ก.ค. 2569)' : 'ไม่แสดงการเทียบช่วงก่อนหน้า — ข้อมูลไม่ครบหรือช่วงยาวเกินกว่าจะเทียบได้',
+
+      freshLabel: s.delayed ? 'ข้อมูลถึง 14:00 น. (ล่าช้า)' : 'อัปเดตล่าสุด 16:05 น.',
+      freshBg: s.delayed ? '#FFFBF3' : '#F7FCFA', freshBorder: s.delayed ? '#F0D9AC' : '#B6E3DA',
+      freshFg: s.delayed ? '#8A5A00' : '#0B6D5E', freshDot: s.delayed ? '#E0930C' : '#0E9F8C',
+      retryRefresh: () => this.setState({ delayed:false }, () => this.say('รีเฟรชข้อมูลสำเร็จ', 'ข้อมูลอัปเดตถึง 16:05 น. · รวมรายการทั้งหมดในช่วงที่เลือกแล้ว')),
+
+      tabs: TABS.map(t => Object.assign({ label:t.label, tap: () => this.setState({ tab:t.key, tableView:false }) },
+        s.tab === t.key ? { bg:'#0F2440', fg:'#fff', weight:'700' } : { bg:'transparent', fg:'#475569', weight:'500' })),
+      isTech: s.tab === 'tech',
+
+      empty: s.empty, partial: s.partial, delayed: s.delayed, hasData: !s.empty,
+      demoEmpty: () => this.setState({ empty:true, svc:3, branch:1 }),
+      demoPartial: () => this.setState({ partial:true, branch:2, empty:false }),
+      demoDelay: () => this.setState({ delayed:true }),
+
+      kpis, kpiCols: wide ? 'repeat(' + kpis.length + ',minmax(0,1fr))' : 'repeat(3,minmax(0,1fr))',
+      chartCols: wide ? '1.55fr 1fr' : '1fr',
+      labelW: wide ? '120px' : '104px',
+      chartTitle: cd.chartTitle, chartSub: cd.chartSub, bars,
+      hasMarkLegend: !!cd.markLegend, markLegend: cd.markLegend,
+      showChart: !s.tableView, showTableView: s.tableView,
+      tableToggleLabel: s.tableView ? 'ดูเป็นกราฟ' : 'ดูเป็นตาราง (เทียบเท่า)',
+      toggleTable: () => this.setState({ tableView: !s.tableView }),
+      sideTitle: d.sideTitle, sideRows: side,
+
+      drillTitle: d.drillTitle, drillHead: head, drillCols: cols, drillRows, drillN: rows.length, drillNote: d.drillNote,
+
+      infoOpen: s.infoOpen, openInfo: () => this.setState({ infoOpen:true }), closeInfo: () => this.setState({ infoOpen:false }),
+      defs: DEFS,
+
+      exportOpen: !!s.exportState || exports.length > 1,
+      exports, closeExport: () => this.setState({ exportState:'' }),
+      doExport: () => this.runExport(),
+      demoExportFail: () => { clearInterval(this.tick); this.setState({ exportState:'failed', rangeKey:'90d', branch:3 }); },
+
+      resetAll: () => { clearInterval(this.tick); this.setState({ tab:'sales', role:'manager', w:1440, rangeKey:'7d', branch:0, svc:0, tech:0, status:0, tableView:false, infoOpen:false, exportState:'', empty:false, partial:false, delayed:false }); },
+
+      toast: !!s.toast, toastTitle: s.toast ? s.toast.title : '', toastBody: s.toast ? s.toast.body : '',
+      clearToast: () => this.setState({ toast:null })
+    };
+  }
+}
+
+</script>
+</body>
+</html>
