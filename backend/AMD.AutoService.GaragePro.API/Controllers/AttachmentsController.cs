@@ -18,29 +18,25 @@ public sealed class AttachmentsController(IAttachmentService service) : Controll
 {
     /// <summary>อัปโหลดไฟล์แนบ (multipart/form-data)</summary>
     [HttpPost]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(20 * 1024 * 1024)]
-    public async Task<IActionResult> Upload(
-        [FromForm] IFormFile file,
-        [FromForm] long jobId,
-        [FromForm] string kind,
-        [FromForm] Guid? entityId,
-        CancellationToken ct)
+    public async Task<IActionResult> Upload([FromForm] UploadAttachmentForm form, CancellationToken ct)
     {
-        if (file is null || file.Length == 0)
+        if (form.File is null || form.File.Length == 0)
             return StatusCode(StatusCodes.Status422UnprocessableEntity, Envelope.From(
                 Result<AttachmentDto>.Fail("ATTACHMENT_EMPTY", "ไม่พบไฟล์ที่อัปโหลด"),
                 HttpContext.TraceIdentifier));
 
-        await using var stream = file.OpenReadStream();
+        await using var stream = form.File.OpenReadStream();
 
         var result = await service.UploadAsync(new UploadAttachmentRequest(
-            JobId: jobId,
-            Kind: kind,
-            EntityId: entityId,
-            FileName: file.FileName,
-            ContentType: file.ContentType,
+            JobId: form.JobId,
+            Kind: form.Kind,
+            EntityId: form.EntityId,
+            FileName: form.File.FileName,
+            ContentType: form.File.ContentType,
             Content: stream,
-            SizeBytes: file.Length), ct);
+            SizeBytes: form.File.Length), ct);
 
         return Render(result);
     }
@@ -82,4 +78,25 @@ public sealed class AttachmentsController(IAttachmentService service) : Controll
 
         return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));
     }
+}
+
+/// <summary>
+/// ฟอร์มอัปโหลดไฟล์แนบ
+///
+/// ต้องรวมทุก field ไว้ใน model เดียว ห้ามใส่ [FromForm] แยกทีละ parameter
+/// เพราะ Swashbuckle สร้าง OpenAPI ไม่ได้เมื่อ [FromForm] อยู่คู่กับ IFormFile
+/// (อาการ: /swagger/v1/swagger.json คืน 500)
+/// </summary>
+public sealed class UploadAttachmentForm
+{
+    public IFormFile? File { get; set; }
+
+    /// <summary>เลขงานใน Garage DB เดิม — ต้องอยู่สาขาเดียวกับที่เข้าใช้งาน</summary>
+    public long JobId { get; set; }
+
+    /// <summary>signature | intake | inspection | repair-before | repair-after | qc | document</summary>
+    public string Kind { get; set; } = string.Empty;
+
+    /// <summary>เอกสารที่ไฟล์นี้ผูกอยู่ เช่น QuotationId</summary>
+    public Guid? EntityId { get; set; }
 }

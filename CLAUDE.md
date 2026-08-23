@@ -36,7 +36,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 # Backend
 dotnet build AMD.AutoService.GaragePro.sln
 dotnet test backend/AMD.AutoService.GaragePro.Tests
-cd backend/AMD.AutoService.GaragePro.API && ASPNETCORE_ENVIRONMENT=Development dotnet run --urls http://localhost:5080
+cd backend/AMD.AutoService.GaragePro.API && dotnet run   # พอร์ต 5080 ตั้งใน Properties/launchSettings.json
 # → Swagger ที่ http://localhost:5080/swagger
 
 # Migration (ห้ามใช้ EnsureCreated — มันไม่เพิ่มตารางให้ฐานที่มีอยู่แล้ว)
@@ -45,6 +45,9 @@ dotnet ef migrations add <ชื่อ> --project backend/AMD.AutoService.Garage
   --startup-project backend/AMD.AutoService.GaragePro.API --output-dir Persistence/Migrations
 dotnet ef database update --project backend/AMD.AutoService.GaragePro.Infrastructure \
   --startup-project backend/AMD.AutoService.GaragePro.API
+
+# ข้อมูลทดสอบ (ต้องรัน API ก่อน) — สร้างใบเสนอราคาครบทุกสถานะผ่าน API จริง
+cd tools/devseed && dotnet run
 
 # Web
 cd web && pnpm install && pnpm dev          # http://localhost:5173
