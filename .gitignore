@@ -15,8 +15,8 @@ mobile/ios/Pods/
 mobile/.flutter-plugins*
 
 # ไฟล์แนบที่อัปโหลดตอน dev — ไม่เข้า repo
-storage/
-backend/**/storage/
+/storage/
+/backend/AMD.AutoService.GaragePro.API/storage/
 
 # ความลับ — ใช้ dotnet user-secrets เท่านั้น
 appsettings.*.local.json
