@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
         services.AddScoped<ILegacyReader, LegacyReader>();
+        services.AddScoped<ILegacyJobWriter, LegacyJobWriter>();
         services.AddScoped<IQuotationService, QuotationService>();
 
         services.AddScoped<ILegacyUserReader, LegacyUserReader>();

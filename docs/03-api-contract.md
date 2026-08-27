@@ -17,9 +17,9 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 
 | Method | Endpoint | ใช้ที่ | หมายเหตุ |
 |---|---|---|---|
-| POST | `/auth/login` | `/auth/login` (M), `/login` (W) | employeeCode + password → JWT + refresh |
+| POST | `/auth/login` | `/auth/login` (M), `/login` (W) | username + password → JWT ที่มี `Staff.BranchId`; Web ใช้งานต่อได้ทันที |
 | POST | `/auth/refresh` | ทั้งสอง | |
-| GET | `/branches` | `/auth/shift` (M), `/branch` (W) | คืน technicianOnShift, pendingJobs, overdueJobs ต่อสาขา |
+| GET | `/branches` | `/auth/shift` (M) | คืน technicianOnShift, pendingJobs, overdueJobs ต่อสาขา |
 | GET | `/branches/{id}/shifts` | `/auth/shift` | + supervisor |
 | POST | `/shift-sessions` | `/auth/shift` | เปิดกะ → กำหนด branch+shift context ทั้งวัน |
 | POST | `/shift-sessions/{id}/close` | `/profile` | ❌ role `technician` (403 + StateBlock "ไม่มีสิทธิ์") |
@@ -45,11 +45,13 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 |---|---|---|
 | GET | `/jobs?status=&branchId=&assignedTo=&overdue=&page=` | `/jobs/queue`(M), `/jobs`(W), `/jobs/board`(W) |
 | GET | `/jobs/mine` | `/jobs/mine`(M) — เรียง urgency → promiseAt |
-| GET | `/jobs/search?q=` | `/jobs/search`(M) — คืน `matchedOn` ("ตรงที่ทะเบียน") |
+| GET | `/jobs/search?q=&pjTypeId=&pjStatusId=` | `/jobs/search`(M) — คืน `matchedOn` ("ตรงที่ทะเบียน"); เว็บใช้ `pjTypeId`/`pjStatusId` กรองตารางหน้าจ๊อบ (`/jobs`(W)) — ยังกรองฝั่ง server ด้วย legacy id ตรงๆ ไม่ผ่าน `PJTypeStatus` |
+| GET | `/jobs/status-options` | `/jobs`(W) ตัวกรองสถานะ — คืนสถานะ (PJStatus) ที่มีจ๊อบใช้งานจริงในสาขาเท่านั้น |
+| GET | `/jobs/form-options` | `/jobs`(W) — ยี่ห้อ รุ่น โฉม และสี |
 | GET | `/jobs/by-qr/{code}` | `/scan`(M) |
 | GET | `/jobs/{id}` | `/jobs/:id`(W) — full aggregate สำหรับ 8 แท็บ |
 | GET | `/jobs/{id}/timeline` | แท็บกิจกรรม — ActivityEvent + source |
-| POST | `/jobs` | intake ขั้น 6 — idempotent ด้วย `clientLocalId` (TMP) |
+| POST | `/jobs` | `/jobs`(W) modal เปิดจ๊อบ — เลือกประเภทได้ (`pjTypeId` 9=รถในอู่/10=รถนัดหมาย, whitelist ที่ API) + สถานะยัง fix เป็น `รอตรวจสอบ` (dropdown สถานะที่ผูกกับ `PJTypeStatus` ยังไม่ทำ — รอตรวจ schema จริงจาก legacy DB); transaction ลง `Customer`/`Car`/`CarCustomer`/`PJCarPickUp`; intake mobile ในอนาคตต้องเพิ่ม idempotency |
 | POST | `/jobs/{id}/cancel` | **ต้องมี** reason + approvedBy · แจ้งอะไหล่ที่สั่งไปแล้ว |
 | GET | `/jobs/counts` | `/home`(M) 5 ตัวเลข · `/dashboard`(W) 9 KPI |
 | GET | `/jobs/board` | กระดานโรงซ่อม 7 คอลัมน์ |

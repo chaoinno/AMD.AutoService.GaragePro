@@ -38,7 +38,7 @@ builder.Services.AddSwaggerGen(o =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "ใส่ accessToken ที่ได้จาก /auth/shift-sessions"
+        Description = "ใส่ accessToken ที่ได้จาก /auth/login (หรือ /auth/shift-sessions สำหรับ Mobile flow เดิม)"
     });
 
     o.AddSecurityRequirement(new OpenApiSecurityRequirement

@@ -9,7 +9,8 @@ namespace AMD.AutoService.GaragePro.Application.Quotations;
 
 public interface IQuotationService
 {
-    Task<Result<IReadOnlyList<QuotationSummaryDto>>> GetQueueAsync(string? statusFilter, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<QuotationSummaryDto>>> GetQueueAsync(
+        string? statusFilter, long? jobId = null, CancellationToken ct = default);
     Task<Result<QuotationDto>> GetAsync(Guid id, CancellationToken ct = default);
     Task<Result<QuotationDto>> CreateAsync(CreateQuotationRequest request, CancellationToken ct = default);
     Task<Result<QuotationDto>> AddLineAsync(Guid id, UpsertLineRequest request, CancellationToken ct = default);
@@ -32,9 +33,9 @@ public sealed class QuotationService(
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
     public async Task<Result<IReadOnlyList<QuotationSummaryDto>>> GetQueueAsync(
-        string? statusFilter, CancellationToken ct = default)
+        string? statusFilter, long? jobId = null, CancellationToken ct = default)
     {
-        var items = await repository.GetQueueAsync(user.ShardKey, user.BranchId, statusFilter, ct);
+        var items = await repository.GetQueueAsync(user.ShardKey, user.BranchId, statusFilter, jobId, ct);
         var dto = items.Select(q => QuotationMapper.ToSummary(q, Now)).ToList();
         return Result<IReadOnlyList<QuotationSummaryDto>>.Ok(dto);
     }

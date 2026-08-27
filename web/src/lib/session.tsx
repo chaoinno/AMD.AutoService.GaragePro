@@ -7,23 +7,23 @@ import {
   useMemo,
   useState,
 } from 'react'
-import type { LoginResult, ShiftSessionResult } from '../api/types'
+import type { LoginResult } from '../api/types'
 
 const SESSION_KEY = 'garagepro.web.session'
 const SESSION_EVENT = 'garagepro-session-change'
 
-export type PreShiftSession = LoginResult & { stage: 'branch' }
-export type ActiveShiftSession = ShiftSessionResult & { stage: 'active' }
-export type StoredSession = PreShiftSession | ActiveShiftSession
+export type StoredSession = LoginResult & { stage: 'active' }
 
 function isStoredSession(value: unknown): value is StoredSession {
   if (!value || typeof value !== 'object') return false
   const session = value as Partial<StoredSession>
   return (
-    (session.stage === 'branch' || session.stage === 'active') &&
+    session.stage === 'active' &&
     typeof session.accessToken === 'string' &&
     typeof session.expiresAt === 'string' &&
-    typeof session.user === 'object'
+    typeof session.user === 'object' &&
+    typeof session.branchId === 'number' &&
+    typeof session.branchName === 'string'
   )
 }
 
@@ -52,15 +52,8 @@ function notifySessionChange() {
   window.dispatchEvent(new Event(SESSION_EVENT))
 }
 
-export function savePreShiftSession(result: LoginResult): PreShiftSession {
-  const session: PreShiftSession = { ...result, stage: 'branch' }
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session))
-  notifySessionChange()
-  return session
-}
-
-export function saveActiveShiftSession(result: ShiftSessionResult): ActiveShiftSession {
-  const session: ActiveShiftSession = { ...result, stage: 'active' }
+export function saveSession(result: LoginResult): StoredSession {
+  const session: StoredSession = { ...result, stage: 'active' }
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session))
   notifySessionChange()
   return session

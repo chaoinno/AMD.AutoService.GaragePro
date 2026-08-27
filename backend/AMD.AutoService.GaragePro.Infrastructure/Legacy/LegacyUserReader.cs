@@ -57,7 +57,12 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
     {
         await using var db = Open(shardKey);
 
-        var sql = $"{UserSelect} WHERE u.UserName = @userName AND ISNULL(u.Status, 0) = 1";
+        var sql = $"""
+            {UserSelect}
+            WHERE u.UserName = @userName
+              AND ISNULL(u.Status, 0) = 1
+              AND ISNULL(s.Status, 0) = 1
+            """;
 
         return await db.QueryFirstOrDefaultAsync<LegacyUserDto>(
             new CommandDefinition(sql, new { userName }, cancellationToken: ct));
@@ -68,7 +73,12 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
     {
         await using var db = Open(shardKey);
 
-        var sql = $"{UserSelect} WHERE u.Id = @userId AND ISNULL(u.Status, 0) = 1";
+        var sql = $"""
+            {UserSelect}
+            WHERE u.Id = @userId
+              AND ISNULL(u.Status, 0) = 1
+              AND ISNULL(s.Status, 0) = 1
+            """;
 
         return await db.QueryFirstOrDefaultAsync<LegacyUserDto>(
             new CommandDefinition(sql, new { userId }, cancellationToken: ct));
@@ -98,6 +108,7 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
                SELECT {columns}
                FROM Branch b WITH (READUNCOMMITTED)
                WHERE b.Id = @branchId
+                 AND ISNULL(b.Status, 0) = 1
                """;
 
         var rows = await db.QueryAsync<LegacyBranchSummaryDto>(

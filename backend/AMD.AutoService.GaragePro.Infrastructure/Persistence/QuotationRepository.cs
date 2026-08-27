@@ -24,10 +24,13 @@ public sealed class QuotationRepository(ServiceDbContext db) : IQuotationReposit
           .FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<Quotation>> GetQueueAsync(
-        string shardKey, int branchId, string? statusFilter, CancellationToken ct = default)
+        string shardKey, int branchId, string? statusFilter, long? jobId = null, CancellationToken ct = default)
     {
         var query = db.Quotations
             .Where(q => q.LegacyShardKey == shardKey && q.LegacyBranchId == branchId);
+
+        if (jobId is not null)
+            query = query.Where(q => q.LegacyJobId == jobId);
 
         // ตัวกรองตรงกับ chip บนหน้าคิวใน design: ทั้งหมด / รอเสนอราคา / รออนุมัติ / ขอแก้ไข
         query = statusFilter switch

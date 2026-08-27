@@ -49,19 +49,24 @@ public sealed class AuthService(
         var authUser = ToAuthUser(user, role, shardKey);
 
         var branches = await BuildBranchOptionsAsync(shardKey, user, ct);
-        if (branches.Count == 0)
+        var branch = user.BranchId is null
+            ? null
+            : branches.FirstOrDefault(b => b.BranchId == user.BranchId.Value);
+        if (branch is null)
             return Result<LoginResultDto>.Fail("AUTH_NO_BRANCH",
-                "บัญชีนี้ยังไม่ได้ผูกกับสาขาใด — ติดต่อผู้ดูแลระบบ");
+                "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ");
 
-        // token ขั้นแรกใช้ได้เฉพาะ endpoint ของการเลือกสาขา/กะ
-        var (token, expiresAt) = tokens.IssuePreSessionToken(authUser);
+        // Web ใช้ token นี้เรียก API งานได้ทันที ส่วน Mobile เดิมยังเปิดกะต่อได้ตามปกติ
+        var (token, expiresAt) = tokens.IssueBranchToken(authUser, branch.BranchId);
 
         return Result<LoginResultDto>.Ok(new LoginResultDto(
             AccessToken: token,
             ExpiresAt: expiresAt,
             User: authUser,
+            BranchId: branch.BranchId,
+            BranchName: branch.Name,
             Branches: branches,
-            RequiresShiftSelection: true));
+            RequiresShiftSelection: false));
     }
 
     public async Task<Result<IReadOnlyList<ShiftOptionDto>>> GetShiftsAsync(
@@ -220,11 +225,15 @@ public sealed class AuthService(
             ? null
             : await repository.GetSessionAsync(currentUser.SessionId.Value, ct);
 
+        var branchId = session?.LegacyBranchId ?? currentUser.BranchId;
+        var branchName = session?.BranchName
+            ?? (user.BranchId == branchId ? user.BranchName : null);
+
         return Result<MeDto>.Ok(new MeDto(
             User: authUser,
             SessionId: session?.Id,
-            BranchId: session?.LegacyBranchId,
-            BranchName: session?.BranchName,
+            BranchId: branchId > 0 ? branchId : null,
+            BranchName: branchName,
             ShiftId: session?.ShiftId,
             ShiftName: session?.ShiftName,
             OpenedAt: session?.OpenedAt));

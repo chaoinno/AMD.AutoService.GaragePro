@@ -11,7 +11,7 @@ public interface IQuotationRepository
     Task<Quotation?> GetLatestForJobAsync(string shardKey, long jobId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Quotation>> GetQueueAsync(
-        string shardKey, int branchId, string? statusFilter, CancellationToken ct = default);
+        string shardKey, int branchId, string? statusFilter, long? jobId = null, CancellationToken ct = default);
 
     Task<int> GetNextVersionAsync(string shardKey, long jobId, CancellationToken ct = default);
 

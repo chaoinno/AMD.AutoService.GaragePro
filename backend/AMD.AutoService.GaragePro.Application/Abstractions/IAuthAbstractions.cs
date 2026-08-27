@@ -41,6 +41,9 @@ public interface ITokenIssuer
     /// <summary>token ก่อนเลือกสาขา/กะ — เรียกได้เฉพาะ endpoint ของการเลือกสาขา</summary>
     (string Token, DateTime ExpiresAt) IssuePreSessionToken(AuthUserDto user);
 
+    /// <summary>token ที่ใช้งานได้ทันที โดยผูกสาขาจาก Staff.BranchId แต่ไม่สร้างกะ</summary>
+    (string Token, DateTime ExpiresAt) IssueBranchToken(AuthUserDto user, int branchId);
+
     /// <summary>token ที่ใช้งานจริง — มี branch/shift/session อยู่ใน claim</summary>
     (string Token, DateTime ExpiresAt) IssueSessionToken(AuthUserDto user, ShiftSession session);
 }

@@ -60,13 +60,13 @@ sidebar 212px / ย่อ 68px ที่ 1024px · < 1024px ไม่รอง�
 
 ---
 
-## 3. หน้าใหม่ที่ต้องเพิ่ม: login + เลือกสาขา/กะ
+## 3. หน้า Login (ปรับเป็นเข้าใช้งานทันที)
 
 API พร้อมแล้วที่ `http://localhost:5080` (ดู `/swagger`)
 
 ```
 POST /api/v1/auth/login          { userName, password }
-     → { accessToken, expiresAt, user, branches[], requiresShiftSelection }
+     → { accessToken, expiresAt, user, branchId, branchName, branches[], requiresShiftSelection: false }
 GET  /api/v1/auth/branches/{branchId}/shifts
      → [{ shiftId, name, startTime, endTime, supervisorName, isCurrent }]
 POST /api/v1/auth/shift-sessions { branchId, shiftId }
@@ -75,8 +75,8 @@ POST /api/v1/auth/shift-sessions/{sessionId}/close
 GET  /api/v1/auth/me
 ```
 
-**สำคัญ:** `POST /auth/login` คืน token ขั้นแรกที่**ใช้เรียก API งานไม่ได้** ต้องเลือกสาขา+กะ
-แล้วเอา `accessToken` จาก `/shift-sessions` มาใช้แทน
+**สำคัญ:** Web ใช้ token จาก `POST /auth/login` เรียก API งานได้ทันที โดยสาขามาจาก `Staff.BranchId`;
+endpoint กะยังคงไว้รองรับ Mobile flow เดิม
 
 ### 3.1 `/login`
 - จอเต็ม พื้น navy/900 · การ์ดขาวกลางจอ
@@ -85,19 +85,13 @@ GET  /api/v1/auth/me
 - error จาก API แสดง `messageTh` ตรงๆ (เช่น "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง") + `traceId`
 - ปุ่มต้องล็อกระหว่างส่ง กันกดซ้ำ
 
-### 3.2 `/branch` — เลือกสาขาและกะ
-- ขั้น 1: การ์ดรายสาขาจาก `branches[]` แสดงชื่อ · ที่อยู่ · **รอเสนอราคา N ใบ · รออนุมัติ N ใบ**
-- ขั้น 2: เลือกกะ — แสดงชื่อกะ · เวลา · หัวหน้ากะ · กะที่ตรงกับเวลาปัจจุบันติดป้าย "กะปัจจุบัน"
-- กด "เข้าใช้งาน" → `POST /shift-sessions` → เก็บ token → ไป `/quotations`
-- ถ้ามีสาขาเดียวให้ข้ามไปเลือกกะเลย
-
-### 3.3 เก็บ session
-- เก็บ `accessToken` + ข้อมูล user/สาขา/กะ ใน `localStorage`
+### 3.2 เก็บ session
+- เก็บ `accessToken` + ข้อมูล user/สาขา ใน `localStorage`
 - `client.ts` ส่ง `Authorization: Bearer <token>` แทน header `X-User-*` ทั้งหมด
   (ยังต้องส่ง `X-Client-Source: web`)
 - **ลบ `X-User-Name` ทิ้ง** — เคยทำให้ `fetch` พังเพราะภาษาไทยใน header
 - 401 → เคลียร์ session แล้วเด้งไป `/login`
-- route ทั้งหมดยกเว้น `/login` และ `/branch` ต้องมี guard
+- route ทั้งหมดยกเว้น `/login` ต้องมี guard
 - topbar แสดงชื่อจริง + บทบาท + สาขา/กะ จาก session (เลิก hardcode "สาขาพระราม 9" / "ปวีณา เอกสาร")
 - เมนูผู้ใช้: ปิดกะ (ซ่อนถ้า `user.canCloseShift === false`) · ออกจากระบบ
 
@@ -148,4 +142,4 @@ GET  /api/v1/auth/me
 - [ ] ตัวเลขเงินใช้ mono + tabular-nums ทุกที่ · format `1,234.56` เสมอ
 - [ ] 1440px และ 1024px ถูกต้องทั้งคู่ · < 1024px ขึ้นข้อความแนะนำ
 - [ ] ข้อความ UI เป็นภาษาไทยทั้งหมด (โค้ด/ตัวแปรเป็นอังกฤษ)
-- [ ] login → เลือกสาขา/กะ → เข้าคิวใบเสนอราคาได้จริง โดยไม่มี header `X-User-*` เหลืออยู่
+- [ ] login → ใช้ `Staff.BranchId` → เข้าคิวใบเสนอราคาได้ทันที โดยไม่มี header `X-User-*` เหลืออยู่

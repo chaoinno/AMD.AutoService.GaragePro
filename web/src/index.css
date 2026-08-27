@@ -193,19 +193,13 @@ img {
   border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
-.brand__mark {
-  display: grid;
-  width: 40px;
-  height: 40px;
+.brand__logo {
+  display: block;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--blue-600);
-  box-shadow: 0 8px 18px rgb(27 107 227 / 28%);
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgb(27 107 227 / 25%));
 }
 
 .brand__copy {
@@ -671,11 +665,364 @@ img {
 }
 
 .queue-table-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 12px 16px;
   border-top: 1px solid var(--border);
   background: #f8fafc;
   color: var(--muted);
   font-size: 12px;
+}
+
+.jobs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.jobs-search {
+  position: relative;
+  width: min(520px, 100%);
+}
+
+.jobs-search > svg {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+.jobs-search input {
+  padding-left: 39px;
+}
+
+.data-table__sort {
+  display: inline-flex;
+  width: 100%;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: inherit;
+  text-align: left;
+}
+
+.data-table__sort svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  color: #94a3b8;
+}
+
+.data-table__sort:hover,
+.data-table__sort:hover svg {
+  color: var(--blue-600);
+}
+
+.jobs-table-card .data-table {
+  table-layout: auto;
+}
+
+.jobs-table-card .data-table th {
+  height: 54px;
+  padding-inline: 20px;
+  background: #f5f8fc;
+  color: #44546a;
+}
+
+.jobs-table-card .data-table td {
+  height: 92px;
+  padding: 12px 20px;
+}
+
+.jobs-table-card .data-table tbody tr:nth-child(even) {
+  background: #fbfcfe;
+}
+
+.jobs-table-card .data-table tbody tr:hover {
+  background: #f2f7ff;
+}
+
+.job-car-image {
+  display: block;
+  width: 84px;
+  height: 62px;
+  border: 1px solid #dbe3ee;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #eef3f8;
+}
+
+.job-car-image--empty {
+  display: grid;
+  place-items: center;
+  color: #91a0b3;
+}
+
+.job-car-image--empty svg {
+  width: 29px;
+  height: 29px;
+}
+
+.job-vehicle-cell,
+.job-contact-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  line-height: 1.35;
+}
+
+.job-vehicle-cell strong {
+  color: var(--navy-900);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+.job-vehicle-cell span,
+.job-contact-cell span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-contact-cell strong {
+  font-size: 14px;
+}
+
+.jobs-filter {
+  min-width: 160px;
+}
+
+.job-type-chip,
+.job-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.job-created-at {
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.job-create-form {
+  gap: 18px;
+}
+
+.plate-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.6fr);
+  align-items: end;
+  gap: 10px;
+}
+
+.plate-fields > span {
+  padding-bottom: 9px;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.form-message {
+  padding: 28px 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.form-error-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #f1b7b7;
+  border-radius: 10px;
+  background: #fff1f1;
+  color: var(--red-600);
+}
+
+.job-defaults {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.job-defaults > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 58px;
+  padding: 10px 14px;
+  border: 1px solid #cbdcf7;
+  border-radius: 10px;
+  background: #f4f8ff;
+}
+
+.job-defaults span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-defaults strong {
+  color: #1552b3;
+}
+
+.job-color-row > .field {
+  grid-column: 1 / 2;
+}
+
+.jobs-table-sentinel {
+  height: 1px;
+}
+
+.jobs-table-loadmore-error {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: #fff1f1;
+  color: var(--red-600);
+  font-size: 12px;
+}
+
+.job-detail-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.job-detail-info {
+  display: flex;
+  gap: 20px;
+}
+
+.job-detail-info__image {
+  width: 180px;
+  height: 132px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.job-detail-info__image--empty {
+  display: grid;
+  place-items: center;
+  border: 1px solid #dbe3ee;
+  color: #91a0b3;
+  background: #eef3f8;
+}
+
+.job-detail-info__image--empty svg {
+  width: 40px;
+  height: 40px;
+}
+
+.job-detail-info__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  gap: 14px 24px;
+}
+
+.job-detail-info__grid dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-detail-info__grid dd {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.job-detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 4px;
+  color: var(--muted);
+}
+
+.job-detail-quotation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.job-detail-quotation-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.job-detail-quotation-list__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.job-detail-quotation-list__meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.job-detail-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.job-detail-photo-grid__item {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.job-detail-photo-grid__item img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: #eef3f8;
+}
+
+.job-detail-photo-grid__kind {
+  padding: 4px 10px 0;
+  color: #1552b3;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.job-detail-photo-grid__meta {
+  padding: 2px 10px 8px;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .status-chip {
@@ -2609,6 +2956,7 @@ img {
 
 .ui-dialog__content--small { width: min(460px, 100%); }
 .ui-dialog__content--large { width: min(760px, 100%); }
+.ui-dialog__content--xlarge { width: 90vw; max-width: 90vw; height: 90vh; max-height: 90vh; }
 .ui-dialog__header { padding: 20px 58px 18px 24px; border-bottom: 1px solid var(--border); }
 .ui-dialog__title { font-size: 20px; }
 .ui-dialog__description { margin-top: 3px; color: var(--muted); font-size: 13px; }
@@ -2687,7 +3035,7 @@ img {
 .auth-page__ambient--two { right: -180px; bottom: -260px; width: 600px; height: 600px; background: radial-gradient(circle, rgb(14 159 140 / 17%), transparent 68%); }
 
 .auth-brand { position: relative; z-index: 1; display: flex; align-items: center; gap: 12px; }
-.auth-brand__mark { display: grid; width: 44px; height: 44px; place-items: center; border-radius: var(--radius-input); background: var(--blue-600); box-shadow: 0 10px 28px rgb(27 107 227 / 35%); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-weight: 700; }
+.auth-brand__logo { display: block; width: 52px; height: 52px; flex: 0 0 auto; object-fit: contain; filter: drop-shadow(0 10px 20px rgb(27 107 227 / 30%)); }
 .auth-brand > span:last-child { display: flex; flex-direction: column; line-height: 1.25; }
 .auth-brand strong { font-size: 18px; }
 .auth-brand small { color: #94a3b8; font-size: 10px; letter-spacing: .08em; }

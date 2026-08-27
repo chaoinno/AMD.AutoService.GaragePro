@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Application\AMD.AutoService.GaragePro.Application.csproj" />
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Domain\AMD.AutoService.GaragePro.Domain.csproj" />
+    <ProjectReference Include="..\AMD.AutoService.GaragePro.Infrastructure\AMD.AutoService.GaragePro.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -154,8 +154,11 @@ W2 รอประกันอนุมัติ · B11/B12 ส่งไปท�
 | ขนาด DB / buffer pool | 206 GB / 23 GB (cache ได้ 11%) |
 | Login ที่แอปใช้ | **`sa`** |
 
-**ข้อสรุป:** `PjcarPickUp` เป็นตารางที่ร้อนที่สุดและเปราะที่สุดในระบบ — **ระบบใหม่ต้องไม่เพิ่ม write load ลงไปอีก**
+**ข้อสรุปเดิม:** `PjcarPickUp` เป็นตารางที่ร้อนที่สุดและเปราะที่สุดในระบบ — หลีกเลี่ยง write ใหม่โดยทั่วไป
 → ชั่งน้ำหนักไปทาง **ตัวเลือก B (Hybrid)**: อ่าน legacy อย่างเดียว (`WITH (NOLOCK)` หรือ Dapper read-only + snapshot) เขียนลงตารางใหม่ของเรา
+
+**ข้อยกเว้น 2026-08-26:** ผู้ใช้อนุมัติให้หน้า `/jobs` เปิดจ๊อบตาม `ProjectAdd.aspx` ลง legacy โดยตรง
+ผ่าน writer เฉพาะทางและ transaction สั้นเท่านั้น; quotation และโมดูลอื่นยังคงใช้แนวทาง Hybrid เดิม
 
 ### 🔐 หมายเหตุความปลอดภัย
 `AMD.GaragePro.Admin/backend/AMD.GaragePro.Admin.API/appsettings.json` มี **รหัส `sa` ของ SQL, รหัส FTP, JWT signing key และ API key เป็น plaintext** อยู่ใน repo — ถ้า repo นี้ push ขึ้น remote ควรถอดออกเป็น user-secrets / env var และหมุนรหัสใหม่ ระบบใหม่ไม่ควรทำตาม pattern นี้

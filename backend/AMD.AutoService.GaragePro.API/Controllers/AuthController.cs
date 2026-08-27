@@ -8,12 +8,11 @@ using Microsoft.AspNetCore.Mvc;
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
 /// <summary>
-/// เข้าสู่ระบบ เลือกสาขาและกะ — ใช้บัญชีเดิมใน Garage DB (dbo.User)
+/// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User + dbo.Staff)
 ///
 /// ลำดับการใช้งาน:
-///   1. POST /auth/login          → token ขั้นแรก + รายการสาขา
-///   2. GET  /auth/branches/{id}/shifts
-///   3. POST /auth/shift-sessions → token ที่ใช้เรียก API งานได้จริง
+///   Web:   POST /auth/login → token ที่ผูก Staff.BranchId และใช้งานได้ทันที
+///   Mobile compatibility: ยังเลือกสาขา/กะและเปิด ShiftSession ต่อได้
 /// </summary>
 [ApiController]
 [Route("api/v1/auth")]

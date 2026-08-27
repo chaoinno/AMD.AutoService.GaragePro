@@ -42,12 +42,16 @@ public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacy
         LTRIM(RTRIM(ISNULL(c.FirstName, N'') + N' ' + ISNULL(c.LastName, N''))) AS CustomerName,
         ISNULL(c.PhoneNumber1, c.PhoneNumber2)            AS CustomerPhone,
         car.Id                                            AS CarId,
+        COALESCE(NULLIF(p.ThrumbnailImage, N''), NULLIF(car.ImageUrl, N'')) AS VehicleImagePath,
         car.CarNumber                                     AS VehicleRegistration,
         LTRIM(RTRIM(ISNULL(bc.Name, N'') + N' ' + ISNULL(cm.Name, N''))) AS VehicleModel,
         car.Chassis                                       AS VehicleVin,
         p.CreatedDate                                     AS CreatedDate,
         ISNULL(p.DueDate, p.DueDateExpected)              AS PromiseAt,
-        st.Name                                           AS LegacyStatusName
+        st.Name                                           AS LegacyStatusName,
+        p.PJTypeId                                        AS PjTypeId,
+        pt.Name                                           AS PjTypeName,
+        p.PJStatusId                                       AS PjStatusId
         """;
 
     private const string JobFrom = """
@@ -58,6 +62,7 @@ public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacy
         LEFT JOIN CarModel cm  WITH (READUNCOMMITTED) ON cm.Id  = car.CarModelId
         LEFT JOIN BrandCar bc  WITH (READUNCOMMITTED) ON bc.Id  = car.BrandCarId
         LEFT JOIN PJStatus st  WITH (READUNCOMMITTED) ON st.Id  = p.PJStatusId
+        LEFT JOIN PJType   pt  WITH (READUNCOMMITTED) ON pt.Id  = p.PJTypeId
         """;
 
     public async Task<LegacyJobDto?> GetJobAsync(string shardKey, long jobId, CancellationToken ct = default)
@@ -71,7 +76,9 @@ public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacy
     }
 
     public async Task<IReadOnlyList<LegacyJobDto>> SearchJobsAsync(
-        string shardKey, int branchId, string? keyword, int take, CancellationToken ct = default)
+        string shardKey, int branchId, string? keyword, int take,
+        DateTime? beforeCreatedDate = null, long? beforeJobId = null,
+        int? pjTypeId = null, int? pjStatusId = null, CancellationToken ct = default)
     {
         await using var db = Open(shardKey);
 
@@ -86,17 +93,49 @@ public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacy
                    OR c.PhoneNumber1 LIKE @like)
               """;
 
+        var typeFilter = pjTypeId is null ? string.Empty : "AND p.PJTypeId = @pjTypeId";
+        var statusFilter = pjStatusId is null ? string.Empty : "AND p.PJStatusId = @pjStatusId";
+
+        // keyset pagination: ขอหน้าถัดไปด้วยแถวสุดท้ายที่ได้รับแล้ว กัน OFFSET ที่ต้องสแกนแถวที่ข้ามซ้ำทุกครั้ง
+        // (ตาราง PJCarPickUp มี lock convoy อยู่แล้ว — docs/05 §5)
+        var cursorFilter = beforeCreatedDate is null
+            ? string.Empty
+            : """
+              AND (p.CreatedDate < @beforeCreatedDate
+                   OR (p.CreatedDate = @beforeCreatedDate AND p.Id < @beforeJobId))
+              """;
+
         var sql = $"""
             SELECT TOP (@take) {JobColumns}
             {JobFrom}
-            WHERE p.BranchId = @branchId {filter}
-            ORDER BY p.CreatedDate DESC
+            WHERE p.BranchId = @branchId {filter} {typeFilter} {statusFilter} {cursorFilter}
+            ORDER BY p.CreatedDate DESC, p.Id DESC
             """;
 
         var rows = await db.QueryAsync<LegacyJobDto>(new CommandDefinition(
             sql,
-            new { branchId, take, like = $"%{keyword}%" },
+            new { branchId, take, like = $"%{keyword}%", beforeCreatedDate, beforeJobId, pjTypeId, pjStatusId },
             cancellationToken: ct));
+
+        return rows.ToList();
+    }
+
+    public async Task<IReadOnlyList<JobStatusOptionDto>> GetJobStatusOptionsAsync(
+        string shardKey, int branchId, CancellationToken ct = default)
+    {
+        await using var db = Open(shardKey);
+
+        // ดึงเฉพาะสถานะที่มีจ๊อบใช้งานจริงในสาขานี้ — ไม่ query PJStatus.Status เพราะยังไม่ยืนยัน schema จริง
+        const string sql = """
+            SELECT DISTINCT st.Id, st.Name
+            FROM PJCarPickUp p WITH (READUNCOMMITTED)
+            JOIN PJStatus st WITH (READUNCOMMITTED) ON st.Id = p.PJStatusId
+            WHERE p.BranchId = @branchId
+            ORDER BY st.Name
+            """;
+
+        var rows = await db.QueryAsync<JobStatusOptionDto>(
+            new CommandDefinition(sql, new { branchId }, cancellationToken: ct));
 
         return rows.ToList();
     }

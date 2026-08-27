@@ -9,9 +9,12 @@ import type {
 
 export type QuotationFilter = '' | 'todo' | 'wait' | 'rev' | 'done'
 
-export function getQuotations(filter: QuotationFilter) {
-  const query = filter ? `?filter=${encodeURIComponent(filter)}` : ''
-  return apiRequest<QuotationSummary[]>(`/api/v1/quotations${query}`)
+export function getQuotations(filter: QuotationFilter, jobId?: number) {
+  const params = new URLSearchParams()
+  if (filter) params.set('filter', filter)
+  if (jobId) params.set('jobId', String(jobId))
+  const query = params.toString()
+  return apiRequest<QuotationSummary[]>(`/api/v1/quotations${query ? `?${query}` : ''}`)
 }
 
 export function getQuotation(id: string | number) {
