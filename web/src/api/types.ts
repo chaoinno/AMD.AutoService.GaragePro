@@ -329,17 +329,195 @@ export type CreateQuotationInput = {
   depositAmount?: number
 }
 
-export type AttachmentKind =
-  | 'signature' | 'intake' | 'inspection' | 'repair-before' | 'repair-after' | 'qc' | 'document'
+export type PagedResult<T> = {
+  items: T[]
+  page: number
+  pageSize: number
+  totalItems: number
+  totalPages: number
+}
 
-export type Attachment = {
-  id: string
-  kind: AttachmentKind
-  fileName: string
-  contentType: string
-  sizeBytes: number
-  relativePath: string
-  url: string
-  uploadedByName: string
-  uploadedAt: string
+export type LookupItem = { id: number; name: string; secondary?: string | null }
+
+export type CustomerSummary = {
+  id: number
+  code: string
+  firstName: string
+  lastName: string
+  fullName: string
+  idCard: string | null
+  phoneNumber1: string | null
+  phoneNumber2: string | null
+  email: string | null
+  provinceName: string | null
+  isBlacklist: boolean
+  blacklistRemark: string | null
+  isDeleted: boolean
+  vehicleCount: number
+  lastUpdated: string | null
+}
+
+export type CustomerVehicleSummary = {
+  id: number
+  registration: string
+  provinceName: string | null
+  brandName: string | null
+  modelName: string | null
+  nickname: string | null
+  year: string | null
+  imageUrl: string | null
+  isDeleted: boolean
+}
+
+export type CustomerDetail = {
+  id: number
+  code: string
+  firstName: string
+  lastName: string
+  idCard: string | null
+  driverLicense: string | null
+  genderId: number | null
+  dateOfBirth: string | null
+  address1: string | null
+  address2: string | null
+  provinceId: number | null
+  provinceName: string | null
+  amphureId: number | null
+  amphureName: string | null
+  districtId: number | null
+  districtName: string | null
+  zipCode: string | null
+  phoneNumber1: string | null
+  phoneNumber2: string | null
+  email: string | null
+  lineId: string | null
+  isBlacklist: boolean
+  blacklistRemark: string | null
+  isDeleted: boolean
+  createdDate: string | null
+  lastUpdated: string | null
+  vehicles: CustomerVehicleSummary[]
+}
+
+export type CustomerInput = {
+  firstName: string
+  lastName: string
+  phoneNumber1: string
+  phoneNumber2?: string
+  idCard?: string
+  driverLicense?: string
+  genderId?: number
+  dateOfBirth?: string
+  address1?: string
+  address2?: string
+  provinceId?: number
+  amphureId?: number
+  districtId?: number
+  zipCode?: string
+  email?: string
+  lineId?: string
+  isBlacklist: boolean
+  blacklistRemark?: string
+}
+
+export type CustomerDuplicate = {
+  id: number
+  code: string
+  fullName: string
+  phoneNumber1: string
+  email: string | null
+  isDeleted: boolean
+}
+
+export type VehicleSummary = {
+  id: number
+  registration: string
+  provinceName: string | null
+  brandName: string | null
+  modelName: string | null
+  nickname: string | null
+  carTypeName: string | null
+  year: string | null
+  primaryColorName: string | null
+  ownerName: string | null
+  ownerPhone: string | null
+  imageUrl: string | null
+  isDeleted: boolean
+  lastUpdated: string | null
+}
+
+export type VehicleOwner = {
+  id: number
+  code: string
+  fullName: string
+  phoneNumber1: string | null
+  idCard: string | null
+}
+
+export type VehicleDetail = {
+  id: number
+  registration: string
+  provinceId: number | null
+  provinceName: string | null
+  brandId: number | null
+  brandName: string | null
+  modelId: number | null
+  modelName: string | null
+  nicknameId: number | null
+  nickname: string | null
+  carTypeId: number | null
+  carTypeName: string | null
+  yearId: number | null
+  year: string | null
+  primaryColorId: number | null
+  primaryColorName: string | null
+  colorMixId: number | null
+  colorMixName: string | null
+  gearId: number | null
+  gearName: string | null
+  machineId: number | null
+  machineName: string | null
+  driveSystemId: number | null
+  driveSystemName: string | null
+  vin: string | null
+  engineNumber: string | null
+  insuranceId: number | null
+  insuranceName: string | null
+  insuranceExpiredDate: string | null
+  imageUrl: string | null
+  isDeleted: boolean
+  createdDate: string | null
+  lastUpdated: string | null
+  owners: VehicleOwner[]
+}
+
+export type VehicleInput = {
+  customerId: number
+  registration: string
+  provinceId: number
+  brandId: number
+  modelId: number
+  nicknameId: number
+  yearId: number
+  primaryColorId?: number
+  colorMixId?: number
+  gearId?: number
+  machineId?: number
+  driveSystemId?: number
+  vin?: string
+  engineNumber?: string
+  insuranceId?: number
+  insuranceExpiredDate?: string
+}
+
+export type VehicleReferenceData = {
+  brands: LookupItem[]
+  years: LookupItem[]
+  carTypes: LookupItem[]
+  insurances: LookupItem[]
+  gears: LookupItem[]
+  machines: LookupItem[]
+  driveSystems: LookupItem[]
+  primaryColors: LookupItem[]
+  colorMixes: LookupItem[]
 }

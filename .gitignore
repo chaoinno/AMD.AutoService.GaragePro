@@ -15,11 +15,8 @@ mobile/ios/Pods/
 mobile/.flutter-plugins*
 
 # ไฟล์แนบที่อัปโหลดตอน dev — ไม่เข้า repo
-storage/
-backend/**/storage/
-# Source namespace นี้ชื่อ Storage เช่นกัน; ต้องยกเว้นจาก runtime storage rule ด้านบน
-!backend/AMD.AutoService.GaragePro.Infrastructure/Storage/
-!backend/AMD.AutoService.GaragePro.Infrastructure/Storage/**
+/storage/
+/backend/AMD.AutoService.GaragePro.API/storage/
 
 # ความลับ — ใช้ dotnet user-secrets เท่านั้น
 appsettings.*.local.json

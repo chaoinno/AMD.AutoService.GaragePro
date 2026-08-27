@@ -51,6 +51,10 @@ builder.Services.AddSwaggerGen(o =>
             Array.Empty<string>()
         }
     });
+
+    var xmlPath = Path.Combine(AppContext.BaseDirectory,
+        $"{typeof(Program).Assembly.GetName().Name}.xml");
+    if (File.Exists(xmlPath)) o.IncludeXmlComments(xmlPath);
 });
 
 // ---------- Auth ----------

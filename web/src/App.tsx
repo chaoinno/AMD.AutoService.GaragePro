@@ -8,6 +8,9 @@ import { LoginPage } from './features/auth/LoginPage'
 import { JobsPage } from './features/jobs/JobsPage'
 import { DocumentPage } from './features/quotations/DocumentPage'
 import { EditorPage } from './features/quotations/EditorPage'
+import { QueuePage } from './features/quotations/QueuePage'
+import { CustomerPage } from './features/customers/CustomerPage'
+import { VehiclePage } from './features/customers/VehiclePage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -28,6 +31,8 @@ export default function App() {
           <Route path="/quotations/:id" element={<ProtectedRoute><QuotationRedirect /></ProtectedRoute>} />
           <Route path="/quotations/:id/edit" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
           <Route path="/quotations/:id/document" element={<ProtectedRoute><DocumentPage /></ProtectedRoute>} />
+          <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
+          <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

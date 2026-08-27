@@ -40,7 +40,7 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
       headers: {
         ...defaultHeaders,
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        ...(requestInit.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(requestInit.body && !(requestInit.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
         ...requestInit.headers,
       },
     })
@@ -84,6 +84,32 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
   }
 
   return envelope.data
+}
+
+export async function apiDownload(path: string): Promise<Blob> {
+  const accessToken = getAccessToken()
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: { ...defaultHeaders, ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+    })
+  } catch {
+    throw makeApiError('ไม่สามารถเชื่อมต่อระบบบริการได้', 'NETWORK_ERROR', 'ไม่มี traceId เนื่องจากยังติดต่อเซิร์ฟเวอร์ไม่ได้')
+  }
+  if (response.status === 401) {
+    clearStoredSession()
+    window.location.assign('/login')
+  }
+  if (!response.ok) {
+    try {
+      const envelope = (await response.json()) as Envelope<never>
+      throw makeApiError(envelope.error?.messageTh ?? 'ส่งออกข้อมูลไม่สำเร็จ', envelope.error?.code ?? `HTTP_${response.status}`, envelope.traceId, response.status)
+    } catch (error) {
+      if (isApiError(error)) throw error
+      throw makeApiError('ส่งออกข้อมูลไม่สำเร็จ', `HTTP_${response.status}`, response.headers.get('x-trace-id') ?? 'ไม่พบ traceId', response.status)
+    }
+  }
+  return response.blob()
 }
 
 export function isApiError(error: unknown): error is ApiError {

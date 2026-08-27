@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
   Building2,
+  CarFront,
   ChevronDown,
   CircleHelp,
   LogOut,
@@ -33,6 +34,7 @@ type AppShellProps = {
 const navItems = [
   { to: '/jobs', icon: Wrench, label: 'จ๊อบ' },
   { to: '/customers', icon: Users, label: 'ลูกค้า' },
+  { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
   { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
   { to: '/reports', icon: BarChart3, label: 'รายงาน' },
 ]

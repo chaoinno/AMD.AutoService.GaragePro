@@ -3211,6 +3211,81 @@ img {
 [data-sonner-toaster] { font-family: 'Noto Sans Thai', 'IBM Plex Sans', system-ui, sans-serif !important; }
 [data-sonner-toast] { border-radius: var(--radius-input) !important; }
 
+/* Customer and vehicle management */
+.heading-actions { display: flex; align-items: center; gap: 10px; }
+.management-filters.ui-card {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.6fr) repeat(3, minmax(150px, .7fr)) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+.management-filters--vehicle.ui-card { grid-template-columns: minmax(300px, 1.5fr) repeat(5, minmax(130px, .62fr)); }
+.filter-search { min-width: 0; }
+.filter-check { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.filter-check input, .check-row input { width: 16px; height: 16px; accent-color: var(--blue-600); }
+.search-field-options { display: flex; grid-column: 1 / -1; flex-wrap: wrap; align-items: center; gap: 7px 14px; padding-top: 4px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+.search-field-options > span { color: var(--navy-700); font-weight: 700; }
+.search-field-options label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; white-space: nowrap; }
+.search-field-options input { width: 14px; height: 14px; accent-color: var(--blue-600); }
+.management-table-card.ui-card { overflow: hidden; }
+.management-table-card .data-table__clickable-row:hover { background: #f7faff; }
+.count-chip { display: inline-flex; min-height: 26px; align-items: center; padding: 3px 9px; border-radius: var(--radius-pill); background: var(--blue-50); color: var(--blue-600); font-size: 11px; font-weight: 700; }
+.blacklist-badge.ui-badge { gap: 5px; border: 1px solid #f1bcbc; background: #fbe9e9; color: #a31d1d; }
+.blacklist-badge svg, .active-badge svg { width: 13px; height: 13px; }
+.active-badge.ui-badge { border: 1px solid #bde2da; background: #e3f5f1; color: #0b6d5e; }
+.row-actions { display: flex; justify-content: flex-end; gap: 2px; }
+.row-actions .ui-button svg { width: 16px; height: 16px; }
+.pagination-bar { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+.pagination-bar > div { display: flex; align-items: center; gap: 12px; }
+.pagination-bar strong { color: var(--text); font-size: 11px; }
+.pagination-bar .ui-button svg { width: 14px; height: 14px; }
+
+.management-form { display: grid; max-height: min(68vh, 760px); gap: 18px; overflow-y: auto; padding-right: 4px; }
+.management-form > section { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: white; }
+.management-form > section > h3 { color: var(--navy-900); font-size: 14px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 16px; }
+.field { display: grid; min-width: 0; gap: 6px; color: var(--navy-700); font-size: 11px; font-weight: 700; }
+.field--wide { grid-column: 1 / -1; }
+.field-error { color: var(--red-600); font-size: 10px; font-weight: 600; }
+.blacklist-section { background: #fbfcfe !important; }
+.blacklist-section--active { border-color: #efb2b2 !important; background: #fff8f8 !important; }
+.check-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.check-row > span { display: flex; flex-direction: column; }
+.check-row small { color: var(--muted); font-size: 10px; font-weight: 400; }
+.duplicate-warning { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; padding: 14px; border: 1px solid #f2c6a0; border-radius: var(--radius-input); background: #fff8ed; }
+.duplicate-warning > svg { width: 25px; height: 25px; color: #b66b13; }
+.duplicate-warning p, .duplicate-warning small { color: var(--muted); }
+
+.vehicle-image, .vehicle-placeholder { width: 48px; height: 40px; border-radius: 8px; }
+.vehicle-image { display: block; object-fit: cover; }
+.vehicle-placeholder { display: grid; place-items: center; background: #eef3f9; color: #7890ac; }
+.vehicle-placeholder svg { width: 20px; height: 20px; }
+.vehicle-image--large { display: block; width: 100%; height: 150px; object-fit: cover; }
+.vehicle-placeholder--large { width: 100%; height: 150px; }
+.selected-owner { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid #b9d1f4; border-radius: var(--radius-input); background: var(--blue-50); }
+.selected-owner > svg { width: 20px; height: 20px; color: var(--blue-600); }
+.selected-owner > span { display: flex; flex-direction: column; }
+.selected-owner small { color: var(--muted); font-size: 10px; }
+.owner-results { display: grid; max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-input); }
+.owner-results > button { display: flex; align-items: flex-start; flex-direction: column; gap: 2px; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; text-align: left; }
+.owner-results > button:hover { background: var(--blue-50); }
+.owner-results > button:last-child { border-bottom: 0; }
+.owner-results small, .owner-results > span { color: var(--muted); font-size: 10px; }
+.owner-results > span { padding: 12px; }
+.image-drop { position: relative; display: grid; justify-items: center; gap: 5px; padding: 14px; border: 1px dashed #9eb5d0; border-radius: var(--radius-card); background: #f8fbff; cursor: pointer; text-align: center; }
+.image-drop:hover { border-color: var(--blue-600); background: var(--blue-50); }
+.image-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.image-drop > span { display: grid; width: min(100%, 360px); min-height: 80px; place-items: center; overflow: hidden; border-radius: 8px; }
+.image-drop > span > svg { width: 32px; height: 32px; color: var(--blue-600); }
+.image-drop small { color: var(--muted); font-size: 10px; }
+
+@media (max-width: 1250px) and (min-width: 1024px) {
+  .management-filters.ui-card, .management-filters--vehicle.ui-card { grid-template-columns: minmax(280px, 1.5fr) repeat(2, minmax(130px, 1fr)); }
+  .filter-check { justify-self: start; }
+}
+
 @media (max-width: 1150px) and (min-width: 1024px) {
   .app-shell {
     grid-template-columns: 68px minmax(0, 1fr);
