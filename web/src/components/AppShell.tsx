@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
   Building2,
+  CarFront,
   ChevronDown,
   CircleAlert,
   CircleHelp,
@@ -43,6 +44,7 @@ const navItems = [
   { to: '/quotations', icon: FileText, label: 'ใบเสนอราคา' },
   { to: '/jobs', icon: Wrench, label: 'งานซ่อม' },
   { to: '/customers', icon: Users, label: 'ลูกค้า' },
+  { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
   { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
   { to: '/reports', icon: BarChart3, label: 'รายงาน' },
 ]
