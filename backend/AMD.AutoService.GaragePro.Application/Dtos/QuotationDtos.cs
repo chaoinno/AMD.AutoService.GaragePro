@@ -14,17 +14,53 @@ public sealed record LegacyJobDto(
     string CustomerName,
     string? CustomerPhone,
     long? CarId,
+    string? VehicleImagePath,
     string VehicleRegistration,
     string? VehicleModel,
     string? VehicleVin,
     DateTime CreatedDate,
     DateTime? PromiseAt,
-    string? LegacyStatusName);
+    string? LegacyStatusName,
+    int PjTypeId,
+    string? PjTypeName,
+    int PjStatusId);
+
+public sealed record JobStatusOptionDto(int Id, string Name);
 
 public sealed record LegacyBranchDto(
     int BranchId, string Name, string? Address, string? TaxId, string? Phone);
 
 public sealed record LegacyTechnicianDto(long StaffId, string Name, string? SkillLevel);
+
+public sealed record JobLookupDto(int Id, string Name);
+
+public sealed record JobModelLookupDto(int Id, string Name, int BrandId);
+
+public sealed record JobNicknameLookupDto(int Id, string Name, int BrandId, int ModelId);
+
+public sealed record JobColorLookupDto(int Id, string Name, string? HtmlCode);
+
+public sealed record JobFormOptionsDto(
+    IReadOnlyList<JobLookupDto> Brands,
+    IReadOnlyList<JobModelLookupDto> Models,
+    IReadOnlyList<JobNicknameLookupDto> Nicknames,
+    IReadOnlyList<JobColorLookupDto> PrimaryColors);
+
+public sealed record CreateLegacyJobRequest(
+    string CarNumberGroup,
+    string CarNumber,
+    int BrandId,
+    int ModelId,
+    int CarNicknameId,
+    int ColorType,
+    int PjTypeId,
+    int? PrimaryColorId,
+    string? SenderFirstName,
+    string? SenderLastName,
+    string? SenderPhoneNumber,
+    string? Detail);
+
+public sealed record CreatedLegacyJobDto(long JobId, string JobNo);
 
 // ---------- แคตตาล็อก ----------
 

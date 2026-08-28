@@ -17,10 +17,11 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 [RequireShiftSession]
 public sealed class QuotationsController(IQuotationService service) : ControllerBase
 {
-    /// <summary>คิวใบเสนอราคาของสาขา · filter: todo | wait | rev | done</summary>
+    /// <summary>คิวใบเสนอราคาของสาขา · filter: todo | wait | rev | done · jobId: กรองเฉพาะงานเดียว</summary>
     [HttpGet]
-    public async Task<IActionResult> GetQueue([FromQuery] string? filter, CancellationToken ct) =>
-        Render(await service.GetQueueAsync(filter, ct));
+    public async Task<IActionResult> GetQueue(
+        [FromQuery] string? filter, [FromQuery] long? jobId, CancellationToken ct) =>
+        Render(await service.GetQueueAsync(filter, jobId, ct));
 
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct) =>

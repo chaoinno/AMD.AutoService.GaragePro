@@ -69,18 +69,22 @@ scutil --nc start "Garage Pro VPN" && sleep 10 && scutil --nc status "Garage Pro
 
 ## สถาปัตยกรรมที่ต้องเข้าใจก่อนแก้โค้ด
 
-### 1. Hybrid: อ่าน legacy / เขียนฐานใหม่
+### 1. Hybrid: อ่าน legacy / เขียนฐานใหม่ (ยกเว้นเปิดจ๊อบ)
 
 | | ที่ไหน | ทำอะไร |
 |---|---|---|
-| `Garage` (10.10.4.11) | legacy | **อ่านอย่างเดียว** — ลูกค้า รถ สาขา พนักงาน งาน (`PJCarPickUp`) ผู้ใช้ (`dbo.User`) |
+| `Garage` (10.10.4.11) | legacy | อ่านข้อมูลหลัก; อนุญาต write เฉพาะ flow เปิดจ๊อบผ่าน `LegacyJobWriter` |
 | `GarageService` (10.10.4.11) | ของเรา | ตาราง `svc_*` ทั้งหมด |
 
-**ห้าม write ลง Garage DB เด็ดขาด** — `PJCarPickUp` มี lock convoy อยู่แล้ว (lock wait 92–96% ของทั้งระบบ,
+`PJCarPickUp` มี lock convoy อยู่แล้ว (lock wait 92–96% ของทั้งระบบ,
 lock escalation 1.37 ล้านครั้ง, RCSI ปิด) ทุก query ที่ `LegacyReader`/`LegacyUserReader` ต้อง:
 1. เลือกเฉพาะคอลัมน์ที่ใช้ — ห้าม `SELECT *` (EF6 เดิมอ่านแถวละ ~18 MB เพราะดึง LOB)
 2. ใส่ `WITH (READUNCOMMITTED)`
 3. ไม่มีคำสั่งเขียนใดๆ
+
+**ข้อยกเว้นที่ตกลงแล้ว:** หน้า Web `/jobs` เปิดจ๊อบลง Garage DB เดิมตาม `ProjectAdd.aspx`
+ผ่าน `ILegacyJobWriter`/`LegacyJobWriter` เท่านั้น โดยจำกัดสาขาจาก JWT, ใช้ parameterized SQL,
+transaction สั้นหนึ่งชุด และเขียนเฉพาะ `Customer`, `Car`, `CarCustomer`, `PJCarPickUp` ที่จำเป็น
 
 ### 2. GaragePro เป็น multi-tenant SaaS แบ่ง shard
 
@@ -187,12 +191,12 @@ API/             controller บางๆ — logic อยู่ที่ Applica
 
 ### Auth flow
 ```
-POST /auth/login          → token ขั้นแรก (pre-session) + รายการสาขา
-GET  /auth/branches/{id}/shifts
-POST /auth/shift-sessions → token ที่ใช้เรียก API งานได้จริง (มี branch/shift/session ใน claim)
+Web:    POST /auth/login → token ใช้งานได้ทันที (มี branch จาก Staff.BranchId ใน claim)
+Mobile: POST /auth/login → เลือกสาขา/กะต่อผ่าน /auth/branches/{id}/shifts
+        POST /auth/shift-sessions → token ที่มี branch/shift/session ใน claim
 ```
-`[RequireShiftSession]` บล็อก token ขั้นแรกไม่ให้เรียก endpoint งาน —
-ถ้าไม่มี attribute นี้ `BranchId` จะเป็น 0 แล้วอ่าน/เขียนผิดสาขา
+`[RequireShiftSession]` ยังใช้ตรวจว่ามี branch context ก่อนเรียก endpoint งาน;
+Web ไม่ต้องมี ShiftSession ส่วน Mobile compatibility ยังเปิด/ปิดกะได้ตามเดิม
 
 ### Envelope
 ```jsonc
@@ -221,12 +225,12 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 ## สถานะปัจจุบัน
 
 ### เสร็จแล้ว
-- ✅ Auth: login ด้วยบัญชีเดิม · เลือกสาขา/กะ · JWT · role mapping จากโครงองค์กรเดิม
+- ✅ Auth: login ด้วยบัญชีเดิม · ตรวจ User/Staff active · Web ผูก Staff.BranchId อัตโนมัติ · JWT · role mapping
 - ✅ Quotation: สร้าง · แก้บรรทัด · validate · ส่ง · **ออกฉบับแก้ไข** · อนุมัติรายบรรทัด · เซ็น
 - ✅ Attachment: อัปโหลด · เปิดไฟล์ · ลายเซ็นจากมือถือขึ้น server จริง
 - ✅ Mobile: login · เลือกสาขา/กะ · คิว (pull-to-refresh) · อนุมัติ · ลายเซ็น · โปรไฟล์/ปิดกะ
 - ✅ Web: คิว · editor 3 พาเนล · เอกสาร A4 พร้อมพิมพ์
-- ✅ Test: 49 ผ่าน (state machine · calculator · role mapper)
+- ✅ Test: 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper)
 
 ### ยังไม่ได้ทำ
 - รับรถ 6 ขั้น · ตรวจเช็ค 31 รายการ · ซ่อม+QC · คลัง/จัดซื้อ · POS · รายงาน

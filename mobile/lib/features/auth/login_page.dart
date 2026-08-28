@@ -239,7 +239,7 @@ class _Brand extends StatelessWidget {
           const Text('GaragePro',
               style: TextStyle(
                   fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.4)),
-          const Text('ระบบงานบริการ',
+          const Text('Auto Services',
               style: TextStyle(fontSize: 14, color: T.faint, height: 1.6)),
         ],
       );

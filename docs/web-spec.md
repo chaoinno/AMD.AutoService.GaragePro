@@ -85,7 +85,9 @@ DELETE /api/v1/quotations/{id}/lines/{lineId}
 GET    /api/v1/quotations/{id}/validate               → { isValid, errors[], warnings[] }
 POST   /api/v1/quotations/{id}/send
 POST   /api/v1/quotations/{id}/revise                 body: { revisionReason }
-GET    /api/v1/jobs/search?q=&take=25                 → LegacyJob[]
+GET    /api/v1/jobs/search?q=&take=100                → LegacyJob[]
+GET    /api/v1/jobs/form-options                      → JobFormOptions
+POST   /api/v1/jobs                                   → CreatedJob
 GET    /api/v1/catalog?q=                             → CatalogItem[]
 GET    /api/v1/technicians                            → { staffId, name, skillLevel }[]
 ```

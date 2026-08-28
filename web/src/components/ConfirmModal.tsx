@@ -15,7 +15,7 @@ type ConfirmModalProps = {
   onClose: () => void
   children?: ReactNode
   footer?: ReactNode
-  size?: 'small' | 'medium' | 'large'
+  size?: 'small' | 'medium' | 'large' | 'xlarge'
 }
 
 export function ConfirmModal({

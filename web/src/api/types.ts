@@ -55,20 +55,10 @@ export type LoginResult = {
   accessToken: string
   expiresAt: string
   user: AuthUser
-  branches: BranchOption[]
-  requiresShiftSelection: boolean
-}
-
-export type ShiftSessionResult = {
-  sessionId: string
-  accessToken: string
-  expiresAt: string
-  user: AuthUser
   branchId: number
   branchName: string
-  shiftId: string
-  shiftName: string
-  openedAt: string
+  branches: BranchOption[]
+  requiresShiftSelection: boolean
 }
 
 export type MeResult = {
@@ -252,13 +242,47 @@ export type LegacyJob = {
   customerName: string
   customerPhone: string | null
   carId: number | null
+  vehicleImagePath: string | null
   vehicleRegistration: string
   vehicleModel: string | null
   vehicleVin: string | null
   createdDate: string
   promiseAt: string | null
   legacyStatusName: string | null
+  pjTypeId: number
+  pjTypeName: string | null
+  pjStatusId: number
 }
+
+export type JobStatusOption = { id: number; name: string }
+
+export type JobLookup = { id: number; name: string }
+export type JobModelLookup = JobLookup & { brandId: number }
+export type JobNicknameLookup = JobLookup & { brandId: number; modelId: number }
+export type JobColorLookup = JobLookup & { htmlCode: string | null }
+export type JobFormOptions = {
+  brands: JobLookup[]
+  models: JobModelLookup[]
+  nicknames: JobNicknameLookup[]
+  primaryColors: JobColorLookup[]
+}
+
+export type CreateJobInput = {
+  carNumberGroup: string
+  carNumber: string
+  brandId: number
+  modelId: number
+  carNicknameId: number
+  colorType: number
+  pjTypeId: number
+  primaryColorId?: number
+  senderFirstName?: string
+  senderLastName?: string
+  senderPhoneNumber?: string
+  detail?: string
+}
+
+export type CreatedJob = { jobId: number; jobNo: string }
 
 export type CatalogItem = {
   catalogCode?: string

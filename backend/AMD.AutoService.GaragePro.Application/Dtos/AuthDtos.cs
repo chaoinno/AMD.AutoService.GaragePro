@@ -33,13 +33,15 @@ public sealed record OpenShiftRequest(int BranchId, Guid ShiftId);
 // ---------- คำตอบ ----------
 
 /// <summary>
-/// ผลการเข้าสู่ระบบ — ยังไม่ผูกสาขา/กะ
-/// client ต้องเรียก /auth/shift-sessions ต่อเพื่อได้ token ที่ใช้เรียก API งานได้
+/// ผลการเข้าสู่ระบบ — token ผูก Staff.BranchId และเรียก API งานได้ทันที
+/// Branches ยังส่งไว้ชั่วคราวเพื่อรองรับ Mobile flow เดิม
 /// </summary>
 public sealed record LoginResultDto(
     string AccessToken,
     DateTime ExpiresAt,
     AuthUserDto User,
+    int BranchId,
+    string BranchName,
     IReadOnlyList<BranchOptionDto> Branches,
     bool RequiresShiftSelection);
 

@@ -4,8 +4,8 @@ import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
-import { BranchPage } from './features/auth/BranchPage'
 import { LoginPage } from './features/auth/LoginPage'
+import { JobsPage } from './features/jobs/JobsPage'
 import { DocumentPage } from './features/quotations/DocumentPage'
 import { EditorPage } from './features/quotations/EditorPage'
 import { QueuePage } from './features/quotations/QueuePage'
@@ -27,8 +27,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginRoute />} />
-          <Route path="/branch" element={<BranchRoute />} />
-          <Route path="/quotations" element={<ProtectedRoute><QueuePage /></ProtectedRoute>} />
+          <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
           <Route path="/quotations/:id" element={<ProtectedRoute><QuotationRedirect /></ProtectedRoute>} />
           <Route path="/quotations/:id/edit" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
           <Route path="/quotations/:id/document" element={<ProtectedRoute><DocumentPage /></ProtectedRoute>} />
@@ -43,27 +42,18 @@ export default function App() {
 
 function RootRedirect() {
   const { session } = useSession()
-  return <Navigate to={session?.stage === 'active' ? '/quotations' : session?.stage === 'branch' ? '/branch' : '/login'} replace />
+  return <Navigate to={session ? '/jobs' : '/login'} replace />
 }
 
 function LoginRoute() {
   const { session } = useSession()
-  if (session?.stage === 'active') return <Navigate to="/quotations" replace />
-  if (session?.stage === 'branch') return <Navigate to="/branch" replace />
+  if (session) return <Navigate to="/jobs" replace />
   return <LoginPage />
-}
-
-function BranchRoute() {
-  const { session } = useSession()
-  if (!session) return <Navigate to="/login" replace />
-  if (session.stage === 'active') return <Navigate to="/quotations" replace />
-  return <BranchPage />
 }
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const { session } = useSession()
   if (!session) return <Navigate to="/login" replace />
-  if (session.stage !== 'active') return <Navigate to="/branch" replace />
   return children
 }
 
@@ -81,8 +71,8 @@ function NotFoundPage() {
         title="ไม่พบหน้าที่ต้องการ"
         reason="ที่อยู่นี้ไม่มีอยู่ในระบบงานบริการ"
         traceId="ไม่ใช่คำขอ API"
-        actionLabel="กลับไปคิวใบเสนอราคา"
-        onAction={() => navigate('/quotations')}
+        actionLabel="กลับไปหน้าจ๊อบ"
+        onAction={() => navigate('/jobs')}
       />
     </AppShell>
   )

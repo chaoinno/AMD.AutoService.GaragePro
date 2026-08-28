@@ -51,6 +51,16 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
         return (Write(claims, expiresAt), expiresAt);
     }
 
+    public (string Token, DateTime ExpiresAt) IssueBranchToken(AuthUserDto user, int branchId)
+    {
+        var expiresAt = clock.GetUtcNow().UtcDateTime.AddHours(_options.SessionHours);
+
+        var claims = BaseClaims(user);
+        claims.Add(new Claim(GarageClaims.BranchId, branchId.ToString()));
+
+        return (Write(claims, expiresAt), expiresAt);
+    }
+
     public (string Token, DateTime ExpiresAt) IssueSessionToken(AuthUserDto user, ShiftSession session)
     {
         var expiresAt = clock.GetUtcNow().UtcDateTime.AddHours(_options.SessionHours);

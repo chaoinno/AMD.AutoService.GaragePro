@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { clearStoredSession, savePreShiftSession } from '../../lib/session'
+import { clearStoredSession, saveSession } from '../../lib/session'
 
 const loginSchema = z.object({
   userName: z.string().trim().min(1, 'กรุณากรอกรหัสพนักงาน'),
@@ -36,8 +36,8 @@ export function LoginPage() {
       return login(userName.trim(), password)
     },
     onSuccess: (result) => {
-      savePreShiftSession(result)
-      navigate('/branch', { replace: true })
+      saveSession(result)
+      navigate('/quotations', { replace: true })
     },
   })
 
@@ -47,18 +47,18 @@ export function LoginPage() {
       <div className="auth-page__ambient auth-page__ambient--two" />
       <section className="login-intro" aria-label="ข้อมูลระบบ">
         <div className="auth-brand">
-          <span className="auth-brand__mark">GP</span>
+          <img className="auth-brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
           <span>
             <strong>GaragePro</strong>
-            <small>ระบบงานบริการ</small>
+            <small>Auto Services</small>
           </span>
         </div>
         <div className="login-intro__copy">
           <span className="login-intro__eyebrow">
             <ShieldCheck aria-hidden="true" /> ระบบภายในสำหรับพนักงาน
           </span>
-          <h1>จัดการงานบริการ<br />ให้ทุกกะทำงานต่อกันได้</h1>
-          <p>เข้าสู่ระบบด้วยบัญชีพนักงานเดิม จากนั้นเลือกสาขาและกะที่กำลังปฏิบัติงาน</p>
+          <h1>จัดการงานบริการ<br />ได้ในที่เดียว</h1>
+          <p>เข้าสู่ระบบด้วยบัญชีพนักงานเดิม เพื่อเริ่มจัดการงานของสาขาคุณ</p>
         </div>
       </section>
 
