@@ -5,8 +5,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/attachment.dart';
 import '../models/auth.dart';
+import '../models/catalog.dart';
+import '../models/directory.dart';
+import '../models/job.dart';
 import '../models/quotation.dart';
+import 'urls.dart';
 
 /// ข้อผิดพลาดจาก API — [UI] ทุก error state ต้องมี สาเหตุ + ปุ่มถัดไป + รหัสอ้างอิง
 class ApiException implements Exception {
@@ -78,7 +83,7 @@ class SessionNotifier extends Notifier<Session?> {
 // ---------------------------------------------------------------- api client
 
 class GarageProApi {
-  GarageProApi({String? accessToken, String baseUrl = defaultBaseUrl})
+  GarageProApi({this.accessToken, this.baseUrl = defaultBaseUrl})
       : _dio = Dio(BaseOptions(
           baseUrl: '$baseUrl/api/v1',
           connectTimeout: const Duration(seconds: 10),
@@ -99,6 +104,19 @@ class GarageProApi {
   }
 
   final Dio _dio;
+
+  /// host ของ API — เก็บไว้ประกอบ URL ไฟล์แนบและรูปที่ต้องโหลดผ่าน Image.network
+  final String baseUrl;
+
+  /// token ปัจจุบัน — ต้องส่งเป็น header เวลาโหลดรูปจาก API ด้วย
+  final String? accessToken;
+
+  /// header สำหรับ Image.network ที่ต้องผ่าน [Authorize] ของ API
+  Map<String, String> get imageHeaders =>
+      accessToken == null ? const {} : {'Authorization': 'Bearer $accessToken'};
+
+  /// URL เปิดไฟล์แนบ — ใช้คู่กับ [imageHeaders]
+  String fileUrl(String relativePath) => attachmentFileUrl(baseUrl, relativePath);
 
   // ---- auth ----
 
@@ -128,10 +146,13 @@ class GarageProApi {
 
   // ---- quotations ----
 
-  Future<List<QuotationSummary>> getQueue({String? filter}) async {
+  /// คิวใบเสนอราคา — filter: todo | wait | rev | done (ว่าง = ทุกสถานะ)
+  /// ส่ง jobId เพื่อดูเฉพาะเอกสารของจ๊อบนั้น
+  Future<List<QuotationSummary>> getQueue({String? filter, int? jobId}) async {
     final data = await _unwrap<List<dynamic>>(
       () => _dio.get('/quotations', queryParameters: {
         if (filter != null && filter.isNotEmpty) 'filter': filter,
+        'jobId': ?jobId,
       }),
     );
     return data
@@ -204,6 +225,205 @@ class GarageProApi {
     );
 
     return data['relativePath'] as String;
+  }
+
+  /// ข้อมูลเซสชันปัจจุบันจาก token — ใช้ตรวจว่า token ยังใช้ได้และอยู่สาขา/กะไหน
+  Future<MeResult> me() async {
+    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/auth/me'));
+    return MeResult.fromJson(data);
+  }
+
+  // ---- jobs ----
+
+  /// ค้นจ๊อบในสาขา — หน้าถัดไปส่ง [cursor] ของแถวสุดท้ายที่ได้รับแล้ว (keyset)
+  /// ห้ามเปลี่ยนไปใช้ offset: PJCarPickUp มี lock convoy หนักอยู่แล้ว
+  Future<List<LegacyJob>> searchJobs({
+    String? query,
+    int take = 50,
+    JobsCursor? cursor,
+    int? pjTypeId,
+    int? pjStatusId,
+  }) async {
+    final data = await _unwrap<List<dynamic>>(
+      () => _dio.get('/jobs/search', queryParameters: {
+        'take': take,
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+        if (cursor != null)
+          'beforeCreatedDate': cursor.beforeCreatedDate.toUtc().toIso8601String(),
+        if (cursor != null) 'beforeJobId': cursor.beforeJobId,
+        'pjTypeId': ?pjTypeId,
+        'pjStatusId': ?pjStatusId,
+      }),
+    );
+    return data.map((e) => LegacyJob.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<LegacyJob> getJob(int jobId) async {
+    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/jobs/$jobId'));
+    return LegacyJob.fromJson(data);
+  }
+
+  /// สถานะ (PJStatus) ที่ใช้จริงในสาขา — ตัวเลือกกรองหน้าคิวจ๊อบ
+  Future<List<JobStatusOption>> getJobStatusOptions() async {
+    final data = await _unwrap<List<dynamic>>(() => _dio.get('/jobs/status-options'));
+    return data
+        .map((e) => JobStatusOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// ตัวเลือกฟอร์มเปิดจ๊อบทั้งชุด — โหลดครั้งเดียว แล้ว cascade ในเครื่อง
+  Future<JobFormOptions> getJobFormOptions() async {
+    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/jobs/form-options'));
+    return JobFormOptions.fromJson(data);
+  }
+
+  /// เปิดจ๊อบลง Garage DB เดิม — สาขาถูกกำหนดจาก JWT ไม่ใช่จาก body
+  Future<CreatedJob> createJob(CreateJobInput input) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.post('/jobs', data: input.toJson()),
+    );
+    return CreatedJob.fromJson(data);
+  }
+
+  /// ช่างในสาขา — ใช้เลือกผู้รับผิดชอบต่อบรรทัดค่าแรง
+  Future<List<Technician>> getTechnicians() async {
+    final data = await _unwrap<List<dynamic>>(() => _dio.get('/technicians'));
+    return data.map((e) => Technician.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- catalog ----
+
+  Future<List<CatalogItem>> searchCatalog(String query) async {
+    final data = await _unwrap<List<dynamic>>(
+      () => _dio.get('/catalog', queryParameters: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+      }),
+    );
+    return data.map((e) => CatalogItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- quotation authoring ----
+
+  /// สร้างใบเสนอราคาฉบับร่างของจ๊อบ
+  Future<Quotation> createQuotation({
+    required int jobId,
+    DateTime? validUntil,
+    double depositAmount = 0,
+  }) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.post('/quotations', data: {
+        'jobId': jobId,
+        if (validUntil != null) 'validUntil': validUntil.toUtc().toIso8601String(),
+        'depositAmount': depositAmount,
+      }),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  Future<Quotation> addLine(String quotationId, UpsertLine line) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.post('/quotations/$quotationId/lines', data: line.toJson()),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  Future<Quotation> updateLine(
+    String quotationId,
+    String lineId,
+    UpsertLine line,
+  ) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.put('/quotations/$quotationId/lines/$lineId', data: line.toJson()),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  Future<Quotation> removeLine(String quotationId, String lineId) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.delete('/quotations/$quotationId/lines/$lineId'),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  /// ตรวจก่อนส่ง — errors บล็อกการส่ง warnings แค่เตือน
+  /// [UI] ปุ่มส่งที่ปิดอยู่ต้องบอกเหตุผลจาก errors เสมอ ห้าม disable เฉยๆ
+  Future<QuotationValidation> validateQuotation(String quotationId) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.get('/quotations/$quotationId/validate'),
+    );
+    return QuotationValidation.fromJson(data);
+  }
+
+  Future<Quotation> sendQuotation(String quotationId) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.post('/quotations/$quotationId/send'),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  /// ออกฉบับแก้ไข — [BIZ] ฉบับเดิมกลายเป็น Superseded, ApprovalRecord เดิมเป็นโมฆะ
+  /// และทุกบรรทัดในฉบับใหม่กลับเป็น Pending ทั้งหมด
+  Future<Quotation> reviseQuotation(String quotationId, String revisionReason) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.post('/quotations/$quotationId/revise',
+          data: {'revisionReason': revisionReason}),
+    );
+    return Quotation.fromJson(data);
+  }
+
+  // ---- attachments (อ่าน) ----
+
+  /// ไฟล์แนบของงาน — กรองด้วย kind ได้ (ค่าใน AttachmentKind)
+  Future<List<Attachment>> getJobAttachments(int jobId, {String? kind}) async {
+    final data = await _unwrap<List<dynamic>>(
+      () => _dio.get('/attachments', queryParameters: {
+        'jobId': jobId,
+        'kind': ?kind,
+      }),
+    );
+    return data.map((e) => Attachment.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  // ---- ทะเบียนลูกค้า / รถ (อ่านอย่างเดียวบนมือถือ) ----
+
+  Future<Paged<CustomerSummary>> searchCustomers({
+    String? keyword,
+    int page = 1,
+    int pageSize = 25,
+  }) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.get('/customers', queryParameters: {
+        if (keyword != null && keyword.trim().isNotEmpty) 'keyword': keyword.trim(),
+        'page': page,
+        'pageSize': pageSize,
+      }),
+    );
+    return Paged.fromJson(data, CustomerSummary.fromJson);
+  }
+
+  Future<CustomerDetail> getCustomer(int id) async {
+    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/customers/$id'));
+    return CustomerDetail.fromJson(data);
+  }
+
+  Future<Paged<VehicleSummary>> searchVehicles({
+    String? keyword,
+    int page = 1,
+    int pageSize = 25,
+  }) async {
+    final data = await _unwrap<Map<String, dynamic>>(
+      () => _dio.get('/vehicles', queryParameters: {
+        if (keyword != null && keyword.trim().isNotEmpty) 'keyword': keyword.trim(),
+        'page': page,
+        'pageSize': pageSize,
+      }),
+    );
+    return Paged.fromJson(data, VehicleSummary.fromJson);
+  }
+
+  Future<VehicleDetail> getVehicle(int id) async {
+    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/vehicles/$id'));
+    return VehicleDetail.fromJson(data);
   }
 
   /// แกะ envelope — success คืน data, ไม่ success โยน ApiException พร้อมข้อความไทยจาก server

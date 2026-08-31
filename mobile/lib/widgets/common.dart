@@ -5,8 +5,28 @@ import '../api/client.dart';
 import '../core/tokens.dart';
 
 final _money = NumberFormat('#,##0.00', 'en_US');
+final _int = NumberFormat('#,##0', 'en_US');
 
+/// [UI] ตัวเลขเงินต้อง format 1,234.56 เสมอ และแสดงด้วย T.money (tabular figures)
 String money(double v) => _money.format(v);
+
+/// จำนวนที่ไม่ใช่เงิน เช่น จำนวนชิ้นคงเหลือ
+String qty(num v) => v % 1 == 0 ? _int.format(v) : _money.format(v);
+
+String dateTimeTh(DateTime dt) => DateFormat('d MMM yyyy · HH:mm น.', 'th').format(dt);
+
+String dateTh(DateTime dt) => DateFormat('d MMM yyyy', 'th').format(dt);
+
+/// เวลาสั้นสำหรับรายการ — วันนี้แสดงเวลา ปีนี้แสดงวัน/เดือน อื่นๆ แสดงปีด้วย
+String dateShortTh(DateTime dt) {
+  final now = DateTime.now();
+  if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
+    return DateFormat('HH:mm น.', 'th').format(dt);
+  }
+  return dt.year == now.year
+      ? DateFormat('d MMM', 'th').format(dt)
+      : DateFormat('d MMM yy', 'th').format(dt);
+}
 
 /// ป้ายสถานะ — [UI] สี + ไอคอน + ข้อความเสมอ ห้ามใช้สีเดียวสื่อความหมาย
 class StatusChip extends StatelessWidget {

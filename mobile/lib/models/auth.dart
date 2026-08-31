@@ -186,3 +186,40 @@ class Session {
         'openedAt': openedAt.toIso8601String(),
       };
 }
+
+/// เซสชันปัจจุบันที่ถอดจาก token — ใช้ตรวจว่า token ยังใช้ได้และผูกสาขา/กะไหน
+/// field ที่เป็น null แปลว่า token นี้ยังไม่มี shift session (เช่น token ของ Web)
+class MeResult {
+  MeResult({
+    required this.user,
+    this.sessionId,
+    this.branchId,
+    this.branchName,
+    this.shiftId,
+    this.shiftName,
+    this.openedAt,
+  });
+
+  final AuthUser user;
+  final String? sessionId;
+  final int? branchId;
+  final String? branchName;
+  final String? shiftId;
+  final String? shiftName;
+  final DateTime? openedAt;
+
+  /// มี branch context พอที่จะเรียก endpoint งานได้แล้วหรือยัง
+  bool get hasBranchContext => branchId != null;
+
+  factory MeResult.fromJson(Map<String, dynamic> j) => MeResult(
+        user: AuthUser.fromJson(j['user'] as Map<String, dynamic>),
+        sessionId: j['sessionId'] as String?,
+        branchId: (j['branchId'] as num?)?.toInt(),
+        branchName: j['branchName'] as String?,
+        shiftId: j['shiftId'] as String?,
+        shiftName: j['shiftName'] as String?,
+        openedAt: j['openedAt'] == null
+            ? null
+            : DateTime.tryParse(j['openedAt'] as String)?.toLocal(),
+      );
+}

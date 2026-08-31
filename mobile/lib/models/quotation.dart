@@ -2,6 +2,8 @@
 /// field ที่เป็น null แปลว่า role ปัจจุบันไม่มีสิทธิ์เห็น (ต้นทุน/กำไร) — ต้องซ่อนทั้งบล็อก
 library;
 
+import 'json.dart';
+
 class Quotation {
   Quotation({
     required this.id,
@@ -21,6 +23,11 @@ class Quotation {
     this.validUntil,
     required this.isExpired,
     this.sentAt,
+    this.supersedesQuotationId,
+    this.supersededByQuotationId,
+    required this.createdByUserName,
+    required this.createdAt,
+    this.lock,
   });
 
   final String id;
@@ -43,7 +50,25 @@ class Quotation {
   final bool isExpired;
   final DateTime? sentAt;
 
+  /// สายเวอร์ชัน — supersededBy ไม่ null แปลว่าใบนี้ถูกแทนที่แล้ว ห้ามแก้ต่อ
+  final String? supersedesQuotationId;
+  final String? supersededByQuotationId;
+
+  final String createdByUserName;
+  final DateTime createdAt;
+
+  /// ไม่ null = มีคนอื่นเปิดแก้อยู่ — [UI] ต้องบอกชื่อคนที่ถืออยู่ ห้าม disable เฉยๆ
+  final QuotationLock? lock;
+
   bool get isRevision => revisionReason != null;
+
+  /// [BIZ] แก้ได้เฉพาะฉบับร่างที่ยังไม่ถูกแทนที่
+  bool get isEditable => status == 'draft' && supersededByQuotationId == null;
+
+  /// [BIZ] ออกฉบับแก้ไขได้เมื่อส่งไปแล้ว — ฉบับเดิมจะกลายเป็น superseded
+  bool get canRevise =>
+      supersededByQuotationId == null &&
+      const {'sent', 'partial', 'approved', 'rejected', 'expired'}.contains(status);
 
   /// รายการที่ลูกค้ายังไม่ตัดสินใจ — ปิดการเซ็นจนกว่าจะเป็น 0
   int get pendingCount => lines.where((l) => l.isPending).length;
@@ -73,9 +98,16 @@ class Quotation {
             ? null
             : Approval.fromJson(j['approval'] as Map<String, dynamic>),
         revisionReason: j['revisionReason'] as String?,
-        validUntil: _date(j['validUntil']),
+        validUntil: jdate(j['validUntil']),
         isExpired: j['isExpired'] as bool? ?? false,
-        sentAt: _date(j['sentAt']),
+        sentAt: jdate(j['sentAt']),
+        supersedesQuotationId: j['supersedesQuotationId'] as String?,
+        supersededByQuotationId: j['supersededByQuotationId'] as String?,
+        createdByUserName: j['createdByUserName'] as String? ?? '',
+        createdAt: jdate(j['createdAt']) ?? DateTime.now(),
+        lock: j['lock'] == null
+            ? null
+            : QuotationLock.fromJson(j['lock'] as Map<String, dynamic>),
       );
 }
 
@@ -90,11 +122,17 @@ class QuotationLine {
     required this.quantity,
     required this.unit,
     required this.unitPrice,
+    this.unitCost,
+    required this.discountPercent,
+    required this.promotion,
+    this.assignedTechnicianId,
     required this.approvalStatus,
     this.rejectReason,
+    required this.grossAmount,
     required this.netAmount,
     required this.discountAmount,
     required this.promotionAmount,
+    this.marginAmount,
     this.promotionLabel,
     this.assignedTechnicianName,
     this.note,
@@ -116,13 +154,28 @@ class QuotationLine {
   final String unit;
   final double unitPrice;
 
+  /// null = role ปัจจุบันไม่มีสิทธิ์เห็นต้นทุน — ต้องซ่อนทั้งบล็อก ไม่ใช่แสดง 0
+  final double? unitCost;
+
+  final double discountPercent;
+
+  /// 0=ไม่มี · 1=ลูกค้าประจำ · 2=โปรเบรกครบชุด · 3=ประกันคู่สัญญา
+  final int promotion;
+
+  final int? assignedTechnicianId;
+
   /// "pending" | "approved" | "rejected"
   final String approvalStatus;
   final String? rejectReason;
 
+  final double grossAmount;
   final double netAmount;
   final double discountAmount;
   final double promotionAmount;
+
+  /// null = role ปัจจุบันไม่มีสิทธิ์เห็นกำไร
+  final double? marginAmount;
+
   final String? promotionLabel;
   final String? assignedTechnicianName;
   final String? note;
@@ -139,18 +192,24 @@ class QuotationLine {
         name: j['name'] as String,
         type: j['type'] as String,
         source: j['source'] as String,
-        quantity: _num(j['quantity']),
+        quantity: jnum(j['quantity']),
         unit: j['unit'] as String? ?? '',
-        unitPrice: _num(j['unitPrice']),
+        unitPrice: jnum(j['unitPrice']),
+        unitCost: jnumOrNull(j['unitCost']),
+        discountPercent: jnum(j['discountPercent']),
+        promotion: jint(j['promotion']),
+        assignedTechnicianId: jintOrNull(j['assignedTechnicianId']),
         approvalStatus: j['approvalStatus'] as String? ?? 'pending',
         rejectReason: j['rejectReason'] as String?,
-        netAmount: _num(j['netAmount']),
-        discountAmount: _num(j['discountAmount']),
-        promotionAmount: _num(j['promotionAmount']),
+        grossAmount: jnum(j['grossAmount']),
+        netAmount: jnum(j['netAmount']),
+        discountAmount: jnum(j['discountAmount']),
+        promotionAmount: jnum(j['promotionAmount']),
+        marginAmount: jnumOrNull(j['marginAmount']),
         promotionLabel: j['promotionLabel'] as String?,
         assignedTechnicianName: j['assignedTechnicianName'] as String?,
         note: j['note'] as String?,
-        standardHours: j['standardHours'] == null ? null : _num(j['standardHours']),
+        standardHours: j['standardHours'] == null ? null : jnum(j['standardHours']),
       );
 }
 
@@ -165,6 +224,12 @@ class Totals {
     required this.total,
     required this.deposit,
     required this.grandTotal,
+    this.totalCost,
+    this.marginAmount,
+    this.marginPercent,
+    required this.partsNet,
+    required this.laborNet,
+    required this.laborHours,
     this.approved,
   });
 
@@ -178,19 +243,37 @@ class Totals {
   final double deposit;
   final double grandTotal;
 
+  /// null = role ปัจจุบันไม่มีสิทธิ์เห็นต้นทุน/กำไร — [BIZ] strip ที่ serializer ไม่ใช่ที่ client
+  final double? totalCost;
+  final double? marginAmount;
+  final double? marginPercent;
+
+  final double partsNet;
+  final double laborNet;
+  final double laborHours;
+
+  /// [UI] vatRate เป็นสัดส่วน (0.07) ไม่ใช่เปอร์เซ็นต์ — ต้องคูณ 100 ก่อนแสดง
+  double get vatPercent => vatRate * 100;
+
   /// ยอดเฉพาะรายการที่อนุมัติ — null เมื่อยังเป็นฉบับร่าง
   final ApprovedTotals? approved;
 
   factory Totals.fromJson(Map<String, dynamic> j) => Totals(
-        gross: _num(j['gross']),
-        lineDiscount: _num(j['lineDiscount']),
-        promotion: _num(j['promotion']),
-        net: _num(j['net']),
-        vatRate: _num(j['vatRate']),
-        vat: _num(j['vat']),
-        total: _num(j['total']),
-        deposit: _num(j['deposit']),
-        grandTotal: _num(j['grandTotal']),
+        gross: jnum(j['gross']),
+        lineDiscount: jnum(j['lineDiscount']),
+        promotion: jnum(j['promotion']),
+        net: jnum(j['net']),
+        vatRate: jnum(j['vatRate']),
+        vat: jnum(j['vat']),
+        total: jnum(j['total']),
+        deposit: jnum(j['deposit']),
+        grandTotal: jnum(j['grandTotal']),
+        totalCost: jnumOrNull(j['totalCost']),
+        marginAmount: jnumOrNull(j['marginAmount']),
+        marginPercent: jnumOrNull(j['marginPercent']),
+        partsNet: jnum(j['partsNet']),
+        laborNet: jnum(j['laborNet']),
+        laborHours: jnum(j['laborHours']),
         approved: j['approved'] == null
             ? null
             : ApprovedTotals.fromJson(j['approved'] as Map<String, dynamic>),
@@ -220,10 +303,10 @@ class ApprovedTotals {
         approvedCount: j['approvedCount'] as int? ?? 0,
         rejectedCount: j['rejectedCount'] as int? ?? 0,
         pendingCount: j['pendingCount'] as int? ?? 0,
-        net: _num(j['net']),
-        vat: _num(j['vat']),
-        total: _num(j['total']),
-        grandTotal: _num(j['grandTotal']),
+        net: jnum(j['net']),
+        vat: jnum(j['vat']),
+        total: jnum(j['total']),
+        grandTotal: jnum(j['grandTotal']),
       );
 }
 
@@ -254,12 +337,12 @@ class Approval {
   factory Approval.fromJson(Map<String, dynamic> j) => Approval(
         quotationVersion: j['quotationVersion'] as int,
         signatureImagePath: j['signatureImagePath'] as String,
-        signedAt: _date(j['signedAt'])!,
+        signedAt: jdate(j['signedAt'])!,
         consentText: j['consentText'] as String? ?? '',
         witnessEmployeeName: j['witnessEmployeeName'] as String? ?? '',
         approvedLineCount: j['approvedLineCount'] as int? ?? 0,
         rejectedLineCount: j['rejectedLineCount'] as int? ?? 0,
-        approvedNetAmount: _num(j['approvedNetAmount']),
+        approvedNetAmount: jnum(j['approvedNetAmount']),
         deviceInfo: j['deviceInfo'] as String?,
       );
 }
@@ -333,10 +416,76 @@ class QuotationSummary {
         customerName: j['customerName'] as String? ?? '',
         vehicleRegistration: j['vehicleRegistration'] as String? ?? '',
         vehicleModel: j['vehicleModel'] as String?,
-        total: _num(j['total']),
+        total: jnum(j['total']),
         ageLabelTh: j['ageLabelTh'] as String?,
       );
 }
+
+/// ใบเสนอราคาที่มีคนอื่นเปิดแก้อยู่
+class QuotationLock {
+  QuotationLock({required this.userId, required this.userName, required this.lockedAt});
+
+  final int userId;
+  final String userName;
+  final DateTime lockedAt;
+
+  factory QuotationLock.fromJson(Map<String, dynamic> j) => QuotationLock(
+        userId: jint(j['userId']),
+        userName: j['userName'] as String? ?? '',
+        lockedAt: jdate(j['lockedAt']) ?? DateTime.now(),
+      );
+}
+
+/// ปัญหาที่ validate เจอ — lineId ไม่ null แปลว่าชี้ไปที่บรรทัดใดบรรทัดหนึ่ง
+class QuotationIssue {
+  QuotationIssue({required this.code, required this.messageTh, this.lineId});
+
+  final String code;
+
+  /// [UI] ข้อความไทยพร้อมแสดงผลจาก server — client ห้ามแปลหรือแต่งใหม่
+  final String messageTh;
+  final String? lineId;
+
+  factory QuotationIssue.fromJson(Map<String, dynamic> j) => QuotationIssue(
+        code: j['code'] as String? ?? '',
+        messageTh: j['messageTh'] as String? ?? '',
+        lineId: j['lineId'] as String?,
+      );
+}
+
+/// ผลตรวจก่อนส่งใบเสนอราคา — errors บล็อกการส่ง warnings แค่เตือน
+class QuotationValidation {
+  QuotationValidation({
+    required this.isValid,
+    required this.errors,
+    required this.warnings,
+  });
+
+  final bool isValid;
+  final List<QuotationIssue> errors;
+  final List<QuotationIssue> warnings;
+
+  /// ปัญหาของบรรทัดนี้ — ใช้ไฮไลต์บรรทัดที่ผิดในหน้าแก้ไข
+  List<QuotationIssue> forLine(String lineId) => [
+        ...errors.where((e) => e.lineId == lineId),
+        ...warnings.where((w) => w.lineId == lineId),
+      ];
+
+  factory QuotationValidation.fromJson(Map<String, dynamic> j) => QuotationValidation(
+        isValid: j['isValid'] as bool? ?? false,
+        errors: jlist(j['errors']).map(QuotationIssue.fromJson).toList(),
+        warnings: jlist(j['warnings']).map(QuotationIssue.fromJson).toList(),
+      );
+}
+
+/// โปรโมชันที่เลือกได้ต่อบรรทัด — ค่าตรงกับ PromotionKind ฝั่ง API
+/// [ASSUME] ประกันคู่สัญญาต้องผู้จัดการอนุมัติ ยังไม่ได้ enforce ที่ client
+const promotionOptions = <int, String>{
+  0: 'ไม่มีโปรโมชัน',
+  1: 'ลูกค้าประจำ −5%',
+  2: 'โปรเบรกครบชุด −300',
+  3: 'ประกันคู่สัญญา −10%',
+};
 
 /// เหตุผลที่ลูกค้าไม่อนุมัติ — [BIZ] บังคับเลือกเมื่อกดไม่อนุมัติ
 const rejectReasons = <String>[
@@ -346,8 +495,3 @@ const rejectReasons = <String>[
   'ราคาสูงกว่าที่คาดไว้',
   'จะไปทำที่อื่น',
 ];
-
-double _num(Object? v) => v == null ? 0 : (v as num).toDouble();
-
-DateTime? _date(Object? v) =>
-    v == null ? null : DateTime.tryParse(v as String)?.toLocal();
