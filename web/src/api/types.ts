@@ -284,6 +284,28 @@ export type CreateJobInput = {
 
 export type CreatedJob = { jobId: number; jobNo: string }
 
+/// ชนิดไฟล์แนบ — ต้องตรงกับ AllowedKinds ใน AttachmentService ของ API
+export type AttachmentKind =
+  | 'signature'
+  | 'intake'
+  | 'inspection'
+  | 'repair-before'
+  | 'repair-after'
+  | 'qc'
+  | 'document'
+
+export type Attachment = {
+  id: string
+  kind: AttachmentKind
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  relativePath: string
+  url: string
+  uploadedByName: string
+  uploadedAt: string
+}
+
 export type CatalogItem = {
   catalogCode?: string
   code: string
