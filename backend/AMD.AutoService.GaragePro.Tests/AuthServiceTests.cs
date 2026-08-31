@@ -135,6 +135,7 @@ public sealed class AuthServiceTests
         public string ShardKey => "db2";
         public int BranchId => branchId;
         public EventSource Source => EventSource.Web;
+        public bool IsAdministrator => false;
         public Guid? SessionId => null;
     }
 

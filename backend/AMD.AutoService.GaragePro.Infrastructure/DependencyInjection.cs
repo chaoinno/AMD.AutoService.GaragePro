@@ -6,6 +6,7 @@ using AMD.AutoService.GaragePro.Infrastructure.Storage;
 using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Attachments;
 using AMD.AutoService.GaragePro.Application.Customers;
+using AMD.AutoService.GaragePro.Application.Staff;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -25,6 +26,9 @@ public static class DependencyInjection
 
         services.Configure<VehicleImageOptions>(
             configuration.GetSection(VehicleImageOptions.SectionName));
+
+        services.Configure<StaffImageOptions>(
+            configuration.GetSection(StaffImageOptions.SectionName));
 
         services.AddDbContext<ServiceDbContext>(options =>
             options.UseSqlServer(
@@ -47,6 +51,9 @@ public static class DependencyInjection
         services.AddScoped<ICustomerVehicleRepository, CustomerVehicleRepository>();
         services.AddScoped<ICustomerVehicleService, CustomerVehicleService>();
         services.AddSingleton<IVehicleImageStorage, VehicleImageStorage>();
+        services.AddSingleton<IStaffImageStorage, StaffImageStorage>();
+        services.AddScoped<IStaffRepository, StaffRepository>();
+        services.AddScoped<IStaffService, StaffService>();
         services.AddSingleton(TimeProvider.System);
 
         return services;

@@ -42,6 +42,9 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
     public Guid? SessionId =>
         Guid.TryParse(Principal?.FindFirstValue(GarageClaims.SessionId), out var v) ? v : null;
 
+    public bool IsAdministrator =>
+        bool.TryParse(Principal?.FindFirstValue(GarageClaims.IsAdministrator), out var value) && value;
+
     /// <summary>[BIZ] ทุก ActivityEvent ต้องรู้ว่ามาจากมือถือหรือเว็บ</summary>
     public EventSource Source =>
         Headers["X-Client-Source"].FirstOrDefault()?.ToLowerInvariant() switch

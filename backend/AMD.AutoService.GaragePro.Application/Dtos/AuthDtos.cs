@@ -51,6 +51,7 @@ public sealed record AuthUserDto(
     string DisplayName,
     string Role,
     string RoleLabelTh,
+    bool IsAdministrator,
     string ShardKey,
     long? StaffId,
     string? PositionName,

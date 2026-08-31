@@ -2,7 +2,7 @@ using AMD.AutoService.GaragePro.Application.Dtos;
 
 namespace AMD.AutoService.GaragePro.Application.Abstractions;
 
-public sealed record LegacyRequestScope(string ShardKey, int BranchId, long UserId);
+public sealed record LegacyRequestScope(string ShardKey, int BranchId, long UserId, string? UserName = null);
 
 public interface ICustomerVehicleRepository
 {

@@ -275,6 +275,7 @@ public sealed class AuthService(
         DisplayName: string.IsNullOrWhiteSpace(user.StaffName) ? user.UserName : user.StaffName,
         Role: role.ToString(),
         RoleLabelTh: RoleMapper.DescribeTh(role),
+        IsAdministrator: user.IsAdministrator,
         ShardKey: shardKey,
         StaffId: user.StaffId,
         PositionName: user.PositionName,
