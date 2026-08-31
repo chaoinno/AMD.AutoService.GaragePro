@@ -26,6 +26,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ใช้กล้องถ่ายรูปสภาพรถตอนรับรถ ตรวจเช็ค และก่อน/หลังซ่อม เพื่อแนบเข้างาน</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ใช้เลือกรูปที่ถ่ายไว้แล้วมาแนบเข้างาน</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
