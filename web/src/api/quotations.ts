@@ -9,10 +9,10 @@ import type {
 
 export type QuotationFilter = '' | 'todo' | 'wait' | 'rev' | 'done'
 
-export function getQuotations(filter: QuotationFilter, jobId?: number) {
+export function getQuotations(filter: QuotationFilter, jobId?: string) {
   const params = new URLSearchParams()
   if (filter) params.set('filter', filter)
-  if (jobId) params.set('jobId', String(jobId))
+  if (jobId) params.set('jobId', jobId)
   const query = params.toString()
   return apiRequest<QuotationSummary[]>(`/api/v1/quotations${query ? `?${query}` : ''}`)
 }

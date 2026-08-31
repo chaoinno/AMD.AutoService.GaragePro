@@ -10,9 +10,8 @@ public class Attachment
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    public string LegacyShardKey { get; set; } = "db2";
-    public int LegacyBranchId { get; set; }
-    public long LegacyJobId { get; set; }
+    public Guid JobId { get; set; }
+    public Job? Job { get; set; }
 
     /// <summary>signature | intake | inspection | repair-before | repair-after | qc | document</summary>
     public string Kind { get; set; } = string.Empty;

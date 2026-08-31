@@ -161,6 +161,22 @@ public static class JobStateMachine
         _ => s.ToString().ToLowerInvariant()
     };
 
+    /// <summary>แปลง token กลับเป็น JobStatus — null เมื่อไม่รู้จัก token นี้</summary>
+    public static JobStatus? ParseToken(string token) => token.Trim().ToLowerInvariant() switch
+    {
+        "waitinspect" => JobStatus.WaitInspect,
+        "waitquote" => JobStatus.WaitQuote,
+        "waitapprove" => JobStatus.WaitApprove,
+        "approved" => JobStatus.Approved,
+        "inprogress" => JobStatus.InProgress,
+        "waitparts" => JobStatus.WaitParts,
+        "qc" => JobStatus.Qc,
+        "ready" => JobStatus.Ready,
+        "completed" => JobStatus.Completed,
+        "cancelled" => JobStatus.Cancelled,
+        _ => null
+    };
+
     private static string DescribeRole(UserRole r) => r switch
     {
         UserRole.FrontDesk => "พนักงานหน้าร้าน",

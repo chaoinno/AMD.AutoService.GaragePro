@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
 import { LoginPage } from './features/auth/LoginPage'
+import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
 import { JobsPage } from './features/jobs/JobsPage'
 import { DocumentPage } from './features/quotations/DocumentPage'
 import { EditorPage } from './features/quotations/EditorPage'
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginRoute />} />
           <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
+          <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
           <Route path="/quotations/:id" element={<ProtectedRoute><QuotationRedirect /></ProtectedRoute>} />
           <Route path="/quotations/:id/edit" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
           <Route path="/quotations/:id/document" element={<ProtectedRoute><DocumentPage /></ProtectedRoute>} />

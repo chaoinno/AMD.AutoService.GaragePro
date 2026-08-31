@@ -13,13 +13,12 @@ public sealed class AttachmentRepository(ServiceDbContext db) : IAttachmentRepos
         db.Attachments.FirstOrDefaultAsync(a => a.Id == id, ct);
 
     public Task<Attachment?> GetByPathAsync(string relativePath, CancellationToken ct = default) =>
-        db.Attachments.FirstOrDefaultAsync(a => a.RelativePath == relativePath, ct);
+        db.Attachments.Include(a => a.Job).FirstOrDefaultAsync(a => a.RelativePath == relativePath, ct);
 
     public async Task<IReadOnlyList<Attachment>> GetForJobAsync(
-        string shardKey, int branchId, long jobId, string? kind, CancellationToken ct = default)
+        Guid jobId, string? kind, CancellationToken ct = default)
     {
-        var query = db.Attachments.Where(a =>
-            a.LegacyShardKey == shardKey && a.LegacyBranchId == branchId && a.LegacyJobId == jobId);
+        var query = db.Attachments.Where(a => a.JobId == jobId);
 
         if (!string.IsNullOrWhiteSpace(kind))
             query = query.Where(a => a.Kind == kind);

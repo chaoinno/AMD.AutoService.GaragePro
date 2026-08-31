@@ -20,7 +20,7 @@ public sealed class QuotationsController(IQuotationService service) : Controller
     /// <summary>คิวใบเสนอราคาของสาขา · filter: todo | wait | rev | done · jobId: กรองเฉพาะงานเดียว</summary>
     [HttpGet]
     public async Task<IActionResult> GetQueue(
-        [FromQuery] string? filter, [FromQuery] long? jobId, CancellationToken ct) =>
+        [FromQuery] string? filter, [FromQuery] Guid? jobId, CancellationToken ct) =>
         Render(await service.GetQueueAsync(filter, jobId, ct));
 
     [HttpGet("{id:guid}")]

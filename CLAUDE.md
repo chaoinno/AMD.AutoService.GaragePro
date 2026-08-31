@@ -69,12 +69,12 @@ scutil --nc start "Garage Pro VPN" && sleep 10 && scutil --nc status "Garage Pro
 
 ## สถาปัตยกรรมที่ต้องเข้าใจก่อนแก้โค้ด
 
-### 1. Hybrid: อ่าน legacy / เขียนฐานใหม่ (ยกเว้นเปิดจ๊อบ)
+### 1. Hybrid: อ่าน legacy / เขียนฐานใหม่ (read-only ล้วน — ไม่มีข้อยกเว้นแล้ว)
 
 | | ที่ไหน | ทำอะไร |
 |---|---|---|
-| `Garage` (10.10.4.11) | legacy | อ่านข้อมูลหลัก; อนุญาต write เฉพาะ flow เปิดจ๊อบผ่าน `LegacyJobWriter` |
-| `GarageService` (10.10.4.11) | ของเรา | ตาราง `svc_*` ทั้งหมด |
+| `Garage` (10.10.4.11) | legacy | อ่านข้อมูลหลักเท่านั้น — ห้าม write |
+| `GarageService` (10.10.4.11) | ของเรา | ตาราง `svc_*` ทั้งหมด รวมถึง `svc_Job` |
 
 `PJCarPickUp` มี lock convoy อยู่แล้ว (lock wait 92–96% ของทั้งระบบ,
 lock escalation 1.37 ล้านครั้ง, RCSI ปิด) ทุก query ที่ `LegacyReader`/`LegacyUserReader` ต้อง:
@@ -82,9 +82,13 @@ lock escalation 1.37 ล้านครั้ง, RCSI ปิด) ทุก quer
 2. ใส่ `WITH (READUNCOMMITTED)`
 3. ไม่มีคำสั่งเขียนใดๆ
 
-**ข้อยกเว้นที่ตกลงแล้ว:** หน้า Web `/jobs` เปิดจ๊อบลง Garage DB เดิมตาม `ProjectAdd.aspx`
-ผ่าน `ILegacyJobWriter`/`LegacyJobWriter` เท่านั้น โดยจำกัดสาขาจาก JWT, ใช้ parameterized SQL,
-transaction สั้นหนึ่งชุด และเขียนเฉพาะ `Customer`, `Car`, `CarCustomer`, `PJCarPickUp` ที่จำเป็น
+**ข้อยกเว้น 2026-08-26 ถูกยกเลิกแล้ว (2026-08-31):** เดิมอนุญาตให้หน้า Web `/jobs` เปิดจ๊อบลง
+Garage DB ตาม `ProjectAdd.aspx` ผ่าน `ILegacyJobWriter`/`LegacyJobWriter` — **ตัดสินใจใหม่แล้ว
+ยกเลิกข้อยกเว้นนี้ทั้งหมด** `LegacyJobWriter`/`ILegacyJobWriter` ถูกลบออกจากโค้ดแล้ว
+จ๊อบทั้งหมดสร้างและเก็บใน `svc_Job` (GarageService) เท่านั้น อ้างอิงลูกค้า/รถด้วย `CustomerId`/`VehicleId`
+(legacy id, อ่านอย่างเดียวผ่าน `CustomerVehicleService` ที่มีอยู่แล้ว — คนละ flow กับที่ถูกลบ)
+`Quotation`/`IntakeChecklist`/`Attachment`/`ActivityEvent` ผูกกับ `Job.Id` (Guid) โดยตรงแทน
+composite `(LegacyShardKey, LegacyBranchId, LegacyJobId)` เดิม
 
 ### 2. GaragePro เป็น multi-tenant SaaS แบ่ง shard
 
@@ -127,6 +131,15 @@ maindb 10.10.4.16   = db2 (replica คนละ host)
 ส่วนลด >10% ต้องผู้จัดการ · margin <15% เตือน · PO >10,000 ต้องผู้จัดการ · SLA 90% · คอมมิชชัน 8/10/12%
 ตอนนี้เป็น const ใน `QuotationCalculator` — **ต้องย้ายไป config table ก่อน production**
 
+### กฎใหม่: Job / รับรถ (เพิ่ม 2026-08-31)
+11. **`IntakeChecklistItem.ItemCode` ต้องมาจาก `IntakeChecklistTemplate` เท่านั้น** — code แปลกปลอมจาก client ถูกปฏิเสธ (`INTAKE_ITEM_UNKNOWN`)
+12. **ผล `Issue`/`NotApplicable` ต้องมี `Note` เสมอ** (`INTAKE_NOTE_REQUIRED`) · checklist ล็อกอ่านอย่างเดียวหลัง submit (`INTAKE_LOCKED`) · submit ไม่ได้ถ้ายังมีรายการ `Pending` (`INTAKE_INCOMPLETE`)
+13. **1 รถ 1 job ที่เปิดอยู่ต่อสาขา** — เปิดซ้ำถูกบล็อกด้วย `JOB_DUPLICATE_OPEN`
+14. **`JobTypeId` ต้องเป็น 9 (รถในอู่) หรือ 10 (รถนัดหมาย) เท่านั้น** (`JOB_VALIDATION`) · เปลี่ยนสถานะแบบ manual (ไม่มี guard อัตโนมัติรองรับ) ต้องระบุเหตุผลเสมอ (`JOB_TRANSITION_NEEDS_REASON`)
+
+> **[RISK]** `JobsController`/`IntakeChecklistController` ตอนนี้ gate ด้วย `[RequireShiftSession]` เท่านั้น
+> ยังไม่ผูก role ตาม `docs/01-workflow.md §4` (เช่น ใครก็ตามที่ login แล้วมีกะเปิดอยู่สร้าง/เปลี่ยนสถานะ job ได้หมด) — ต้องปิดช่องนี้ก่อน production
+
 ---
 
 ## บทเรียนที่เจ็บมาแล้ว (อย่าทำซ้ำ)
@@ -149,6 +162,12 @@ entity กำหนด `Id = Guid.NewGuid()` เอง ถ้าไม่ปร�
 
 ### 🟡 `vatRate` เป็นสัดส่วน ไม่ใช่เปอร์เซ็นต์
 API ส่ง `0.07` — ต้องคูณ 100 ก่อนแสดง ไม่งั้นได้ "ภาษี 0.07%"
+
+### 🟡 EF Core ห้ามใช้ `.SingleAsync()`/`.FirstAsync()` ต่อท้าย raw SQL ที่มี `OUTPUT`
+`JobNumberGenerator` ออกเลขจ๊อบด้วย `MERGE ... WITH (HOLDLOCK)` + `OUTPUT inserted.LastSequence` ผ่าน `SqlQueryRaw`
+(กันชนเลขซ้ำเวลาออกพร้อมกันหลาย request ต่อ branch/วันเดียวกัน) — ถ้าต่อท้ายด้วย `.SingleAsync()`/`.FirstAsync()`
+EF จะห่อ query เป็น subquery ทำให้ `MERGE`/`OUTPUT` composable ไม่ได้ (SQL error)
+→ ต้องใช้ `.ToListAsync()` แล้วดึงตัวแรกเอง
 
 ---
 
@@ -180,7 +199,8 @@ API ส่ง `0.07` — ต้องคูณ 100 ก่อนแสดง ไ�
 Domain/          ไม่มี dependency ภายนอกเลย
   StateMachine/  JobStateMachine — transition 12 เส้นทาง + guard 13 ตัว (แหล่งความจริงเดียว)
   Common/        QuotationCalculator (สูตรเงิน) · QuotationValidator · RoleMapper
-  Entities/      Quotation · QuotationLine · QuotationApproval · CatalogItem
+  Entities/      Job · IntakeChecklist (+ IntakeChecklistItem) · JobNumberCounter
+                 Quotation · QuotationLine · QuotationApproval · CatalogItem
                  Shift · ShiftSession · UserRoleOverride · Attachment · ActivityEvent
 Application/     service + DTO + abstraction (interface ทั้งหมดอยู่ที่นี่)
 Infrastructure/  EF Core (write) · Dapper (อ่าน legacy) · JWT · file storage
@@ -228,12 +248,22 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 - ✅ Auth: login ด้วยบัญชีเดิม · ตรวจ User/Staff active · Web ผูก Staff.BranchId อัตโนมัติ · JWT · role mapping
 - ✅ Quotation: สร้าง · แก้บรรทัด · validate · ส่ง · **ออกฉบับแก้ไข** · อนุมัติรายบรรทัด · เซ็น
 - ✅ Attachment: อัปโหลด · เปิดไฟล์ · ลายเซ็นจากมือถือขึ้น server จริง
+- ✅ Job (ใหม่, เว็บเท่านั้น): เปิดจ๊อบลง `svc_Job` · เลขจ๊อบ `JB{yyMMdd}{BranchId:D4}{seq:D3}` ต่อสาขา/วัน
+  (กันชนด้วย `MERGE ... WITH (HOLDLOCK)`) · การ์ดจ๊อบ 6 stage ขับเคลื่อนด้วย `Job.Status` ผ่าน `JobCardModal`
+  (แทน `JobDetailModal` เดิมที่ลบไปแล้ว) — stage ซ่อม/QC/ชำระเงินยังเป็น placeholder
+- ✅ รับรถ (Intake) — **บางส่วน**: checklist สภาพรถขณะรับ 4 หมวด 20 รายการ (ทำผ่าน `IntakeChecklistPanel`
+  บนเว็บเท่านั้น — คนละอันกับ spec "ตรวจเช็ค 8 หมวด 31 รายการ" ของช่างใน docs/01-workflow.md §3.2)
+  + ใบรับรถ A4 พร้อมพิมพ์ 2 จุดเซ็น (ลูกค้า/พนักงานรับรถ) — **ยังไม่ใช่** flow มือถือ 6 ขั้นเดิม
+  (ไม่มีค้นหา/ยืนยันนัดหมาย/ถ่ายรูป 5 มุม/QR บนมือถือ)
 - ✅ Mobile: login · เลือกสาขา/กะ · คิว (pull-to-refresh) · อนุมัติ · ลายเซ็น · โปรไฟล์/ปิดกะ
 - ✅ Web: คิว · editor 3 พาเนล · เอกสาร A4 พร้อมพิมพ์
-- ✅ Test: 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper)
+- ✅ Test: 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper · job service)
 
 ### ยังไม่ได้ทำ
-- รับรถ 6 ขั้น · ตรวจเช็ค 31 รายการ · ซ่อม+QC · คลัง/จัดซื้อ · POS · รายงาน
+- รับรถ 6 ขั้นเต็มรูปแบบบนมือถือ (ค้นหา/ยืนยันนัดหมาย/รูป 5 มุม/QR) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
+  (spec เดิม — คนละอันกับ checklist 20 รายการที่ทำแล้วบนเว็บ) · ซ่อม+QC (placeholder ใน `JobCardModal`) ·
+  คลัง/จัดซื้อ · POS · รายงาน
+- RBAC ของ Job/Intake endpoint (ตอนนี้ gate ด้วย shift session เท่านั้น — ดู `[RISK]` ในหัวข้อกฎที่ห้ามละเมิด)
 - Offline queue ของ Flutter (`TMP-` + conflict) — **งานใหญ่ อย่าประเมินต่ำ**
 - Realtime (SignalR) · refresh token · หน้าตั้งค่า · หน้าส่งมอบรถ
 

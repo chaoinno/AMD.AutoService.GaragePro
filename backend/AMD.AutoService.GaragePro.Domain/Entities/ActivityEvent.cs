@@ -10,9 +10,9 @@ public class ActivityEvent
 {
     public long Id { get; set; }
 
-    public string LegacyShardKey { get; set; } = "db2";
-    public int LegacyBranchId { get; set; }
-    public long LegacyJobId { get; set; }
+    /// <summary>null สำหรับ event ที่ไม่ผูกกับจ๊อบ เช่น shift.opened/shift.closed</summary>
+    public Guid? JobId { get; set; }
+    public Job? Job { get; set; }
 
     /// <summary>เอกสารที่เกี่ยวข้อง เช่น QuotationId</summary>
     public Guid? EntityId { get; set; }

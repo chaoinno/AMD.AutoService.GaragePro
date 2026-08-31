@@ -34,7 +34,7 @@
 | เรื่อง | ผล |
 |---|---|
 | Primary key ไม่ unique ข้าม shard | ทุก reference ต้องเป็นคู่ **(shardKey, id)** ไม่ใช่ id เดี่ยว |
-| ตารางใหม่ของเรา | ต้องเก็บ `LegacyShardKey` + `LegacyBranchId` + `LegacyJobId` เป็น composite เสมอ |
+| ตารางใหม่ของเรา | `svc_Job` เก็บ `LegacyShardKey` + `BranchId` + `CustomerId` + `VehicleId` (อ้างอิงอย่างเดียว ไม่ใช่ FK ข้าม DB) — ตารางอื่นที่ผูกกับจ๊อบ (`Quotation`/`IntakeChecklist`/`Attachment`/`ActivityEvent`) ใช้ `JobId` (Guid) เป็น FK ตรงไปที่ `svc_Job` แทน composite เดิม (เปลี่ยนเมื่อ 2026-08-31 ดู §5) |
 | หน้า "เลือกสาขา" / dashboard ข้ามอู่ | fan-out query ทุก shard แล้ว merge ที่ application |
 | Connection/transaction | ทุก service ต้องรับ shardKey จาก session context |
 
@@ -157,8 +157,15 @@ W2 รอประกันอนุมัติ · B11/B12 ส่งไปท�
 **ข้อสรุปเดิม:** `PjcarPickUp` เป็นตารางที่ร้อนที่สุดและเปราะที่สุดในระบบ — หลีกเลี่ยง write ใหม่โดยทั่วไป
 → ชั่งน้ำหนักไปทาง **ตัวเลือก B (Hybrid)**: อ่าน legacy อย่างเดียว (`WITH (NOLOCK)` หรือ Dapper read-only + snapshot) เขียนลงตารางใหม่ของเรา
 
-**ข้อยกเว้น 2026-08-26:** ผู้ใช้อนุมัติให้หน้า `/jobs` เปิดจ๊อบตาม `ProjectAdd.aspx` ลง legacy โดยตรง
-ผ่าน writer เฉพาะทางและ transaction สั้นเท่านั้น; quotation และโมดูลอื่นยังคงใช้แนวทาง Hybrid เดิม
+**ข้อยกเว้น 2026-08-26 (ถูกยกเลิก 2026-08-31):** เดิมผู้ใช้อนุมัติให้หน้า `/jobs` เปิดจ๊อบตาม
+`ProjectAdd.aspx` ลง legacy โดยตรงผ่าน writer เฉพาะทางและ transaction สั้นเท่านั้น
+**ตัดสินใจใหม่แล้ว: ยกเลิกข้อยกเว้นนี้ทั้งหมด** — จ๊อบไม่เขียนกลับ legacy อีกต่อไป
+`svc_Job` เป็นแหล่งข้อมูลจ๊อบเพียงแหล่งเดียว เก็บ `CustomerId`/`VehicleId`/`BranchId` เป็นเพียง
+id อ้างอิงที่อ่าน (ไม่เขียน) จาก legacy ผ่าน `CustomerVehicleService` ที่มีอยู่แล้ว (คนละ flow กับ
+`LegacyJobWriter`/`ProjectAdd` ที่ถูกลบทั้งหมด) `Quotation`/`IntakeChecklist`/`Attachment`/
+`ActivityEvent` ผูกกับ `Job.Id` (Guid) โดยตรงเป็น FK ธรรมดา แทน composite
+`(LegacyShardKey, LegacyBranchId, LegacyJobId)` เดิม — legacy DB กลับสู่สถานะ read-only ล้วน
+ตามข้อ 5 เดิมทุกโมดูล ไม่มีข้อยกเว้นอีก
 
 ### 🔐 หมายเหตุความปลอดภัย
 `AMD.GaragePro.Admin/backend/AMD.GaragePro.Admin.API/appsettings.json` มี **รหัส `sa` ของ SQL, รหัส FTP, JWT signing key และ API key เป็น plaintext** อยู่ใน repo — ถ้า repo นี้ push ขึ้น remote ควรถอดออกเป็น user-secrets / env var และหมุนรหัสใหม่ ระบบใหม่ไม่ควรทำตาม pattern นี้

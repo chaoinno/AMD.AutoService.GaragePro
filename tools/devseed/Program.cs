@@ -85,15 +85,45 @@ if (catalogCount == 0)
 
 Console.WriteLine($"แคตตาล็อก {catalogCount} รายการ");
 
-// ── 4. หางานว่างที่ยังไม่มีใบเสนอราคา ──────────────────────────────────────
-var jobs = await FindOpenJobsAsync(legacyCs, branchId, take: 4);
-if (jobs.Count < 4)
+// ── 4. หาลูกค้า+รถของสาขานี้จาก Garage เดิม (อ่านอย่างเดียว) แล้วเปิดจ๊อบผ่าน API จริง ──
+// จ๊อบไม่ลง legacy อีกต่อไป (ยกเลิก 2026-08-31) — เปิดผ่าน POST /jobs ทุกครั้ง
+// ลองมากกว่าที่ต้องการเพราะรถบางคันอาจมีจ๊อบเปิดค้างอยู่แล้ว (JOB_DUPLICATE_OPEN)
+var candidates = await FindCandidatesAsync(legacyCs, branchId, take: 16);
+if (candidates.Count == 0)
 {
-    Console.Error.WriteLine($"งานว่างในสาขานี้มีแค่ {jobs.Count} งาน ต้องการ 4 งาน");
+    Console.Error.WriteLine($"ไม่พบลูกค้า/รถของสาขา {branchId} ในฐาน Garage เดิม");
     return 1;
 }
 
-Console.WriteLine($"งานว่าง {jobs.Count} งาน");
+var jobs = new List<JobRow>();
+foreach (var candidate in candidates)
+{
+    if (jobs.Count >= 4) break;
+
+    var created = await PostAsync("/jobs", new
+    {
+        customerId = candidate.CustomerId,
+        vehicleId = candidate.VehicleId,
+        jobTypeId = 9,
+        senderName = candidate.CustomerName,
+        senderPhoneNumber = (string?)null,
+        detail = (string?)null
+    });
+    if (created is null) continue; // เช่น รถคันนี้มีจ๊อบเปิดค้างอยู่แล้ว — ข้ามไปคันถัดไป
+
+    jobs.Add(new JobRow(
+        created.Value.GetProperty("jobId").GetGuid(),
+        created.Value.GetProperty("jobNo").GetString()!,
+        candidate.CarNumber, candidate.Model, candidate.CustomerName));
+}
+
+if (jobs.Count < 4)
+{
+    Console.Error.WriteLine($"เปิดจ๊อบสำเร็จแค่ {jobs.Count} งาน จาก {candidates.Count} รายชื่อที่ลอง (ต้องการ 4)");
+    return 1;
+}
+
+Console.WriteLine($"เปิดจ๊อบใหม่ {jobs.Count} งาน");
 Console.WriteLine();
 
 // ── 5. สร้างใบเสนอราคา 4 สถานะ ─────────────────────────────────────────────
@@ -286,7 +316,7 @@ async Task<SeedResult?> CreateWithLinesAsync(JobRow job, long? techId, decimal d
         Label: "", WebPage: "edit", MobileNote: null, Error: null);
 }
 
-async Task<string?> UploadSignatureAsync(long jobId, Guid quotationId)
+async Task<string?> UploadSignatureAsync(Guid jobId, Guid quotationId)
 {
     // PNG 1×1 — พอสำหรับทดสอบว่าเส้นทางอัปโหลดและแสดงรูปทำงาน
     var png = Convert.FromBase64String(
@@ -338,39 +368,40 @@ async Task<(string? UserName, string Password)> FindStaffLoginAsync(string cs, i
         : (null, string.Empty);
 }
 
-async Task<List<JobRow>> FindOpenJobsAsync(string cs, int branch, int take)
+async Task<List<CustomerVehicleCandidate>> FindCandidatesAsync(string cs, int branch, int take)
 {
     await using var db = new SqlConnection(cs);
     await db.OpenAsync();
 
-    // เอาเฉพาะงานที่มีทะเบียนและชื่อลูกค้า และยังไม่มีใบเสนอราคา
-    // เพื่อให้ข้อมูลทดสอบดูเหมือนของจริง
+    // ลูกค้า+รถของสาขานี้ (อ่านอย่างเดียวจาก Garage เดิม) — ใช้เปิดจ๊อบผ่าน POST /jobs
+    // สาขาของรถอนุมานจากสาขาของพนักงานที่บันทึกรถไว้ (Car ไม่มี BranchId ตรงๆ)
     var cmd = db.CreateCommand();
     cmd.CommandText = """
         SELECT TOP (@take)
-            p.Id, p.JobNo, car.CarNumber,
+            c.Id AS CustomerId, car.Id AS VehicleId, car.CarNumber,
             LTRIM(RTRIM(ISNULL(bc.Name, N'') + N' ' + ISNULL(cm.Name, N''))) AS Model,
             LTRIM(RTRIM(ISNULL(c.FirstName, N'') + N' ' + ISNULL(c.LastName, N''))) AS CustomerName
-        FROM PJCarPickUp p WITH (READUNCOMMITTED)
-        JOIN Car      car WITH (READUNCOMMITTED) ON car.Id = p.CarId
-        LEFT JOIN Customer c   WITH (READUNCOMMITTED) ON c.Id  = p.CustomerId
+        FROM CarCustomer cc WITH (READUNCOMMITTED)
+        JOIN Car      car WITH (READUNCOMMITTED) ON car.Id = cc.CarId
+        JOIN Customer c   WITH (READUNCOMMITTED) ON c.Id  = cc.CustomerId
+        JOIN [User]   u   WITH (READUNCOMMITTED) ON u.Id  = car.UpdatedBy
+        JOIN Staff    st  WITH (READUNCOMMITTED) ON st.Id = u.StaffId
         LEFT JOIN CarModel cm  WITH (READUNCOMMITTED) ON cm.Id = car.CarModelId
         LEFT JOIN BrandCar bc  WITH (READUNCOMMITTED) ON bc.Id = car.BrandCarId
-        LEFT JOIN GarageService.dbo.svc_Quotation q ON q.LegacyJobId = p.Id
-        WHERE p.BranchId = @branch
+        WHERE st.BranchId = @branch
+          AND cc.Status = 1
           AND car.CarNumber IS NOT NULL
           AND LEN(LTRIM(RTRIM(ISNULL(c.FirstName, N'') + ISNULL(c.LastName, N'')))) > 0
-          AND q.Id IS NULL
-        ORDER BY p.CreatedDate DESC
+        ORDER BY cc.Id DESC
         """;
     cmd.Parameters.AddWithValue("@take", take);
     cmd.Parameters.AddWithValue("@branch", branch);
 
-    var rows = new List<JobRow>();
+    var rows = new List<CustomerVehicleCandidate>();
     await using var reader = await cmd.ExecuteReaderAsync();
     while (await reader.ReadAsync())
-        rows.Add(new JobRow(
-            reader.GetInt64(0), reader.GetString(1), reader.GetString(2),
+        rows.Add(new CustomerVehicleCandidate(
+            reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2),
             reader.GetString(3), reader.GetString(4)));
 
     return rows;
@@ -431,7 +462,10 @@ static string? ArgValue(string name)
     return null;
 }
 
-internal sealed record JobRow(long JobId, string JobNo, string CarNumber, string Model, string CustomerName);
+internal sealed record CustomerVehicleCandidate(
+    long CustomerId, long VehicleId, string CarNumber, string Model, string CustomerName);
+
+internal sealed record JobRow(Guid JobId, string JobNo, string CarNumber, string Model, string CustomerName);
 
 internal sealed record SeedResult(
     Guid? QuotationId,

@@ -28,7 +28,7 @@ class Quotation {
   final int version;
   final String status;
   final String statusLabelTh;
-  final int jobId;
+  final String jobId;
   final String jobNo;
   final Party customer;
   final Vehicle vehicle;
@@ -60,7 +60,7 @@ class Quotation {
         version: j['version'] as int,
         status: j['status'] as String,
         statusLabelTh: j['statusLabelTh'] as String,
-        jobId: j['jobId'] as int,
+        jobId: j['jobId'] as String,
         jobNo: j['jobNo'] as String? ?? '',
         customer: Party.fromJson(j['customer'] as Map<String, dynamic>),
         vehicle: Vehicle.fromJson(j['vehicle'] as Map<String, dynamic>),

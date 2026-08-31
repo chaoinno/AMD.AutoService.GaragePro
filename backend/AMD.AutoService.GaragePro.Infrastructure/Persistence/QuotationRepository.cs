@@ -14,23 +14,26 @@ public sealed class QuotationRepository(ServiceDbContext db) : IQuotationReposit
         db.Quotations
           .Include(q => q.Lines)
           .Include(q => q.Approval)
+          .Include(q => q.Job)
           .FirstOrDefaultAsync(q => q.Id == id, ct);
 
-    public Task<Quotation?> GetLatestForJobAsync(string shardKey, long jobId, CancellationToken ct = default) =>
+    public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) =>
         db.Quotations
           .Include(q => q.Lines)
-          .Where(q => q.LegacyShardKey == shardKey && q.LegacyJobId == jobId)
+          .Include(q => q.Approval)
+          .Where(q => q.JobId == jobId)
           .OrderByDescending(q => q.Version)
           .FirstOrDefaultAsync(ct);
 
     public async Task<IReadOnlyList<Quotation>> GetQueueAsync(
-        string shardKey, int branchId, string? statusFilter, long? jobId = null, CancellationToken ct = default)
+        string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default)
     {
         var query = db.Quotations
-            .Where(q => q.LegacyShardKey == shardKey && q.LegacyBranchId == branchId);
+            .Include(q => q.Job)
+            .Where(q => q.Job!.LegacyShardKey == shardKey && q.Job.BranchId == branchId);
 
         if (jobId is not null)
-            query = query.Where(q => q.LegacyJobId == jobId);
+            query = query.Where(q => q.JobId == jobId);
 
         // ตัวกรองตรงกับ chip บนหน้าคิวใน design: ทั้งหมด / รอเสนอราคา / รออนุมัติ / ขอแก้ไข
         query = statusFilter switch
@@ -50,10 +53,10 @@ public sealed class QuotationRepository(ServiceDbContext db) : IQuotationReposit
             .ToListAsync(ct);
     }
 
-    public async Task<int> GetNextVersionAsync(string shardKey, long jobId, CancellationToken ct = default)
+    public async Task<int> GetNextVersionAsync(Guid jobId, CancellationToken ct = default)
     {
         var max = await db.Quotations
-            .Where(q => q.LegacyShardKey == shardKey && q.LegacyJobId == jobId)
+            .Where(q => q.JobId == jobId)
             .Select(q => (int?)q.Version)
             .MaxAsync(ct);
 

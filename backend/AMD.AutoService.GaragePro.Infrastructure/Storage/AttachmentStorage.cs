@@ -51,7 +51,7 @@ public sealed class AttachmentStorage : IAttachmentStorage
     }
 
     public async Task<StoredFile> SaveAsync(
-        Stream content, string shardKey, int branchId, long jobId, string kind,
+        Stream content, string shardKey, int branchId, Guid jobId, string kind,
         string fileName, CancellationToken ct = default)
     {
         var id = Guid.NewGuid();
@@ -62,7 +62,7 @@ public sealed class AttachmentStorage : IAttachmentStorage
         var relativePath = Path.Combine(
             SafeSegment(shardKey),
             branchId.ToString(),
-            jobId.ToString(),
+            jobId.ToString("N"),
             SafeSegment(kind),
             $"{id:N}{extension.ToLowerInvariant()}");
         var fullPath = ResolveInsideRoot(relativePath);

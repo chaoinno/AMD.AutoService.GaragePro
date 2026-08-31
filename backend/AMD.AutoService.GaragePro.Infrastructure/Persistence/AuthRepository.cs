@@ -52,7 +52,7 @@ public sealed class AuthRepository(ServiceDbContext db) : IAuthRepository
         string shardKey, int branchId, CancellationToken ct = default)
     {
         var counts = await db.Quotations
-            .Where(q => q.LegacyShardKey == shardKey && q.LegacyBranchId == branchId)
+            .Where(q => q.Job!.LegacyShardKey == shardKey && q.Job.BranchId == branchId)
             .GroupBy(q => q.Status)
             .Select(g => new { Status = g.Key, Count = g.Count() })
             .ToListAsync(ct);

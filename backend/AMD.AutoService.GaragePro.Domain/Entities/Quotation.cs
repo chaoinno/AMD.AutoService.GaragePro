@@ -17,10 +17,9 @@ public class Quotation
     public int Version { get; set; } = 1;
     public QuotationStatus Status { get; set; } = QuotationStatus.Draft;
 
-    // ---- ผูกกลับ legacy: ต้องเป็น composite เสมอ เพราะ Id ไม่ unique ข้าม shard ----
-    public string LegacyShardKey { get; set; } = "db2";
-    public int LegacyBranchId { get; set; }
-    public long LegacyJobId { get; set; }
+    // ---- ผูกกับจ๊อบด้วย FK ตรง — Job.Id เป็น Guid ที่ unique อยู่แล้วในตัว ----
+    public Guid JobId { get; set; }
+    public Job? Job { get; set; }
 
     // ---- snapshot ข้อมูลหัวเอกสาร ณ เวลาที่ออก (ห้ามพึ่ง legacy ตอนพิมพ์ย้อนหลัง) ----
     public string JobNo { get; set; } = string.Empty;

@@ -1,0 +1,261 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Common;
+using AMD.AutoService.GaragePro.Application.Customers;
+using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
+using AMD.AutoService.GaragePro.Domain.Entities;
+using AMD.AutoService.GaragePro.Domain.Enums;
+using AMD.AutoService.GaragePro.Domain.StateMachine;
+
+namespace AMD.AutoService.GaragePro.Application.Jobs;
+
+public interface IJobService
+{
+    Task<Result<JobDto>> GetAsync(Guid jobId, CancellationToken ct = default);
+
+    Task<Result<IReadOnlyList<JobDto>>> SearchAsync(
+        string? keyword, int take, DateTime? beforeCreatedAt, Guid? beforeJobId,
+        int? jobTypeId, string? statusToken, CancellationToken ct = default);
+
+    IReadOnlyList<JobStatusOptionDto> GetStatusOptions();
+
+    Task<Result<CreatedJobDto>> CreateAsync(CreateJobRequest request, CancellationToken ct = default);
+
+    Task<Result<JobTransitionResultDto>> TransitionAsync(
+        Guid jobId, TransitionJobRequest request, CancellationToken ct = default);
+}
+
+/// <summary>
+/// เจ้าของข้อมูลจ๊อบเพียงแหล่งเดียว (svc_Job) — ไม่เขียนกลับ legacy อีกต่อไป
+/// [BIZ] ทุก state change เขียน ActivityEvent พร้อม Source เสมอ
+/// อ้างอิง: docs/02-domain-model.md §Job · docs/05-legacy-db-mapping.md §5 (ข้อยกเว้น 2026-08-26 ถูกยกเลิก 2026-08-31)
+/// </summary>
+public sealed class JobService(
+    IJobRepository jobs,
+    IQuotationRepository quotations,
+    IJobNumberGenerator jobNumbers,
+    ICustomerVehicleService customerVehicles,
+    ILegacyReader legacy,
+    ICurrentUser user,
+    TimeProvider clock) : IJobService
+{
+    private const int InShopTypeId = 9;      // รถในอู่
+    private const int AppointmentTypeId = 10; // รถนัดหมาย
+
+    private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    public async Task<Result<JobDto>> GetAsync(Guid jobId, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+    }
+
+    public async Task<Result<IReadOnlyList<JobDto>>> SearchAsync(
+        string? keyword, int take, DateTime? beforeCreatedAt, Guid? beforeJobId,
+        int? jobTypeId, string? statusToken, CancellationToken ct = default)
+    {
+        JobStatus? status = null;
+        if (!string.IsNullOrWhiteSpace(statusToken))
+        {
+            status = JobStateMachine.ParseToken(statusToken);
+            if (status is null)
+                return Result<IReadOnlyList<JobDto>>.Fail(
+                    "JOB_STATUS_UNKNOWN", $"ไม่รู้จักสถานะ '{statusToken}'", nameof(statusToken));
+        }
+
+        var query = new JobSearchQuery(
+            user.ShardKey, user.BranchId, keyword, take, beforeCreatedAt, beforeJobId, jobTypeId, status);
+        var results = await jobs.SearchAsync(query, ct);
+
+        return Result<IReadOnlyList<JobDto>>.Ok(results.Select(j => JobMapper.ToDto(j, Now)).ToList());
+    }
+
+    public IReadOnlyList<JobStatusOptionDto> GetStatusOptions() =>
+        Enum.GetValues<JobStatus>()
+            .Select(s => new JobStatusOptionDto(JobStateMachine.ToToken(s), JobStateMachine.Describe(s)))
+            .ToList();
+
+    public async Task<Result<CreatedJobDto>> CreateAsync(
+        CreateJobRequest request, CancellationToken ct = default)
+    {
+        if (request.JobTypeId is not (InShopTypeId or AppointmentTypeId))
+            return Result<CreatedJobDto>.Fail("JOB_VALIDATION", "กรุณาเลือกประเภทงาน", nameof(request.JobTypeId));
+
+        var customerResult = await customerVehicles.GetCustomerAsync(request.CustomerId, ct);
+        if (!customerResult.Success)
+            return Result<CreatedJobDto>.Fail("CUSTOMER_NOT_FOUND", "ไม่พบข้อมูลลูกค้าที่เลือก", nameof(request.CustomerId));
+        var customer = customerResult.Data!;
+
+        var vehicleResult = await customerVehicles.GetVehicleAsync(request.VehicleId, ct);
+        if (!vehicleResult.Success)
+            return Result<CreatedJobDto>.Fail("VEHICLE_NOT_FOUND", "ไม่พบข้อมูลรถที่เลือก", nameof(request.VehicleId));
+        var vehicle = vehicleResult.Data!;
+
+        var openJob = await jobs.GetOpenByVehicleAsync(user.ShardKey, user.BranchId, request.VehicleId, ct);
+        if (openJob is not null)
+            return Result<CreatedJobDto>.Fail(
+                "JOB_DUPLICATE_OPEN", "รถยนต์คันนี้มีงานที่ยังไม่เสร็จอยู่แล้ว กรุณาตรวจสอบอีกครั้ง");
+
+        var jobNo = await jobNumbers.NextAsync(user.ShardKey, user.BranchId, Now.AddHours(7), ct);
+        var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);
+
+        var job = new Job
+        {
+            LegacyShardKey = user.ShardKey,
+            BranchId = user.BranchId,
+            CustomerId = request.CustomerId,
+            VehicleId = request.VehicleId,
+            JobNo = jobNo,
+            Status = JobStatus.WaitInspect,
+            BranchName = branch?.Name ?? string.Empty,
+            CustomerName = $"{customer.FirstName} {customer.LastName}".Trim(),
+            CustomerPhone = customer.PhoneNumber1,
+            VehicleRegistration = vehicle.Registration,
+            VehicleModel = vehicle.ModelName,
+            VehicleVin = vehicle.Vin,
+            VehicleImagePath = vehicle.ImageUrl,
+            JobTypeId = request.JobTypeId,
+            JobTypeName = request.JobTypeId == InShopTypeId ? "รถในอู่" : "รถนัดหมาย",
+            SenderName = string.IsNullOrWhiteSpace(request.SenderName) ? null : request.SenderName.Trim(),
+            SenderPhoneNumber = string.IsNullOrWhiteSpace(request.SenderPhoneNumber) ? null : request.SenderPhoneNumber.Trim(),
+            Detail = string.IsNullOrWhiteSpace(request.Detail) ? null : request.Detail.Trim(),
+            CreatedByUserId = user.UserId,
+            CreatedByUserName = user.UserName,
+            CreatedAt = Now,
+            Source = user.Source
+        };
+
+        await jobs.AddAsync(job, ct);
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = "job.opened",
+            DescriptionTh = $"เปิดจ๊อบ {jobNo}",
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now
+        }, ct);
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<CreatedJobDto>.Ok(new CreatedJobDto(job.Id, job.JobNo));
+    }
+
+    public async Task<Result<JobTransitionResultDto>> TransitionAsync(
+        Guid jobId, TransitionJobRequest request, CancellationToken ct = default)
+    {
+        var to = JobStateMachine.ParseToken(request.ToStatus);
+        if (to is null)
+            return Result<JobTransitionResultDto>.Fail(
+                "JOB_STATUS_UNKNOWN", $"ไม่รู้จักสถานะ '{request.ToStatus}'", nameof(request.ToStatus));
+
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<JobTransitionResultDto>.Fail(
+                "JOB_NOT_FOUND", "ไม่พบข้อมูลสถานะของจ๊อบนี้ — เปิดหน้าจ๊อบอีกครั้งก่อนเปลี่ยนสถานะ");
+
+        var (computedGuard, isFullyComputed) = await ComputeGuardAsync(job, to.Value, ct);
+
+        var satisfied = computedGuard;
+        if (!isFullyComputed)
+        {
+            // ขั้นตอนนี้ยังไม่มีระบบหลังบ้านรองรับ (Inspection/เบิกอะไหล่/QC/POS) — ยอมให้ role ที่ transition
+            // table อนุญาตยืนยันด้วยตนเอง โดยบังคับต้องมีเหตุผลเสมอ (docs/02-domain-model.md invariant #12)
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                return Result<JobTransitionResultDto>.Fail(
+                    "JOB_TRANSITION_NEEDS_REASON",
+                    "ขั้นตอนนี้ยังไม่มีระบบตรวจสอบอัตโนมัติ (อยู่ระหว่างพัฒนา) — กรุณาระบุเหตุผลเพื่อยืนยันด้วยตนเอง",
+                    nameof(request.Reason));
+
+            var requiredGuard = to == JobStatus.Cancelled
+                ? JobStateMachine.CancelTransition.Guard
+                : JobStateMachine.Transitions
+                    .FirstOrDefault(t => t.From == job.Status && t.To == to.Value)?.Guard ?? JobGuard.None;
+            satisfied |= requiredGuard;
+        }
+
+        var evaluation = JobStateMachine.CanTransition(job.Status, to.Value, user.Role, user.Source, satisfied);
+        if (!evaluation.Allowed)
+            return Result<JobTransitionResultDto>.Fail(evaluation.ErrorCode!, evaluation.MessageTh!);
+
+        var from = job.Status;
+        job.Status = to.Value;
+        if (to == JobStatus.Cancelled)
+        {
+            job.CancelReason = request.Reason;
+            job.CancelledByUserId = user.UserId;
+            job.CancelledAt = Now;
+        }
+
+        var description = isFullyComputed
+            ? $"เปลี่ยนสถานะจาก {JobStateMachine.Describe(from)} เป็น {JobStateMachine.Describe(to.Value)}"
+            : $"เปลี่ยนสถานะจาก {JobStateMachine.Describe(from)} เป็น {JobStateMachine.Describe(to.Value)} " +
+              $"· ยืนยันด้วยตนเอง (ยังไม่มีระบบตรวจสอบอัตโนมัติ): {request.Reason}";
+
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = "job.status.changed",
+            DescriptionTh = description,
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now
+        }, ct);
+
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<JobTransitionResultDto>.Ok(
+            new JobTransitionResultDto(JobStateMachine.ToToken(job.Status), JobStateMachine.Describe(job.Status)));
+    }
+
+    /// <summary>
+    /// คำนวณ guard เฉพาะ bit ที่มีข้อมูลจริงรองรับวันนี้ (จากใบเสนอราคา) — คืน IsFullyComputed = true
+    /// เมื่อ transition นี้ตรวจสอบได้จริงทั้งหมด (ไม่อนุญาต manual override สำหรับ transition เหล่านี้)
+    /// </summary>
+    private async Task<(JobGuard Guard, bool IsFullyComputed)> ComputeGuardAsync(
+        Job job, JobStatus to, CancellationToken ct)
+    {
+        var from = job.Status;
+        var isComputable =
+            (from == JobStatus.WaitQuote && to == JobStatus.WaitApprove) ||
+            (from == JobStatus.WaitApprove && to == JobStatus.Approved) ||
+            (from == JobStatus.Approved && to == JobStatus.InProgress);
+
+        if (!isComputable)
+            return (JobGuard.None, false);
+
+        var quotation = await quotations.GetLatestForJobAsync(job.Id, ct);
+        if (quotation is null)
+            return (JobGuard.None, true);
+
+        if (to == JobStatus.WaitApprove)
+        {
+            QuotationCalculator.ApplyQuotationTotals(quotation);
+            var validation = QuotationValidator.ValidateForSend(quotation, user.Role);
+            return (validation.IsValid ? JobGuard.QuotationValid : JobGuard.None, true);
+        }
+
+        var hasApprovedLine = quotation.Lines.Any(l => l.ApprovalStatus == LineApprovalStatus.Approved);
+
+        if (to == JobStatus.InProgress)
+            return (hasApprovedLine ? JobGuard.HasApprovedLines : JobGuard.None, true);
+
+        // to == JobStatus.Approved
+        var guard = JobGuard.None;
+        var hasPendingLine = quotation.Lines.Any(l => l.ApprovalStatus == LineApprovalStatus.Pending);
+        if (!hasPendingLine && quotation.Lines.Count > 0 && quotation.Approval is not null)
+            guard |= JobGuard.AllLinesDecidedAndSigned;
+        if (hasApprovedLine)
+            guard |= JobGuard.HasApprovedLines;
+
+        return (guard, true);
+    }
+}

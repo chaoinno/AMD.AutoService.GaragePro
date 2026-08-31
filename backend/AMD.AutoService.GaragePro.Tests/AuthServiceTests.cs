@@ -158,10 +158,10 @@ public sealed class AuthServiceTests
     {
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) => Task.FromResult<Quotation?>(null);
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) => Task.FromResult<Quotation?>(null);
-        public Task<Quotation?> GetLatestForJobAsync(string shardKey, long jobId, CancellationToken ct = default) => Task.FromResult<Quotation?>(null);
-        public Task<IReadOnlyList<Quotation>> GetQueueAsync(string shardKey, int branchId, string? statusFilter, long? jobId = null, CancellationToken ct = default) =>
+        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) => Task.FromResult<Quotation?>(null);
+        public Task<IReadOnlyList<Quotation>> GetQueueAsync(string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Quotation>>([]);
-        public Task<int> GetNextVersionAsync(string shardKey, long jobId, CancellationToken ct = default) => Task.FromResult(1);
+        public Task<int> GetNextVersionAsync(Guid jobId, CancellationToken ct = default) => Task.FromResult(1);
         public Task AddAsync(Quotation quotation, CancellationToken ct = default) => Task.CompletedTask;
         public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);

@@ -1,17 +1,28 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ClipboardList, Plus, Search } from 'lucide-react'
+import { ClipboardList, Plus, Search, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { createJob, getJobFormOptions, getJobStatusOptions, searchJobs, type JobsCursor } from '../../api/jobs'
-import type { JobFormOptions, LegacyJob } from '../../api/types'
+import { createJob, getJobStatusOptions, searchJobs, type JobsCursor } from '../../api/jobs'
+import {
+  createCustomer,
+  createVehicle,
+  getCustomer,
+  getCustomers,
+  getModels,
+  getNicknames,
+  getProvinces,
+  getVehicleReferenceData,
+} from '../../api/customerVehicles'
+import type { CustomerSummary, CustomerVehicleSummary, Job } from '../../api/types'
 import { isApiError } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
+import { JobStatusChip } from '../../components/JobStatusChip'
 import { StateBlock } from '../../components/StateBlock'
 import { VehicleImage } from '../../components/VehicleImage'
 import { Button } from '../../components/ui/button'
@@ -21,53 +32,31 @@ import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
 import { formatDateTime } from '../../lib/format'
-import { JobDetailModal } from './JobDetailModal'
+import { JobCardModal } from './JobCardModal'
 
 const JOB_TYPE_OPTIONS = [
   { value: 9, label: 'รถในอู่' },
   { value: 10, label: 'รถนัดหมาย' },
 ] as const
 
-const formSchema = z.object({
-  carNumberGroup: z.string().trim().min(1, 'กรุณาระบุหมวดทะเบียน').max(20),
-  carNumber: z.string().trim().min(1, 'กรุณาระบุเลขทะเบียน').max(20),
-  brandId: z.number().int().positive('กรุณาเลือกยี่ห้อรถ'),
-  modelId: z.number().int().positive('กรุณาเลือกรุ่นรถ'),
-  carNicknameId: z.number().int().positive('กรุณาเลือกโฉมรถ'),
-  colorType: z.number().int().min(1, 'กรุณาเลือกชนิดสี').max(4),
-  pjTypeId: z.union([z.literal(9), z.literal(10)], { message: 'กรุณาเลือกประเภทงาน' }),
-  primaryColorId: z.number().int().positive().optional(),
-  senderFirstName: z.string().trim().max(100).optional(),
-  senderLastName: z.string().trim().max(100).optional(),
-  senderPhoneNumber: z.string().trim().max(50).optional(),
-  detail: z.string().trim().max(500, 'รายละเอียดต้องไม่เกิน 500 ตัวอักษร').optional(),
-})
-
-type JobFormValues = z.infer<typeof formSchema>
-
 const PAGE_SIZE = 50
 
-const defaultValues: JobFormValues = {
-  carNumberGroup: '',
-  carNumber: '',
-  brandId: 0,
-  modelId: 0,
-  carNicknameId: 0,
-  colorType: 0,
-  pjTypeId: 9,
-  senderFirstName: '',
-  senderLastName: '',
-  senderPhoneNumber: '',
-  detail: '',
+function useDebounced<T>(value: T, delay = 350) {
+  const [debounced, setDebounced] = useState(value)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebounced(value), delay)
+    return () => window.clearTimeout(timer)
+  }, [delay, value])
+  return debounced
 }
 
 export function JobsPage() {
   const [queryText, setQueryText] = useState('')
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState(0)
-  const [statusFilter, setStatusFilter] = useState(0)
+  const [statusFilter, setStatusFilter] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -85,7 +74,7 @@ export function JobsPage() {
     getNextPageParam: (lastPage) => {
       const last = lastPage.at(-1)
       if (!last || lastPage.length < PAGE_SIZE) return undefined
-      return { beforeCreatedDate: last.createdDate, beforeJobId: last.jobId }
+      return { beforeCreatedAt: last.createdAt, beforeJobId: last.jobId }
     },
   })
 
@@ -112,7 +101,7 @@ export function JobsPage() {
     return () => observer.disconnect()
   }, [autoLoadEnabled, jobsQuery.hasNextPage, jobsQuery.isFetchingNextPage, jobsQuery.fetchNextPage])
 
-  const columns = useMemo<ColumnDef<LegacyJob, unknown>[]>(() => [
+  const columns = useMemo<ColumnDef<Job, unknown>[]>(() => [
     {
       id: 'image',
       header: 'รูปรถ',
@@ -146,25 +135,25 @@ export function JobsPage() {
     },
     {
       id: 'type',
-      accessorFn: (job) => job.pjTypeName ?? '',
+      accessorFn: (job) => job.jobTypeName ?? '',
       header: 'ประเภท',
       size: 140,
-      cell: ({ row }) => <span className="job-type-chip">{row.original.pjTypeName || 'ไม่ระบุ'}</span>,
+      cell: ({ row }) => <span className="job-type-chip">{row.original.jobTypeName || 'ไม่ระบุ'}</span>,
     },
     {
       id: 'status',
-      accessorFn: (job) => job.legacyStatusName ?? '',
+      accessorFn: (job) => job.statusLabel,
       header: 'สถานะ',
       size: 160,
-      cell: ({ row }) => <span className="job-status-chip">{row.original.legacyStatusName || 'ไม่ระบุ'}</span>,
+      cell: ({ row }) => <JobStatusChip status={row.original.status} label={row.original.statusLabel} />,
     },
     {
-      id: 'createdDate',
-      accessorFn: (job) => new Date(job.createdDate).getTime(),
+      id: 'createdAt',
+      accessorFn: (job) => new Date(job.createdAt).getTime(),
       header: 'วันที่สร้างจ๊อบ',
       size: 220,
       sortDescFirst: true,
-      cell: ({ row }) => <time className="job-created-at">{formatDateTime(row.original.createdDate)}</time>,
+      cell: ({ row }) => <time className="job-created-at">{formatDateTime(row.original.createdAt)}</time>,
     },
     {
       id: 'actions',
@@ -305,13 +294,13 @@ export function JobsPage() {
           <Select
             value={statusFilter}
             onChange={(event) => {
-              setStatusFilter(Number(event.target.value))
+              setStatusFilter(event.target.value)
               setAutoLoadEnabled(false)
             }}
           >
-            <option value={0}>ทุกสถานะ</option>
+            <option value="">ทุกสถานะ</option>
             {(statusOptionsQuery.data ?? []).map((item) => (
-              <option key={item.id} value={item.id}>{item.name}</option>
+              <option key={item.token} value={item.token}>{item.label}</option>
             ))}
           </Select>
         </Label>
@@ -319,39 +308,84 @@ export function JobsPage() {
 
       {content}
       <CreateJobModal open={createOpen} onClose={() => setCreateOpen(false)} />
-      <JobDetailModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
+      <JobCardModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
     </AppShell>
   )
 }
 
+// ---------- เปิดจ๊อบ: เลือก/สร้างลูกค้า → เลือก/สร้างรถ → รายละเอียดจ๊อบ ----------
+
+const jobDetailsSchema = z.object({
+  jobTypeId: z.union([z.literal(9), z.literal(10)], { message: 'กรุณาเลือกประเภทงาน' }),
+  senderName: z.string().trim().max(200).optional(),
+  senderPhoneNumber: z.string().trim().max(50).optional(),
+  detail: z.string().trim().max(500, 'รายละเอียดต้องไม่เกิน 500 ตัวอักษร').optional(),
+})
+type JobDetailsValues = z.infer<typeof jobDetailsSchema>
+
+const newCustomerSchema = z.object({
+  firstName: z.string().trim().min(1, 'กรุณากรอกชื่อ'),
+  lastName: z.string().trim().min(1, 'กรุณากรอกนามสกุล'),
+  phoneNumber1: z.string().trim().min(1, 'กรุณากรอกเบอร์โทรศัพท์'),
+})
+type NewCustomerValues = z.infer<typeof newCustomerSchema>
+
+const newVehicleSchema = z.object({
+  registration: z.string().trim().min(1, 'กรุณากรอกทะเบียนรถ'),
+  provinceId: z.string().min(1, 'กรุณาเลือกจังหวัดจดทะเบียน'),
+  brandId: z.string().min(1, 'กรุณาเลือกยี่ห้อ'),
+  modelId: z.string().min(1, 'กรุณาเลือกรุ่น'),
+  nicknameId: z.string().min(1, 'กรุณาเลือกโฉมรถ'),
+  yearId: z.string().min(1, 'กรุณาเลือกปีรถ'),
+  primaryColorId: z.string(),
+  vin: z.string().trim().refine((v) => !v || /^[A-Za-z0-9]{17}$/.test(v), 'VIN ต้องมี 17 ตัวอักษรหรือตัวเลข'),
+})
+type NewVehicleValues = z.infer<typeof newVehicleSchema>
+const emptyNewVehicle: NewVehicleValues = {
+  registration: '', provinceId: '', brandId: '', modelId: '', nicknameId: '', yearId: '', primaryColorId: '', vin: '',
+}
+
 function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const queryClient = useQueryClient()
-  const optionsQuery = useQuery({
-    queryKey: ['job-form-options'],
-    queryFn: getJobFormOptions,
-    enabled: open,
-    staleTime: 5 * 60 * 1000,
-  })
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setValue,
-    watch,
-    formState: { errors },
-  } = useForm<JobFormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues,
+
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
+  const debouncedCustomerSearch = useDebounced(customerSearch)
+
+  const [selectedVehicleId, setSelectedVehicleId] = useState<number | null>(null)
+  const [creatingVehicle, setCreatingVehicle] = useState(false)
+
+  const customersQuery = useQuery({
+    queryKey: ['job-open-customer-search', debouncedCustomerSearch],
+    queryFn: () => getCustomers({ keyword: debouncedCustomerSearch, pageSize: 8 }),
+    enabled: open && debouncedCustomerSearch.trim().length >= 2,
   })
 
-  const brandId = watch('brandId')
-  const modelId = watch('modelId')
-  const models = optionsQuery.data?.models.filter((item) => item.brandId === brandId) ?? []
-  const nicknames = optionsQuery.data?.nicknames.filter(
-    (item) => item.brandId === brandId && item.modelId === modelId,
-  ) ?? []
+  const customerDetailQuery = useQuery({
+    queryKey: ['job-open-customer-detail', selectedCustomerId],
+    queryFn: () => getCustomer(selectedCustomerId!),
+    enabled: open && selectedCustomerId !== null,
+  })
 
-  const mutation = useMutation({
+  const refsQuery = useQuery({
+    queryKey: ['vehicle-reference-data'],
+    queryFn: getVehicleReferenceData,
+    enabled: open && creatingVehicle,
+  })
+
+  const close = () => {
+    setSelectedCustomerId(null)
+    setCustomerSearch('')
+    setCreatingCustomer(false)
+    setSelectedVehicleId(null)
+    setCreatingVehicle(false)
+    jobForm.reset(jobDetailsDefaults)
+    createJobMutation.reset()
+    onClose()
+  }
+
+  const createJobMutation = useMutation({
     mutationFn: createJob,
     onSuccess: (job) => {
       toast.success(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`)
@@ -360,28 +394,44 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
     },
   })
 
-  const close = () => {
-    reset(defaultValues)
-    mutation.reset()
-    onClose()
+  const jobDetailsDefaults: JobDetailsValues = { jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '' }
+  const jobForm = useForm<JobDetailsValues>({
+    resolver: zodResolver(jobDetailsSchema),
+    defaultValues: jobDetailsDefaults,
+  })
+
+  const chooseCustomer = (customer: CustomerSummary) => {
+    setSelectedCustomerId(customer.id)
+    setCustomerSearch('')
+    setSelectedVehicleId(null)
+    setCreatingVehicle(false)
   }
 
-  const submit = handleSubmit((values) => {
-    mutation.mutate({
-      ...values,
-      primaryColorId: values.primaryColorId || undefined,
-      senderFirstName: values.senderFirstName || undefined,
-      senderLastName: values.senderLastName || undefined,
+  const chooseVehicle = (vehicle: CustomerVehicleSummary) => {
+    setSelectedVehicleId(vehicle.id)
+    setCreatingVehicle(false)
+  }
+
+  const submitJob = jobForm.handleSubmit((values) => {
+    if (!selectedCustomerId || !selectedVehicleId) return
+    createJobMutation.mutate({
+      customerId: selectedCustomerId,
+      vehicleId: selectedVehicleId,
+      jobTypeId: values.jobTypeId,
+      senderName: values.senderName || undefined,
       senderPhoneNumber: values.senderPhoneNumber || undefined,
       detail: values.detail || undefined,
     })
   })
 
+  const customer = customerDetailQuery.data
+  const canSubmit = Boolean(selectedCustomerId && selectedVehicleId)
+
   return (
     <ConfirmModal
       open={open}
       title="เปิดจ๊อบ"
-      description="สร้างข้อมูลรถ ลูกค้า และจ๊อบตามรูปแบบ ProjectAdd"
+      description="เลือกลูกค้าและรถที่มีอยู่แล้ว หรือสร้างใหม่ — ข้อมูลจ๊อบจะบันทึกในระบบนี้เท่านั้น"
       onClose={close}
       size="large"
       footer={
@@ -390,160 +440,288 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
           <Button
             type="submit"
             form="create-job-form"
-            disabled={optionsQuery.isPending || optionsQuery.isError || mutation.isPending}
+            disabled={!canSubmit || createJobMutation.isPending}
+            title={!canSubmit ? 'กรุณาเลือกลูกค้าและรถก่อน' : undefined}
           >
-            {mutation.isPending ? 'กำลังเปิดจ๊อบ…' : 'เปิดจ๊อบ'}
+            {createJobMutation.isPending ? 'กำลังเปิดจ๊อบ…' : 'เปิดจ๊อบ'}
           </Button>
         </>
       }
     >
-      {optionsQuery.isPending ? (
-        <p className="form-message">กำลังโหลดตัวเลือกสำหรับเปิดจ๊อบ…</p>
-      ) : optionsQuery.isError ? (
-        <div className="form-error-panel" role="alert">
-          <p>{isApiError(optionsQuery.error) ? optionsQuery.error.messageTh : 'โหลดตัวเลือกไม่สำเร็จ'}</p>
-          <Button variant="outline" size="sm" onClick={() => void optionsQuery.refetch()}>ลองใหม่</Button>
-        </div>
-      ) : (
-        <JobForm
-          options={optionsQuery.data!}
-          models={models}
-          nicknames={nicknames}
-          register={register}
-          setValue={setValue}
-          errors={errors}
-          submit={submit}
-          mutationError={mutation.error}
-        />
-      )}
+      <form id="create-job-form" className="create-form job-create-form" onSubmit={submitJob}>
+        {createJobMutation.isError ? (
+          <div className="form-error-panel" role="alert">
+            {isApiError(createJobMutation.error) ? createJobMutation.error.messageTh : 'เปิดจ๊อบไม่สำเร็จ กรุณาลองใหม่'}
+          </div>
+        ) : null}
+
+        <section>
+          <h3>ลูกค้า *</h3>
+          {selectedCustomerId ? (
+            <div className="selected-owner">
+              <UserRound aria-hidden="true" />
+              <span>
+                <strong>{customer ? `${customer.firstName} ${customer.lastName}` : 'กำลังโหลด…'}</strong>
+                <small>{customer?.code} · {customer?.phoneNumber1 || 'ไม่ระบุเบอร์'}</small>
+              </span>
+              <Button type="button" variant="ghost" onClick={() => { setSelectedCustomerId(null); setSelectedVehicleId(null) }}>
+                เปลี่ยน
+              </Button>
+            </div>
+          ) : creatingCustomer ? (
+            <NewCustomerForm
+              onCancel={() => setCreatingCustomer(false)}
+              onCreated={(id) => { setCreatingCustomer(false); setSelectedCustomerId(id) }}
+            />
+          ) : (
+            <>
+              <div className="input-with-icon">
+                <Search aria-hidden="true" />
+                <Input
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  placeholder="ค้นหาชื่อ เบอร์โทร หรือเลขบัตร อย่างน้อย 2 ตัว"
+                />
+              </div>
+              {customerSearch.trim().length >= 2 ? (
+                <div className="owner-results">
+                  {customersQuery.isPending ? (
+                    <span>กำลังค้นหา…</span>
+                  ) : customersQuery.data?.items.length ? (
+                    customersQuery.data.items.map((c) => (
+                      <button type="button" key={c.id} onClick={() => chooseCustomer(c)}>
+                        <strong>{c.fullName}</strong>
+                        <small>{c.code} · {c.phoneNumber1}</small>
+                      </button>
+                    ))
+                  ) : (
+                    <span>ไม่พบลูกค้าที่ตรงกับคำค้น</span>
+                  )}
+                </div>
+              ) : null}
+              <Button type="button" variant="outline" size="sm" onClick={() => setCreatingCustomer(true)}>
+                <Plus aria-hidden="true" /> ลูกค้าใหม่
+              </Button>
+            </>
+          )}
+        </section>
+
+        {selectedCustomerId ? (
+          <section>
+            <h3>รถ *</h3>
+            {selectedVehicleId ? (
+              <div className="selected-owner">
+                <span>
+                  <strong>
+                    {customer?.vehicles.find((v) => v.id === selectedVehicleId)?.registration ?? 'รถที่เพิ่งสร้าง'}
+                  </strong>
+                </span>
+                <Button type="button" variant="ghost" onClick={() => setSelectedVehicleId(null)}>เปลี่ยน</Button>
+              </div>
+            ) : creatingVehicle ? (
+              <NewVehicleForm
+                customerId={selectedCustomerId}
+                refs={refsQuery.data}
+                onCancel={() => setCreatingVehicle(false)}
+                onCreated={(id) => { setCreatingVehicle(false); setSelectedVehicleId(id) }}
+              />
+            ) : (
+              <>
+                {customerDetailQuery.isPending ? (
+                  <p className="form-message">กำลังโหลดรถของลูกค้า…</p>
+                ) : customer?.vehicles.length ? (
+                  <div className="owner-results">
+                    {customer.vehicles.map((v) => (
+                      <button type="button" key={v.id} onClick={() => chooseVehicle(v)}>
+                        <strong>{v.registration}</strong>
+                        <small>{v.brandName || ''} {v.modelName || ''} · {v.nickname || 'ไม่ระบุโฉม'}</small>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="form-message">ลูกค้ายังไม่มีรถในระบบ</p>
+                )}
+                <Button type="button" variant="outline" size="sm" onClick={() => setCreatingVehicle(true)}>
+                  <Plus aria-hidden="true" /> รถคันใหม่
+                </Button>
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {selectedCustomerId && selectedVehicleId ? (
+          <section>
+            <h3>รายละเอียดจ๊อบ</h3>
+            <div className="form-grid--two job-color-row">
+              <Field label="ประเภทงาน *" error={jobForm.formState.errors.jobTypeId?.message}>
+                <Select {...jobForm.register('jobTypeId', { valueAsNumber: true })}>
+                  {JOB_TYPE_OPTIONS.map((item) => (
+                    <option key={item.value} value={item.value}>{item.label}</option>
+                  ))}
+                </Select>
+              </Field>
+              <div className="job-defaults" aria-label="ค่าเริ่มต้นของจ๊อบ">
+                <div><span>สถานะ</span><strong>รอตรวจสอบ</strong></div>
+              </div>
+            </div>
+            <div className="form-grid--two">
+              <Field label="ชื่อผู้ส่งรถ"><Input {...jobForm.register('senderName')} /></Field>
+              <Field label="เบอร์โทรผู้ส่งรถ" error={jobForm.formState.errors.senderPhoneNumber?.message}>
+                <Input type="tel" autoComplete="tel" {...jobForm.register('senderPhoneNumber')} />
+              </Field>
+            </div>
+            <Field label="รายละเอียดเพิ่มเติม" error={jobForm.formState.errors.detail?.message}>
+              <Textarea rows={3} {...jobForm.register('detail')} />
+            </Field>
+          </section>
+        ) : null}
+      </form>
     </ConfirmModal>
   )
 }
 
-type JobFormProps = {
-  options: JobFormOptions
-  models: JobFormOptions['models']
-  nicknames: JobFormOptions['nicknames']
-  register: ReturnType<typeof useForm<JobFormValues>>['register']
-  setValue: ReturnType<typeof useForm<JobFormValues>>['setValue']
-  errors: ReturnType<typeof useForm<JobFormValues>>['formState']['errors']
-  submit: () => void
-  mutationError: Error | null
-}
+function NewCustomerForm({ onCancel, onCreated }: { onCancel: () => void; onCreated: (id: number) => void }) {
+  const { register, handleSubmit, formState: { errors } } = useForm<NewCustomerValues>({
+    resolver: zodResolver(newCustomerSchema),
+    defaultValues: { firstName: '', lastName: '', phoneNumber1: '' },
+  })
 
-function JobForm({
-  options,
-  models,
-  nicknames,
-  register,
-  setValue,
-  errors,
-  submit,
-  mutationError,
-}: JobFormProps) {
+  const mutation = useMutation({
+    mutationFn: (values: NewCustomerValues) => createCustomer({ ...values, isBlacklist: false }),
+    onSuccess: (customer) => onCreated(customer.id),
+  })
+
+  const submit = handleSubmit((values) => mutation.mutate(values))
+
   return (
-    <form id="create-job-form" className="create-form job-create-form" onSubmit={submit}>
-      {mutationError ? (
+    <div className="inline-create-form">
+      {mutation.isError ? (
         <div className="form-error-panel" role="alert">
-          {isApiError(mutationError) ? mutationError.messageTh : 'เปิดจ๊อบไม่สำเร็จ กรุณาลองใหม่'}
+          {isApiError(mutation.error) ? mutation.error.messageTh : 'สร้างลูกค้าไม่สำเร็จ'}
         </div>
       ) : null}
+      <div className="form-grid--two">
+        <Field label="ชื่อ *" error={errors.firstName?.message}><Input {...register('firstName')} /></Field>
+        <Field label="นามสกุล *" error={errors.lastName?.message}><Input {...register('lastName')} /></Field>
+      </div>
+      <Field label="เบอร์โทรศัพท์ *" error={errors.phoneNumber1?.message}>
+        <Input type="tel" autoComplete="tel" {...register('phoneNumber1')} />
+      </Field>
+      <div className="job-card-panel-actions">
+        <Button type="button" variant="ghost" onClick={onCancel}>ยกเลิก</Button>
+        <Button type="button" disabled={mutation.isPending} onClick={() => void submit()}>
+          {mutation.isPending ? 'กำลังบันทึก…' : 'บันทึกลูกค้าใหม่'}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
-      <div className="form-grid--two job-color-row">
-        <Field label="ประเภทงาน *" error={errors.pjTypeId?.message}>
-          <Select {...register('pjTypeId', { valueAsNumber: true })}>
-            {JOB_TYPE_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </Select>
-        </Field>
-        <div className="job-defaults" aria-label="ค่าเริ่มต้นของจ๊อบ">
-          <div><span>สถานะ</span><strong>รอตรวจสอบ</strong></div>
+function NewVehicleForm({
+  customerId, refs, onCancel, onCreated,
+}: {
+  customerId: number
+  refs: import('../../api/types').VehicleReferenceData | undefined
+  onCancel: () => void
+  onCreated: (id: number) => void
+}) {
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<NewVehicleValues>({
+    resolver: zodResolver(newVehicleSchema),
+    defaultValues: emptyNewVehicle,
+  })
+  const brandId = Number(watch('brandId')) || 0
+  const modelId = Number(watch('modelId')) || 0
+  const modelsQuery = useQuery({ queryKey: ['models', brandId], queryFn: () => getModels(brandId), enabled: brandId > 0 })
+  const nicknamesQuery = useQuery({ queryKey: ['nicknames', modelId], queryFn: () => getNicknames(modelId), enabled: modelId > 0 })
+  const provincesQuery = useQuery({ queryKey: ['provinces'], queryFn: getProvinces })
+
+  const mutation = useMutation({
+    mutationFn: (values: NewVehicleValues) => createVehicle({
+      customerId,
+      registration: values.registration,
+      provinceId: Number(values.provinceId),
+      brandId: Number(values.brandId),
+      modelId: Number(values.modelId),
+      nicknameId: Number(values.nicknameId),
+      yearId: Number(values.yearId),
+      primaryColorId: Number(values.primaryColorId) || undefined,
+      vin: values.vin || undefined,
+    }),
+    onSuccess: (vehicle) => onCreated(vehicle.id),
+  })
+
+  const submit = handleSubmit((values) => mutation.mutate(values))
+
+  return (
+    <div className="inline-create-form">
+      {mutation.isError ? (
+        <div className="form-error-panel" role="alert">
+          {isApiError(mutation.error) ? mutation.error.messageTh : 'สร้างรถไม่สำเร็จ'}
         </div>
-      </div>
-
-      <div className="form-grid--two job-color-row">
-        <Field label="ชนิดสีรถ *" error={errors.colorType?.message}>
-          <Select {...register('colorType', { valueAsNumber: true })}>
-            <option value={0}>เลือกชนิดสี</option>
-            <option value={1}>สีทั่วไป</option>
-            <option value={2}>ทูโทน</option>
-            <option value={3}>สีมุก</option>
-            <option value={4}>สีแก้ว</option>
-          </Select>
-        </Field>
-      </div>
-
-      <div className="plate-fields">
-        <Field label="หมวดทะเบียน *" error={errors.carNumberGroup?.message}>
-          <Input placeholder="เช่น 1กก" autoComplete="off" {...register('carNumberGroup')} />
-        </Field>
-        <span aria-hidden="true">–</span>
-        <Field label="เลขทะเบียน *" error={errors.carNumber?.message}>
-          <Input placeholder="เช่น 9999" inputMode="numeric" autoComplete="off" {...register('carNumber')} />
-        </Field>
-      </div>
-
-      <div className="form-grid--two">
-        <Field label="ยี่ห้อรถ *" error={errors.brandId?.message}>
-          <Select
-            {...register('brandId', {
-              valueAsNumber: true,
-              onChange: () => {
-                setValue('modelId', 0)
-                setValue('carNicknameId', 0)
-              },
-            })}
-          >
-            <option value={0}>เลือกยี่ห้อ</option>
-            {options.brands.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </Select>
-        </Field>
-        <Field label="รุ่นรถ *" error={errors.modelId?.message}>
-          <Select
-            disabled={!models.length}
-            {...register('modelId', {
-              valueAsNumber: true,
-              onChange: () => setValue('carNicknameId', 0),
-            })}
-          >
-            <option value={0}>เลือกรุ่น</option>
-            {models.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </Select>
-        </Field>
-      </div>
-
-      <div className="form-grid--two">
-        <Field label="โฉมรถ *" error={errors.carNicknameId?.message}>
-          <Select disabled={!nicknames.length} {...register('carNicknameId', { valueAsNumber: true })}>
-            <option value={0}>เลือกโฉม</option>
-            {nicknames.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </Select>
-        </Field>
-        <Field label="สีรถ">
-          <Select
-            {...register('primaryColorId', {
-              setValueAs: (value) => value === '' ? undefined : Number(value),
-            })}
-          >
-            <option value="">ไม่ระบุสี</option>
-            {options.primaryColors.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </Select>
-        </Field>
-      </div>
-
-      <div className="form-grid--two">
-        <Field label="ชื่อผู้ส่งรถ"><Input {...register('senderFirstName')} /></Field>
-        <Field label="นามสกุลผู้ส่งรถ"><Input {...register('senderLastName')} /></Field>
-      </div>
-      <Field label="เบอร์โทรศัพท์" error={errors.senderPhoneNumber?.message}>
-        <Input type="tel" autoComplete="tel" {...register('senderPhoneNumber')} />
+      ) : null}
+      <Field label="ทะเบียน *" error={errors.registration?.message}>
+        <Input placeholder="เช่น 1กก-9999" autoComplete="off" {...register('registration')} />
       </Field>
-      <Field label="รายละเอียดเพิ่มเติม" error={errors.detail?.message}>
-        <Textarea rows={3} {...register('detail')} />
+      <div className="form-grid--two">
+        <Field label="จังหวัดจดทะเบียน *" error={errors.provinceId?.message}>
+          <Select {...register('provinceId')}>
+            <option value="">เลือกจังหวัด</option>
+            {provincesQuery.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="ยี่ห้อ *" error={errors.brandId?.message}>
+          <Select
+            {...register('brandId')}
+            onChange={(e) => { setValue('brandId', e.target.value); setValue('modelId', ''); setValue('nicknameId', '') }}
+          >
+            <option value="">เลือกยี่ห้อ</option>
+            {refs?.brands.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+      </div>
+      <div className="form-grid--two">
+        <Field label="รุ่น *" error={errors.modelId?.message}>
+          <Select
+            {...register('modelId')}
+            disabled={!brandId}
+            title={!brandId ? 'เลือกยี่ห้อก่อน' : undefined}
+            onChange={(e) => { setValue('modelId', e.target.value); setValue('nicknameId', '') }}
+          >
+            <option value="">เลือกรุ่น</option>
+            {modelsQuery.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="โฉม *" error={errors.nicknameId?.message}>
+          <Select {...register('nicknameId')} disabled={!modelId} title={!modelId ? 'เลือกรุ่นก่อน' : undefined}>
+            <option value="">เลือกโฉม</option>
+            {nicknamesQuery.data?.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+      </div>
+      <div className="form-grid--two">
+        <Field label="ปี *" error={errors.yearId?.message}>
+          <Select {...register('yearId')}>
+            <option value="">เลือกปี</option>
+            {refs?.years.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="สีหลัก">
+          <Select {...register('primaryColorId')}>
+            <option value="">เลือกสีหลัก</option>
+            {refs?.primaryColors.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+          </Select>
+        </Field>
+      </div>
+      <Field label="VIN" error={errors.vin?.message}>
+        <Input maxLength={17} {...register('vin')} />
       </Field>
-
-    </form>
+      <div className="job-card-panel-actions">
+        <Button type="button" variant="ghost" onClick={onCancel}>ยกเลิก</Button>
+        <Button type="button" disabled={mutation.isPending} onClick={() => void submit()}>
+          {mutation.isPending ? 'กำลังบันทึก…' : 'บันทึกรถใหม่'}
+        </Button>
+      </div>
+    </div>
   )
 }
 

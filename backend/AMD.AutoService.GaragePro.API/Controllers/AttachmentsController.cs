@@ -44,7 +44,7 @@ public sealed class AttachmentsController(IAttachmentService service) : Controll
     /// <summary>ไฟล์แนบทั้งหมดของงาน · กรองด้วย kind ได้</summary>
     [HttpGet]
     public async Task<IActionResult> GetForJob(
-        [FromQuery] long jobId, [FromQuery] string? kind, CancellationToken ct) =>
+        [FromQuery] Guid jobId, [FromQuery] string? kind, CancellationToken ct) =>
         Render(await service.GetForJobAsync(jobId, kind, ct));
 
     /// <summary>เปิดไฟล์จริง — ใช้แสดงรูปลายเซ็นในเอกสาร</summary>
@@ -91,8 +91,8 @@ public sealed class UploadAttachmentForm
 {
     public IFormFile? File { get; set; }
 
-    /// <summary>เลขงานใน Garage DB เดิม — ต้องอยู่สาขาเดียวกับที่เข้าใช้งาน</summary>
-    public long JobId { get; set; }
+    /// <summary>ต้องอยู่สาขาเดียวกับที่เข้าใช้งาน</summary>
+    public Guid JobId { get; set; }
 
     /// <summary>signature | intake | inspection | repair-before | repair-after | qc | document</summary>
     public string Kind { get; set; } = string.Empty;

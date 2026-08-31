@@ -804,8 +804,7 @@ img {
   min-width: 160px;
 }
 
-.job-type-chip,
-.job-status-chip {
+.job-type-chip {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
@@ -815,6 +814,25 @@ img {
   font-size: 12px;
   font-weight: 600;
 }
+
+.job-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--radius-pill);
+}
+
+.job-status-waitinspect { background: #fdf3e2; color: #8a5a00; }
+.job-status-waitquote { background: #e6effc; color: #1552b3; }
+.job-status-waitapprove { background: #fdf1e6; color: #c1691f; }
+.job-status-approved { background: #e3f5f1; color: #0b6d5e; }
+.job-status-inprogress { background: #fdf1e6; color: #c1691f; }
+.job-status-waitparts { background: #fbe9e9; color: #a31d1d; }
+.job-status-qc { background: #f3e8fd; color: #6d28d9; }
+.job-status-ready { background: #e8f7ec; color: #1a7f37; }
+.job-status-completed { background: #e4e9f0; color: #0f2440; }
+.job-status-cancelled { background: #fbe9e9; color: #a31d1d; }
 
 .job-created-at {
   color: #475569;
@@ -1023,6 +1041,479 @@ img {
   padding: 2px 10px 8px;
   color: var(--muted);
   font-size: 11px;
+}
+
+/* ---- Job Card (stepper page) ---- */
+
+.job-card-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.job-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 28px;
+  border-radius: var(--radius-card);
+  background: var(--navy-900);
+  color: #fff;
+}
+
+.job-card-header__title {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.job-card-header__jobno {
+  margin-top: 2px;
+  font-size: 13px;
+  color: #9aa1ad;
+}
+
+.job-card-header__jobno strong {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--orange-600);
+}
+
+.job-card-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.job-card-header__meta-item {
+  text-align: right;
+}
+
+.job-card-header__meta-item dt {
+  font-size: 12px;
+  color: #9aa1ad;
+}
+
+.job-card-header__meta-item dd {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.job-card-header__meta-item dd.mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 18px;
+}
+
+.job-card-header__divider {
+  width: 1px;
+  height: 34px;
+  background: #333a47;
+}
+
+.job-card-stepper {
+  padding: 22px 32px 26px;
+  border-radius: var(--radius-card);
+  background: var(--navy-900);
+}
+
+.job-card-stepper__list {
+  display: flex;
+  align-items: flex-start;
+}
+
+.job-card-stepper__step {
+  display: flex;
+  align-items: flex-start;
+  flex: 1 1 auto;
+}
+
+.job-card-stepper__step:last-child {
+  flex: 0 0 auto;
+}
+
+.job-card-stepper__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 74px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.job-card-stepper__circle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid #333a47;
+  background: #262c38;
+  color: #6b7280;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+
+.job-card-stepper__circle--done {
+  border-color: #1a7f37;
+  background: #1a7f37;
+  color: #fff;
+}
+
+.job-card-stepper__circle--active {
+  border-color: var(--orange-600);
+  background: var(--orange-600);
+  color: #fff;
+}
+
+.job-card-stepper__circle--viewing {
+  box-shadow: 0 0 0 4px rgb(194 65 12 / 28%);
+}
+
+.job-card-stepper__label {
+  max-width: 92px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.job-card-stepper__label--reached {
+  color: #d5d9e0;
+}
+
+.job-card-stepper__label--viewing {
+  color: #fff;
+  font-weight: 700;
+}
+
+.job-card-stepper__connector {
+  flex: 1;
+  height: 2px;
+  margin: 21px 8px 0;
+  background: #333a47;
+}
+
+.job-card-stepper__connector--done {
+  background: #1a7f37;
+}
+
+.job-card-columns {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: start;
+  gap: 20px;
+}
+
+.job-card-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+@media (max-width: 1023px) {
+  .job-card-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.job-card-stage-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---- Intake checklist (รับรถ 6 ขั้น — ขั้นที่ 3) ---- */
+
+.intake-checklist__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.intake-checklist__locked-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: #e5f6f2;
+  color: #0e7a6b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.intake-checklist__categories {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.intake-category__title {
+  margin: 0 0 10px;
+  color: var(--navy-700);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.intake-category__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intake-item {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+}
+
+.intake-item__main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.intake-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+}
+
+.intake-item__label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.intake-item__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.intake-item__results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.intake-item__result-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.intake-item__result-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.intake-item__result-btn--ok.intake-item__result-btn--selected {
+  border-color: #0e9f8c;
+  background: #e5f6f2;
+  color: #0e7a6b;
+}
+
+.intake-item__result-btn--issue.intake-item__result-btn--selected {
+  border-color: var(--red-600);
+  background: #fbe9e9;
+  color: var(--red-600);
+}
+
+.intake-item__result-btn--na.intake-item__result-btn--selected {
+  border-color: var(--faint);
+  background: #f1f5f9;
+  color: var(--muted);
+}
+
+.intake-item__pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font-size: 12px;
+}
+
+.intake-item__note-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.intake-item__note-input {
+  flex: 1;
+  min-width: 240px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-input);
+  font: inherit;
+  resize: vertical;
+}
+
+.intake-item__note-locked {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-input);
+  background: #f8fafc;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.intake-item__photos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.intake-item__photo {
+  display: block;
+  overflow: hidden;
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.intake-item__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.intake-item__file-input {
+  display: none;
+}
+
+.intake-item__spin {
+  animation: intake-spin 0.8s linear infinite;
+}
+
+@keyframes intake-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.intake-checklist__submit-row {
+  align-items: center;
+  gap: 14px;
+}
+
+.intake-checklist__submit-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.intake-print-row {
+  justify-content: flex-end;
+}
+
+/* ---- ใบรับรถ (intake document print) ---- */
+
+.intake-document-checklist {
+  margin-top: 16px;
+}
+
+.intake-document-checklist__heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.intake-document-checklist__heading h3 {
+  font-size: 13px;
+}
+
+.intake-document-checklist__heading span {
+  color: #64748b;
+  font-size: 9px;
+}
+
+.intake-document-checklist__warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border: 1px solid #f3c9c9;
+  border-radius: 6px;
+  background: #fbe9e9;
+  color: var(--red-600);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.intake-document-checklist__category {
+  margin-bottom: 12px;
+}
+
+.intake-document-checklist__category h4 {
+  margin-bottom: 4px;
+  color: var(--navy-700);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.intake-print-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.intake-print-result svg {
+  width: 11px;
+  height: 11px;
+}
+
+.intake-print-result--ok { color: #0e7a6b; }
+.intake-print-result--issue { color: var(--red-600); }
+.intake-print-result--na,
+.intake-print-result--pending { color: var(--muted); }
+
+.intake-document-photos {
+  margin-top: 16px;
+}
+
+.intake-document-photos h3 {
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 
 .status-chip {
@@ -1254,6 +1745,16 @@ img {
 .create-form {
   display: grid;
   gap: 16px;
+}
+
+.inline-create-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: var(--surface-subtle, #f8fafc);
 }
 
 .job-results {
@@ -3410,7 +3911,8 @@ img {
   .approval-block,
   .document-footer,
   .document-group-row,
-  .document-lines tr {
+  .document-lines tr,
+  .intake-document-checklist__category {
     break-inside: avoid;
   }
 
@@ -3420,5 +3922,22 @@ img {
 
   .document-footer {
     break-before: auto;
+  }
+
+  /* ใบรับรถที่ซ้อนบน job card modal (IntakeReceiptModal) — พิมพ์เฉพาะ .intake-receipt-print-area
+     body.printing-intake-receipt ถูกเซ็ต/ล้างจาก IntakeReceiptModal ตอนเปิด/ปิด */
+  body.printing-intake-receipt > * {
+    visibility: hidden !important;
+  }
+
+  body.printing-intake-receipt .intake-receipt-print-area,
+  body.printing-intake-receipt .intake-receipt-print-area * {
+    visibility: visible !important;
+  }
+
+  body.printing-intake-receipt .intake-receipt-print-area {
+    position: fixed;
+    inset: 0;
+    background: white !important;
   }
 }

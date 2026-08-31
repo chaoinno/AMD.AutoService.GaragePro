@@ -91,7 +91,7 @@ export type QuotationSummary = {
   version: number
   status: QuotationStatus
   statusLabelTh: string
-  jobId: number
+  jobId: string
   jobNo: string
   customerName: string
   vehicleRegistration: string
@@ -203,7 +203,7 @@ export type Quotation = {
   version: number
   status: QuotationStatus
   statusLabelTh: string
-  jobId: number
+  jobId: string
   jobNo: string
   customer: Customer
   vehicle: Vehicle
@@ -233,56 +233,112 @@ export type UpsertLine = {
   note?: string
 }
 
-export type LegacyJob = {
-  jobId: number
+export type JobStatusToken =
+  | 'waitinspect'
+  | 'waitquote'
+  | 'waitapprove'
+  | 'approved'
+  | 'inprogress'
+  | 'waitparts'
+  | 'qc'
+  | 'ready'
+  | 'completed'
+  | 'cancelled'
+
+export type Job = {
+  jobId: string
   jobNo: string
   branchId: number
   branchName: string
-  customerId: number | null
+  customerId: number
   customerName: string
   customerPhone: string | null
-  carId: number | null
+  vehicleId: number
   vehicleImagePath: string | null
   vehicleRegistration: string
   vehicleModel: string | null
   vehicleVin: string | null
-  createdDate: string
+  createdAt: string
   promiseAt: string | null
-  legacyStatusName: string | null
-  pjTypeId: number
-  pjTypeName: string | null
-  pjStatusId: number
+  jobTypeId: number
+  jobTypeName: string | null
+  status: JobStatusToken
+  statusLabel: string
+  isOverdue: boolean
 }
 
-export type JobStatusOption = { id: number; name: string }
+export type TransitionJobInput = { toStatus: JobStatusToken | string; reason?: string }
+export type JobTransitionResult = { status: JobStatusToken; statusLabel: string }
 
-export type JobLookup = { id: number; name: string }
-export type JobModelLookup = JobLookup & { brandId: number }
-export type JobNicknameLookup = JobLookup & { brandId: number; modelId: number }
-export type JobColorLookup = JobLookup & { htmlCode: string | null }
-export type JobFormOptions = {
-  brands: JobLookup[]
-  models: JobModelLookup[]
-  nicknames: JobNicknameLookup[]
-  primaryColors: JobColorLookup[]
+export type JobStatusOption = { token: string; label: string }
+
+export type AttachmentKind =
+  | 'signature'
+  | 'intake'
+  | 'inspection'
+  | 'repair-before'
+  | 'repair-after'
+  | 'qc'
+  | 'document'
+
+export type Attachment = {
+  id: string
+  kind: AttachmentKind
+  entityId: string | null
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  relativePath: string
+  url: string
+  uploadedByName: string
+  uploadedAt: string
 }
+
+export type IntakeCheckResult = 'pending' | 'ok' | 'issue' | 'na'
+
+export type IntakeChecklistTemplateItem = {
+  categoryKey: string
+  categoryLabelTh: string
+  itemCode: string
+  labelTh: string
+  hintTh: string | null
+}
+
+export type IntakeChecklistItem = {
+  id: string
+  itemCode: string
+  categoryKey: string
+  labelTh: string
+  hintTh: string | null
+  result: IntakeCheckResult
+  note: string | null
+  updatedAt: string | null
+  updatedByUserName: string | null
+}
+
+export type IntakeChecklist = {
+  id: string
+  jobId: string
+  isLocked: boolean
+  submittedAt: string | null
+  submittedByUserName: string | null
+  items: IntakeChecklistItem[]
+}
+
+export type SaveIntakeChecklistItemInput = { result: IntakeCheckResult; note?: string }
+
+export type SubmitIntakeChecklistResult = { id: string; submittedAt: string }
 
 export type CreateJobInput = {
-  carNumberGroup: string
-  carNumber: string
-  brandId: number
-  modelId: number
-  carNicknameId: number
-  colorType: number
-  pjTypeId: number
-  primaryColorId?: number
-  senderFirstName?: string
-  senderLastName?: string
+  customerId: number
+  vehicleId: number
+  jobTypeId: number
+  senderName?: string
   senderPhoneNumber?: string
   detail?: string
 }
 
-export type CreatedJob = { jobId: number; jobNo: string }
+export type CreatedJob = { jobId: string; jobNo: string }
 
 export type CatalogItem = {
   catalogCode?: string
@@ -324,7 +380,7 @@ export type QuotationValidation = {
 }
 
 export type CreateQuotationInput = {
-  jobId: number
+  jobId: string
   validUntil?: string
   depositAmount?: number
 }

@@ -5,62 +5,10 @@ namespace AMD.AutoService.GaragePro.Application.Dtos;
 
 // ---------- อ่านจาก legacy (read-only) ----------
 
-public sealed record LegacyJobDto(
-    long JobId,
-    string JobNo,
-    int BranchId,
-    string BranchName,
-    long? CustomerId,
-    string CustomerName,
-    string? CustomerPhone,
-    long? CarId,
-    string? VehicleImagePath,
-    string VehicleRegistration,
-    string? VehicleModel,
-    string? VehicleVin,
-    DateTime CreatedDate,
-    DateTime? PromiseAt,
-    string? LegacyStatusName,
-    int PjTypeId,
-    string? PjTypeName,
-    int PjStatusId);
-
-public sealed record JobStatusOptionDto(int Id, string Name);
-
 public sealed record LegacyBranchDto(
     int BranchId, string Name, string? Address, string? TaxId, string? Phone);
 
 public sealed record LegacyTechnicianDto(long StaffId, string Name, string? SkillLevel);
-
-public sealed record JobLookupDto(int Id, string Name);
-
-public sealed record JobModelLookupDto(int Id, string Name, int BrandId);
-
-public sealed record JobNicknameLookupDto(int Id, string Name, int BrandId, int ModelId);
-
-public sealed record JobColorLookupDto(int Id, string Name, string? HtmlCode);
-
-public sealed record JobFormOptionsDto(
-    IReadOnlyList<JobLookupDto> Brands,
-    IReadOnlyList<JobModelLookupDto> Models,
-    IReadOnlyList<JobNicknameLookupDto> Nicknames,
-    IReadOnlyList<JobColorLookupDto> PrimaryColors);
-
-public sealed record CreateLegacyJobRequest(
-    string CarNumberGroup,
-    string CarNumber,
-    int BrandId,
-    int ModelId,
-    int CarNicknameId,
-    int ColorType,
-    int PjTypeId,
-    int? PrimaryColorId,
-    string? SenderFirstName,
-    string? SenderLastName,
-    string? SenderPhoneNumber,
-    string? Detail);
-
-public sealed record CreatedLegacyJobDto(long JobId, string JobNo);
 
 // ---------- แคตตาล็อก ----------
 
@@ -113,9 +61,7 @@ public sealed record QuotationDto(
     int Version,
     string Status,
     string StatusLabelTh,
-    string ShardKey,
-    int BranchId,
-    long JobId,
+    Guid JobId,
     string JobNo,
     QuotationPartyDto Customer,
     QuotationVehicleDto Vehicle,
@@ -180,7 +126,7 @@ public sealed record QuotationSummaryDto(
     int Version,
     string Status,
     string StatusLabelTh,
-    long JobId,
+    Guid JobId,
     string JobNo,
     string CustomerName,
     string VehicleRegistration,
@@ -199,7 +145,7 @@ public sealed record QuotationValidationDto(
 
 // ---------- คำสั่ง ----------
 
-public sealed record CreateQuotationRequest(long JobId, DateTime? ValidUntil, decimal DepositAmount = 0m);
+public sealed record CreateQuotationRequest(Guid JobId, DateTime? ValidUntil, decimal DepositAmount = 0m);
 
 public sealed record UpsertLineRequest(
     string CatalogCode,

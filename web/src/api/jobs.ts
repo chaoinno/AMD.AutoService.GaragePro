@@ -1,32 +1,36 @@
 import { apiRequest } from './client'
-import type { CreateJobInput, CreatedJob, JobFormOptions, JobStatusOption, LegacyJob } from './types'
+import type {
+  CreateJobInput,
+  CreatedJob,
+  Job,
+  JobStatusOption,
+  JobStatusToken,
+  JobTransitionResult,
+  TransitionJobInput,
+} from './types'
 
-export type JobsCursor = { beforeCreatedDate: string; beforeJobId: number }
+export type JobsCursor = { beforeCreatedAt: string; beforeJobId: string }
 
 export function searchJobs(
   query: string,
   take = 50,
   cursor?: JobsCursor,
-  pjTypeId?: number,
-  pjStatusId?: number,
+  jobTypeId?: number,
+  status?: JobStatusToken,
 ) {
   const params = new URLSearchParams({ take: String(take) })
   if (query.trim()) params.set('q', query.trim())
   if (cursor) {
-    params.set('beforeCreatedDate', cursor.beforeCreatedDate)
-    params.set('beforeJobId', String(cursor.beforeJobId))
+    params.set('beforeCreatedAt', cursor.beforeCreatedAt)
+    params.set('beforeJobId', cursor.beforeJobId)
   }
-  if (pjTypeId) params.set('pjTypeId', String(pjTypeId))
-  if (pjStatusId) params.set('pjStatusId', String(pjStatusId))
-  return apiRequest<LegacyJob[]>(`/api/v1/jobs/search?${params}`)
+  if (jobTypeId) params.set('jobTypeId', String(jobTypeId))
+  if (status) params.set('status', status)
+  return apiRequest<Job[]>(`/api/v1/jobs/search?${params}`)
 }
 
-export function getJob(jobId: number) {
-  return apiRequest<LegacyJob>(`/api/v1/jobs/${jobId}`)
-}
-
-export function getJobFormOptions() {
-  return apiRequest<JobFormOptions>('/api/v1/jobs/form-options')
+export function getJob(jobId: string) {
+  return apiRequest<Job>(`/api/v1/jobs/${jobId}`)
 }
 
 export function getJobStatusOptions() {
@@ -35,6 +39,13 @@ export function getJobStatusOptions() {
 
 export function createJob(input: CreateJobInput) {
   return apiRequest<CreatedJob>('/api/v1/jobs', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
+export function transitionJob(jobId: string, input: TransitionJobInput) {
+  return apiRequest<JobTransitionResult>(`/api/v1/jobs/${jobId}/transitions`, {
     method: 'POST',
     body: JSON.stringify(input),
   })

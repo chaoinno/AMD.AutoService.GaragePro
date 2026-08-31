@@ -187,7 +187,7 @@ class GarageProApi {
   /// ใช้กับลายเซ็น รูปรับรถ รูปก่อน/หลัง
   Future<String> uploadAttachment({
     required File file,
-    required int jobId,
+    required String jobId,
     required String kind,
     String? entityId,
   }) async {

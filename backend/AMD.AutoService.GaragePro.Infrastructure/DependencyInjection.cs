@@ -1,4 +1,6 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Intake;
+using AMD.AutoService.GaragePro.Application.Jobs;
 using AMD.AutoService.GaragePro.Application.Quotations;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
@@ -33,9 +35,13 @@ public static class DependencyInjection
 
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<IJobRepository, JobRepository>();
+        services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
+        services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();
+        services.AddScoped<IIntakeChecklistService, IntakeChecklistService>();
         services.AddScoped<ILegacyReader, LegacyReader>();
-        services.AddScoped<ILegacyJobWriter, LegacyJobWriter>();
         services.AddScoped<IQuotationService, QuotationService>();
+        services.AddScoped<IJobService, JobService>();
 
         services.AddScoped<ILegacyUserReader, LegacyUserReader>();
         services.AddScoped<IAuthRepository, AuthRepository>();

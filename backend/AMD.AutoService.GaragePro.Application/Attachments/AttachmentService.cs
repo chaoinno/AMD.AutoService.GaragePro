@@ -7,6 +7,7 @@ namespace AMD.AutoService.GaragePro.Application.Attachments;
 public sealed record AttachmentDto(
     Guid Id,
     string Kind,
+    Guid? EntityId,
     string FileName,
     string ContentType,
     long SizeBytes,
@@ -16,7 +17,7 @@ public sealed record AttachmentDto(
     DateTime UploadedAt);
 
 public sealed record UploadAttachmentRequest(
-    long JobId,
+    Guid JobId,
     string Kind,
     Guid? EntityId,
     string FileName,
@@ -27,7 +28,7 @@ public sealed record UploadAttachmentRequest(
 public interface IAttachmentService
 {
     Task<Result<AttachmentDto>> UploadAsync(UploadAttachmentRequest request, CancellationToken ct = default);
-    Task<Result<IReadOnlyList<AttachmentDto>>> GetForJobAsync(long jobId, string? kind, CancellationToken ct = default);
+    Task<Result<IReadOnlyList<AttachmentDto>>> GetForJobAsync(Guid jobId, string? kind, CancellationToken ct = default);
     Task<Result<AttachmentFile>> OpenAsync(string relativePath, CancellationToken ct = default);
 }
 
@@ -36,7 +37,7 @@ public sealed record AttachmentFile(Attachment Meta, string FullPath);
 public sealed class AttachmentService(
     IAttachmentStorage storage,
     IAttachmentRepository repository,
-    ILegacyReader legacy,
+    IJobRepository jobs,
     ICurrentUser currentUser,
     TimeProvider clock) : IAttachmentService
 {
@@ -59,12 +60,12 @@ public sealed class AttachmentService(
 
         // งานต้องอยู่สาขาเดียวกับที่เข้าใช้งานอยู่ — ไม่งั้นไฟล์จะถูกเก็บใต้สาขาผิด
         // แล้วเจ้าของงานตัวจริงจะเปิดไฟล์ไม่ได้ (OpenAsync เช็ค branch)
-        var job = await legacy.GetJobAsync(currentUser.ShardKey, request.JobId, ct);
+        var job = await jobs.GetAsync(request.JobId, ct);
         if (job is null)
             return Result<AttachmentDto>.Fail("JOB_NOT_FOUND",
                 $"ไม่พบงานเลขที่ {request.JobId}", nameof(request.JobId));
 
-        if (job.BranchId != currentUser.BranchId)
+        if (job.BranchId != currentUser.BranchId || job.LegacyShardKey != currentUser.ShardKey)
             return Result<AttachmentDto>.Fail("JOB_OTHER_BRANCH",
                 "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่", nameof(request.JobId));
 
@@ -75,9 +76,7 @@ public sealed class AttachmentService(
         var attachment = new Attachment
         {
             Id = stored.Id,
-            LegacyShardKey = currentUser.ShardKey,
-            LegacyBranchId = currentUser.BranchId,
-            LegacyJobId = request.JobId,
+            JobId = request.JobId,
             Kind = kind,
             EntityId = request.EntityId,
             FileName = request.FileName,
@@ -97,10 +96,9 @@ public sealed class AttachmentService(
     }
 
     public async Task<Result<IReadOnlyList<AttachmentDto>>> GetForJobAsync(
-        long jobId, string? kind, CancellationToken ct = default)
+        Guid jobId, string? kind, CancellationToken ct = default)
     {
-        var items = await repository.GetForJobAsync(
-            currentUser.ShardKey, currentUser.BranchId, jobId, kind, ct);
+        var items = await repository.GetForJobAsync(jobId, kind, ct);
 
         return Result<IReadOnlyList<AttachmentDto>>.Ok(items.Select(ToDto).ToList());
     }
@@ -113,7 +111,7 @@ public sealed class AttachmentService(
             return Result<AttachmentFile>.Fail("ATTACHMENT_NOT_FOUND", "ไม่พบไฟล์แนบที่ระบุ");
 
         // ไฟล์แนบเป็นข้อมูลของสาขา — คนละสาขาห้ามเปิด
-        if (meta.LegacyShardKey != currentUser.ShardKey || meta.LegacyBranchId != currentUser.BranchId)
+        if (meta.Job is null || meta.Job.LegacyShardKey != currentUser.ShardKey || meta.Job.BranchId != currentUser.BranchId)
             return Result<AttachmentFile>.Fail("ATTACHMENT_OTHER_SCOPE",
                 "ไฟล์นี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
 
@@ -125,7 +123,7 @@ public sealed class AttachmentService(
     }
 
     private static AttachmentDto ToDto(Attachment a) => new(
-        a.Id, a.Kind, a.FileName, a.ContentType, a.SizeBytes, a.RelativePath,
+        a.Id, a.Kind, a.EntityId, a.FileName, a.ContentType, a.SizeBytes, a.RelativePath,
         Url: $"/api/v1/attachments/file?path={Uri.EscapeDataString(a.RelativePath)}",
         UploadedByName: a.UploadedByName,
         UploadedAt: a.UploadedAt);

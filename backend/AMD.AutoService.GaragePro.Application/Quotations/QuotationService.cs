@@ -10,7 +10,7 @@ namespace AMD.AutoService.GaragePro.Application.Quotations;
 public interface IQuotationService
 {
     Task<Result<IReadOnlyList<QuotationSummaryDto>>> GetQueueAsync(
-        string? statusFilter, long? jobId = null, CancellationToken ct = default);
+        string? statusFilter, Guid? jobId = null, CancellationToken ct = default);
     Task<Result<QuotationDto>> GetAsync(Guid id, CancellationToken ct = default);
     Task<Result<QuotationDto>> CreateAsync(CreateQuotationRequest request, CancellationToken ct = default);
     Task<Result<QuotationDto>> AddLineAsync(Guid id, UpsertLineRequest request, CancellationToken ct = default);
@@ -26,6 +26,7 @@ public interface IQuotationService
 public sealed class QuotationService(
     IQuotationRepository repository,
     ICatalogRepository catalog,
+    IJobRepository jobs,
     ILegacyReader legacy,
     ICurrentUser user,
     TimeProvider clock) : IQuotationService
@@ -33,7 +34,7 @@ public sealed class QuotationService(
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
     public async Task<Result<IReadOnlyList<QuotationSummaryDto>>> GetQueueAsync(
-        string? statusFilter, long? jobId = null, CancellationToken ct = default)
+        string? statusFilter, Guid? jobId = null, CancellationToken ct = default)
     {
         var items = await repository.GetQueueAsync(user.ShardKey, user.BranchId, statusFilter, jobId, ct);
         var dto = items.Select(q => QuotationMapper.ToSummary(q, Now)).ToList();
@@ -52,22 +53,22 @@ public sealed class QuotationService(
     public async Task<Result<QuotationDto>> CreateAsync(
         CreateQuotationRequest request, CancellationToken ct = default)
     {
-        var job = await legacy.GetJobAsync(user.ShardKey, request.JobId, ct);
+        var job = await jobs.GetAsync(request.JobId, ct);
         if (job is null)
-            return Result<QuotationDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {request.JobId} ในสาขานี้");
+            return Result<QuotationDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {request.JobId}");
 
-        if (job.BranchId != user.BranchId)
+        if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
             return Result<QuotationDto>.Fail("JOB_OTHER_BRANCH", "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
 
         // [BIZ] มีใบที่ยังไม่ถูกแทนที่อยู่แล้ว ต้องใช้ "ออกฉบับแก้ไข" ไม่ใช่สร้างใหม่
-        var existing = await repository.GetLatestForJobAsync(user.ShardKey, request.JobId, ct);
+        var existing = await repository.GetLatestForJobAsync(request.JobId, ct);
         if (existing is not null && existing.Status is not (QuotationStatus.Rejected or QuotationStatus.Superseded))
             return Result<QuotationDto>.Fail(
                 "QUOTE_ALREADY_EXISTS",
                 $"งานนี้มีใบเสนอราคา {existing.Code} อยู่แล้ว — ถ้าต้องการแก้ราคาให้ออกฉบับแก้ไขแทน");
 
         var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);
-        var version = await repository.GetNextVersionAsync(user.ShardKey, request.JobId, ct);
+        var version = await repository.GetNextVersionAsync(request.JobId, ct);
 
         var quotation = NewQuotation(job, branch, version, request.ValidUntil, request.DepositAmount);
         QuotationCalculator.ApplyQuotationTotals(quotation);
@@ -204,16 +205,14 @@ public sealed class QuotationService(
             return Result<QuotationDto>.Fail("QUOTE_REVISION_NO_REASON",
                 "ต้องระบุเหตุผลที่ออกฉบับแก้ไข", nameof(request.RevisionReason));
 
-        var version = await repository.GetNextVersionAsync(previous.LegacyShardKey, previous.LegacyJobId, ct);
+        var version = await repository.GetNextVersionAsync(previous.JobId, ct);
 
         var revision = new Quotation
         {
             Code = FormatCode(previous.JobNo, version),
             Version = version,
             Status = QuotationStatus.Draft,
-            LegacyShardKey = previous.LegacyShardKey,
-            LegacyBranchId = previous.LegacyBranchId,
-            LegacyJobId = previous.LegacyJobId,
+            JobId = previous.JobId,
             JobNo = previous.JobNo,
             CustomerName = previous.CustomerName,
             CustomerPhone = previous.CustomerPhone,
@@ -355,14 +354,12 @@ public sealed class QuotationService(
     // ---------- helper ----------
 
     private Quotation NewQuotation(
-        LegacyJobDto job, LegacyBranchDto? branch, int version, DateTime? validUntil, decimal deposit) => new()
+        Job job, LegacyBranchDto? branch, int version, DateTime? validUntil, decimal deposit) => new()
     {
         Code = FormatCode(job.JobNo, version),
         Version = version,
         Status = QuotationStatus.Draft,
-        LegacyShardKey = user.ShardKey,
-        LegacyBranchId = job.BranchId,
-        LegacyJobId = job.JobId,
+        JobId = job.Id,
         JobNo = job.JobNo,
         CustomerName = job.CustomerName,
         CustomerPhone = job.CustomerPhone,
@@ -423,9 +420,7 @@ public sealed class QuotationService(
     private Task LogAsync(Quotation q, string eventType, string description, CancellationToken ct) =>
         repository.AddEventAsync(new ActivityEvent
         {
-            LegacyShardKey = q.LegacyShardKey,
-            LegacyBranchId = q.LegacyBranchId,
-            LegacyJobId = q.LegacyJobId,
+            JobId = q.JobId,
             EntityId = q.Id,
             EntityType = nameof(Quotation),
             EventType = eventType,
@@ -457,7 +452,7 @@ public sealed class QuotationService(
     }
 
     private bool BelongsToCurrentScope(Quotation q) =>
-        q.LegacyShardKey == user.ShardKey && q.LegacyBranchId == user.BranchId;
+        q.Job is not null && q.Job.LegacyShardKey == user.ShardKey && q.Job.BranchId == user.BranchId;
 
     private static Result<QuotationDto> NotFound() =>
         Result<QuotationDto>.Fail("QUOTE_NOT_FOUND", "ไม่พบใบเสนอราคาที่ระบุ");

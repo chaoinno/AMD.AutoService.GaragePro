@@ -8,12 +8,12 @@ public interface IQuotationRepository
     Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>ใบล่าสุดของงานนี้ (เวอร์ชันสูงสุด)</summary>
-    Task<Quotation?> GetLatestForJobAsync(string shardKey, long jobId, CancellationToken ct = default);
+    Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Quotation>> GetQueueAsync(
-        string shardKey, int branchId, string? statusFilter, long? jobId = null, CancellationToken ct = default);
+        string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default);
 
-    Task<int> GetNextVersionAsync(string shardKey, long jobId, CancellationToken ct = default);
+    Task<int> GetNextVersionAsync(Guid jobId, CancellationToken ct = default);
 
     Task AddAsync(Quotation quotation, CancellationToken ct = default);
     Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default);

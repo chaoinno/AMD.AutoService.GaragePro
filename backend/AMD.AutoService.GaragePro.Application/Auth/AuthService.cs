@@ -143,9 +143,7 @@ public sealed class AuthService(
 
         await quotations.AddEventAsync(new ActivityEvent
         {
-            LegacyShardKey = shardKey,
-            LegacyBranchId = branch.BranchId,
-            LegacyJobId = 0,
+            JobId = null,
             EntityId = session.Id,
             EntityType = nameof(ShiftSession),
             EventType = "shift.opened",
@@ -194,9 +192,7 @@ public sealed class AuthService(
 
         await quotations.AddEventAsync(new ActivityEvent
         {
-            LegacyShardKey = session.LegacyShardKey,
-            LegacyBranchId = session.LegacyBranchId,
-            LegacyJobId = 0,
+            JobId = null,
             EntityId = session.Id,
             EntityType = nameof(ShiftSession),
             EventType = "shift.closed",

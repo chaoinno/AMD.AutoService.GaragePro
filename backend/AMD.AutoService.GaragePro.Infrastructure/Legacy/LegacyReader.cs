@@ -26,119 +26,14 @@ public sealed class LegacyShardOptions
 ///   3) ไม่มี write ใดๆ ทั้งสิ้น
 ///
 /// ชื่อคอลัมน์ตรวจกับ schema จริงของ shard db2 แล้ว (2026-08-19):
-///   Car.CarNumber = ทะเบียน · Car.Chassis = เลขตัวถัง · Customer/Staff ใช้ FirstName + LastName
 ///   Branch.IdentificationNumber = เลขผู้เสียภาษี · Branch.Address1 · Branch.PhoneNumber1
+///
+/// [BIZ] จ๊อบไม่อ่าน/เขียน PJCarPickUp อีกต่อไป (ยกเลิก 2026-08-31) — svc_Job เป็นแหล่งข้อมูลเดียว
+/// คลาสนี้เหลือไว้เฉพาะ lookup ข้อมูลหลักที่ยังจำเป็นจริง (สาขา/ช่าง)
 /// </summary>
 public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacyReader
 {
     private readonly LegacyShardOptions _options = options.Value;
-
-    private const string JobColumns = """
-        p.Id                                              AS JobId,
-        p.JobNo                                           AS JobNo,
-        p.BranchId                                        AS BranchId,
-        b.Name                                            AS BranchName,
-        c.Id                                              AS CustomerId,
-        LTRIM(RTRIM(ISNULL(c.FirstName, N'') + N' ' + ISNULL(c.LastName, N''))) AS CustomerName,
-        ISNULL(c.PhoneNumber1, c.PhoneNumber2)            AS CustomerPhone,
-        car.Id                                            AS CarId,
-        COALESCE(NULLIF(p.ThrumbnailImage, N''), NULLIF(car.ImageUrl, N'')) AS VehicleImagePath,
-        car.CarNumber                                     AS VehicleRegistration,
-        LTRIM(RTRIM(ISNULL(bc.Name, N'') + N' ' + ISNULL(cm.Name, N''))) AS VehicleModel,
-        car.Chassis                                       AS VehicleVin,
-        p.CreatedDate                                     AS CreatedDate,
-        ISNULL(p.DueDate, p.DueDateExpected)              AS PromiseAt,
-        st.Name                                           AS LegacyStatusName,
-        p.PJTypeId                                        AS PjTypeId,
-        pt.Name                                           AS PjTypeName,
-        p.PJStatusId                                       AS PjStatusId
-        """;
-
-    private const string JobFrom = """
-        FROM PJCarPickUp p WITH (READUNCOMMITTED)
-        LEFT JOIN Branch   b   WITH (READUNCOMMITTED) ON b.Id   = p.BranchId
-        LEFT JOIN Car      car WITH (READUNCOMMITTED) ON car.Id = p.CarId
-        LEFT JOIN Customer c   WITH (READUNCOMMITTED) ON c.Id   = p.CustomerId
-        LEFT JOIN CarModel cm  WITH (READUNCOMMITTED) ON cm.Id  = car.CarModelId
-        LEFT JOIN BrandCar bc  WITH (READUNCOMMITTED) ON bc.Id  = car.BrandCarId
-        LEFT JOIN PJStatus st  WITH (READUNCOMMITTED) ON st.Id  = p.PJStatusId
-        LEFT JOIN PJType   pt  WITH (READUNCOMMITTED) ON pt.Id  = p.PJTypeId
-        """;
-
-    public async Task<LegacyJobDto?> GetJobAsync(string shardKey, long jobId, CancellationToken ct = default)
-    {
-        await using var db = Open(shardKey);
-
-        var sql = $"SELECT TOP 1 {JobColumns} {JobFrom} WHERE p.Id = @jobId";
-
-        return await db.QueryFirstOrDefaultAsync<LegacyJobDto>(
-            new CommandDefinition(sql, new { jobId }, cancellationToken: ct));
-    }
-
-    public async Task<IReadOnlyList<LegacyJobDto>> SearchJobsAsync(
-        string shardKey, int branchId, string? keyword, int take,
-        DateTime? beforeCreatedDate = null, long? beforeJobId = null,
-        int? pjTypeId = null, int? pjStatusId = null, CancellationToken ct = default)
-    {
-        await using var db = Open(shardKey);
-
-        // ค้นด้วยเลขงาน / ทะเบียน / ชื่อลูกค้า / เบอร์ — ตรงกับหน้าค้นหางานใน design
-        var filter = string.IsNullOrWhiteSpace(keyword)
-            ? string.Empty
-            : """
-              AND (p.JobNo LIKE @like
-                   OR car.CarNumber LIKE @like
-                   OR c.FirstName LIKE @like
-                   OR c.LastName LIKE @like
-                   OR c.PhoneNumber1 LIKE @like)
-              """;
-
-        var typeFilter = pjTypeId is null ? string.Empty : "AND p.PJTypeId = @pjTypeId";
-        var statusFilter = pjStatusId is null ? string.Empty : "AND p.PJStatusId = @pjStatusId";
-
-        // keyset pagination: ขอหน้าถัดไปด้วยแถวสุดท้ายที่ได้รับแล้ว กัน OFFSET ที่ต้องสแกนแถวที่ข้ามซ้ำทุกครั้ง
-        // (ตาราง PJCarPickUp มี lock convoy อยู่แล้ว — docs/05 §5)
-        var cursorFilter = beforeCreatedDate is null
-            ? string.Empty
-            : """
-              AND (p.CreatedDate < @beforeCreatedDate
-                   OR (p.CreatedDate = @beforeCreatedDate AND p.Id < @beforeJobId))
-              """;
-
-        var sql = $"""
-            SELECT TOP (@take) {JobColumns}
-            {JobFrom}
-            WHERE p.BranchId = @branchId {filter} {typeFilter} {statusFilter} {cursorFilter}
-            ORDER BY p.CreatedDate DESC, p.Id DESC
-            """;
-
-        var rows = await db.QueryAsync<LegacyJobDto>(new CommandDefinition(
-            sql,
-            new { branchId, take, like = $"%{keyword}%", beforeCreatedDate, beforeJobId, pjTypeId, pjStatusId },
-            cancellationToken: ct));
-
-        return rows.ToList();
-    }
-
-    public async Task<IReadOnlyList<JobStatusOptionDto>> GetJobStatusOptionsAsync(
-        string shardKey, int branchId, CancellationToken ct = default)
-    {
-        await using var db = Open(shardKey);
-
-        // ดึงเฉพาะสถานะที่มีจ๊อบใช้งานจริงในสาขานี้ — ไม่ query PJStatus.Status เพราะยังไม่ยืนยัน schema จริง
-        const string sql = """
-            SELECT DISTINCT st.Id, st.Name
-            FROM PJCarPickUp p WITH (READUNCOMMITTED)
-            JOIN PJStatus st WITH (READUNCOMMITTED) ON st.Id = p.PJStatusId
-            WHERE p.BranchId = @branchId
-            ORDER BY st.Name
-            """;
-
-        var rows = await db.QueryAsync<JobStatusOptionDto>(
-            new CommandDefinition(sql, new { branchId }, cancellationToken: ct));
-
-        return rows.ToList();
-    }
 
     public async Task<LegacyBranchDto?> GetBranchAsync(
         string shardKey, int branchId, CancellationToken ct = default)

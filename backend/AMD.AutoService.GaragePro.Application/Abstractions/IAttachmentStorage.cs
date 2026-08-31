@@ -13,7 +13,7 @@ public interface IAttachmentStorage
     AttachmentValidation Validate(string contentType, long sizeBytes);
 
     Task<StoredFile> SaveAsync(
-        Stream content, string shardKey, int branchId, long jobId, string kind,
+        Stream content, string shardKey, int branchId, Guid jobId, string kind,
         string fileName, CancellationToken ct = default);
 
     /// <summary>แปลง relative path เป็น path จริง — คืน false เมื่อชี้ออกนอก root หรือไม่มีไฟล์</summary>
@@ -28,6 +28,6 @@ public interface IAttachmentRepository
     Task<Attachment?> GetAsync(Guid id, CancellationToken ct = default);
     Task<Attachment?> GetByPathAsync(string relativePath, CancellationToken ct = default);
     Task<IReadOnlyList<Attachment>> GetForJobAsync(
-        string shardKey, int branchId, long jobId, string? kind, CancellationToken ct = default);
+        Guid jobId, string? kind, CancellationToken ct = default);
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

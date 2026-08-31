@@ -18,7 +18,7 @@ public sealed class AttachmentStorageTests
             await using var content = new MemoryStream(Encoding.UTF8.GetBytes("garage-pro"));
 
             var saved = await storage.SaveAsync(
-                content, "db2", 105, 9001, "signature", "signature.png");
+                content, "db2", 105, Guid.NewGuid(), "signature", "signature.png");
 
             saved.SizeBytes.Should().Be(10);
             saved.Sha256.Should().HaveLength(64);
