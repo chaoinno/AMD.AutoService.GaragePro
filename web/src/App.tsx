@@ -9,9 +9,9 @@ import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
 import { JobsPage } from './features/jobs/JobsPage'
 import { DocumentPage } from './features/quotations/DocumentPage'
 import { EditorPage } from './features/quotations/EditorPage'
-import { QueuePage } from './features/quotations/QueuePage'
 import { CustomerPage } from './features/customers/CustomerPage'
 import { VehiclePage } from './features/customers/VehiclePage'
+import { StaffPage } from './features/staff/StaffPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -35,6 +35,7 @@ export default function App() {
           <Route path="/quotations/:id/document" element={<ProtectedRoute><DocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
+          <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

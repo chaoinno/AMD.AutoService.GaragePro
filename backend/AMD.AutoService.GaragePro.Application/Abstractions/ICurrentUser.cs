@@ -14,6 +14,7 @@ public interface ICurrentUser
     string ShardKey { get; }
     int BranchId { get; }
     EventSource Source { get; }
+    bool IsAdministrator { get; }
 
     /// <summary>รอบกะปัจจุบัน — null เมื่อยังไม่ได้เลือกสาขา/กะ (token ขั้นแรก)</summary>
     Guid? SessionId { get; }

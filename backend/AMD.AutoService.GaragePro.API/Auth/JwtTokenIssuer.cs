@@ -32,6 +32,7 @@ public static class GarageClaims
     public const string SessionId = "sid";
     public const string ShiftId = "shift";
     public const string DisplayName = "name_th";
+    public const string IsAdministrator = "is_admin";
 
     /// <summary>true เมื่อยังไม่ได้เลือกสาขา/กะ — endpoint งานทั้งหมดต้องปฏิเสธ</summary>
     public const string PreSession = "pre_session";
@@ -79,6 +80,7 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
         new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         new(ClaimTypes.Name, user.UserName),
         new(ClaimTypes.Role, user.Role),
+        new(GarageClaims.IsAdministrator, user.IsAdministrator.ToString().ToLowerInvariant()),
         // ชื่อภาษาไทยอยู่ใน claim ได้ (JWT เป็น UTF-8) ต่างจาก HTTP header ที่รับแต่ ASCII
         new(GarageClaims.DisplayName, user.DisplayName),
         new(GarageClaims.ShardKey, user.ShardKey)

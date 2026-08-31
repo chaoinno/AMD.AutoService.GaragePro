@@ -10,6 +10,7 @@ import {
   Search,
   Users,
   Wrench,
+  UserCog,
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router'
@@ -35,6 +36,7 @@ const navItems = [
   { to: '/jobs', icon: Wrench, label: 'จ๊อบ' },
   { to: '/customers', icon: Users, label: 'ลูกค้า' },
   { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
+  { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
   { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
   { to: '/reports', icon: BarChart3, label: 'รายงาน' },
 ]

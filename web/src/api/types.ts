@@ -25,6 +25,7 @@ export type AuthUser = {
   displayName: string
   role: string
   roleLabelTh: string
+  isAdministrator: boolean
   shardKey: string
   staffId: number | null
   positionName: string | null
@@ -79,6 +80,124 @@ export type QuotationStatus =
   | 'rejected'
   | 'superseded'
   | 'expired'
+
+export type StaffSummary = {
+  id: number
+  code: string
+  fullName: string
+  phoneNumber1: string | null
+  email: string | null
+  departmentName: string | null
+  sectorName: string | null
+  positionName: string | null
+  pictureUrl: string | null
+  isActive: boolean
+  isAdministrator: boolean
+  lastUpdated: string | null
+}
+
+export type StaffSectorPosition = {
+  id: number
+  departmentId: number
+  departmentName: string
+  sectorId: number
+  sectorName: string
+  positionId: number
+  positionName: string
+  isMain: boolean
+}
+
+export type StaffDetail = {
+  id: number
+  branchId: number
+  branchName: string
+  code: string
+  firstName: string
+  lastName: string
+  genderId: number | null
+  genderName: string | null
+  idCard: string | null
+  address1: string | null
+  address2: string | null
+  provinceId: number | null
+  provinceName: string | null
+  amphureId: number | null
+  amphureName: string | null
+  districtId: number | null
+  districtName: string | null
+  zipCode: string | null
+  phoneNumber1: string | null
+  phoneNumber2: string | null
+  email: string | null
+  lineId: string | null
+  salary: number | null
+  staffSkillLevelId: number | null
+  staffSkillLevelName: string | null
+  experienceYear: number | null
+  experienceMonth: number | null
+  startJobDate: string | null
+  endJobDate: string | null
+  note: string | null
+  pictureUrl: string | null
+  isActive: boolean
+  account: { id: number; userName: string; isAdministrator: boolean; isActive: boolean }
+  sectorPositions: StaffSectorPosition[]
+  createdDate: string | null
+  lastUpdated: string | null
+}
+
+export type StaffInput = {
+  branchId: number
+  firstName: string
+  lastName: string
+  genderId: number
+  idCard?: string
+  address1?: string
+  address2?: string
+  provinceId?: number
+  amphureId?: number
+  districtId?: number
+  zipCode?: string
+  phoneNumber1: string
+  phoneNumber2?: string
+  email?: string
+  lineId?: string
+  salary: number
+  staffSkillLevelId?: number
+  experienceYear: number
+  experienceMonth: number
+  startJobDate?: string
+  endJobDate?: string
+  note?: string
+  mainSectorId: number
+  positionId: number
+  additionalSectorIds: number[]
+  userName?: string
+  password?: string
+}
+
+export type StaffReferenceData = {
+  branches: LookupItem[]
+  genders: LookupItem[]
+  departments: LookupItem[]
+  positions: LookupItem[]
+  skillLevels: LookupItem[]
+}
+
+export type StaffCodePreview = { code: string; userName: string; password: string }
+
+export type AttachmentKind = 'intake' | 'inspection' | 'before' | 'after' | 'signature' | 'other'
+export type Attachment = {
+  id: string
+  kind: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  relativePath: string
+  url: string
+  uploadedByName: string
+  uploadedAt: string
+}
 
 export type LineSource = 'customer' | 'technician'
 export type UpsertLineSource = 'Customer' | 'Technician'
