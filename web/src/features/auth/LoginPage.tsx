@@ -37,7 +37,7 @@ export function LoginPage() {
     },
     onSuccess: (result) => {
       saveSession(result)
-      navigate('/quotations', { replace: true })
+      navigate('/jobs', { replace: true })
     },
   })
 

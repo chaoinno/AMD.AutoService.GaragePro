@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Printer } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { attachmentFileUrl, getJobAttachments } from '../../api/attachments'
 import { isApiError } from '../../api/client'
@@ -19,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { formatDateTime } from '../../lib/format'
 import { IntakeChecklistPanel } from './IntakeChecklistPanel'
 import { IntakeReceiptModal } from './IntakeReceiptModal'
+import { QuotationDocumentModal } from '../quotations/QuotationDocumentModal'
+import { QuotationEditorModal } from '../quotations/QuotationEditorModal'
 
 type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
 
@@ -164,7 +165,7 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
             </ol>
           </nav>
 
-          <StageContent stageKey={STAGES[stageIndex].key} job={job} onNavigate={close} />
+          <StageContent stageKey={STAGES[stageIndex].key} job={job} />
         </div>
       )}
     </ConfirmModal>
@@ -172,15 +173,15 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
 }
 
 function StageContent({
-  stageKey, job, onNavigate,
-}: { stageKey: StageKey; job: Job; onNavigate: () => void }) {
+  stageKey, job,
+}: { stageKey: StageKey; job: Job }) {
   switch (stageKey) {
     case 'intake':
       return <IntakeStage job={job} />
     case 'inspect':
       return <InspectStage job={job} />
     case 'quote':
-      return <QuoteStage job={job} onNavigate={onNavigate} />
+      return <QuoteStage job={job} />
     case 'repair':
       return <NotYetAvailableStage reason="ยังไม่มีระบบเบิกอะไหล่/คลัง — อยู่ระหว่างพัฒนา" />
     case 'qc':
@@ -282,20 +283,25 @@ function InspectStage({ job }: { job: Job }) {
   )
 }
 
-function QuoteStage({ job, onNavigate }: { job: Job; onNavigate: () => void }) {
-  const navigate = useNavigate()
+function QuoteStage({ job }: { job: Job }) {
   const queryClient = useQueryClient()
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null)
+  const [viewingDocumentId, setViewingDocumentId] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: ['job-quotations', job.jobId],
     queryFn: () => getQuotations('', job.jobId),
   })
 
+  const closeEditor = () => {
+    setEditingQuotationId(null)
+    void queryClient.invalidateQueries({ queryKey: ['job-quotations', job.jobId] })
+  }
+
   const createMutation = useMutation({
     mutationFn: createQuotation,
     onSuccess: (quotation) => {
-      onNavigate()
-      navigate(`/quotations/${quotation.id}/edit`)
+      setEditingQuotationId(quotation.id)
     },
   })
 
@@ -349,7 +355,7 @@ function QuoteStage({ job, onNavigate }: { job: Job; onNavigate: () => void }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => { onNavigate(); navigate(`/quotations/${q.id}/edit`) }}
+                  onClick={() => setEditingQuotationId(q.id)}
                 >
                   เปิดใบเสนอราคา
                 </Button>
@@ -366,6 +372,17 @@ function QuoteStage({ job, onNavigate }: { job: Job; onNavigate: () => void }) {
           </div>
         ) : null}
       </CardContent>
+
+      <QuotationEditorModal
+        quotationId={editingQuotationId}
+        onClose={closeEditor}
+        onOpenDocument={setViewingDocumentId}
+        onRevised={setEditingQuotationId}
+      />
+      <QuotationDocumentModal
+        quotationId={viewingDocumentId}
+        onClose={() => setViewingDocumentId(null)}
+      />
     </Card>
   )
 }

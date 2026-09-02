@@ -32,13 +32,24 @@ type AppShellProps = {
   documentMode?: boolean
 }
 
-const navItems = [
-  { to: '/jobs', icon: Wrench, label: 'จ๊อบ' },
-  { to: '/customers', icon: Users, label: 'ลูกค้า' },
-  { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
-  { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
-  { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
-  { to: '/reports', icon: BarChart3, label: 'รายงาน' },
+const navGroups = [
+  {
+    label: 'Workplace',
+    items: [{ to: '/jobs', icon: Wrench, label: 'จ๊อบ' }],
+  },
+  {
+    label: 'Reports',
+    items: [{ to: '/reports', icon: BarChart3, label: 'รายงาน' }],
+  },
+  {
+    label: 'Master Data',
+    items: [
+      { to: '/customers', icon: Users, label: 'ลูกค้า' },
+      { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
+      { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
+      { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
+    ],
+  },
 ]
 
 export function AppShell({ children, title = 'จ๊อบ', documentMode = false }: AppShellProps) {
@@ -65,19 +76,24 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
           </span>
         </div>
         <nav className="sidebar__nav" aria-label="เมนูหลัก">
-          {navItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
-              >
-                <Icon className="sidebar__icon" aria-hidden="true" />
-                <span className="sidebar__label">{item.label}</span>
-              </NavLink>
-            )
-          })}
+          {navGroups.map((group) => (
+            <div className="sidebar__group" key={group.label}>
+              <span className="sidebar__group-label">{group.label}</span>
+              {group.items.map((item) => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
+                  >
+                    <Icon className="sidebar__icon" aria-hidden="true" />
+                    <span className="sidebar__label">{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          ))}
         </nav>
         <div className="sidebar__footer">
           <CircleHelp className="sidebar__icon" aria-hidden="true" />
