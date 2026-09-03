@@ -1,9 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   CheckCircle2,
-  ChevronRight,
   CircleAlert,
   FileText,
   Info,
@@ -13,7 +12,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { isApiError, isForbiddenError } from '../../api/client'
@@ -34,7 +32,6 @@ import type {
   UpsertLine,
   UpsertLineSource,
 } from '../../api/types'
-import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { MoneySummary } from '../../components/MoneySummary'
 import { SkeletonRows, StateBlock } from '../../components/StateBlock'
@@ -44,7 +41,7 @@ import { CatalogPanel } from './CatalogPanel'
 import { LineEditor } from './LineEditor'
 import { WarningPanel } from './WarningPanel'
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
-import { Button, buttonVariants } from '../../components/ui/button'
+import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Label } from '../../components/ui/label'
 import { Textarea } from '../../components/ui/textarea'
@@ -84,9 +81,21 @@ function getCatalogPrice(item: CatalogItem) {
   return item.unitPrice ?? item.price ?? 0
 }
 
-export function EditorPage() {
-  const { id = '' } = useParams()
-  const navigate = useNavigate()
+type QuotationEditorModalProps = {
+  quotationId: string | null
+  onClose: () => void
+  onOpenDocument: (quotationId: string) => void
+  onRevised: (quotationId: string) => void
+}
+
+/// จัดการรายละเอียดใบเสนอราคาซ้อนบน job card modal (แท็ป "เสนอราคา/งานซ่อม") — ห้ามเปิดผ่านหน้าเต็มหรือ URL ตรง
+export function QuotationEditorModal({
+  quotationId,
+  onClose,
+  onOpenDocument,
+  onRevised,
+}: QuotationEditorModalProps) {
+  const id = quotationId ?? ''
   const queryClient = useQueryClient()
   const { session } = useSession()
   const activeSession = session?.stage === 'active' ? session : null
@@ -102,18 +111,19 @@ export function EditorPage() {
   const quotationQuery = useQuery({
     queryKey: quotationKey,
     queryFn: () => getQuotation(id),
-    enabled: Boolean(id),
+    enabled: Boolean(quotationId),
   })
 
   const techniciansQuery = useQuery({
     queryKey: ['technicians'],
     queryFn: getTechnicians,
+    enabled: Boolean(quotationId),
   })
 
   const validationQuery = useQuery({
     queryKey: validationKey,
     queryFn: () => validateQuotation(id),
-    enabled: Boolean(id && quotationQuery.data),
+    enabled: Boolean(quotationId && quotationQuery.data),
   })
 
   useEffect(
@@ -210,109 +220,96 @@ export function EditorPage() {
     onSuccess: (quotation) => {
       applyServerQuotation(quotation)
       toast.success('ส่งใบเสนอราคาให้ลูกค้าแล้ว')
-      navigate(`/quotations/${quotation.id}/document`)
+      onOpenDocument(quotation.id)
     },
   })
 
-  if (quotationQuery.isPending) {
-    return (
-      <AppShell title="แก้ไขใบเสนอราคา">
-        <StateBlock
-          variant="loading"
-          title="กำลังเปิดใบเสนอราคา"
-          reason="ระบบกำลังโหลดรายการ ราคา และผลตรวจสอบล่าสุด"
-          traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
-          actionLabel="โหลดใหม่"
-          onAction={() => void quotationQuery.refetch()}
-        >
-          <SkeletonRows count={4} />
-        </StateBlock>
-      </AppShell>
-    )
-  }
+  let title = 'ใบเสนอราคา'
+  let description: string | undefined
+  let body: ReactNode = null
 
-  if (quotationQuery.isError) {
+  if (!quotationId) {
+    body = null
+  } else if (quotationQuery.isPending) {
+    body = (
+      <StateBlock
+        variant="loading"
+        title="กำลังเปิดใบเสนอราคา"
+        reason="ระบบกำลังโหลดรายการ ราคา และผลตรวจสอบล่าสุด"
+        traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
+        actionLabel="โหลดใหม่"
+        onAction={() => void quotationQuery.refetch()}
+      >
+        <SkeletonRows count={4} />
+      </StateBlock>
+    )
+  } else if (quotationQuery.isError) {
     const error = quotationQuery.error
     const notFound = isApiError(error) && error.status === 404
     const forbidden = isForbiddenError(error)
-    return (
-      <AppShell title="แก้ไขใบเสนอราคา">
-        <StateBlock
-          variant={forbidden ? 'forbidden' : notFound ? 'empty' : 'error'}
-          title={
-            forbidden
-              ? 'ไม่มีสิทธิ์เปิดใบเสนอราคานี้'
-              : notFound
-                ? 'ไม่พบใบเสนอราคา'
-                : 'เปิดใบเสนอราคาไม่สำเร็จ'
-          }
-          reason={isApiError(error) ? error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
-          traceId={isApiError(error) ? error.traceId : undefined}
-          actionLabel={notFound ? 'กลับไปคิวงาน' : 'ลองใหม่'}
-          onAction={() => (notFound ? navigate('/quotations') : void quotationQuery.refetch())}
-        />
-      </AppShell>
+    body = (
+      <StateBlock
+        variant={forbidden ? 'forbidden' : notFound ? 'empty' : 'error'}
+        title={
+          forbidden
+            ? 'ไม่มีสิทธิ์เปิดใบเสนอราคานี้'
+            : notFound
+              ? 'ไม่พบใบเสนอราคา'
+              : 'เปิดใบเสนอราคาไม่สำเร็จ'
+        }
+        reason={isApiError(error) ? error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
+        traceId={isApiError(error) ? error.traceId : undefined}
+        actionLabel={notFound ? 'ปิดหน้าต่าง' : 'ลองใหม่'}
+        onAction={() => (notFound ? onClose() : void quotationQuery.refetch())}
+      />
     )
-  }
-
-  const quotation = quotationQuery.data
-  if (!quotation) {
-    return (
-      <AppShell title="แก้ไขใบเสนอราคา">
-        <StateBlock
-          variant="empty"
-          title="ใบเสนอราคาไม่มีข้อมูล"
-          reason="บริการตอบกลับสำเร็จแต่ไม่มีข้อมูลใบเสนอราคาที่เปิดอยู่"
-          traceId="ไม่พบ traceId จากข้อมูลว่าง"
-          actionLabel="กลับไปคิวงาน"
-          onAction={() => navigate('/quotations')}
-        />
-      </AppShell>
+  } else if (!quotationQuery.data) {
+    body = (
+      <StateBlock
+        variant="empty"
+        title="ใบเสนอราคาไม่มีข้อมูล"
+        reason="บริการตอบกลับสำเร็จแต่ไม่มีข้อมูลใบเสนอราคาที่เปิดอยู่"
+        traceId="ไม่พบ traceId จากข้อมูลว่าง"
+        actionLabel="ปิดหน้าต่าง"
+        onAction={onClose}
+      />
     )
-  }
+  } else {
+    const quotation = quotationQuery.data
+    title = quotation.code
+    description = `งาน ${quotation.jobNo} · ${quotation.vehicle.registration} ${quotation.vehicle.model || 'ไม่ระบุรุ่น'} · ${quotation.customer.name}`
 
-  const lockedByOther = Boolean(quotation.lock) && quotation.lock!.userId !== activeSession?.user.userId
-  const statusReadOnly = quotation.status !== 'draft'
-  const readOnly = statusReadOnly || lockedByOther
-  const validation = validationQuery.data
-  const invalidReasons = validation?.errors.map(getIssueMessage) ?? []
-  const sendDisabled =
-    readOnly ||
-    validationQuery.isPending ||
-    validationQuery.isError ||
-    !validation?.isValid ||
-    pendingSaves > 0 ||
-    sendMutation.isPending
+    const lockedByOther = Boolean(quotation.lock) && quotation.lock!.userId !== activeSession?.user.userId
+    const statusReadOnly = quotation.status !== 'draft'
+    const readOnly = statusReadOnly || lockedByOther
+    const validation = validationQuery.data
+    const invalidReasons = validation?.errors.map(getIssueMessage) ?? []
+    const sendDisabled =
+      readOnly ||
+      validationQuery.isPending ||
+      validationQuery.isError ||
+      !validation?.isValid ||
+      pendingSaves > 0 ||
+      sendMutation.isPending
 
-  let disabledReason = ''
-  if (lockedByOther) disabledReason = `${quotation.lock?.userName} กำลังแก้ไขอยู่`
-  else if (statusReadOnly) disabledReason = `ใบเสนอราคาสถานะ “${quotation.statusLabelTh}” แก้ไขหรือส่งซ้ำไม่ได้`
-  else if (pendingSaves > 0) disabledReason = 'กำลังบันทึกการแก้ไขล่าสุด'
-  else if (validationQuery.isPending) disabledReason = 'กำลังตรวจสอบความพร้อมของใบเสนอราคา'
-  else if (validationQuery.isError) disabledReason = 'ยังตรวจสอบความพร้อมไม่สำเร็จ กรุณาลองตรวจสอบใหม่'
-  else if (!validation?.isValid) disabledReason = invalidReasons.join(' · ') || 'ใบเสนอราคายังไม่พร้อมส่ง'
-  else if (sendMutation.isPending) disabledReason = 'กำลังส่งใบเสนอราคาให้ลูกค้า กรุณารอสักครู่'
+    let disabledReason = ''
+    if (lockedByOther) disabledReason = `${quotation.lock?.userName} กำลังแก้ไขอยู่`
+    else if (statusReadOnly) disabledReason = `ใบเสนอราคาสถานะ “${quotation.statusLabelTh}” แก้ไขหรือส่งซ้ำไม่ได้`
+    else if (pendingSaves > 0) disabledReason = 'กำลังบันทึกการแก้ไขล่าสุด'
+    else if (validationQuery.isPending) disabledReason = 'กำลังตรวจสอบความพร้อมของใบเสนอราคา'
+    else if (validationQuery.isError) disabledReason = 'ยังตรวจสอบความพร้อมไม่สำเร็จ กรุณาลองตรวจสอบใหม่'
+    else if (!validation?.isValid) disabledReason = invalidReasons.join(' · ') || 'ใบเสนอราคายังไม่พร้อมส่ง'
+    else if (sendMutation.isPending) disabledReason = 'กำลังส่งใบเสนอราคาให้ลูกค้า กรุณารอสักครู่'
 
-  return (
-    <AppShell title="จัดทำใบเสนอราคา">
-      <div className="editor-page">
+    body = (
+      <div className="editor-page editor-page--modal">
         <header className="editor-header">
           <div>
-            <nav className="breadcrumb" aria-label="เส้นทางหน้า">
-              <Link to="/quotations">คิวใบเสนอราคา</Link>
-              <ChevronRight aria-hidden="true" />
-              <span>{quotation.code}</span>
-            </nav>
             <div className="editor-title-row">
               <h2>{quotation.code}</h2>
               <span className="version-chip">v{quotation.version}</span>
               <StatusChip status={quotation.status} label={quotation.statusLabelTh} />
             </div>
-            <p>
-              งาน {quotation.jobNo} · {quotation.vehicle.registration}{' '}
-              {quotation.vehicle.model || 'ไม่ระบุรุ่น'} ·{' '}
-              {quotation.customer.name}
-            </p>
           </div>
           <div className="editor-header__actions">
             <span className={`save-indicator ${saveError ? 'save-indicator--error' : ''}`}>
@@ -323,9 +320,9 @@ export function EditorPage() {
                   : <CheckCircle2 aria-hidden="true" />}
               {saveError ? 'บันทึกไม่สำเร็จ' : pendingSaves ? 'กำลังบันทึก…' : 'บันทึกแล้ว'}
             </span>
-            <Link className={buttonVariants({ variant: 'outline' })} to={`/quotations/${quotation.id}/document`}>
+            <Button variant="outline" onClick={() => onOpenDocument(quotation.id)}>
               <FileText aria-hidden="true" /> ดูเอกสาร
-            </Link>
+            </Button>
           </div>
         </header>
 
@@ -464,43 +461,50 @@ export function EditorPage() {
             </div>
           </Card>
         </div>
+
+        <ConfirmModal
+          open={lineToDelete !== null}
+          title="ลบรายการออกจากใบเสนอราคา"
+          description={lineToDelete ? `รายการ “${lineToDelete.name}” จะถูกนำออกจากใบเสนอราคานี้` : undefined}
+          onClose={() => {
+            if (!deleteMutation.isPending) setLineToDelete(null)
+          }}
+          size="small"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setLineToDelete(null)}>
+                ยกเลิก
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  if (lineToDelete) deleteMutation.mutate(lineToDelete.id)
+                }}
+              >
+                {deleteMutation.isPending ? <LoaderCircle className="spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+                {deleteMutation.isPending ? 'กำลังลบ' : 'ลบรายการ'}
+              </Button>
+            </>
+          }
+        >
+          <p className="modal-confirm-copy">ยอดรวมและผลตรวจสอบจะคำนวณใหม่หลังลบรายการ</p>
+        </ConfirmModal>
+
+        <RevisionModal
+          open={revisionOpen}
+          quotationId={quotation.id}
+          onClose={() => setRevisionOpen(false)}
+          onRevised={onRevised}
+        />
       </div>
+    )
+  }
 
-      <ConfirmModal
-        open={lineToDelete !== null}
-        title="ลบรายการออกจากใบเสนอราคา"
-        description={lineToDelete ? `รายการ “${lineToDelete.name}” จะถูกนำออกจากใบเสนอราคานี้` : undefined}
-        onClose={() => {
-          if (!deleteMutation.isPending) setLineToDelete(null)
-        }}
-        size="small"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setLineToDelete(null)}>
-              ยกเลิก
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => {
-                if (lineToDelete) deleteMutation.mutate(lineToDelete.id)
-              }}
-            >
-              {deleteMutation.isPending ? <LoaderCircle className="spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
-              {deleteMutation.isPending ? 'กำลังลบ' : 'ลบรายการ'}
-            </Button>
-          </>
-        }
-      >
-        <p className="modal-confirm-copy">ยอดรวมและผลตรวจสอบจะคำนวณใหม่หลังลบรายการ</p>
-      </ConfirmModal>
-
-      <RevisionModal
-        open={revisionOpen}
-        quotationId={quotation.id}
-        onClose={() => setRevisionOpen(false)}
-      />
-    </AppShell>
+  return (
+    <ConfirmModal open={quotationId !== null} title={title} description={description} onClose={onClose} size="xlarge">
+      {body}
+    </ConfirmModal>
   )
 }
 
@@ -514,12 +518,13 @@ function RevisionModal({
   open,
   quotationId,
   onClose,
+  onRevised,
 }: {
   open: boolean
   quotationId: string
   onClose: () => void
+  onRevised: (quotationId: string) => void
 }) {
-  const navigate = useNavigate()
   const {
     register,
     handleSubmit,
@@ -533,7 +538,7 @@ function RevisionModal({
       reset()
       onClose()
       toast.success('สร้างใบเสนอราคาฉบับแก้ไขแล้ว')
-      navigate(`/quotations/${quotation.id}/edit`)
+      onRevised(quotation.id)
     },
   })
 

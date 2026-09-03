@@ -226,8 +226,23 @@ img {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 6px;
+  gap: 18px;
   padding: 20px 12px;
+}
+
+.sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar__group-label {
+  padding: 0 10px 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .sidebar__link,
@@ -3840,7 +3855,8 @@ img {
   }
 
   .brand__copy,
-  .sidebar__label {
+  .sidebar__label,
+  .sidebar__group-label {
     display: none;
   }
 
@@ -3967,9 +3983,18 @@ img {
   }
 
   /* ใบรับรถที่ซ้อนบน job card modal (IntakeReceiptModal) — พิมพ์เฉพาะ .intake-receipt-print-area
-     body.printing-intake-receipt ถูกเซ็ต/ล้างจาก IntakeReceiptModal ตอนเปิด/ปิด */
+     body.printing-intake-receipt ถูกเซ็ต/ล้างจาก IntakeReceiptModal ตอนเปิด/ปิด
+     ห้ามใช้ position: fixed กับ print area — เอกสารที่ยาวเกิน 1 หน้าจะถูกตัด ไม่ไหลไปหน้าถัดไป
+     (fixed ผูกกับ viewport ต่อหน้า พิมพ์ได้แค่สิ่งที่พอดีหน้าแรก) ต้องเปิด overflow/height ของ
+     dialog chrome ทั้งสายด้วย ไม่งั้น .ui-dialog__content ที่ overflow:hidden + max-height จะตัดเอกสารแทน */
   body.printing-intake-receipt > * {
     visibility: hidden !important;
+  }
+
+  /* #root ยังคง visibility:hidden ไว้ก็จริง แต่ความสูงเดิม (คิวงานทั้งหน้า) ยังกินพื้นที่ใน flow อยู่ —
+     ถ้าไม่ตัดออกด้วย display:none จะเกิดหน้าเปล่าก่อนเอกสารจริงเวลาพิมพ์ */
+  body.printing-intake-receipt > #root {
+    display: none !important;
   }
 
   body.printing-intake-receipt .intake-receipt-print-area,
@@ -3977,9 +4002,82 @@ img {
     visibility: visible !important;
   }
 
-  body.printing-intake-receipt .intake-receipt-print-area {
-    position: fixed;
-    inset: 0;
+  /* :has() เจาะจงเฉพาะ overlay/content ที่ "มี" print area อยู่ข้างใน — IntakeReceiptModal ซ้อนอยู่บน
+     JobCardModal ที่ยังเปิดค้างไว้ (Dialog portal คนละอันเป็น sibling กันใต้ body) ถ้าไม่เจาะจงจะไป
+     unfix ของ JobCardModal ด้วย ทำให้เนื้อหาที่ซ่อนไว้ (แต่ยังกินพื้นที่ layout) กลายเป็นหน้าเปล่าแทรกก่อนเอกสารจริง */
+  body.printing-intake-receipt .ui-dialog__overlay:has(.intake-receipt-print-area),
+  body.printing-intake-receipt .ui-dialog__content:has(.intake-receipt-print-area),
+  body.printing-intake-receipt .ui-dialog__body:has(.intake-receipt-print-area) {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
     background: white !important;
+  }
+
+  body.printing-intake-receipt .intake-receipt-print-area {
+    position: static !important;
+    background: white !important;
+  }
+
+  /* DialogHeader/DialogClose อยู่ visibility:hidden เฉยๆ (ไม่ได้ถูกดึงกลับมา visible เหมือน print area)
+     แต่กล่องของมันยังกินพื้นที่ใน flow อยู่ ทำให้มีช่องว่างโล่งเหนือเอกสารตอนพิมพ์ ต้องเอาออกจาก flow ไปเลย */
+  body.printing-intake-receipt .ui-dialog__content:has(.intake-receipt-print-area) > .ui-dialog__header,
+  body.printing-intake-receipt .ui-dialog__content:has(.intake-receipt-print-area) > .ui-dialog__footer,
+  body.printing-intake-receipt .ui-dialog__content:has(.intake-receipt-print-area) > .ui-dialog__close {
+    display: none !important;
+  }
+
+  /* เอกสารใบเสนอราคาที่ซ้อนบน job card modal (QuotationDocumentModal) — พิมพ์เฉพาะ .quotation-document-print-area
+     body.printing-quotation-document ถูกเซ็ต/ล้างจาก QuotationDocumentModal ตอนเปิด/ปิด — เหตุผลเดียวกับข้างบน */
+  body.printing-quotation-document > * {
+    visibility: hidden !important;
+  }
+
+  body.printing-quotation-document > #root {
+    display: none !important;
+  }
+
+  body.printing-quotation-document .quotation-document-print-area,
+  body.printing-quotation-document .quotation-document-print-area * {
+    visibility: visible !important;
+  }
+
+  /* เหตุผลเดียวกับ intake-receipt ด้านบน — เจาะจงเฉพาะ overlay/content ที่มี print area จริง กัน
+     unfix JobCardModal ที่ซ้อนอยู่ข้างใต้ */
+  body.printing-quotation-document .ui-dialog__overlay:has(.quotation-document-print-area),
+  body.printing-quotation-document .ui-dialog__content:has(.quotation-document-print-area),
+  body.printing-quotation-document .ui-dialog__body:has(.quotation-document-print-area) {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  body.printing-quotation-document .quotation-document-print-area {
+    position: static !important;
+    background: white !important;
+  }
+
+  /* เหตุผลเดียวกับ intake-receipt ด้านบน — DialogHeader/DialogClose ที่ visibility:hidden ยังกินพื้นที่ flow */
+  body.printing-quotation-document .ui-dialog__content:has(.quotation-document-print-area) > .ui-dialog__header,
+  body.printing-quotation-document .ui-dialog__content:has(.quotation-document-print-area) > .ui-dialog__footer,
+  body.printing-quotation-document .ui-dialog__content:has(.quotation-document-print-area) > .ui-dialog__close {
+    display: none !important;
   }
 }

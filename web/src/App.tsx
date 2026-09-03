@@ -1,14 +1,12 @@
 import { Component, type ErrorInfo, type ReactElement, type ReactNode } from 'react'
 import { Monitor, RefreshCw, TriangleAlert } from 'lucide-react'
-import { Navigate, Route, Routes, useNavigate, useParams } from 'react-router'
+import { Navigate, Route, Routes, useNavigate } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
 import { LoginPage } from './features/auth/LoginPage'
 import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
 import { JobsPage } from './features/jobs/JobsPage'
-import { DocumentPage } from './features/quotations/DocumentPage'
-import { EditorPage } from './features/quotations/EditorPage'
 import { CustomerPage } from './features/customers/CustomerPage'
 import { VehiclePage } from './features/customers/VehiclePage'
 import { StaffPage } from './features/staff/StaffPage'
@@ -31,9 +29,6 @@ export default function App() {
           <Route path="/login" element={<LoginRoute />} />
           <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
-          <Route path="/quotations/:id" element={<ProtectedRoute><QuotationRedirect /></ProtectedRoute>} />
-          <Route path="/quotations/:id/edit" element={<ProtectedRoute><EditorPage /></ProtectedRoute>} />
-          <Route path="/quotations/:id/document" element={<ProtectedRoute><DocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
           <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
@@ -60,11 +55,6 @@ function ProtectedRoute({ children }: { children: ReactElement }) {
   const { session } = useSession()
   if (!session) return <Navigate to="/login" replace />
   return children
-}
-
-function QuotationRedirect() {
-  const { id } = useParams()
-  return <Navigate to={`/quotations/${id}/edit`} replace />
 }
 
 function NotFoundPage() {

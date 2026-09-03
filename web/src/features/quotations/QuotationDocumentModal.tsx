@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  ArrowLeft,
   CheckCircle2,
-  ChevronRight,
   Clock,
   Printer,
   TriangleAlert,
@@ -11,11 +9,10 @@ import {
   XCircle,
 } from 'lucide-react'
 import { Fragment, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
 import { API_BASE_URL, isApiError, isForbiddenError } from '../../api/client'
 import { getQuotation } from '../../api/quotations'
 import type { Quotation, QuotationLine } from '../../api/types'
-import { AppShell } from '../../components/AppShell'
+import { ConfirmModal } from '../../components/ConfirmModal'
 import { Money } from '../../components/Money'
 import { MoneySummary } from '../../components/MoneySummary'
 import { SkeletonRows, StateBlock } from '../../components/StateBlock'
@@ -23,98 +20,102 @@ import { StatusChip } from '../../components/StatusChip'
 import { readSession } from '../../lib/session'
 import { formatDate, formatDateTime, formatNumber } from '../../lib/format'
 import { Badge } from '../../components/ui/badge'
-import { Button, buttonVariants } from '../../components/ui/button'
+import { Button } from '../../components/ui/button'
 
 function getSignatureUrl(path: string) {
   return `${API_BASE_URL}/api/v1/attachments/file?path=${encodeURIComponent(path)}`
 }
 
-export function DocumentPage() {
-  const { id = '' } = useParams()
-  const navigate = useNavigate()
+type QuotationDocumentModalProps = {
+  quotationId: string | null
+  onClose: () => void
+}
+
+/// เอกสารใบเสนอราคาซ้อนบน job card modal — window.print() พิมพ์เฉพาะ .quotation-document-print-area
+/// ด้วย body.printing-quotation-document (ดู @media print ใน index.css) ไม่ต้องปิด job card modal ก่อน
+export function QuotationDocumentModal({ quotationId, onClose }: QuotationDocumentModalProps) {
   const query = useQuery({
-    queryKey: ['quotation', id],
-    queryFn: () => getQuotation(id),
-    enabled: Boolean(id),
+    queryKey: ['quotation', quotationId ?? ''],
+    queryFn: () => getQuotation(quotationId!),
+    enabled: Boolean(quotationId),
   })
 
-  if (query.isPending) {
-    return (
-      <AppShell title="เอกสารใบเสนอราคา" documentMode>
-        <StateBlock
-          variant="loading"
-          title="กำลังจัดเตรียมเอกสาร"
-          reason="ระบบกำลังโหลดข้อมูลฉบับล่าสุดเพื่อจัดวางเอกสารสำหรับพิมพ์"
-          traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
-          actionLabel="โหลดใหม่"
-          onAction={() => void query.refetch()}
-        >
-          <SkeletonRows count={5} />
-        </StateBlock>
-      </AppShell>
-    )
-  }
+  useEffect(() => {
+    if (!quotationId) return
+    document.body.classList.add('printing-quotation-document')
+    return () => document.body.classList.remove('printing-quotation-document')
+  }, [quotationId])
 
-  if (query.isError) {
+  let title = 'เอกสารใบเสนอราคา'
+  let body = null as React.ReactNode
+
+  if (!quotationId) {
+    body = null
+  } else if (query.isPending) {
+    body = (
+      <StateBlock
+        variant="loading"
+        title="กำลังจัดเตรียมเอกสาร"
+        reason="ระบบกำลังโหลดข้อมูลฉบับล่าสุดเพื่อจัดวางเอกสารสำหรับพิมพ์"
+        traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
+        actionLabel="โหลดใหม่"
+        onAction={() => void query.refetch()}
+      >
+        <SkeletonRows count={5} />
+      </StateBlock>
+    )
+  } else if (query.isError) {
     const error = query.error
     const notFound = isApiError(error) && error.status === 404
     const forbidden = isForbiddenError(error)
-    return (
-      <AppShell title="เอกสารใบเสนอราคา" documentMode>
-        <StateBlock
-          variant={forbidden ? 'forbidden' : notFound ? 'empty' : 'error'}
-          title={
-            forbidden
-              ? 'ไม่มีสิทธิ์ดูเอกสารนี้'
-              : notFound
-                ? 'ไม่พบเอกสารใบเสนอราคา'
-                : 'เปิดเอกสารไม่สำเร็จ'
-          }
-          reason={isApiError(error) ? error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
-          traceId={isApiError(error) ? error.traceId : undefined}
-          actionLabel={notFound ? 'กลับไปคิวงาน' : 'ลองใหม่'}
-          onAction={() => (notFound ? navigate('/quotations') : void query.refetch())}
-        />
-      </AppShell>
+    body = (
+      <StateBlock
+        variant={forbidden ? 'forbidden' : notFound ? 'empty' : 'error'}
+        title={
+          forbidden
+            ? 'ไม่มีสิทธิ์ดูเอกสารนี้'
+            : notFound
+              ? 'ไม่พบเอกสารใบเสนอราคา'
+              : 'เปิดเอกสารไม่สำเร็จ'
+        }
+        reason={isApiError(error) ? error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
+        traceId={isApiError(error) ? error.traceId : undefined}
+        actionLabel={notFound ? 'ปิดหน้าต่าง' : 'ลองใหม่'}
+        onAction={() => (notFound ? onClose() : void query.refetch())}
+      />
     )
-  }
-
-  if (!query.data) {
-    return (
-      <AppShell title="เอกสารใบเสนอราคา" documentMode>
-        <StateBlock
-          variant="empty"
-          title="เอกสารไม่มีข้อมูล"
-          reason="บริการตอบกลับสำเร็จแต่ไม่มีข้อมูลสำหรับจัดทำเอกสาร"
-          traceId="ไม่พบ traceId จากข้อมูลว่าง"
-          actionLabel="กลับไปคิวงาน"
-          onAction={() => navigate('/quotations')}
-        />
-      </AppShell>
+  } else if (!query.data) {
+    body = (
+      <StateBlock
+        variant="empty"
+        title="เอกสารไม่มีข้อมูล"
+        reason="บริการตอบกลับสำเร็จแต่ไม่มีข้อมูลสำหรับจัดทำเอกสาร"
+        traceId="ไม่พบ traceId จากข้อมูลว่าง"
+        actionLabel="ปิดหน้าต่าง"
+        onAction={onClose}
+      />
     )
-  }
-
-  const quotation = query.data
-
-  return (
-    <AppShell title="เอกสารใบเสนอราคา" documentMode>
-      <div className="document-toolbar print-hidden">
-        <div>
-          <Link to="/quotations">คิวใบเสนอราคา</Link>
-          <ChevronRight aria-hidden="true" />
-          <span>{quotation.code}</span>
-        </div>
-        <div>
-          <Link className={buttonVariants({ variant: 'outline' })} to={`/quotations/${quotation.id}/edit`}>
-            <ArrowLeft aria-hidden="true" /> กลับไปหน้าแก้ไข
-          </Link>
+  } else {
+    const quotation = query.data
+    title = `เอกสารใบเสนอราคา ${quotation.code}`
+    body = (
+      <div className="document-modal-body">
+        <div className="job-card-panel-actions print-hidden">
           <Button onClick={() => window.print()}>
             <Printer aria-hidden="true" /> พิมพ์
           </Button>
         </div>
+        <div className="quotation-document-print-area">
+          <QuotationDocument quotation={quotation} />
+        </div>
       </div>
-      <QuotationDocument quotation={quotation} />
-    </AppShell>
+    )
+  }
+
+  return (
+    <ConfirmModal open={quotationId !== null} title={title} onClose={onClose} size="xlarge">
+      {body}
+    </ConfirmModal>
   )
 }
 
