@@ -164,7 +164,7 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
             </ol>
           </nav>
 
-          <StageContent stageKey={STAGES[stageIndex].key} job={job} onNavigate={close} />
+          <StageContent stageKey={STAGES[stageIndex]?.key ?? 'intake'} job={job} onNavigate={close} />
         </div>
       )}
     </ConfirmModal>

@@ -244,6 +244,7 @@ public sealed class JobServiceTests
         public int BranchId => 105;
         public EventSource Source => source;
         public Guid? SessionId => null;
+        public bool IsAdministrator => false;
     }
 
     private sealed class FakeJobRepository : IJobRepository

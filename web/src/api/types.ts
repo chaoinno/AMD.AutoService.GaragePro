@@ -186,19 +186,6 @@ export type StaffReferenceData = {
 
 export type StaffCodePreview = { code: string; userName: string; password: string }
 
-export type AttachmentKind = 'intake' | 'inspection' | 'before' | 'after' | 'signature' | 'other'
-export type Attachment = {
-  id: string
-  kind: string
-  fileName: string
-  contentType: string
-  sizeBytes: number
-  relativePath: string
-  url: string
-  uploadedByName: string
-  uploadedAt: string
-}
-
 export type LineSource = 'customer' | 'technician'
 export type UpsertLineSource = 'Customer' | 'Technician'
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected'
@@ -475,6 +462,29 @@ export type CatalogItem = {
   onOrder: number
   available: number
   etaNote: string | null
+}
+
+export type CatalogManagementItem = CatalogItem & {
+  id: string
+  typeLabelTh: string
+  damaged: number
+  isActive: boolean
+}
+
+export type CatalogItemInput = {
+  code: string
+  type: 'part' | 'labor'
+  name: string
+  compatibility?: string
+  unit: string
+  cost: number
+  price: number
+  standardHours?: number
+  onHand: number
+  reserved: number
+  onOrder: number
+  damaged: number
+  etaNote?: string
 }
 
 export type Technician = {

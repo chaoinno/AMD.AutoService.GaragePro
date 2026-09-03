@@ -17,7 +17,7 @@ import {
   getProvinces,
   getVehicleReferenceData,
 } from '../../api/customerVehicles'
-import type { CustomerSummary, CustomerVehicleSummary, Job } from '../../api/types'
+import type { CustomerSummary, CustomerVehicleSummary, Job, JobStatusToken } from '../../api/types'
 import { isApiError } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
@@ -54,7 +54,7 @@ export function JobsPage() {
   const [queryText, setQueryText] = useState('')
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState(0)
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<JobStatusToken | ''>('')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
@@ -294,7 +294,7 @@ export function JobsPage() {
           <Select
             value={statusFilter}
             onChange={(event) => {
-              setStatusFilter(event.target.value)
+              setStatusFilter(event.target.value as JobStatusToken | '')
               setAutoLoadEnabled(false)
             }}
           >

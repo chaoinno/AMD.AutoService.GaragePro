@@ -12,6 +12,7 @@ import { EditorPage } from './features/quotations/EditorPage'
 import { CustomerPage } from './features/customers/CustomerPage'
 import { VehiclePage } from './features/customers/VehiclePage'
 import { StaffPage } from './features/staff/StaffPage'
+import { CatalogPage } from './features/catalog/CatalogPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
           <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
+          <Route path="/products" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

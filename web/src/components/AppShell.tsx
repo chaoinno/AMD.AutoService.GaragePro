@@ -37,7 +37,7 @@ const navItems = [
   { to: '/customers', icon: Users, label: 'ลูกค้า' },
   { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
   { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
-  { to: '/inventory', icon: Package, label: 'คลังอะไหล่' },
+  { to: '/products', icon: Package, label: 'สินค้า' },
   { to: '/reports', icon: BarChart3, label: 'รายงาน' },
 ]
 

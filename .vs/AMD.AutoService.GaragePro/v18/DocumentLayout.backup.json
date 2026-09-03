@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{0EB718B6-BF32-4B89-BBAF-963EE77E848B}|backend\\AMD.AutoService.GaragePro.Infrastructure\\AMD.AutoService.GaragePro.Infrastructure.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{0EB718B6-BF32-4B89-BBAF-963EE77E848B}|backend\\AMD.AutoService.GaragePro.Infrastructure\\AMD.AutoService.GaragePro.Infrastructure.csproj|solutionrelative:backend\\amd.autoservice.garagepro.infrastructure\\dependencyinjection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -13,10 +17,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\amd.autoservice.garagepro.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
       "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\amd.autoservice.garagepro.api.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
-      "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -26,24 +26,24 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "DependencyInjection.cs",
               "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
               "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
               "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
               "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAbAAAAAAAAAA==",
+              "ViewState": "AgIAAC4AAAAAAAAAAAAAACcAAAA9AAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-08-26T03:18:52.342Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 0,
               "Title": "launchSettings.json",
               "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
               "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
@@ -56,7 +56,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "appsettings.json",
               "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
               "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
@@ -85,7 +85,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 3,
               "Title": "AMD.AutoService.GaragePro.API",
               "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",
               "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",

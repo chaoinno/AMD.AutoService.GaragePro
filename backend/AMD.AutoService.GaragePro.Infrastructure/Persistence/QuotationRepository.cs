@@ -1,4 +1,5 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -103,4 +104,41 @@ public sealed class CatalogRepository(ServiceDbContext db) : ICatalogRepository
                      && list.Contains(c.Code))
             .ToListAsync(ct);
     }
+
+    public async Task<(IReadOnlyList<CatalogItem> Items, int Total)> SearchManagementAsync(
+        string shardKey, int branchId, CatalogManagementQuery query, CancellationToken ct = default)
+    {
+        var source = db.CatalogItems.AsNoTracking()
+            .Where(c => c.LegacyShardKey == shardKey && c.LegacyBranchId == branchId);
+        if (!query.IncludeInactive) source = source.Where(c => c.IsActive);
+        if (query.Type is not null) source = source.Where(c => c.Type == query.Type);
+        if (query.LowStockOnly) source = source.Where(c => c.Type == LineType.Part && c.OnHand - c.Reserved <= 0);
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var keyword = query.Keyword.Trim();
+            source = source.Where(c => EF.Functions.Like(c.Code, $"%{keyword}%")
+                || EF.Functions.Like(c.Name, $"%{keyword}%")
+                || (c.Compatibility != null && EF.Functions.Like(c.Compatibility, $"%{keyword}%")));
+        }
+        var total = await source.CountAsync(ct);
+        var items = await source.OrderBy(c => c.Type).ThenBy(c => c.Code)
+            .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(ct);
+        return (items, total);
+    }
+
+    public Task<CatalogItem?> GetAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
+        db.CatalogItems.FirstOrDefaultAsync(c => c.Id == id && c.LegacyShardKey == shardKey
+            && c.LegacyBranchId == branchId, ct);
+
+    public Task<bool> CodeExistsAsync(string shardKey, int branchId, string code, Guid? excludingId,
+        CancellationToken ct = default) => db.CatalogItems.AnyAsync(c => c.LegacyShardKey == shardKey
+            && c.LegacyBranchId == branchId && c.Code == code && (!excludingId.HasValue || c.Id != excludingId), ct);
+
+    public async Task AddAsync(CatalogItem item, CancellationToken ct = default) =>
+        await db.CatalogItems.AddAsync(item, ct);
+
+    public async Task AddEventAsync(ActivityEvent activityEvent, CancellationToken ct = default) =>
+        await db.ActivityEvents.AddAsync(activityEvent, ct);
+
+    public Task<int> SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
 }

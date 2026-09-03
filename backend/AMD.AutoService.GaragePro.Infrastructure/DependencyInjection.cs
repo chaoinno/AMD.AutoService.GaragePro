@@ -9,6 +9,7 @@ using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Attachments;
 using AMD.AutoService.GaragePro.Application.Customers;
 using AMD.AutoService.GaragePro.Application.Staff;
+using AMD.AutoService.GaragePro.Application.Catalog;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,6 +40,7 @@ public static class DependencyInjection
 
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<ICatalogService, CatalogService>();
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();

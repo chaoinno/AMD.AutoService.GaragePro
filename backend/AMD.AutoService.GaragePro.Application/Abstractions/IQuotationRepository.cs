@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Domain.Entities;
 
 namespace AMD.AutoService.GaragePro.Application.Abstractions;
@@ -27,4 +28,13 @@ public interface ICatalogRepository
 
     Task<IReadOnlyList<CatalogItem>> GetByCodesAsync(
         string shardKey, int branchId, IEnumerable<string> codes, CancellationToken ct = default);
+
+    Task<(IReadOnlyList<CatalogItem> Items, int Total)> SearchManagementAsync(
+        string shardKey, int branchId, CatalogManagementQuery query, CancellationToken ct = default);
+    Task<CatalogItem?> GetAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default);
+    Task<bool> CodeExistsAsync(string shardKey, int branchId, string code, Guid? excludingId,
+        CancellationToken ct = default);
+    Task AddAsync(CatalogItem item, CancellationToken ct = default);
+    Task AddEventAsync(ActivityEvent activityEvent, CancellationToken ct = default);
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
