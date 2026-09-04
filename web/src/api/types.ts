@@ -465,6 +465,7 @@ export type CatalogItem = {
 }
 
 export type CatalogManagementItem = CatalogItem & {
+  stockLocked: boolean
   id: string
   typeLabelTh: string
   damaged: number

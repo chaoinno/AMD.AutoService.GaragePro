@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
-/// <summary>จัดการรถและเจ้าของรถใน Garage DB</summary>
+/// <summary>จัดการรถและเจ้าของรถใน Garage DB เฉพาะสาขาจาก JWT</summary>
 [ApiController]
 [Route("api/v1/vehicles")]
 [Produces("application/json")]
@@ -16,30 +16,30 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 [RequireShiftSession]
 public sealed class VehiclesController(ICustomerVehicleService service) : ControllerBase
 {
-    /// <summary>รายการรถแบบ filter, field-selectable search และ server-side pagination</summary>
+    /// <summary>รายการรถเฉพาะสาขาที่เข้าสู่ระบบ พร้อม filter, เลือกช่องค้นหา และ pagination</summary>
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] VehicleSearchModel model, CancellationToken ct) =>
         Render(await service.SearchVehiclesAsync(model.ToQuery(), ct));
 
-    /// <summary>รายละเอียดรถพร้อมรายชื่อลูกค้าเจ้าของรถ</summary>
+    /// <summary>รายละเอียดรถและเจ้าของเฉพาะสาขาที่เข้าสู่ระบบ; ต่างสาขาคืน 404</summary>
     [HttpGet("{id:long}")]
     public async Task<IActionResult> Get(long id, CancellationToken ct) => Render(await service.GetVehicleAsync(id, ct));
 
-    /// <summary>เพิ่มรถและผูกกับลูกค้า (multipart/form-data, รูปรถไม่บังคับ)</summary>
+    /// <summary>เพิ่มรถและผูกกับลูกค้าในสาขาที่เข้าสู่ระบบเท่านั้น (multipart/form-data, รูปไม่บังคับ)</summary>
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Create([FromForm] VehicleForm form, CancellationToken ct) =>
         Render(await service.CreateVehicleAsync(form.ToRequest(), await ReadImage(form.Image, ct), ct), created: true);
 
-    /// <summary>แก้ไขรถ รวมถึงเปลี่ยน/เพิ่มเจ้าของและเปลี่ยนรูป</summary>
+    /// <summary>แก้ไขรถ เจ้าของ และรูปเฉพาะสาขาที่เข้าสู่ระบบ ไม่รับลูกค้าต่างสาขา</summary>
     [HttpPut("{id:long}")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Update(long id, [FromForm] VehicleForm form, CancellationToken ct) =>
         Render(await service.UpdateVehicleAsync(id, form.ToRequest(), await ReadImage(form.Image, ct), ct));
 
-    /// <summary>ลบรถแบบ soft-delete (Status=0)</summary>
+    /// <summary>ลบรถเฉพาะสาขาที่เข้าสู่ระบบแบบ soft-delete (Status=0)</summary>
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id, CancellationToken ct) => Render(await service.DeleteVehicleAsync(id, ct));
 
@@ -52,7 +52,7 @@ public sealed class VehiclesController(ICustomerVehicleService service) : Contro
         return PhysicalFile(result.Data!.FullPath, result.Data.ContentType, result.Data.FileName);
     }
 
-    /// <summary>ส่งออกรายการตาม filter ปัจจุบันเป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
+    /// <summary>ส่งออกรถเฉพาะสาขาที่เข้าสู่ระบบตาม filter เป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
     [HttpGet("export")]
     [Produces("text/csv")]
     public async Task<IActionResult> Export([FromQuery] VehicleSearchModel model, CancellationToken ct)

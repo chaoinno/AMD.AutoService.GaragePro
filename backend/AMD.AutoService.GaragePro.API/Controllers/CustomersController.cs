@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
-/// <summary>จัดการลูกค้าใน Garage DB พร้อมกรองสิทธิ์ตามสาขาและ IsCustomerDataPrivate</summary>
+/// <summary>จัดการลูกค้าใน Garage DB เฉพาะสาขาจาก JWT ไม่ขยายสิทธิ์ด้วย IsCustomerDataPrivate</summary>
 [ApiController]
 [Route("api/v1/customers")]
 [Produces("application/json")]
@@ -16,32 +16,32 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 [RequireShiftSession]
 public sealed class CustomersController(ICustomerVehicleService service) : ControllerBase
 {
-    /// <summary>รายการลูกค้าแบบ filter, sort และ server-side pagination</summary>
+    /// <summary>รายการลูกค้าเฉพาะสาขาที่เข้าสู่ระบบ พร้อม filter, sort และ pagination</summary>
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] CustomerSearchModel model, CancellationToken ct) =>
         Render(await service.SearchCustomersAsync(model.ToQuery(), ct));
 
-    /// <summary>รายละเอียดลูกค้าพร้อมรถที่เป็นเจ้าของ</summary>
+    /// <summary>รายละเอียดลูกค้าพร้อมรถที่เป็นเจ้าของเฉพาะสาขาที่เข้าสู่ระบบ; ต่างสาขาคืน 404</summary>
     [HttpGet("{id:long}")]
     public async Task<IActionResult> Get(long id, CancellationToken ct) =>
         Render(await service.GetCustomerAsync(id, ct));
 
-    /// <summary>เพิ่มลูกค้า; ถ้าชื่อ+นามสกุล+เบอร์ซ้ำจะคืน 409 CUSTOMER_DUPLICATE</summary>
+    /// <summary>เพิ่มลูกค้าในสาขาที่เข้าสู่ระบบ; ชื่อ+นามสกุล+เบอร์ซ้ำในสาขาคืน 409 CUSTOMER_DUPLICATE</summary>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CustomerUpsertRequest request, CancellationToken ct) =>
         Render(await service.CreateCustomerAsync(request, ct), created: true);
 
-    /// <summary>แก้ไขลูกค้าที่มองเห็นได้ตามนโยบายสาขา</summary>
+    /// <summary>แก้ไขลูกค้าเฉพาะสาขาที่เข้าสู่ระบบ; ต่างสาขาคืน 404</summary>
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] CustomerUpsertRequest request, CancellationToken ct) =>
         Render(await service.UpdateCustomerAsync(id, request, ct));
 
-    /// <summary>ลบลูกค้าแบบ soft-delete (Status=0)</summary>
+    /// <summary>ลบลูกค้าเฉพาะสาขาที่เข้าสู่ระบบแบบ soft-delete (Status=0)</summary>
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id, CancellationToken ct) =>
         Render(await service.DeleteCustomerAsync(id, ct));
 
-    /// <summary>ส่งออกรายการตาม filter ปัจจุบันเป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
+    /// <summary>ส่งออกลูกค้าเฉพาะสาขาที่เข้าสู่ระบบตาม filter เป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
     [HttpGet("export")]
     [Produces("text/csv")]
     public async Task<IActionResult> Export([FromQuery] CustomerSearchModel model, CancellationToken ct)

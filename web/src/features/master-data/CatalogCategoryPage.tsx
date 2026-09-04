@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { createCatalogCategory, getCatalogCategories, getCatalogCategory, setCatalogCategoryStatus, updateCatalogCategory } from '../../api/masterData'
 import type { CatalogCategory, CatalogCategoryInput } from '../../api/types'
+import { DataTable } from '../../components/DataTable'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { Button } from '../../components/ui/button'
@@ -23,7 +24,6 @@ export function CatalogCategoryPage() {
   const [formId, setFormId] = useState<string | 'new' | null>(null)
   const [parentForNew, setParentForNew] = useState<string | undefined>()
   const [statusTarget, setStatusTarget] = useState<CatalogCategory | null>(null)
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
   const query = useQuery({ queryKey: ['catalog-categories', keyword, includeInactive], queryFn: () => getCatalogCategories({ keyword: keyword || undefined, includeInactive }) })
   const categories = useMemo(() => query.data ?? [], [query.data])
@@ -31,25 +31,23 @@ export function CatalogCategoryPage() {
   const status = useMutation({ mutationFn: (target: CatalogCategory) => setCatalogCategoryStatus(target.id, !target.isActive), onSuccess: () => { toast.success(statusTarget?.isActive ? 'ปิดใช้งานหมวดหมู่แล้ว' : 'เปิดใช้งานหมวดหมู่แล้ว'); setStatusTarget(null); void queryClient.invalidateQueries({ queryKey: ['catalog-categories'] }) } })
 
   const openNew = (parentId?: string) => { setParentForNew(parentId); setFormId('new') }
-  const toggle = (id: string) => setExpanded((old) => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next })
 
   return <AppShell title="หมวดหมู่สินค้า">
     <section className="page-heading"><div><p className="eyebrow">ข้อมูลหลัก / แคตตาล็อก</p><h2>จัดการหมวดหมู่สินค้า</h2><p>จัดหมวดหมู่แบบลำดับชั้น และเลือกใช้กับสินค้าได้เฉพาะหมวดปลายทาง</p></div><Button disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เพิ่มหมวดหมู่ได้' : undefined} onClick={() => openNew()}><Plus aria-hidden="true" /> เพิ่มหมวดหมู่หลัก</Button></section>
     <PermissionNote canManage={canManage} />
     <Card className="management-filters master-filters"><div className="filter-search input-with-icon"><Search aria-hidden="true" /><Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="ค้นหารหัสหรือชื่อหมวดหมู่" aria-label="ค้นหาหมวดหมู่" /></div><label className="filter-check"><input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} /> รวมรายการปิดใช้งาน</label></Card>
     <QueryState query={query} loadingTitle="กำลังโหลดหมวดหมู่" emptyTitle="ยังไม่มีหมวดหมู่สินค้า" emptyReason="เพิ่มหมวดหมู่หลักเพื่อเริ่มสร้างโครงสร้างสินค้า" onRetry={() => void query.refetch()}>
-      <Card className="category-tree-card">{categories.map((item) => <CategoryNode key={item.id} item={item} depth={0} expanded={expanded} onToggle={toggle} canManage={canManage} onEdit={(id) => setFormId(id)} onAddChild={openNew} onStatus={setStatusTarget} />)}</Card>
+      <Card className="management-table-card"><p className="data-table__scope">เรียงหมวดหมู่ในระดับเดียวกัน โดยคงหมวดแม่และหมวดย่อยไว้ด้วยกัน</p><DataTable<CatalogCategory> sortable data={categories} getRowId={item => item.id} getSubRows={item => item.children} columns={[
+        { id: 'name', header: 'หมวดหมู่', accessorFn: item => item.name, size: 380, cell: ({ row }) => <div className="category-table-name" style={{ paddingLeft: row.depth * 28 }}><button type="button" className="category-expand" disabled={!row.getCanExpand()} aria-label={`${row.getIsExpanded() ? 'ยุบ' : 'ขยาย'} ${row.original.name}`} aria-expanded={row.getCanExpand() ? row.getIsExpanded() : undefined} onClick={row.getToggleExpandedHandler()}>{row.getCanExpand() ? row.getIsExpanded() ? <ChevronDown /> : <ChevronRight /> : <span className="category-leaf-mark" />}</button><FolderTree className="category-icon" aria-hidden="true" /><strong>{row.original.name}</strong></div> },
+        { id: 'code', header: 'รหัส', accessorFn: item => item.code, size: 160 },
+        { id: 'order', header: 'ลำดับ', accessorFn: item => item.sortOrder ?? 0, size: 110 },
+        { id: 'status', header: 'สถานะ', accessorFn: item => item.isActive ? 'ใช้งาน' : 'ปิดใช้งาน', size: 150, cell: ({ row }) => <StatusBadge isActive={row.original.isActive} /> },
+        { id: 'actions', header: '', enableSorting: false, size: 150, cell: ({ row }) => { const item = row.original; const cannotDisable = item.isActive && item.hasChildren; return <div className="row-actions"><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'เพิ่มหมวดย่อย'} aria-label={`เพิ่มหมวดย่อยใต้ ${item.name}`} onClick={() => openNew(item.id)}><Plus /></Button><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'แก้ไขหมวดหมู่'} aria-label={`แก้ไข ${item.name}`} onClick={() => setFormId(item.id)}><Pencil /></Button><Button size="icon" variant="ghost" disabled={!canManage || cannotDisable} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : cannotDisable ? 'ต้องปิดใช้งานหมวดย่อยทั้งหมดก่อน' : item.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${item.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${item.name}`} onClick={() => setStatusTarget(item)}><ToggleLeft /></Button></div> } },
+      ]} /></Card>
     </QueryState>
     <CatalogCategoryFormModal open={formId !== null} categoryId={formId === 'new' ? null : formId} initialParentId={parentForNew} categories={flat} onClose={() => setFormId(null)} />
     <ConfirmModal open={Boolean(statusTarget)} title={statusTarget?.isActive ? 'ปิดใช้งานหมวดหมู่' : 'เปิดใช้งานหมวดหมู่'} description="ระบบจะตรวจสอบลำดับชั้นก่อนเปลี่ยนสถานะ" onClose={() => { setStatusTarget(null); status.reset() }} footer={<><Button variant="ghost" onClick={() => setStatusTarget(null)}>ยกเลิก</Button><Button variant={statusTarget?.isActive ? 'destructive' : 'default'} disabled={status.isPending || Boolean(statusTarget?.isActive && statusTarget.hasChildren)} title={statusTarget?.hasChildren ? 'ต้องปิดใช้งานหมวดย่อยทั้งหมดก่อน' : undefined} onClick={() => statusTarget && status.mutate(statusTarget)}>{status.isPending ? 'กำลังบันทึก…' : statusTarget?.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</Button></>}>{statusTarget?.hasChildren && statusTarget.isActive ? <p className="disabled-reason">หมวดนี้ยังมีหมวดย่อยที่ใช้งานอยู่ ต้องปิดใช้งานหมวดย่อยทั้งหมดก่อน</p> : null}{status.isError ? <InlineError error={status.error} /> : null}<p>หมวดหมู่: <strong>{statusTarget?.code} · {statusTarget?.name}</strong></p></ConfirmModal>
   </AppShell>
-}
-
-function CategoryNode({ item, depth, expanded, onToggle, canManage, onEdit, onAddChild, onStatus }: { item: CatalogCategory; depth: number; expanded: Set<string>; onToggle: (id: string) => void; canManage: boolean; onEdit: (id: string) => void; onAddChild: (id: string) => void; onStatus: (item: CatalogCategory) => void }) {
-  const children = item.children ?? []
-  const isOpen = expanded.has(item.id)
-  const cannotDisable = item.isActive && item.hasChildren
-  return <div className="category-node"><div className={`category-row ${!item.isActive ? 'category-row--inactive' : ''}`} style={{ paddingLeft: `${16 + depth * 28}px` }}><button className="category-expand" type="button" aria-label={`${isOpen ? 'ยุบ' : 'ขยาย'} ${item.name}`} onClick={() => onToggle(item.id)} disabled={!children.length}>{children.length ? (isOpen ? <ChevronDown /> : <ChevronRight />) : <span className="category-leaf-mark" />}</button><FolderTree className="category-icon" aria-hidden="true" /><span className="category-copy"><strong>{item.name}</strong><small>{item.code} · ลำดับ {item.sortOrder ?? 'ไม่ระบุ'}{item.hasChildren ? ` · ${children.length} หมวดย่อย` : ' · หมวดปลายทาง'}</small></span><StatusBadge isActive={item.isActive} /><div className="row-actions"><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'เพิ่มหมวดย่อย'} aria-label={`เพิ่มหมวดย่อยใต้ ${item.name}`} onClick={() => onAddChild(item.id)}><Plus /></Button><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'แก้ไขหมวดหมู่'} aria-label={`แก้ไข ${item.name}`} onClick={() => onEdit(item.id)}><Pencil /></Button><Button size="icon" variant="ghost" disabled={!canManage || cannotDisable} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : cannotDisable ? 'ต้องปิดใช้งานหมวดย่อยทั้งหมดก่อน' : item.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${item.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${item.name}`} onClick={() => onStatus(item)}><ToggleLeft /></Button></div></div>{isOpen ? children.map((child) => <CategoryNode key={child.id} item={child} depth={depth + 1} expanded={expanded} onToggle={onToggle} canManage={canManage} onEdit={onEdit} onAddChild={onAddChild} onStatus={onStatus} />) : null}</div>
 }
 
 function CatalogCategoryFormModal({ open, categoryId, initialParentId, categories, onClose }: { open: boolean; categoryId: string | null; initialParentId?: string; categories: CatalogCategory[]; onClose: () => void }) {

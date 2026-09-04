@@ -29,7 +29,8 @@ public sealed record CatalogManagementItemDto(
     string? EtaNote,
     bool IsActive,
     Guid? CategoryId = null,
-    Guid? WarehouseId = null);
+    Guid? WarehouseId = null,
+    bool StockLocked = false);
 
 public sealed record CatalogUpsertRequest(
     string Code,

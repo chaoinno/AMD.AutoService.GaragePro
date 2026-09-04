@@ -108,12 +108,12 @@ export function CustomerPage() {
   })
 
   const columns = useMemo<ColumnDef<CustomerSummary, unknown>[]>(() => [
-    { id: 'customer', header: 'ลูกค้า', size: 260, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.fullName}</strong><span>{row.original.code} · {row.original.idCard || 'ไม่ระบุเลขบัตร'}</span></div> },
-    { id: 'contact', header: 'การติดต่อ', size: 220, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.phoneNumber1 || 'ไม่ระบุเบอร์'}</strong><span>{row.original.email || row.original.phoneNumber2 || 'ไม่มีข้อมูลเพิ่มเติม'}</span></div> },
-    { id: 'province', header: 'จังหวัด', size: 150, cell: ({ row }) => row.original.provinceName || 'ไม่ระบุ' },
-    { id: 'vehicles', header: 'รถ', size: 90, cell: ({ row }) => <span className="count-chip">{row.original.vehicleCount} คัน</span> },
-    { id: 'status', header: 'สถานะ', size: 145, cell: ({ row }) => row.original.isBlacklist ? <Badge className="blacklist-badge" title={row.original.blacklistRemark || 'ติดแบล็กลิสต์'}><ShieldAlert /> Blacklist</Badge> : row.original.isDeleted ? <Badge variant="outline">ลบแล้ว</Badge> : <Badge className="active-badge">ใช้งาน</Badge> },
-    { id: 'actions', header: '', size: 110, cell: ({ row }) => <div className="row-actions"><Button size="icon" variant="ghost" aria-label={`แก้ไข ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setFormId(row.original.id) }}><Pencil /></Button><Button size="icon" variant="ghost" disabled={row.original.isDeleted} title={row.original.isDeleted ? 'รายการนี้ถูกลบแล้ว' : 'ลบลูกค้า'} aria-label={`ลบ ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setDeleting(row.original) }}><Trash2 /></Button></div> },
+    { id: 'customer', accessorFn: (x) => x.fullName, header: 'ลูกค้า', size: 260, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.fullName}</strong><span>{row.original.code} · {row.original.idCard || 'ไม่ระบุเลขบัตร'}</span></div> },
+    { id: 'contact', accessorFn: (x) => [x.phoneNumber1, x.email, x.phoneNumber2].filter(Boolean).join(' '), header: 'การติดต่อ', size: 220, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.phoneNumber1 || 'ไม่ระบุเบอร์'}</strong><span>{row.original.email || row.original.phoneNumber2 || 'ไม่มีข้อมูลเพิ่มเติม'}</span></div> },
+    { id: 'province', accessorFn: (x) => x.provinceName, header: 'จังหวัด', size: 150, cell: ({ row }) => row.original.provinceName || 'ไม่ระบุ' },
+    { id: 'vehicles', accessorFn: (x) => x.vehicleCount, header: 'รถ', size: 90, cell: ({ row }) => <span className="count-chip">{row.original.vehicleCount} คัน</span> },
+    { id: 'status', accessorFn: (x) => x.isBlacklist ? 'Blacklist' : x.isDeleted ? 'ลบแล้ว' : 'ใช้งาน', header: 'สถานะ', size: 145, cell: ({ row }) => row.original.isBlacklist ? <Badge className="blacklist-badge" title={row.original.blacklistRemark || 'ติดแบล็กลิสต์'}><ShieldAlert /> Blacklist</Badge> : row.original.isDeleted ? <Badge variant="outline">ลบแล้ว</Badge> : <Badge className="active-badge">ใช้งาน</Badge> },
+    { id: 'actions', enableSorting: false, header: '', size: 110, cell: ({ row }) => <div className="row-actions"><Button size="icon" variant="ghost" aria-label={`แก้ไข ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setFormId(row.original.id) }}><Pencil /></Button><Button size="icon" variant="ghost" disabled={row.original.isDeleted} title={row.original.isDeleted ? 'รายการนี้ถูกลบแล้ว' : 'ลบลูกค้า'} aria-label={`ลบ ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setDeleting(row.original) }}><Trash2 /></Button></div> },
   ], [])
 
   let content
@@ -121,7 +121,7 @@ export function CustomerPage() {
   else if (query.isError && isForbiddenError(query.error)) content = <StateBlock variant="forbidden" title="ไม่มีสิทธิ์ดูข้อมูลลูกค้า" reason={isApiError(query.error) ? query.error.messageTh : 'บัญชีนี้ไม่มีสิทธิ์'} traceId={isApiError(query.error) ? query.error.traceId : undefined} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (query.isError) content = <StateBlock variant="error" title="โหลดข้อมูลลูกค้าไม่สำเร็จ" reason={isApiError(query.error) ? query.error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'} traceId={isApiError(query.error) ? query.error.traceId : undefined} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (!query.data.items.length) content = <StateBlock variant="empty" title="ไม่พบลูกค้าที่ตรงกับเงื่อนไข" reason="ลองเปลี่ยนคำค้นหาหรือตัวกรอง หรือเพิ่มลูกค้าใหม่ได้ทันที" traceId="คำขอสำเร็จและไม่พบรายการ" actionLabel="เพิ่มลูกค้า" onAction={() => setFormId('new')} />
-  else content = <Card className="management-table-card"><DataTable data={query.data.items} columns={columns} onRowClick={(row) => setFormId(row.id)} getRowLabel={(row) => `เปิดข้อมูลลูกค้า ${row.fullName}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((f) => ({ ...f, page }))} /></Card>
+  else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} onRowClick={(row) => setFormId(row.id)} getRowLabel={(row) => `เปิดข้อมูลลูกค้า ${row.fullName}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((f) => ({ ...f, page }))} /></Card>
 
   return (
     <AppShell title="ลูกค้า">

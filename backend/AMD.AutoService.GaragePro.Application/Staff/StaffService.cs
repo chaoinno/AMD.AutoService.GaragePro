@@ -31,18 +31,18 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
     public async Task<Result<StaffDetailDto>> GetAsync(long id, CancellationToken ct = default)
     {
         var staff = await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
-        return staff is null
+        return staff is null || staff.BranchId != currentUser.BranchId
             ? Result<StaffDetailDto>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์ดูข้อมูลนี้")
             : Result<StaffDetailDto>.Ok(staff);
     }
 
     public async Task<Result<StaffDetailDto>> CreateAsync(StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
     {
-        var normalized = Normalize(request, isCreate: true);
+        if (request.BranchId != 0 && request.BranchId != currentUser.BranchId)
+            return Result<StaffDetailDto>.Fail("STAFF_BRANCH_FORBIDDEN", "เพิ่มพนักงานได้เฉพาะสาขาที่เข้าสู่ระบบ", "branchId");
+        var normalized = Normalize(request with { BranchId = currentUser.BranchId }, isCreate: true);
         var error = StaffValidator.Validate(normalized, isCreate: true);
         if (error is not null) return Result<StaffDetailDto>.Fail(error);
-        if (!currentUser.IsAdministrator && normalized.BranchId != currentUser.BranchId)
-            return Result<StaffDetailDto>.Fail("STAFF_BRANCH_FORBIDDEN", "เฉพาะผู้ดูแลระบบเท่านั้นที่เลือกสาขาอื่นได้", "branchId");
         var imageError = ValidateImage(image);
         if (imageError is not null) return Result<StaffDetailDto>.Fail(imageError);
         var result = await repository.CreateAsync(Scope, currentUser.IsAdministrator, normalized, image, ct);
@@ -53,16 +53,18 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
 
     public async Task<Result<StaffDetailDto>> UpdateAsync(long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
     {
-        var normalized = Normalize(request, isCreate: false);
+        if (request.BranchId != 0 && request.BranchId != currentUser.BranchId)
+            return Result<StaffDetailDto>.Fail("STAFF_BRANCH_FORBIDDEN", "แก้ไขพนักงานได้เฉพาะสาขาที่เข้าสู่ระบบ ไม่สามารถย้ายสาขาผ่าน API นี้", "branchId");
+        var normalized = Normalize(request with { BranchId = currentUser.BranchId }, isCreate: false);
         var error = StaffValidator.Validate(normalized, isCreate: false);
         if (error is not null) return Result<StaffDetailDto>.Fail(error);
         var existing = await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
-        if (existing is null) return Result<StaffDetailDto>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+        if (existing is null || existing.BranchId != currentUser.BranchId) return Result<StaffDetailDto>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานในสาขาที่เข้าสู่ระบบ");
         if (!currentUser.IsAdministrator &&
             (normalized.BranchId != existing.BranchId || normalized.MainSectorId != existing.SectorPositions.FirstOrDefault(x => x.IsMain)?.SectorId ||
              normalized.PositionId != existing.SectorPositions.FirstOrDefault(x => x.IsMain)?.PositionId ||
              !SetEquals(normalized.AdditionalSectorIds, existing.SectorPositions.Where(x => !x.IsMain).Select(x => x.SectorId))))
-            return Result<StaffDetailDto>.Fail("STAFF_ORGANIZATION_FORBIDDEN", "เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขสาขา แผนก หรือตำแหน่งได้");
+            return Result<StaffDetailDto>.Fail("STAFF_ORGANIZATION_FORBIDDEN", "เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขแผนกหรือตำแหน่งได้");
         var imageError = ValidateImage(image);
         if (imageError is not null) return Result<StaffDetailDto>.Fail(imageError);
         var result = await repository.UpdateAsync(Scope, currentUser.IsAdministrator, id, normalized, image, ct);
@@ -83,8 +85,8 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
     public async Task<Result<StaffCodePreviewDto>> PreviewCodeAsync(int? branchId, CancellationToken ct = default)
     {
         var target = branchId.GetValueOrDefault(currentUser.BranchId);
-        if (!currentUser.IsAdministrator && target != currentUser.BranchId)
-            return Result<StaffCodePreviewDto>.Fail("STAFF_BRANCH_FORBIDDEN", "เฉพาะผู้ดูแลระบบเท่านั้นที่เลือกสาขาอื่นได้");
+        if (target != currentUser.BranchId)
+            return Result<StaffCodePreviewDto>.Fail("STAFF_BRANCH_FORBIDDEN", "สร้างรหัสพนักงานได้เฉพาะสาขาที่เข้าสู่ระบบ");
         return Result<StaffCodePreviewDto>.Ok(await repository.PreviewCodeAsync(Scope, target, ct));
     }
 

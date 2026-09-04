@@ -24,6 +24,7 @@ import {
 } from '../../api/masterData'
 import { isApiError, isForbiddenError } from '../../api/client'
 import type { CatalogCategory, CatalogItemInput, CatalogItemSupplier, CatalogItemSupplierInput, CatalogManagementItem, PagedResult, Supplier } from '../../api/types'
+import { ManagementTable } from '../../components/ManagementTable'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
@@ -122,45 +123,45 @@ export function CatalogPage() {
 
   const columns = useMemo<ColumnDef<CatalogManagementItem, unknown>[]>(() => [
     {
-      id: 'item', header: 'สินค้า / บริการ', size: 270,
+      id: 'item', accessorFn: (x) => x.name, header: 'สินค้า / บริการ', size: 270,
       cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.name}</strong><span className="catalog-code">{row.original.code}</span></div>,
     },
     {
-      id: 'type', header: 'ประเภท', size: 105,
+      id: 'type', accessorFn: (x) => x.typeLabelTh, header: 'ประเภท', size: 105,
       cell: ({ row }) => <Badge variant="outline" className={`type-chip type-chip--${row.original.type}`}>
         {row.original.type === 'part' ? <Package /> : <Wrench />} {row.original.typeLabelTh}
       </Badge>,
     },
     {
-      id: 'price', header: 'ราคา', size: 155,
+      id: 'price', accessorFn: (x) => x.price, header: 'ราคา', size: 155,
       cell: ({ row }) => <div className="two-line-cell"><strong><Money value={row.original.price} /></strong><span>{row.original.cost === null ? 'ไม่เปิดเผยต้นทุน' : <>ทุน <Money value={row.original.cost} /></>}</span></div>,
     },
     {
-      id: 'stock', header: 'คงเหลือ', size: 135,
+      id: 'stock', accessorFn: (x) => x.type === 'part' ? x.available : x.standardHours, header: 'คงเหลือ', size: 135,
       cell: ({ row }) => row.original.type === 'part'
         ? <div className="two-line-cell"><strong className={row.original.available <= 0 ? 'stock-empty' : ''}>{row.original.available.toLocaleString('th-TH')} {row.original.unit}</strong><span>มี {row.original.onHand} · จอง {row.original.reserved} · รอ {row.original.onOrder}</span></div>
         : <div className="two-line-cell"><strong>{row.original.standardHours?.toLocaleString('th-TH')} ชม.</strong><span>ชั่วโมงมาตรฐาน</span></div>,
     },
     {
-      id: 'compatibility', header: 'รุ่นรถ / รายละเอียด', size: 240,
+      id: 'compatibility', accessorFn: (x) => x.compatibility, header: 'รุ่นรถ / รายละเอียด', size: 240,
       cell: ({ row }) => <span className="catalog-compatibility">{row.original.compatibility || 'ใช้ได้ทั่วไป'}</span>,
     },
     {
-      id: 'category', header: 'หมวดหมู่', size: 150,
+      id: 'category', accessorFn: (x) => x.categoryId ? categoryNames.get(x.categoryId) : '', header: 'หมวดหมู่', size: 150,
       cell: ({ row }) => <span>{row.original.categoryId ? categoryNames.get(row.original.categoryId) || 'กำหนดหมวดหมู่แล้ว' : 'ไม่ระบุ'}</span>,
     },
     {
-      id: 'warehouse', header: 'คลังหลัก', size: 145,
+      id: 'warehouse', accessorFn: (x) => x.warehouseId ? warehouseNames.get(x.warehouseId) : '', header: 'คลังหลัก', size: 145,
       cell: ({ row }) => <span>{row.original.warehouseId ? warehouseNames.get(row.original.warehouseId) || 'กำหนดคลังแล้ว' : 'ไม่ระบุ'}</span>,
     },
     {
-      id: 'status', header: 'สถานะ', size: 105,
+      id: 'status', accessorFn: (x) => x.isActive ? 'ใช้งาน' : 'ปิดใช้', header: 'สถานะ', size: 105,
       cell: ({ row }) => row.original.isActive
         ? <Badge className="active-badge">ใช้งาน</Badge>
         : <Badge variant="outline"><CircleOff /> ปิดใช้</Badge>,
     },
     {
-      id: 'actions', header: '', size: 100,
+      id: 'actions', enableSorting: false, header: '', size: 100,
       cell: ({ row }) => <div className="row-actions">
         <Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขสินค้าได้' : 'แก้ไขสินค้า'} aria-label={`แก้ไข ${row.original.name}`} onClick={(event) => { event.stopPropagation(); setFormId(row.original.id) }}><Pencil /></Button>
         <Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : row.original.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${row.original.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${row.original.name}`} onClick={(event) => { event.stopPropagation(); setStatusTarget(row.original) }}><CircleOff /></Button>
@@ -173,7 +174,7 @@ export function CatalogPage() {
   else if (query.isError && isForbiddenError(query.error)) content = <StateBlock variant="forbidden" title="ไม่มีสิทธิ์ดูรายการสินค้า" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (query.isError) content = <StateBlock variant="error" title="โหลดรายการสินค้าไม่สำเร็จ" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (!query.data.items.length) content = <StateBlock variant="empty" title="ไม่พบสินค้าที่ตรงกับเงื่อนไข" reason="ลองเปลี่ยนคำค้นหาหรือตัวกรอง หรือเพิ่มสินค้าใหม่ได้ทันที" traceId="คำขอสำเร็จและไม่พบรายการ" actionLabel={canManage ? 'เพิ่มสินค้า' : 'ล้างตัวกรอง'} onAction={() => canManage ? setFormId('new') : setFilters({ page: 1, pageSize: 25 })} />
-  else content = <Card className="management-table-card"><DataTable data={query.data.items} columns={columns} sortable onRowClick={canManage ? (row) => setFormId(row.id) : undefined} getRowLabel={(row) => `เปิดข้อมูลสินค้า ${row.name}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((old) => ({ ...old, page }))} /></Card>
+  else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} onRowClick={canManage ? (row) => setFormId(row.id) : undefined} getRowLabel={(row) => `เปิดข้อมูลสินค้า ${row.name}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((old) => ({ ...old, page }))} /></Card>
 
   return <AppShell title="สินค้า">
     <section className="page-heading"><div><p className="eyebrow">แคตตาล็อกสินค้าและบริการ</p><h2>จัดการสินค้า</h2><p>จัดการอะไหล่ ค่าแรง ราคา และจำนวนคงเหลือของสาขาปัจจุบัน</p></div><Button disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เพิ่มสินค้าได้' : undefined} onClick={() => setFormId('new')}><Plus /> เพิ่มสินค้า</Button></section>
@@ -283,10 +284,10 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
     {itemId && details.isPending ? <SkeletonRows count={5} /> : details.isError ? <StateBlock variant="error" title="โหลดข้อมูลสินค้าไม่สำเร็จ" reason={errorMessage(details.error)} traceId={traceId(details.error)} actionLabel="ลองใหม่" onAction={() => void details.refetch()} /> : <form id="catalog-form" className="management-form catalog-form" onSubmit={submit}>
       <section><h3>ข้อมูลสินค้า</h3><div className="form-grid">
         <Field label="รหัสสินค้า *" error={errors.code?.message}><Input maxLength={60} className="catalog-code-input" {...register('code')} /></Field>
-        <Field label="ประเภท *" error={errors.type?.message}><Select {...register('type')}><option value="part">อะไหล่</option><option value="labor">ค่าแรง</option></Select></Field>
+        <Field label="ประเภท *" error={errors.type?.message}><Select {...register('type')}><option value="part" disabled={details.data?.stockLocked && type !== 'part'}>อะไหล่</option><option value="labor" disabled={details.data?.stockLocked && type !== 'labor'}>ค่าแรง</option></Select></Field>
         <Field label="ชื่อสินค้า / บริการ *" error={errors.name?.message} wide><Input maxLength={300} {...register('name')} /></Field>
         <Field label="รุ่นรถที่รองรับ / รายละเอียด" error={errors.compatibility?.message} wide><Textarea rows={3} maxLength={500} {...register('compatibility')} /></Field>
-        <Field label="หน่วยนับ *" error={errors.unit?.message}><Input maxLength={40} placeholder={type === 'labor' ? 'งาน' : 'ชิ้น / ชุด / ลิตร'} {...register('unit')} /></Field>
+        <Field label="หน่วยนับ *" error={errors.unit?.message}><Input readOnly={details.data?.stockLocked} maxLength={40} placeholder={type === 'labor' ? 'งาน' : 'ชิ้น / ชุด / ลิตร'} {...register('unit')} /></Field>
         <Field label="หมวดหมู่สินค้า" error={errors.categoryId?.message}><Select {...register('categoryId')} disabled={categoriesQuery.isPending}><option value="">ไม่ระบุหมวดหมู่</option>{categories.map((category) => <option key={category.id} value={category.id}>{'— '.repeat(category.level)}{category.name}{category.isActive ? '' : ' (ปิดใช้งาน)'}</option>)}</Select>{categoriesQuery.isError ? <small className="field-hint">โหลดหมวดหมู่ไม่สำเร็จ</small> : null}</Field>
         <Field label="คลังหลัก" error={errors.warehouseId?.message}><Select {...register('warehouseId')} disabled={warehousesQuery.isPending}><option value="">ไม่ระบุคลัง</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name} ({warehouse.code}){warehouse.isActive ? '' : ' (ปิดใช้งาน)'}</option>)}</Select>{warehousesQuery.isError ? <small className="field-hint">โหลดคลังไม่สำเร็จ</small> : null}</Field>
         {type === 'labor' ? <Field label="ชั่วโมงมาตรฐาน *" error={errors.standardHours?.message}><Input className="money" type="number" min="0.01" max="9999.99" step="0.01" {...register('standardHours')} /></Field> : null}
@@ -296,10 +297,11 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
         <Field label="ราคาขาย (บาท) *" error={errors.price?.message}><Input className="money" type="number" min="0" step="0.01" {...register('price')} /></Field>
       </div></section>
       {type === 'part' ? <section><h3>สต็อกอะไหล่</h3><div className="form-grid catalog-stock-grid">
-        <Field label="คงคลัง" error={errors.onHand?.message}><Input type="number" min="0" step="1" {...register('onHand')} /></Field>
-        <Field label="จองแล้ว" error={errors.reserved?.message}><Input type="number" min="0" step="1" {...register('reserved')} /></Field>
-        <Field label="กำลังสั่งซื้อ" error={errors.onOrder?.message}><Input type="number" min="0" step="1" {...register('onOrder')} /></Field>
-        <Field label="ชำรุด" error={errors.damaged?.message}><Input type="number" min="0" step="1" {...register('damaged')} /></Field>
+        {details.data?.stockLocked && <p className="field--wide section-help">ยอดนี้ดูแลผ่านโมดูลจัดซื้อและสต็อก FIFO แล้ว จึงไม่สามารถแก้จำนวนหรือหน่วยนับที่นี่ได้</p>}
+        <Field label="คงคลัง" error={errors.onHand?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('onHand')} /></Field>
+        <Field label="จองแล้ว" error={errors.reserved?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('reserved')} /></Field>
+        <Field label="กำลังสั่งซื้อ" error={errors.onOrder?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('onOrder')} /></Field>
+        <Field label="ชำรุด" error={errors.damaged?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('damaged')} /></Field>
         <Field label="หมายเหตุกำหนดรับสินค้า" error={errors.etaNote?.message} wide><Input maxLength={200} placeholder="เช่น สั่งได้ภายใน 2 วัน" {...register('etaNote')} /></Field>
       </div><p className="stock-formula"><Boxes /> จำนวนพร้อมใช้คำนวณจาก “คงคลัง − จองแล้ว” โดยไม่รวมกำลังสั่งซื้อและของชำรุด</p></section> : null}
       <section><div className="section-heading-row"><div><h3>ซัพพลายเออร์ของสินค้า</h3><p className="section-help">กำหนดรหัสสินค้า ต้นทุน และเงื่อนไขสั่งซื้อแยกตามซัพพลายเออร์</p></div>{itemId ? <Badge variant="outline">{itemSuppliersQuery.data?.length ?? 0} ราย</Badge> : null}</div>
@@ -315,7 +317,14 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
           </div>
           {suppliersQuery.isError ? <InlineError error={suppliersQuery.error} /> : null}
           {linkMutation.isError ? <InlineError error={linkMutation.error} /> : null}
-          {itemSuppliersQuery.isPending ? <SkeletonRows count={2} /> : itemSuppliersQuery.isError ? <InlineError error={itemSuppliersQuery.error} /> : itemSuppliersQuery.data?.length ? <div className="supplier-link-table-wrap"><table className="supplier-link-table"><thead><tr><th>ซัพพลายเออร์</th><th>รหัสภายนอก</th><th>ต้นทุน</th><th>ส่ง/ขั้นต่ำ</th><th>สถานะ</th><th /></tr></thead><tbody>{itemSuppliersQuery.data.map((link) => <tr key={link.id}><td><strong>{link.supplierName}</strong><small>{link.supplierCode}</small></td><td>{link.supplierItemCode || '—'}</td><td><Money value={link.supplierCost} /></td><td>{link.leadTimeDays ?? '—'} วัน / {link.minOrderQty ?? '—'}</td><td>{link.isPreferred ? <Badge className="active-badge">หลัก</Badge> : null} {link.isActive ? <Badge variant="outline">ใช้งาน</Badge> : <Badge variant="outline"><CircleOff /> ปิดใช้</Badge>}</td><td><div className="row-actions"><Button type="button" size="icon" variant="ghost" title="แก้ไขการผูก" onClick={() => editLink(link)}><Pencil /></Button><Button type="button" size="icon" variant="ghost" title="ยกเลิกการผูก" onClick={() => setRemoveLinkTarget(link)}><Trash2 /></Button></div></td></tr>)}</tbody></table></div> : <p className="section-help">ยังไม่ได้ผูกซัพพลายเออร์</p>}
+          {itemSuppliersQuery.isPending ? <SkeletonRows count={2} /> : itemSuppliersQuery.isError ? <InlineError error={itemSuppliersQuery.error} /> : itemSuppliersQuery.data?.length ? <div className="supplier-link-table-wrap management-table-card"><ManagementTable data={itemSuppliersQuery.data} columns={[
+        { id: 'supplier', header: 'ซัพพลายเออร์', value: (link) => link.supplierName, size: 250, render: (link) => <div className="two-line-cell"><strong>{link.supplierName}</strong><span>{link.supplierCode}</span></div> },
+        { id: 'code', header: 'รหัสภายนอก', value: (link) => link.supplierItemCode, render: (link) => <>{link.supplierItemCode || '—'}</> },
+        { id: 'cost', header: 'ต้นทุน', value: (link) => link.supplierCost, render: (link) => <><Money value={link.supplierCost} /></> },
+        { id: 'lead', header: 'ส่ง/ขั้นต่ำ', value: (link) => link.leadTimeDays, render: (link) => <>{link.leadTimeDays ?? '—'} วัน / {link.minOrderQty ?? '—'}</> },
+        { id: 'status', header: 'สถานะ', value: (link) => link.isPreferred ? 'หลัก' : link.isActive ? 'ใช้งาน' : 'ปิดใช้', render: (link) => <>{link.isPreferred ? <Badge className="active-badge">หลัก</Badge> : null} {link.isActive ? <Badge variant="outline">ใช้งาน</Badge> : <Badge variant="outline"><CircleOff /> ปิดใช้</Badge>}</> },
+        { id: 'actions', header: '', render: (link) => <><div className="row-actions"><Button type="button" size="icon" variant="ghost" title="แก้ไขการผูก" onClick={() => editLink(link)}><Pencil /></Button><Button type="button" size="icon" variant="ghost" title="ยกเลิกการผูก" onClick={() => setRemoveLinkTarget(link)}><Trash2 /></Button></div></> },
+      ]} /></div> : <p className="section-help">ยังไม่ได้ผูกซัพพลายเออร์</p>}
         </>}
       </section>
       {save.isError ? <InlineError error={save.error} /> : null}

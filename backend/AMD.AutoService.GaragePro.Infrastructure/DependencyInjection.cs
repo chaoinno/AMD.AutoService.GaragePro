@@ -48,6 +48,10 @@ public static class DependencyInjection
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<ICatalogCategoryService, CatalogCategoryService>();
+        services.AddScoped<IPurchasingRepository, PurchasingRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingService>();
+        services.AddSingleton(configuration.GetSection("Purchasing").Get<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions>()
+            ?? new AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions());
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();

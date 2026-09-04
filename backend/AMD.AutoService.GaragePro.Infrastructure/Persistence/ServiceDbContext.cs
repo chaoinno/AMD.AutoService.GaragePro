@@ -170,6 +170,7 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.Price).HasColumnType("decimal(18,2)");
             e.Property(x => x.StandardHours).HasColumnType("decimal(6,2)");
             e.Ignore(x => x.Available);   // computed ใน memory — [BIZ] OnHand − Reserved
+            e.Property(x => x.RowVersion).IsRowVersion();
             e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Code }).IsUnique();
             e.HasOne(x => x.Category).WithMany(x => x.CatalogItems)
              .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);

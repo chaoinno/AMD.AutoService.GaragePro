@@ -7,6 +7,53 @@ namespace AMD.AutoService.GaragePro.Tests;
 
 public sealed class StaffServiceTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Cannot_create_update_or_preview_in_another_branch_even_as_admin(bool admin)
+    {
+        var repository = new StubRepository(Detail());
+        var service = new StaffService(repository, new StubImageStorage(), new StubUser(admin));
+        var foreign = Input() with { BranchId = 2 };
+
+        Assert.Equal("STAFF_BRANCH_FORBIDDEN", (await service.CreateAsync(foreign, null)).Error?.Code);
+        Assert.Equal("STAFF_BRANCH_FORBIDDEN", (await service.UpdateAsync(10, foreign, null)).Error?.Code);
+        Assert.Equal("STAFF_BRANCH_FORBIDDEN", (await service.PreviewCodeAsync(2)).Error?.Code);
+        Assert.Null(repository.CreatedRequest);
+        Assert.False(repository.UpdateCalled);
+        Assert.Null(repository.PreviewBranch);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Omitted_branch_uses_login_branch_for_create_update_and_preview(bool admin)
+    {
+        var repository = new StubRepository(Detail());
+        var service = new StaffService(repository, new StubImageStorage(), new StubUser(admin));
+        var input = Input() with { BranchId = 0 };
+
+        Assert.True((await service.CreateAsync(input, null)).Success);
+        Assert.Equal(1, repository.CreatedRequest?.BranchId);
+        Assert.True((await service.UpdateAsync(10, input, null)).Success);
+        Assert.Equal(1, repository.UpdatedRequest?.BranchId);
+        Assert.True((await service.PreviewCodeAsync(null)).Success);
+        Assert.Equal(1, repository.PreviewBranch);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Foreign_staff_detail_cannot_be_returned_or_updated(bool admin)
+    {
+        var repository = new StubRepository(Detail() with { BranchId = 2 });
+        var service = new StaffService(repository, new StubImageStorage(), new StubUser(admin));
+
+        Assert.Equal("STAFF_NOT_FOUND", (await service.GetAsync(10)).Error?.Code);
+        Assert.Equal("STAFF_NOT_FOUND", (await service.UpdateAsync(10, Input(), null)).Error?.Code);
+        Assert.False(repository.UpdateCalled);
+    }
+
     [Fact]
     public async Task Non_admin_cannot_change_organization()
     {
@@ -64,12 +111,15 @@ public sealed class StaffServiceTests
     private sealed class StubRepository(StaffDetailDto detail) : IStaffRepository
     {
         public bool UpdateCalled { get; private set; }
+        public StaffUpsertRequest? CreatedRequest { get; private set; }
+        public StaffUpsertRequest? UpdatedRequest { get; private set; }
+        public int? PreviewBranch { get; private set; }
         public Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => Task.FromResult<StaffDetailDto?>(detail);
-        public Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) { UpdateCalled = true; return Task.FromResult<StaffDetailDto?>(detail); }
+        public Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) { UpdateCalled = true; UpdatedRequest = request; return Task.FromResult<StaffDetailDto?>(detail); }
         public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator, StaffSearchQuery query, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) { CreatedRequest = request; return Task.FromResult<StaffDetailDto?>(detail); }
         public Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffStatusRequest request, CancellationToken ct = default) => throw new NotSupportedException();
-        public Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default) { PreviewBranch = branchId; return Task.FromResult(new StaffCodePreviewDto("test", "test", "test")); }
         public Task<string?> GetImagePathAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<StaffReferenceDataDto> GetReferenceDataAsync(LegacyRequestScope scope, bool isAdministrator, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<LookupItemDto>> GetSectorsAsync(LegacyRequestScope scope, int? departmentId, CancellationToken ct = default) => throw new NotSupportedException();

@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { createWarehouse, getWarehouse, getWarehouses, setWarehouseStatus, updateWarehouse } from '../../api/masterData'
 import type { Warehouse, WarehouseInput } from '../../api/types'
+import { ManagementTable } from '../../components/ManagementTable'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { Select } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
 import { useSession } from '../../lib/session'
 import { Field, InlineError, PermissionNote, QueryState, StatusBadge } from './MasterDataCommon'
@@ -33,7 +33,13 @@ export function WarehousePage() {
     <PermissionNote canManage={canManage} />
     <Card className="management-filters master-filters"><div className="filter-search input-with-icon"><Search aria-hidden="true" /><Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="ค้นหารหัสหรือชื่อคลัง" aria-label="ค้นหาคลัง" /></div><label className="filter-check"><input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} /> รวมรายการปิดใช้งาน</label></Card>
     <QueryState query={query} loadingTitle="กำลังโหลดคลัง" emptyTitle="ยังไม่มีคลังในสาขาปัจจุบัน" emptyReason="เพิ่มคลังหลักเพื่อระบุตำแหน่งจัดเก็บสินค้า" onRetry={() => void query.refetch()}>
-      <Card className="management-table-card"><table className="master-table"><thead><tr><th>คลัง</th><th>สาขา</th><th>ที่อยู่</th><th>สถานะ</th><th aria-label="การดำเนินการ" /></tr></thead><tbody>{warehouses.map((item) => <tr key={item.id}><td><div className="master-name"><strong>{item.name}</strong><small>{item.code}</small></div></td><td><span className="master-branch"><Building2 /> {item.legacyBranchId === session?.branchId ? session.branchName : `สาขา ${item.legacyBranchId ?? 'ไม่ระบุ'}`}</span></td><td>{item.address ? <span className="master-contact"><span><MapPin /> {item.address}</span></span> : <span className="muted">ไม่ระบุที่อยู่</span>}</td><td><StatusBadge isActive={item.isActive} /></td><td><div className="row-actions"><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'แก้ไขคลัง'} aria-label={`แก้ไข ${item.name}`} onClick={() => setFormId(item.id)}><Pencil /></Button><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : item.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${item.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${item.name}`} onClick={() => setStatusTarget(item)}><ToggleLeft /></Button></div></td></tr>)}</tbody></table></Card>
+      <Card className="management-table-card"><ManagementTable data={warehouses} columns={[
+        { id: 'warehouse', header: 'คลัง', value: (item) => item.name, size: 250, render: (item) => <><div className="master-name"><strong>{item.name}</strong><small>{item.code}</small></div></> },
+        { id: 'branch', header: 'สาขา', value: (item) => item.legacyBranchId === session?.branchId ? session.branchName : String(item.legacyBranchId ?? ''), render: (item) => <><span className="master-branch"><Building2 /> {item.legacyBranchId === session?.branchId ? session.branchName : `สาขา ${item.legacyBranchId ?? 'ไม่ระบุ'}`}</span></> },
+        { id: 'address', header: 'ที่อยู่', value: (item) => item.address, size: 320, render: (item) => <>{item.address ? <span className="master-contact"><span><MapPin /> {item.address}</span></span> : <span className="muted">ไม่ระบุที่อยู่</span>}</> },
+        { id: 'status', header: 'สถานะ', value: (item) => item.isActive ? 'ใช้งาน' : 'ปิดใช้งาน', render: (item) => <><StatusBadge isActive={item.isActive} /></> },
+        { id: 'actions', header: '', size: 110, render: (item) => <><div className="row-actions"><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่แก้ไขได้' : 'แก้ไขคลัง'} aria-label={`แก้ไข ${item.name}`} onClick={() => setFormId(item.id)}><Pencil /></Button><Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : item.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${item.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${item.name}`} onClick={() => setStatusTarget(item)}><ToggleLeft /></Button></div></> },
+      ]} /></Card>
     </QueryState>
     <WarehouseFormModal open={formId !== null} warehouseId={formId === 'new' ? null : formId} onClose={() => setFormId(null)} />
     <ConfirmModal open={Boolean(statusTarget)} title={statusTarget?.isActive ? 'ปิดใช้งานคลัง' : 'เปิดใช้งานคลัง'} description="ข้อมูลจะไม่ถูกลบและสามารถเปิดใช้งานกลับมาได้" onClose={() => { setStatusTarget(null); status.reset() }} footer={<><Button variant="ghost" onClick={() => setStatusTarget(null)}>ยกเลิก</Button><Button variant={statusTarget?.isActive ? 'destructive' : 'default'} disabled={status.isPending} onClick={() => statusTarget && status.mutate(statusTarget)}>{status.isPending ? 'กำลังบันทึก…' : statusTarget?.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</Button></>}>{status.isError ? <InlineError error={status.error} /> : null}<p>คลัง: <strong>{statusTarget?.code} · {statusTarget?.name}</strong></p></ConfirmModal>
@@ -41,7 +47,6 @@ export function WarehousePage() {
 }
 
 function WarehouseFormModal({ open, warehouseId, onClose }: { open: boolean; warehouseId: string | null; onClose: () => void }) {
-  const { session } = useSession()
   const [form, setForm] = useState<WarehouseInput>(emptyForm)
   const [errors, setErrors] = useState<Partial<Record<keyof WarehouseInput, string>>>({})
   const details = useQuery({ queryKey: ['warehouse', warehouseId], queryFn: () => getWarehouse(warehouseId!), enabled: open && Boolean(warehouseId) })

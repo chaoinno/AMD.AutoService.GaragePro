@@ -14,6 +14,8 @@ import { CatalogPage } from './features/catalog/CatalogPage'
 import { SupplierPage } from './features/master-data/SupplierPage'
 import { WarehousePage } from './features/master-data/WarehousePage'
 import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
+import { PurchasingPage } from './features/purchasing/PurchasingPage'
+import { InventoryPage } from './features/purchasing/InventoryPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
           <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
+          <Route path="/purchasing" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
+          <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

@@ -112,6 +112,10 @@ public sealed class CatalogService : ICatalogService
         if (await repository.CodeExistsAsync(currentUser.ShardKey, currentUser.BranchId, normalized.Code, id, ct))
             return Result<CatalogManagementItemDto>.Fail("CATALOG_CODE_DUPLICATE", "รหัสสินค้านี้มีอยู่แล้วในสาขาปัจจุบัน", "code");
 
+        if ((item.StockManaged || item.PurchasingLocked) && (item.OnHand != normalized.OnHand || item.OnOrder != normalized.OnOrder ||
+            item.Damaged != normalized.Damaged || item.Reserved != normalized.Reserved || item.Type != normalized.Type || item.Unit != normalized.Unit))
+            return Result<CatalogManagementItemDto>.Fail("CATALOG_STOCK_LOCKED", "สินค้านี้เริ่มใช้ระบบจัดซื้อ/สต็อกแล้ว กรุณาจัดการยอดผ่านโมดูลสต็อก และคงประเภทกับหน่วยเดิม");
+
         item.Code = normalized.Code;
         item.Type = normalized.Type;
         item.Name = normalized.Name;
@@ -156,7 +160,7 @@ public sealed class CatalogService : ICatalogService
         item.Type == LineType.Part ? "อะไหล่" : "ค่าแรง", item.Name, item.Compatibility,
         item.Unit, item.Price, currentUser.CanSeeCost ? item.Cost : null, item.StandardHours,
         item.OnHand, item.Reserved, item.OnOrder, item.Damaged, item.Available, item.EtaNote, item.IsActive,
-        item.CategoryId, item.WarehouseId);
+        item.CategoryId, item.WarehouseId, item.StockManaged || item.PurchasingLocked);
 
     private ActivityEvent Event(CatalogItem item, string eventType, string description) => new()
     {

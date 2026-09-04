@@ -1,0 +1,26 @@
+.purchase-tabs, .purchase-actions, .purchase-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.purchase-filters { display: flex; align-items: center; gap: 16px; padding: 18px; margin: 18px 0; }
+.purchase-filters .input-with-icon { flex: 1; }
+.purchase-filters > select { max-width: 240px; }
+.purchase-sub { display: block; color: #64748b; margin-top: 5px; font-size: 12px; }
+.purchase-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 10px; font-size: 12px; background: #f1f5f9; color: #475569; white-space: nowrap; }
+.purchase-status--pending, .purchase-status--partial { background: #fff7ed; color: #9a3412; }
+.purchase-status--approved, .purchase-status--complete, .purchase-status--converted { background: #ecfdf5; color: #047857; }
+.purchase-status--sent { background: #eff6ff; color: #1d4ed8; }
+.purchase-status--cancelled { background: #fff1f2; color: #be123c; }
+.purchase-pagination { justify-content: flex-end; }
+.purchase-pagination > span { margin-right: auto; color: #64748b; }
+.purchase-empty { padding: 30px; text-align: center; color: #64748b; }
+.purchase-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.purchase-picker { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 16px; margin: 20px 0; }
+.purchase-table-scroll { overflow-x: auto; margin: 16px 0; }
+.purchase-lines input[type=number] { min-width: 90px; max-width: 130px; }
+.purchase-lines td:first-child { min-width: 180px; }
+.purchase-total { display: flex; justify-content: flex-end; align-items: center; gap: 20px; padding: 18px; background: #f8fafc; border-radius: 10px; }
+.purchase-total strong { font-size: 20px; }
+.purchase-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 18px; background: #f8fafc; border-radius: 10px; }
+.purchase-summary span { display: inline-flex; align-items: center; gap: 6px; }
+.purchase-detail > p { margin: 18px 0; }
+.purchase-confirm { display: grid; gap: 16px; border: 1px solid #bfdbfe; background: #f8fbff; padding: 20px; border-radius: 12px; margin: 20px 0; }
+.purchase-receipt { display: grid; gap: 6px; padding: 16px 0; border-bottom: 1px solid #e2e8f0; }
+.purchase-receipt span { color: #64748b; font-size: 13px; }

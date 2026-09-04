@@ -14,6 +14,8 @@ import {
   Truck,
   Warehouse,
   FolderTree,
+  ShoppingCart,
+  Boxes,
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router'
@@ -39,6 +41,13 @@ const navGroups = [
   {
     label: 'Workplace',
     items: [{ to: '/jobs', icon: Wrench, label: 'จ๊อบ' }],
+  },
+  {
+    label: 'Purchasing & Stock',
+    items: [
+      { to: '/purchasing', icon: ShoppingCart, label: 'จัดซื้อ PR / PO' },
+      { to: '/inventory', icon: Boxes, label: 'สต็อก FIFO' },
+    ],
   },
   {
     label: 'Reports',

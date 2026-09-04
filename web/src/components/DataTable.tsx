@@ -1,13 +1,16 @@
 import {
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getSortedRowModel,
   useReactTable,
   type ColumnDef,
   type SortingState,
+  type ExpandedState,
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react'
 import { useState } from 'react'
+import { compareTableValues } from '../lib/tableSort'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 
 type DataTableProps<T> = {
@@ -16,22 +19,35 @@ type DataTableProps<T> = {
   onRowClick?: (row: T) => void
   getRowLabel?: (row: T) => string
   sortable?: boolean
+  sortScope?: 'page' | 'loaded'
+  getSubRows?: (row: T) => T[] | undefined
+  getRowId?: (row: T) => string
 }
 
-export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable = false }: DataTableProps<T>) {
+export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable = false, sortScope, getSubRows, getRowId }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [expanded, setExpanded] = useState<ExpandedState>({})
   const table = useReactTable({
     data,
     columns,
-    state: { sorting },
+    state: { sorting, expanded },
+    onExpandedChange: setExpanded,
+    getSubRows,
+    getRowId,
+    getExpandedRowModel: getExpandedRowModel(),
     onSortingChange: setSorting,
     enableSorting: sortable,
+    defaultColumn: {
+      sortingFn: (a, b, id) => compareTableValues(a.getValue(id), b.getValue(id)),
+      sortDescFirst: false,
+    },
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
 
   return (
     <div className="data-table-wrap">
+      {sortable && sortScope && <p className="data-table__scope">กดหัวคอลัมน์เพื่อเรียงข้อมูล{sortScope === 'page' ? 'ในหน้าปัจจุบัน' : 'ที่โหลดแล้ว'}</p>}
       <Table className="data-table">
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -44,12 +60,13 @@ export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable 
                     ? 'ascending'
                     : header.column.getIsSorted() === 'desc'
                       ? 'descending'
-                      : undefined}
+                      : header.column.getCanSort() ? 'none' : undefined}
                 >
                   {header.isPlaceholder ? null : header.column.getCanSort() ? (
                     <button
                       type="button"
                       className="data-table__sort"
+                      title={header.column.getNextSortingOrder() === 'asc' ? 'เรียงจากน้อยไปมาก' : header.column.getNextSortingOrder() === 'desc' ? 'เรียงจากมากไปน้อย' : 'ยกเลิกการเรียง'}
                       onClick={header.column.getToggleSortingHandler()}
                     >
                       {flexRender(header.column.columnDef.header, header.getContext())}
