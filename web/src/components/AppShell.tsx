@@ -11,6 +11,9 @@ import {
   Users,
   Wrench,
   UserCog,
+  Truck,
+  Warehouse,
+  FolderTree,
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router'
@@ -48,6 +51,9 @@ const navGroups = [
       { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
       { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
       { to: '/products', icon: Package, label: 'สินค้า' },
+      { to: '/suppliers', icon: Truck, label: 'ซัพพลายเออร์' },
+      { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
+      { to: '/catalog-categories', icon: FolderTree, label: 'หมวดหมู่สินค้า' },
     ],
   },
 ]

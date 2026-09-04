@@ -71,6 +71,11 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
   const { open, onOpenChange, titleId, descriptionId } = useDialogContext()
   const contentRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
+  const onOpenChangeRef = useRef(onOpenChange)
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  }, [onOpenChange])
 
   useEffect(() => {
     if (!open) return
@@ -83,7 +88,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       ;(first ?? contentRef.current)?.focus()
     })
     const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChange(false)
+      if (event.key === 'Escape') onOpenChangeRef.current(false)
     }
     document.addEventListener('keydown', handleEscape)
     return () => {
@@ -92,7 +97,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       document.body.classList.remove('modal-open')
       previousFocus.current?.focus()
     }
-  }, [onOpenChange, open])
+  }, [open])
 
   if (!open) return null
 

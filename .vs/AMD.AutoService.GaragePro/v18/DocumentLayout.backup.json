@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\controllers\\staffscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\controllers\\staffscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\controllers\\catalogcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\controllers\\catalogcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|c:\\users\\kusum\\source\\repos\\amd.autoservice.garagepro\\backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
       "RelativeMoniker": "D:0:0:{36B2245A-65F8-4112-8787-0D0D9BCF031B}|backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj|solutionrelative:backend\\amd.autoservice.garagepro.api\\properties\\launchsettings.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     },
@@ -26,47 +34,8 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 4,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "DependencyInjection.cs",
-              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
-              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
-              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
-              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
-              "ViewState": "AgIAAC4AAAAAAAAAAAAAACcAAAA9AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-26T03:18:52.342Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "launchSettings.json",
-              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
-              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
-              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
-              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-08-26T03:10:47.204Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "appsettings.json",
-              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
-              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
-              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
-              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
-              "WhenOpened": "2026-08-26T03:06:48.753Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
@@ -85,16 +54,78 @@
             },
             {
               "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "StaffsController.cs",
+              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Controllers\\StaffsController.cs",
+              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\Controllers\\StaffsController.cs",
+              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Controllers\\StaffsController.cs",
+              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\Controllers\\StaffsController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAByAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-02T14:39:46.194Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "CatalogController.cs",
+              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Controllers\\CatalogController.cs",
+              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\Controllers\\CatalogController.cs",
+              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Controllers\\CatalogController.cs",
+              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\Controllers\\CatalogController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-09-02T14:39:43.91Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 3,
-              "Title": "AMD.AutoService.GaragePro.API",
+              "Title": "DependencyInjection.cs",
+              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
+              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
+              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
+              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.Infrastructure\\DependencyInjection.cs",
+              "ViewState": "AgIAAC4AAAAAAAAAAAAAACcAAAA9AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-08-26T03:18:52.342Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "launchSettings.json",
+              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
+              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
+              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
+              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\Properties\\launchSettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-08-26T03:10:47.204Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "appsettings.json",
+              "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
+              "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
+              "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
+              "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\appsettings.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2026-08-26T03:06:48.753Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AMD.AutoService.GaragePro.API.csproj",
               "DocumentMoniker": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",
               "RelativeDocumentMoniker": "backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",
               "ToolTip": "C:\\Users\\kusum\\source\\repos\\AMD.AutoService.GaragePro\\backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",
               "RelativeToolTip": "backend\\AMD.AutoService.GaragePro.API\\AMD.AutoService.GaragePro.API.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-08-26T03:06:15.154Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-08-26T03:06:15.154Z"
             }
           ]
         }

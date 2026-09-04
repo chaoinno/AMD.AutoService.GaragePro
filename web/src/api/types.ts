@@ -469,6 +469,8 @@ export type CatalogManagementItem = CatalogItem & {
   typeLabelTh: string
   damaged: number
   isActive: boolean
+  categoryId: string | null
+  warehouseId: string | null
 }
 
 export type CatalogItemInput = {
@@ -485,6 +487,82 @@ export type CatalogItemInput = {
   onOrder: number
   damaged: number
   etaNote?: string
+  categoryId?: string
+  warehouseId?: string
+}
+
+export type CatalogItemSupplier = {
+  id: string
+  catalogItemId: string
+  supplierId: string
+  supplierCode: string
+  supplierName: string
+  supplierItemCode: string | null
+  supplierCost: number | null
+  leadTimeDays: number | null
+  minOrderQty: number | null
+  isPreferred: boolean
+  isActive: boolean
+  createdDate: string
+  lastUpdated: string
+}
+
+export type CatalogItemSupplierInput = {
+  supplierItemCode?: string
+  supplierCost: number
+  leadTimeDays?: number
+  minOrderQty?: number
+  isPreferred: boolean
+  isActive: boolean
+}
+
+export type Supplier = {
+  id: string
+  code: string
+  name: string
+  contactName: string | null
+  phone: string | null
+  email: string | null
+  address: string | null
+  taxId: string | null
+  paymentTerms: string | null
+  note: string | null
+  isActive: boolean
+  createdDate: string
+  lastUpdated: string
+}
+export type SupplierInput = Omit<Supplier, 'id' | 'isActive' | 'createdDate' | 'lastUpdated'>
+
+export type Warehouse = {
+  id: string
+  code: string
+  name: string
+  legacyShardKey: string | null
+  legacyBranchId: number | null
+  address: string | null
+  isActive: boolean
+  createdDate: string
+  lastUpdated: string
+}
+export type WarehouseInput = { code: string; name: string; address?: string }
+
+export type CatalogCategory = {
+  id: string
+  code: string
+  name: string
+  parentCategoryId: string | null
+  sortOrder: number | null
+  hasChildren: boolean
+  isActive: boolean
+  createdDate: string
+  lastUpdated: string
+  children?: CatalogCategory[]
+}
+export type CatalogCategoryInput = {
+  code: string
+  name: string
+  parentCategoryId?: string
+  sortOrder?: number
 }
 
 export type Technician = {

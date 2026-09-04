@@ -11,6 +11,9 @@ import { CustomerPage } from './features/customers/CustomerPage'
 import { VehiclePage } from './features/customers/VehiclePage'
 import { StaffPage } from './features/staff/StaffPage'
 import { CatalogPage } from './features/catalog/CatalogPage'
+import { SupplierPage } from './features/master-data/SupplierPage'
+import { WarehousePage } from './features/master-data/WarehousePage'
+import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -33,6 +36,9 @@ export default function App() {
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
           <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
+          <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
+          <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
+          <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

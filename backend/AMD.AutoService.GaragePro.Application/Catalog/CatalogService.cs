@@ -16,8 +16,22 @@ public interface ICatalogService
     Task<Result<bool>> SetStatusAsync(Guid id, CatalogStatusRequest request, CancellationToken ct = default);
 }
 
-public sealed class CatalogService(ICatalogRepository repository, ICurrentUser currentUser) : ICatalogService
+public sealed class CatalogService : ICatalogService
 {
+    private readonly ICatalogRepository repository;
+    private readonly ICurrentUser currentUser;
+    private readonly IMasterDataRepository? masterData;
+
+    public CatalogService(ICatalogRepository repository, ICurrentUser currentUser)
+        : this(repository, currentUser, null) { }
+
+    public CatalogService(ICatalogRepository repository, ICurrentUser currentUser, IMasterDataRepository? masterData)
+    {
+        this.repository = repository;
+        this.currentUser = currentUser;
+        this.masterData = masterData;
+    }
+
     public async Task<Result<PagedResult<CatalogManagementItemDto>>> SearchAsync(
         CatalogManagementQuery query, CancellationToken ct = default)
     {
@@ -51,6 +65,8 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
         var normalized = Normalize(request);
         var error = CatalogValidator.Validate(normalized);
         if (error is not null) return Result<CatalogManagementItemDto>.Fail(error);
+        var referenceError = await ValidateReferencesAsync(normalized.CategoryId, normalized.WarehouseId, ct);
+        if (referenceError is not null) return Result<CatalogManagementItemDto>.Fail(referenceError);
         if (await repository.CodeExistsAsync(currentUser.ShardKey, currentUser.BranchId, normalized.Code, null, ct))
             return Result<CatalogManagementItemDto>.Fail("CATALOG_CODE_DUPLICATE", "รหัสสินค้านี้มีอยู่แล้วในสาขาปัจจุบัน", "code");
 
@@ -70,7 +86,9 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
             Damaged = normalized.Damaged,
             EtaNote = normalized.EtaNote,
             LegacyShardKey = currentUser.ShardKey,
-            LegacyBranchId = currentUser.BranchId
+            LegacyBranchId = currentUser.BranchId,
+            CategoryId = normalized.CategoryId,
+            WarehouseId = normalized.WarehouseId
         };
         await repository.AddAsync(item, ct);
         await repository.AddEventAsync(Event(item, "catalog.created", $"เพิ่มสินค้า {item.Code} {item.Name}"), ct);
@@ -86,6 +104,8 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
         var normalized = Normalize(request);
         var error = CatalogValidator.Validate(normalized);
         if (error is not null) return Result<CatalogManagementItemDto>.Fail(error);
+        var referenceError = await ValidateReferencesAsync(normalized.CategoryId, normalized.WarehouseId, ct);
+        if (referenceError is not null) return Result<CatalogManagementItemDto>.Fail(referenceError);
         var item = await repository.GetAsync(currentUser.ShardKey, currentUser.BranchId, id, ct);
         if (item is null)
             return Result<CatalogManagementItemDto>.Fail("CATALOG_NOT_FOUND", "ไม่พบสินค้าหรือรายการนี้ไม่ได้อยู่ในสาขาปัจจุบัน");
@@ -105,6 +125,8 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
         item.OnOrder = normalized.OnOrder;
         item.Damaged = normalized.Damaged;
         item.EtaNote = normalized.EtaNote;
+        item.CategoryId = normalized.CategoryId;
+        item.WarehouseId = normalized.WarehouseId;
         await repository.AddEventAsync(Event(item, "catalog.updated", $"แก้ไขสินค้า {item.Code} {item.Name}"), ct);
         await repository.SaveChangesAsync(ct);
         return Result<CatalogManagementItemDto>.Ok(Map(item));
@@ -133,7 +155,8 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
         item.Id, item.Code, item.Type.ToString().ToLowerInvariant(),
         item.Type == LineType.Part ? "อะไหล่" : "ค่าแรง", item.Name, item.Compatibility,
         item.Unit, item.Price, currentUser.CanSeeCost ? item.Cost : null, item.StandardHours,
-        item.OnHand, item.Reserved, item.OnOrder, item.Damaged, item.Available, item.EtaNote, item.IsActive);
+        item.OnHand, item.Reserved, item.OnOrder, item.Damaged, item.Available, item.EtaNote, item.IsActive,
+        item.CategoryId, item.WarehouseId);
 
     private ActivityEvent Event(CatalogItem item, string eventType, string description) => new()
     {
@@ -166,4 +189,26 @@ public sealed class CatalogService(ICatalogRepository repository, ICurrentUser c
     }
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private async Task<ApiError?> ValidateReferencesAsync(Guid? categoryId, Guid? warehouseId, CancellationToken ct)
+    {
+        if (masterData is null && (categoryId.HasValue || warehouseId.HasValue))
+            return new("CATALOG_REFERENCE_UNAVAILABLE", "ยังไม่สามารถตรวจสอบหมวดหมู่หรือคลังได้");
+
+        if (categoryId.HasValue)
+        {
+            var category = await masterData!.GetCategoryAsync(categoryId.Value, ct);
+            if (category is null || !category.IsActive)
+                return new("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้าที่เปิดใช้งาน", "categoryId");
+            // [BIZ] สินค้าผูกได้เฉพาะหมวดปลายทาง (leaf) เท่านั้น
+            if (await masterData.CategoryHasChildrenAsync(categoryId.Value, activeOnly: false, ct))
+                return new("CATEGORY_NOT_LEAF", "เลือกได้เฉพาะหมวดหมู่ที่ไม่มีหมวดย่อย", "categoryId");
+        }
+
+        if (warehouseId.HasValue &&
+            await masterData!.GetWarehouseAsync(currentUser.ShardKey, currentUser.BranchId, warehouseId.Value, ct) is not { IsActive: true })
+            return new("WAREHOUSE_NOT_FOUND", "ไม่พบคลังที่เปิดใช้งานในสาขาปัจจุบัน", "warehouseId");
+
+        return null;
+    }
 }

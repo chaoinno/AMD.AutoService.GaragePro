@@ -22,6 +22,10 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<IntakeChecklist> IntakeChecklists => Set<IntakeChecklist>();
     public DbSet<IntakeChecklistItem> IntakeChecklistItems => Set<IntakeChecklistItem>();
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<Warehouse> Warehouses => Set<Warehouse>();
+    public DbSet<CatalogCategory> CatalogCategories => Set<CatalogCategory>();
+    public DbSet<CatalogItemSupplier> CatalogItemSuppliers => Set<CatalogItemSupplier>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -167,6 +171,10 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.StandardHours).HasColumnType("decimal(6,2)");
             e.Ignore(x => x.Available);   // computed ใน memory — [BIZ] OnHand − Reserved
             e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Code }).IsUnique();
+            e.HasOne(x => x.Category).WithMany(x => x.CatalogItems)
+             .HasForeignKey(x => x.CategoryId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.Warehouse).WithMany(x => x.CatalogItems)
+             .HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
 
         b.Entity<Shift>(e =>
@@ -269,5 +277,7 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.HasIndex(x => new { x.JobId, x.OccurredAt });
             e.HasIndex(x => x.EntityId);
         });
+
+        b.ApplyConfigurationsFromAssembly(typeof(ServiceDbContext).Assembly);
     }
 }

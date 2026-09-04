@@ -34,5 +34,11 @@ public class CatalogItem
 
     public bool IsActive { get; set; } = true;
 
+    public Guid? CategoryId { get; set; }
+    public CatalogCategory? Category { get; set; }
+    public Guid? WarehouseId { get; set; }
+    public Warehouse? Warehouse { get; set; }
+    public ICollection<CatalogItemSupplier> Suppliers { get; set; } = [];
+
     public int Available => OnHand - Reserved;
 }

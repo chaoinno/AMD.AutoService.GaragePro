@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { AlertTriangle, Boxes, CircleOff, Package, Pencil, Plus, Search, ShieldAlert, Wrench } from 'lucide-react'
+import { AlertTriangle, Boxes, CircleOff, Package, Pencil, Plus, Search, ShieldAlert, Trash2, Wrench } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -14,8 +14,16 @@ import {
   updateCatalogItem,
   type CatalogFilters,
 } from '../../api/catalog'
+import {
+  getCatalogCategories,
+  getCatalogItemSuppliers,
+  getSuppliers,
+  getWarehouses,
+  removeCatalogItemSupplier,
+  upsertCatalogItemSupplier,
+} from '../../api/masterData'
 import { isApiError, isForbiddenError } from '../../api/client'
-import type { CatalogItemInput, CatalogManagementItem } from '../../api/types'
+import type { CatalogCategory, CatalogItemInput, CatalogItemSupplier, CatalogItemSupplierInput, CatalogManagementItem, PagedResult, Supplier } from '../../api/types'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
@@ -51,6 +59,8 @@ const catalogSchema = z.object({
   onOrder: nonNegativeInteger,
   damaged: nonNegativeInteger,
   etaNote: z.string().trim().max(200, 'หมายเหตุต้องยาวไม่เกิน 200 ตัวอักษร'),
+  categoryId: z.string(),
+  warehouseId: z.string(),
 }).superRefine((value, ctx) => {
   if (value.type === 'labor' && (value.standardHours === '' || Number(value.standardHours) <= 0)) {
     ctx.addIssue({ code: 'custom', path: ['standardHours'], message: 'กรุณาระบุชั่วโมงมาตรฐานมากกว่า 0' })
@@ -62,6 +72,18 @@ type CatalogFormValues = z.infer<typeof catalogSchema>
 const emptyForm: CatalogFormValues = {
   code: '', type: 'part', name: '', compatibility: '', unit: 'ชิ้น', cost: '0', price: '0',
   standardHours: '', onHand: '0', reserved: '0', onOrder: '0', damaged: '0', etaNote: '',
+  categoryId: '', warehouseId: '',
+}
+
+function flattenCategories(categories: CatalogCategory[], level = 0): Array<CatalogCategory & { level: number }> {
+  return categories.flatMap((category) => [
+    { ...category, level },
+    ...(category.children ? flattenCategories(category.children, level + 1) : []),
+  ])
+}
+
+function listResult<T>(result: T[] | PagedResult<T> | undefined): T[] {
+  return Array.isArray(result) ? result : result?.items ?? []
 }
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -84,6 +106,10 @@ export function CatalogPage() {
   const effectiveFilters = { ...filters, keyword: debouncedKeyword || undefined }
   const queryClient = useQueryClient()
   const query = useQuery({ queryKey: ['catalog-management', effectiveFilters], queryFn: () => getCatalogItems(effectiveFilters) })
+  const categoriesQuery = useQuery({ queryKey: ['catalog-categories', 'lookup'], queryFn: () => getCatalogCategories() })
+  const warehousesQuery = useQuery({ queryKey: ['warehouses', 'lookup'], queryFn: () => getWarehouses() })
+  const categoryNames = useMemo(() => new Map(flattenCategories(categoriesQuery.data ?? []).map((category) => [category.id, category.name])), [categoriesQuery.data])
+  const warehouseNames = useMemo(() => new Map((warehousesQuery.data ?? []).map((warehouse) => [warehouse.id, warehouse.name])), [warehousesQuery.data])
   const status = useMutation({
     mutationFn: (item: CatalogManagementItem) => setCatalogItemStatus(item.id, !item.isActive),
     onSuccess: () => {
@@ -120,6 +146,14 @@ export function CatalogPage() {
       cell: ({ row }) => <span className="catalog-compatibility">{row.original.compatibility || 'ใช้ได้ทั่วไป'}</span>,
     },
     {
+      id: 'category', header: 'หมวดหมู่', size: 150,
+      cell: ({ row }) => <span>{row.original.categoryId ? categoryNames.get(row.original.categoryId) || 'กำหนดหมวดหมู่แล้ว' : 'ไม่ระบุ'}</span>,
+    },
+    {
+      id: 'warehouse', header: 'คลังหลัก', size: 145,
+      cell: ({ row }) => <span>{row.original.warehouseId ? warehouseNames.get(row.original.warehouseId) || 'กำหนดคลังแล้ว' : 'ไม่ระบุ'}</span>,
+    },
+    {
       id: 'status', header: 'สถานะ', size: 105,
       cell: ({ row }) => row.original.isActive
         ? <Badge className="active-badge">ใช้งาน</Badge>
@@ -132,7 +166,7 @@ export function CatalogPage() {
         <Button size="icon" variant="ghost" disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เปลี่ยนสถานะได้' : row.original.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} aria-label={`${row.original.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${row.original.name}`} onClick={(event) => { event.stopPropagation(); setStatusTarget(row.original) }}><CircleOff /></Button>
       </div>,
     },
-  ], [canManage])
+  ], [canManage, categoryNames, warehouseNames])
 
   let content
   if (query.isPending) content = <StateBlock variant="loading" title="กำลังโหลดรายการสินค้า" reason="ระบบกำลังค้นหาข้อมูลในสาขาปัจจุบัน" actionLabel="โหลดใหม่" onAction={() => void query.refetch()}><SkeletonRows /></StateBlock>
@@ -161,17 +195,30 @@ export function CatalogPage() {
 function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: string | null; onClose: () => void }) {
   const queryClient = useQueryClient()
   const details = useQuery({ queryKey: ['catalog-management-item', itemId], queryFn: () => getCatalogItem(itemId!), enabled: open && Boolean(itemId) })
+  const categoriesQuery = useQuery({ queryKey: ['catalog-categories', 'lookup-with-inactive'], queryFn: () => getCatalogCategories({ includeInactive: true }), enabled: open })
+  const warehousesQuery = useQuery({ queryKey: ['warehouses', 'lookup-with-inactive'], queryFn: () => getWarehouses({ includeInactive: true }), enabled: open })
+  const suppliersQuery = useQuery({ queryKey: ['suppliers', 'lookup-with-inactive'], queryFn: () => getSuppliers({ includeInactive: true, page: 1, pageSize: 200 }), enabled: open })
+  const itemSuppliersQuery = useQuery({ queryKey: ['catalog-item-suppliers', itemId], queryFn: () => getCatalogItemSuppliers(itemId!), enabled: open && Boolean(itemId) })
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CatalogFormValues>({ resolver: zodResolver(catalogSchema), defaultValues: emptyForm })
   const type = watch('type')
+  const selectedCategoryId = watch('categoryId')
+  const selectedWarehouseId = watch('warehouseId')
+  const [linkForm, setLinkForm] = useState({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true })
+  const [editingLink, setEditingLink] = useState<CatalogItemSupplier | null>(null)
+  const [removeLinkTarget, setRemoveLinkTarget] = useState<CatalogItemSupplier | null>(null)
+  const categories = useMemo(() => flattenCategories(categoriesQuery.data ?? []).filter((category) => !category.hasChildren && (category.isActive || category.id === selectedCategoryId)), [categoriesQuery.data, selectedCategoryId])
+  const suppliers = useMemo(() => listResult<Supplier>(suppliersQuery.data).filter((supplier) => supplier.isActive || supplier.id === linkForm.supplierId), [linkForm.supplierId, suppliersQuery.data])
+  const warehouses = useMemo(() => (warehousesQuery.data ?? []).filter((warehouse) => warehouse.isActive || warehouse.id === selectedWarehouseId), [selectedWarehouseId, warehousesQuery.data])
   useEffect(() => {
     if (!open) return
-    if (!itemId) { reset(emptyForm); return }
+    if (!itemId) { reset(emptyForm); setEditingLink(null); setLinkForm({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true }); return }
     const item = details.data
     if (!item) return
     reset({
       code: item.code, type: item.type, name: item.name, compatibility: item.compatibility || '', unit: item.unit,
       cost: String(item.cost ?? 0), price: String(item.price), standardHours: item.standardHours === null ? '' : String(item.standardHours),
       onHand: String(item.onHand), reserved: String(item.reserved), onOrder: String(item.onOrder), damaged: String(item.damaged), etaNote: item.etaNote || '',
+      categoryId: item.categoryId || '', warehouseId: item.warehouseId || '',
     })
   }, [details.data, itemId, open, reset])
   const save = useMutation({
@@ -192,7 +239,44 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
     onOrder: values.type === 'part' ? Number(values.onOrder) : 0,
     damaged: values.type === 'part' ? Number(values.damaged) : 0,
     etaNote: values.type === 'part' ? values.etaNote || undefined : undefined,
+    categoryId: values.categoryId || undefined,
+    warehouseId: values.warehouseId || undefined,
   }))
+  const linkMutation = useMutation({
+    mutationFn: ({ supplierId, input }: { supplierId: string; input: CatalogItemSupplierInput }) => upsertCatalogItemSupplier(itemId!, supplierId, input),
+    onSuccess: () => {
+      toast.success(editingLink ? 'แก้ไขซัพพลายเออร์ของสินค้าแล้ว' : 'เพิ่มซัพพลายเออร์ของสินค้าแล้ว')
+      void queryClient.invalidateQueries({ queryKey: ['catalog-item-suppliers', itemId] })
+      setEditingLink(null)
+      setLinkForm({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true })
+    },
+  })
+  const unlinkMutation = useMutation({
+    mutationFn: (supplierId: string) => removeCatalogItemSupplier(itemId!, supplierId),
+    onSuccess: () => {
+      toast.success('ยกเลิกการผูกซัพพลายเออร์แล้ว')
+      setRemoveLinkTarget(null)
+      void queryClient.invalidateQueries({ queryKey: ['catalog-item-suppliers', itemId] })
+    },
+  })
+  const saveLink = () => {
+    if (!itemId || !linkForm.supplierId) return
+    linkMutation.mutate({
+      supplierId: linkForm.supplierId,
+      input: {
+        supplierItemCode: linkForm.supplierItemCode.trim() || undefined,
+        supplierCost: Number(linkForm.supplierCost || 0),
+        leadTimeDays: linkForm.leadTimeDays === '' ? undefined : Number(linkForm.leadTimeDays),
+        minOrderQty: linkForm.minOrderQty === '' ? undefined : Number(linkForm.minOrderQty),
+        isPreferred: linkForm.isPreferred,
+        isActive: linkForm.isActive,
+      },
+    })
+  }
+  const editLink = (link: CatalogItemSupplier) => {
+    setEditingLink(link)
+    setLinkForm({ supplierId: link.supplierId, supplierItemCode: link.supplierItemCode || '', supplierCost: link.supplierCost === null ? '0' : String(link.supplierCost), leadTimeDays: link.leadTimeDays === null ? '' : String(link.leadTimeDays), minOrderQty: link.minOrderQty === null ? '' : String(link.minOrderQty), isPreferred: link.isPreferred, isActive: link.isActive })
+  }
   const close = () => { save.reset(); onClose() }
 
   return <ConfirmModal open={open} title={itemId ? 'แก้ไขสินค้า' : 'เพิ่มสินค้า'} description="ข้อมูลจะใช้ในแคตตาล็อกใบเสนอราคาของสาขาปัจจุบัน" onClose={close} size="large" footer={<><Button variant="ghost" onClick={close}>ยกเลิก</Button><Button type="submit" form="catalog-form" disabled={save.isPending || Boolean(itemId && details.isPending)}>{save.isPending ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}</Button></>}>
@@ -203,6 +287,8 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
         <Field label="ชื่อสินค้า / บริการ *" error={errors.name?.message} wide><Input maxLength={300} {...register('name')} /></Field>
         <Field label="รุ่นรถที่รองรับ / รายละเอียด" error={errors.compatibility?.message} wide><Textarea rows={3} maxLength={500} {...register('compatibility')} /></Field>
         <Field label="หน่วยนับ *" error={errors.unit?.message}><Input maxLength={40} placeholder={type === 'labor' ? 'งาน' : 'ชิ้น / ชุด / ลิตร'} {...register('unit')} /></Field>
+        <Field label="หมวดหมู่สินค้า" error={errors.categoryId?.message}><Select {...register('categoryId')} disabled={categoriesQuery.isPending}><option value="">ไม่ระบุหมวดหมู่</option>{categories.map((category) => <option key={category.id} value={category.id}>{'— '.repeat(category.level)}{category.name}{category.isActive ? '' : ' (ปิดใช้งาน)'}</option>)}</Select>{categoriesQuery.isError ? <small className="field-hint">โหลดหมวดหมู่ไม่สำเร็จ</small> : null}</Field>
+        <Field label="คลังหลัก" error={errors.warehouseId?.message}><Select {...register('warehouseId')} disabled={warehousesQuery.isPending}><option value="">ไม่ระบุคลัง</option>{warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name} ({warehouse.code}){warehouse.isActive ? '' : ' (ปิดใช้งาน)'}</option>)}</Select>{warehousesQuery.isError ? <small className="field-hint">โหลดคลังไม่สำเร็จ</small> : null}</Field>
         {type === 'labor' ? <Field label="ชั่วโมงมาตรฐาน *" error={errors.standardHours?.message}><Input className="money" type="number" min="0.01" max="9999.99" step="0.01" {...register('standardHours')} /></Field> : null}
       </div></section>
       <section><h3>ราคา</h3><div className="form-grid">
@@ -216,8 +302,27 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
         <Field label="ชำรุด" error={errors.damaged?.message}><Input type="number" min="0" step="1" {...register('damaged')} /></Field>
         <Field label="หมายเหตุกำหนดรับสินค้า" error={errors.etaNote?.message} wide><Input maxLength={200} placeholder="เช่น สั่งได้ภายใน 2 วัน" {...register('etaNote')} /></Field>
       </div><p className="stock-formula"><Boxes /> จำนวนพร้อมใช้คำนวณจาก “คงคลัง − จองแล้ว” โดยไม่รวมกำลังสั่งซื้อและของชำรุด</p></section> : null}
+      <section><div className="section-heading-row"><div><h3>ซัพพลายเออร์ของสินค้า</h3><p className="section-help">กำหนดรหัสสินค้า ต้นทุน และเงื่อนไขสั่งซื้อแยกตามซัพพลายเออร์</p></div>{itemId ? <Badge variant="outline">{itemSuppliersQuery.data?.length ?? 0} ราย</Badge> : null}</div>
+        {!itemId ? <p className="section-help">บันทึกสินค้าให้เรียบร้อยก่อน จึงจะเพิ่มซัพพลายเออร์ได้</p> : <>
+          <div className="supplier-link-form form-grid">
+            <Field label="ซัพพลายเออร์ *"><Select value={linkForm.supplierId} onChange={(event) => setLinkForm((old) => ({ ...old, supplierId: event.target.value }))} disabled={suppliersQuery.isPending}><option value="">เลือกซัพพลายเออร์</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name} ({supplier.code})</option>)}</Select></Field>
+            <Field label="รหัสสินค้าซัพพลายเออร์"><Input value={linkForm.supplierItemCode} maxLength={60} onChange={(event) => setLinkForm((old) => ({ ...old, supplierItemCode: event.target.value }))} /></Field>
+            <Field label="ต้นทุนจากรายนี้ (บาท) *"><Input className="money" type="number" min="0" step="0.01" value={linkForm.supplierCost} onChange={(event) => setLinkForm((old) => ({ ...old, supplierCost: event.target.value }))} /></Field>
+            <Field label="ระยะเวลาส่ง (วัน)"><Input type="number" min="0" step="1" value={linkForm.leadTimeDays} onChange={(event) => setLinkForm((old) => ({ ...old, leadTimeDays: event.target.value }))} /></Field>
+            <Field label="ขั้นต่ำต่อครั้ง"><Input type="number" min="0" step="1" value={linkForm.minOrderQty} onChange={(event) => setLinkForm((old) => ({ ...old, minOrderQty: event.target.value }))} /></Field>
+            <div className="supplier-link-flags"><label className="filter-check"><input type="checkbox" checked={linkForm.isPreferred} onChange={(event) => setLinkForm((old) => ({ ...old, isPreferred: event.target.checked }))} /> ซัพพลายเออร์หลัก</label><label className="filter-check"><input type="checkbox" checked={linkForm.isActive} onChange={(event) => setLinkForm((old) => ({ ...old, isActive: event.target.checked }))} /> ใช้งาน</label></div>
+            <div className="supplier-link-actions"><Button type="button" size="sm" title={!linkForm.supplierId ? 'เลือกซัพพลายเออร์ก่อน' : linkForm.supplierCost.trim() === '' ? 'กรอกต้นทุนก่อน' : undefined} onClick={saveLink} disabled={!linkForm.supplierId || linkForm.supplierCost.trim() === '' || linkMutation.isPending}>{linkMutation.isPending ? 'กำลังบันทึก…' : editingLink ? 'บันทึกการแก้ไข' : 'เพิ่มซัพพลายเออร์'}</Button>{editingLink ? <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingLink(null); setLinkForm({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true }) }}>ยกเลิกแก้ไข</Button> : null}</div>
+          </div>
+          {suppliersQuery.isError ? <InlineError error={suppliersQuery.error} /> : null}
+          {linkMutation.isError ? <InlineError error={linkMutation.error} /> : null}
+          {itemSuppliersQuery.isPending ? <SkeletonRows count={2} /> : itemSuppliersQuery.isError ? <InlineError error={itemSuppliersQuery.error} /> : itemSuppliersQuery.data?.length ? <div className="supplier-link-table-wrap"><table className="supplier-link-table"><thead><tr><th>ซัพพลายเออร์</th><th>รหัสภายนอก</th><th>ต้นทุน</th><th>ส่ง/ขั้นต่ำ</th><th>สถานะ</th><th /></tr></thead><tbody>{itemSuppliersQuery.data.map((link) => <tr key={link.id}><td><strong>{link.supplierName}</strong><small>{link.supplierCode}</small></td><td>{link.supplierItemCode || '—'}</td><td><Money value={link.supplierCost} /></td><td>{link.leadTimeDays ?? '—'} วัน / {link.minOrderQty ?? '—'}</td><td>{link.isPreferred ? <Badge className="active-badge">หลัก</Badge> : null} {link.isActive ? <Badge variant="outline">ใช้งาน</Badge> : <Badge variant="outline"><CircleOff /> ปิดใช้</Badge>}</td><td><div className="row-actions"><Button type="button" size="icon" variant="ghost" title="แก้ไขการผูก" onClick={() => editLink(link)}><Pencil /></Button><Button type="button" size="icon" variant="ghost" title="ยกเลิกการผูก" onClick={() => setRemoveLinkTarget(link)}><Trash2 /></Button></div></td></tr>)}</tbody></table></div> : <p className="section-help">ยังไม่ได้ผูกซัพพลายเออร์</p>}
+        </>}
+      </section>
       {save.isError ? <InlineError error={save.error} /> : null}
     </form>}
+    <ConfirmModal open={Boolean(removeLinkTarget)} title="ยกเลิกการผูกซัพพลายเออร์" description="ข้อมูลการผูกจะถูกลบออกจากสินค้านี้" onClose={() => setRemoveLinkTarget(null)} size="small" footer={<><Button variant="ghost" onClick={() => setRemoveLinkTarget(null)}>ยกเลิก</Button><Button variant="destructive" disabled={unlinkMutation.isPending} onClick={() => removeLinkTarget && unlinkMutation.mutate(removeLinkTarget.supplierId)}>{unlinkMutation.isPending ? 'กำลังลบ…' : 'ยืนยันลบ'}</Button></>}>
+      <p>ซัพพลายเออร์: <strong>{removeLinkTarget?.supplierName}</strong></p>{unlinkMutation.isError ? <InlineError error={unlinkMutation.error} /> : null}
+    </ConfirmModal>
   </ConfirmModal>
 }
 
