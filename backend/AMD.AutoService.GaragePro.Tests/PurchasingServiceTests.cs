@@ -21,10 +21,14 @@ public class PurchasingServiceTests
         Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version), default)).Error?.Code);
         f.User.Role = UserRole.Manager;
         pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version), default)).Data!;
+        Assert.Equal(f.User.UserName, pr.ApprovedByName);
+        Assert.NotNull(pr.ApprovedAt);
         var po = await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default);
         Assert.True(po.Success); Assert.Equal(pr.Id, po.Data!.SourceRequestId);
         Assert.False((await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Success);
         Assert.Single(f.Repo.All<PurchaseDocument>().Where(x => x.Kind == "PO"));
+        Assert.Equal(0, (await f.Service.SearchAsync("PR", null, null, 1, 25, default)).Data!.TotalItems);
+        Assert.Equal(1, (await f.Service.SearchAsync("PO", null, null, 1, 25, default)).Data!.TotalItems);
         var changed = f.Input() with { Version = po.Data.Version, Lines = [new(f.Item.Id, 99, 20)] };
         Assert.False((await f.Service.SaveAsync("PO", po.Data.Id, changed, default)).Success);
     }
@@ -181,8 +185,9 @@ public class PurchasingServiceTests
             catch { data = snapshot.Select(x => JsonSerializer.Deserialize(x.Json, x.Type)!).ToList(); throw; }
         }
         public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().SingleOrDefault(x => x.Id == id && x.Kind == kind && Scope(x.LegacyShardKey, x.LegacyBranchId)));
+        public Task<ActivityEvent?> ApprovalAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<ActivityEvent>().Where(x => x.EntityId == id && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve").OrderByDescending(x => x.OccurredAt).FirstOrDefault());
         public Task<(IReadOnlyList<PurchaseDocument> Items, int Total)> SearchAsync(string kind, string? q, string? status, int page, int pageSize, CancellationToken ct)
-        { var list = All<PurchaseDocument>().Where(x => x.Kind == kind && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList(); return Task.FromResult(((IReadOnlyList<PurchaseDocument>)list, list.Count)); }
+        { var list = All<PurchaseDocument>().Where(x => x.Kind == kind && (kind != "PR" || x.Status != "converted") && (status == null || x.Status == status) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList(); return Task.FromResult(((IReadOnlyList<PurchaseDocument>)list, list.Count)); }
         public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Task.FromResult(All<CatalogItem>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey!, x.LegacyBranchId ?? 0)));
         public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id));

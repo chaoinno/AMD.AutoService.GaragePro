@@ -3,7 +3,7 @@ import type { PagedResult } from './types'
 
 export type PurchaseKind = 'PR' | 'PO'
 export type PurchaseLine = { id: string; catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number; receivedGood: number; receivedDamaged: number; outstanding: number }
-export type Purchase = { id: string; kind: PurchaseKind; number: string; status: string; sourceRequestId: string | null; supplierId: string | null; supplierName: string | null; warehouseId: string; warehouseName: string; requiredDate: string | null; note: string | null; paymentTerms: string | null; cancelReason: string | null; createdByName: string; createdAt: string; updatedAt: string; total: number; version: string; lines: PurchaseLine[] }
+export type Purchase = { id: string; kind: PurchaseKind; number: string; status: string; sourceRequestId: string | null; supplierId: string | null; supplierName: string | null; warehouseId: string; warehouseName: string; requiredDate: string | null; note: string | null; paymentTerms: string | null; cancelReason: string | null; createdByName: string; createdAt: string; approvedByName: string | null; approvedAt: string | null; updatedAt: string; total: number; version: string; lines: PurchaseLine[] }
 export type PurchaseInput = { warehouseId: string; supplierId: string | null; requiredDate: string | null; note: string; paymentTerms: string; version?: string; lines: { catalogItemId: string; quantity: number; unitCost: number }[] }
 export type ReceiptInput = { requestId: string; deliveryNumber: string; lines: { purchaseLineId: string; goodQuantity: number; damagedQuantity: number; unitCost: number; note: string }[] }
 export type Receipt = { id: string; number: string; purchaseOrderId: string; deliveryNumber: string; receivedAt: string; receivedByName: string; lines: ReceiptInput['lines'] }
@@ -13,7 +13,18 @@ export type StockMovement = { id: string; operationId: string; documentNumber: s
 export type StockDetail = { item: StockItem; lots: StockLot[]; movements: StockMovement[] }
 export type IssueInput = { requestId: string; catalogItemId: string; warehouseId: string; quantity: number; reason: string }
 const path = (kind: PurchaseKind) => `/api/v1/${kind === 'PR' ? 'purchase-requests' : 'purchase-orders'}`
-export const purchases = (kind: PurchaseKind, q: string, status: string, page: number) => apiRequest<PagedResult<Purchase>>(`${path(kind)}?${new URLSearchParams({ q, status, page: String(page), pageSize: '25' })}`)
+export async function purchases(kind: PurchaseKind, q: string, status: string, page: number, pageSize = 25) {
+  const result = await apiRequest<PagedResult<Purchase>>(`${path(kind)}?${new URLSearchParams({ q, status, page: String(page), pageSize: String(pageSize) })}`)
+  if (kind !== 'PR') return result
+
+  // Keep the worklist correct while an already-running API is still serving the
+  // previous build. The repository applies the same rule after the API restarts.
+  const items = result.items.filter((document) => document.status !== 'converted')
+  const hiddenOnPage = result.items.length - items.length
+  if (!hiddenOnPage) return result
+  const totalItems = Math.max(0, result.totalItems - hiddenOnPage)
+  return { ...result, items, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / result.pageSize)) }
+}
 export const purchase = (kind: PurchaseKind, id: string) => apiRequest<Purchase>(`${path(kind)}/${id}`)
 export const savePurchase = (kind: PurchaseKind, id: string | null, input: PurchaseInput) => apiRequest<Purchase>(`${path(kind)}${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(input) })
 export const purchaseAction = (doc: Purchase, action: string, reason: string) => apiRequest<Purchase>(`${path(doc.kind)}/${doc.id}/${action}`, { method: 'POST', body: JSON.stringify({ version: doc.version, reason }) })

@@ -41,7 +41,8 @@ export default function App() {
           <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
           <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
-          <Route path="/purchasing" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
+          <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
+          <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>

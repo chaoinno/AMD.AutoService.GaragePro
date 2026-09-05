@@ -10,7 +10,8 @@ public sealed record PurchaseLineDto(Guid Id, Guid CatalogItemId, string Code, s
 public sealed record PurchaseDto(Guid Id, string Kind, string Number, string Status, Guid? SourceRequestId,
     Guid? SupplierId, string? SupplierName, Guid WarehouseId, string WarehouseName, DateTime? RequiredDate,
     string? Note, string? PaymentTerms, string? CancelReason, string CreatedByName, DateTime CreatedAt,
-    DateTime UpdatedAt, decimal Total, string Version, IReadOnlyList<PurchaseLineDto> Lines);
+    string? ApprovedByName, DateTime? ApprovedAt, DateTime UpdatedAt, decimal Total, string Version,
+    IReadOnlyList<PurchaseLineDto> Lines);
 public sealed record ReceiptLineInput(Guid PurchaseLineId, int GoodQuantity, int DamagedQuantity,
     decimal UnitCost, string? Note);
 public sealed record ReceiptInput(Guid RequestId, string DeliveryNumber, IReadOnlyList<ReceiptLineInput> Lines);

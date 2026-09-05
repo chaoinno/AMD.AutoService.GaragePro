@@ -45,12 +45,18 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     public async Task<(IReadOnlyList<PurchaseDocument> Items, int Total)> SearchAsync(string kind, string? q, string? status, int page, int pageSize, CancellationToken ct)
     {
         var query = Documents.AsNoTracking().Where(x => x.Kind == kind);
+        // Once a PR becomes a PO, the PO is the operational document. Keep the converted
+        // request available by direct id for audit/reference, but remove it from the PR worklist.
+        if (kind == "PR") query = query.Where(x => x.Status != "converted");
         if (q is not null) query = query.Where(x => x.Number.Contains(q) || x.SupplierName != null && x.SupplierName.Contains(q));
         if (status is not null) query = query.Where(x => x.Status == status);
         var count = await query.CountAsync(ct);
         return (await query.Include(x => x.Lines).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct), count);
     }
     public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Documents.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id && x.Kind == kind, ct);
+    public Task<ActivityEvent?> ApprovalAsync(string kind, Guid documentId, CancellationToken ct) => db.ActivityEvents.AsNoTracking()
+        .Where(x => x.EntityId == documentId && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve")
+        .OrderByDescending(x => x.OccurredAt).FirstOrDefaultAsync(ct);
     public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Items.SingleOrDefaultAsync(x => x.Id == id, ct);
     public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => db.Warehouses.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     // Suppliers are global master data in the existing schema. Documents remain tenant scoped.

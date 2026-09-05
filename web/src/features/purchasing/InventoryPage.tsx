@@ -32,7 +32,7 @@ export function InventoryPage() {
         { id: 'onOrder', header: 'รอรับ', value: (item) => item.onOrder, size: 120, render: (item) => <>{item.onOrder}</> },
         { id: 'damaged', header: 'ชำรุด', value: (item) => item.damaged, size: 120, render: (item) => <>{item.damaged}</> },
         { id: 'value', header: 'มูลค่า FIFO', value: (item) => item.value, hidden: !manager, render: (item) => <><span className="money">{money(item.value)}</span></> },
-        { id: 'actions', header: '', render: (item) => <><Button variant="outline" size="sm" onClick={() => setSelected(item.id)}>รายละเอียด</Button></> },
+        { id: 'actions', header: '', render: (item) => <><Button variant="outline" size="sm" onClick={() => setSelected(item.id)}><Boxes aria-hidden="true" /> รายละเอียด</Button></> },
       ]} /></Card>
     </QueryState>{selected && <StockModal key={selected} id={selected} onClose={() => setSelected(null)} />}
   </AppShell>

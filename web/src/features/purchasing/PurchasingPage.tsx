@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle2, CircleOff, Clock3, FileText, Plus, RefreshCw, Search, Send, Trash2 } from 'lucide-react'
+import { CheckCircle2, CircleOff, ClipboardList, Clock3, Plus, RefreshCw, Search, Send, ShoppingCart, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { toast } from 'sonner'
 import { getCatalogItems } from '../../api/catalog'
 import { getSuppliers, getWarehouses } from '../../api/masterData'
@@ -13,6 +14,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Select } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
+import { StaffAvatar } from '../../components/StaffAvatar'
 import { useSession } from '../../lib/session'
 import { Field, InlineError, QueryState } from '../master-data/MasterDataCommon'
 import './purchasing.css'
@@ -29,34 +31,46 @@ export function usePurchasingRefresh() {
   const client = useQueryClient()
   return async (doc?: Purchase) => {
     if (doc) client.setQueryData(['purchase', doc.kind, doc.id], doc)
-    await Promise.all(['purchases', 'purchase', 'receipts', 'inventory', 'stock-detail', 'catalog', 'catalog-management', 'catalog-management-item'].map(key => client.invalidateQueries({ queryKey: [key] })))
+    await Promise.all(['purchases', 'purchase-count', 'purchase', 'receipts', 'inventory', 'stock-detail', 'catalog', 'catalog-management', 'catalog-management-item'].map(key => client.invalidateQueries({ queryKey: [key] })))
   }
 }
 
 export function PurchasingPage() {
-  const [kind, setKind] = useState<PurchaseKind>('PR')
+  const routeKind = useParams().kind?.toUpperCase()
+  if (routeKind !== 'PR' && routeKind !== 'PO') return <Navigate to="/purchasing/pr" replace />
+  return <PurchasingWorkspace key={routeKind} kind={routeKind} />
+}
+
+function PurchasingWorkspace({ kind }: { kind: PurchaseKind }) {
   const [q, setQ] = useState(''); const [status, setStatus] = useState(''); const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<{ kind: PurchaseKind; id: string } | null>(null)
   const [creating, setCreating] = useState(false)
+  const navigate = useNavigate()
   const query = useQuery({ queryKey: ['purchases', kind, q, status, page], queryFn: () => purchases(kind, q, status, page) })
   const { session } = useSession()
   const allowed = ['manager', 'office'].includes(session?.user.role.toLowerCase() || '')
-  return <AppShell title="จัดซื้อ"><section className="management-heading"><div><span className="page-eyebrow">PURCHASING</span><h2>จัดซื้อและรับสินค้า</h2><p>ใบขอซื้อ → ใบสั่งซื้อ → รับสินค้าเข้าคลัง FIFO</p></div><Button disabled={!allowed} title={!allowed ? 'สำหรับผู้จัดการหรือธุรการจัดซื้อ' : undefined} onClick={() => setCreating(true)}><Plus />สร้าง {kind}</Button></section>
-    <div className="purchase-tabs">{(['PR', 'PO'] as const).map(tab => <Button key={tab} variant={kind === tab ? 'default' : 'outline'} onClick={() => { setKind(tab); setStatus(''); setPage(1) }}><FileText />{tab === 'PR' ? 'ใบขอซื้อ (PR)' : 'ใบสั่งซื้อ (PO)'}</Button>)}</div>
-    <Card className="purchase-filters"><div className="input-with-icon"><Search /><Input aria-label="ค้นหาเอกสารจัดซื้อ" placeholder="ค้นหาเลขเอกสาร / ซัพพลายเออร์" value={q} onChange={e => { setQ(e.target.value); setPage(1) }} /></div><Select aria-label="สถานะเอกสาร" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><option value="">ทุกสถานะ</option>{Object.entries(statuses).filter(([key]) => kind === 'PR' ? !['sent', 'partial', 'complete'].includes(key) : key !== 'converted').map(([key, label]) => <option value={key} key={key}>{label}</option>)}</Select><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></Card>
-    <QueryState query={query} loadingTitle="กำลังโหลดเอกสารจัดซื้อ" emptyTitle="ยังไม่มีเอกสาร" emptyReason="เริ่มจากสร้างใบขอซื้อหรือใบสั่งซื้อ" onRetry={() => void query.refetch()}>
+  const copy = kind === 'PR'
+    ? { title: 'รายการใบขอซื้อ', description: 'สร้างและติดตามคำขอซื้อก่อนส่งอนุมัติ', create: 'สร้างใบขอซื้อ' }
+    : { title: 'รายการใบสั่งซื้อ', description: 'จัดการคำสั่งซื้อและติดตามการรับสินค้าเข้าคลัง', create: 'สร้างใบสั่งซื้อ' }
+  return <AppShell title={kind === 'PR' ? 'ใบขอซื้อ (PR)' : 'ใบสั่งซื้อ (PO)'}><section className="purchase-page-heading">
+    <span className={`purchase-page-heading__icon purchase-page-heading__icon--${kind.toLowerCase()}`} aria-hidden="true">{kind === 'PR' ? <ClipboardList /> : <ShoppingCart />}</span>
+    <div className="purchase-page-heading__copy"><h2>{copy.title}</h2><p>{copy.description}</p></div>
+    <Button disabled={!allowed} title={!allowed ? 'สำหรับผู้จัดการหรือธุรการจัดซื้อ' : undefined} onClick={() => setCreating(true)}><Plus />{copy.create}</Button>
+  </section>
+    <Card className="purchase-filters"><div className="input-with-icon"><Search /><Input aria-label="ค้นหาเอกสารจัดซื้อ" placeholder="ค้นหาเลขเอกสาร / ซัพพลายเออร์" value={q} onChange={e => { setQ(e.target.value); setPage(1) }} /></div><Select aria-label="สถานะเอกสาร" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><option value="">ทุกสถานะ</option>{Object.entries(statuses).filter(([key]) => kind === 'PR' ? !['converted', 'sent', 'partial', 'complete'].includes(key) : key !== 'converted').map(([key, label]) => <option value={key} key={key}>{label}</option>)}</Select><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></Card>
+    <QueryState query={query} loadingTitle={`กำลังโหลด${copy.title}`} emptyTitle={`ยังไม่มี${copy.title.replace('รายการ', '')}`} emptyReason={`กด “${copy.create}” เพื่อเริ่มต้น`} onRetry={() => void query.refetch()}>
       <Card className="management-table-card"><ManagementTable data={query.data?.items ?? []} sortScope="page" columns={[
         { id: 'number', header: 'เลขเอกสาร', value: (doc) => doc.number, render: (doc) => <><strong>{doc.number}</strong><small className="purchase-sub">{doc.lines.length} รายการ</small></> },
         { id: 'date', header: 'วันที่ / ผู้สร้าง', value: (doc) => new Date(doc.createdAt).getTime(), size: 240, render: (doc) => <>{dateTime(doc.createdAt)}<small className="purchase-sub">{doc.createdByName}</small></> },
         { id: 'supplier', header: 'ซัพพลายเออร์ / คลัง', value: (doc) => [doc.supplierName, doc.warehouseName].filter(Boolean).join(' '), size: 270, render: (doc) => <>{doc.supplierName || 'ยังไม่ระบุซัพพลายเออร์'}<small className="purchase-sub">{doc.warehouseName}</small></> },
         { id: 'status', header: 'สถานะ', value: (doc) => statuses[doc.status] || doc.status, render: (doc) => <><PurchaseStatus status={doc.status} /></> },
         { id: 'total', header: 'มูลค่าก่อนภาษี', value: (doc) => doc.total, render: (doc) => <><span className="money">{money(doc.total)}</span></> },
-        { id: 'actions', header: '', render: (doc) => <><Button variant="outline" size="sm" onClick={() => setSelected({ kind, id: doc.id })}>เปิดเอกสาร</Button></> },
+        { id: 'actions', header: '', render: (doc) => <><Button variant="outline" size="sm" onClick={() => setSelected({ kind, id: doc.id })}><ClipboardList aria-hidden="true" /> เปิดเอกสาร</Button></> },
       ]} />{query.data?.items.length === 0 && <p className="purchase-empty">ยังไม่มีเอกสารที่ตรงกับการค้นหา กด “สร้าง {kind}” เพื่อเริ่มต้น</p>}</Card>
       <div className="purchase-pagination"><span>{query.data?.totalItems ?? 0} เอกสาร · หน้า {page}</span><Button variant="outline" disabled={page === 1} title={page === 1 ? 'อยู่หน้าแรกแล้ว' : undefined} onClick={() => setPage(p => p - 1)}>ก่อนหน้า</Button><Button variant="outline" disabled={page >= (query.data?.totalPages || 1)} title={page >= (query.data?.totalPages || 1) ? 'ไม่มีหน้าถัดไป' : undefined} onClick={() => setPage(p => p + 1)}>ถัดไป</Button></div>
     </QueryState>
     {creating && <PurchaseEditor kind={kind} onClose={() => setCreating(false)} onSaved={doc => { setCreating(false); setSelected({ kind: doc.kind, id: doc.id }) }} />}
-    {selected && <PurchaseDetail key={`${selected.kind}-${selected.id}`} {...selected} onClose={() => setSelected(null)} onConverted={doc => { setKind('PO'); setStatus(''); setPage(1); setSelected({ kind: 'PO', id: doc.id }) }} />}
+    {selected && <PurchaseDetail key={`${selected.kind}-${selected.id}`} {...selected} onClose={() => setSelected(null)} onConverted={() => navigate('/purchasing/po')} />}
   </AppShell>
 }
 
@@ -112,9 +126,20 @@ function PurchaseDetail({ kind, id, onClose, onConverted }: { kind: PurchaseKind
   if (receiving && doc) return <ReceiptForm doc={doc} onClose={() => setReceiving(false)} />
   const canApprove = manager || (kind === 'PO' && policy.data !== undefined && (doc?.total || 0) <= policy.data)
   const choices = doc ? [doc.status === 'draft' ? 'submit' : '', doc.status === 'pending' && canApprove ? 'approve' : '', doc.status === 'pending' && canApprove ? 'return' : '', kind === 'PO' && doc.status === 'approved' ? 'send' : '', !['cancelled', 'complete', 'converted'].includes(doc.status) ? 'cancel' : ''].filter(Boolean) : []
-  return <ConfirmModal open title={doc?.number || 'รายละเอียดเอกสาร'} description={kind === 'PR' ? 'ใบขอซื้อ' : 'ใบสั่งซื้อและประวัติรับสินค้า'} size="xlarge" onClose={() => { if (!mutate.isPending) onClose() }} footer={<Button variant="outline" onClick={onClose} disabled={mutate.isPending}>ปิด</Button>}>
+  return <ConfirmModal open title={doc?.number || 'รายละเอียดเอกสาร'} description={<span className={`purchase-document-type purchase-document-type--${kind.toLowerCase()}`}>{kind === 'PR' ? 'ใบขอซื้อ' : 'ใบสั่งซื้อและประวัติรับสินค้า'}</span>} size="xlarge" onClose={() => { if (!mutate.isPending) onClose() }} footer={<Button variant="outline" onClick={onClose} disabled={mutate.isPending}>ปิด</Button>}>
     <QueryState query={query} loadingTitle="กำลังโหลดเอกสาร" emptyTitle="ไม่พบเอกสาร" emptyReason="กรุณาโหลดใหม่" onRetry={() => void query.refetch()}>{doc && <div className="purchase-detail">
-      <div className="purchase-summary"><PurchaseStatus status={doc.status} /><span>คลัง: {doc.warehouseName}</span><span>ซัพพลายเออร์: {doc.supplierName || '—'}</span><span>ต้องการ: {doc.requiredDate ? new Date(doc.requiredDate).toLocaleDateString('th-TH') : '—'}</span></div>
+      <header className="purchase-summary">
+        <div className="purchase-summary__facts">
+          <PurchaseStatus status={doc.status} />
+          <span><small>คลังรับสินค้า</small><strong>{doc.warehouseName}</strong></span>
+          <span><small>ซัพพลายเออร์</small><strong>{doc.supplierName || 'ยังไม่ระบุ'}</strong></span>
+          <span><small>วันที่ต้องการ</small><strong>{doc.requiredDate ? new Date(doc.requiredDate).toLocaleDateString('th-TH') : 'ยังไม่ระบุ'}</strong></span>
+        </div>
+        <div className="purchase-summary__people">
+          <PurchaseActor label="ผู้สร้าง" name={doc.createdByName} timestamp={doc.createdAt} />
+          <PurchaseActor label="ผู้อนุมัติ" name={doc.approvedByName} timestamp={doc.approvedAt} />
+        </div>
+      </header>
       {doc.sourceRequestId && <p className="section-help">เอกสารนี้สร้างจาก PR ที่อนุมัติแล้ว</p>}
       <p>{doc.note || 'ไม่มีหมายเหตุ'}{doc.paymentTerms && ` · ชำระเงิน: ${doc.paymentTerms}`}</p>{doc.cancelReason && <p>เหตุผลยกเลิก: {doc.cancelReason}</p>}
       <div className="purchase-table-scroll"><ManagementTable data={doc.lines} columns={[
@@ -133,6 +158,14 @@ function PurchaseDetail({ kind, id, onClose, onConverted }: { kind: PurchaseKind
       {kind === 'PO' && <section><h3>ประวัติรับสินค้า</h3>{history.isError ? <InlineError error={history.error} /> : history.isPending ? <p>กำลังโหลดประวัติ…</p> : !history.data?.length ? <p className="section-help">ยังไม่มีใบรับสินค้า</p> : history.data.map(grn => <div key={grn.id} className="purchase-receipt"><strong>{grn.number}</strong><span>ใบส่งของ {grn.deliveryNumber} · {dateTime(grn.receivedAt)} · {grn.receivedByName}</span><span>ของดี {grn.lines.reduce((s, l) => s + l.goodQuantity, 0)} · ชำรุด {grn.lines.reduce((s, l) => s + l.damagedQuantity, 0)}</span></div>)}</section>}
     </div>}</QueryState>
   </ConfirmModal>
+}
+
+function PurchaseActor({ label, name, timestamp }: { label: string; name: string | null; timestamp: string | null }) {
+  const displayName = name || 'รอการอนุมัติ'
+  return <div className={`purchase-actor ${name ? '' : 'purchase-actor--pending'}`}>
+    {name ? <StaffAvatar className="purchase-actor__avatar" name={name} /> : <span className="purchase-actor__avatar purchase-actor__avatar--empty"><Clock3 /></span>}
+    <span><small>{label}</small><strong>{displayName}</strong>{timestamp ? <time dateTime={timestamp}>{dateTime(timestamp)}</time> : <time>ยังไม่มีผู้ดำเนินการ</time>}</span>
+  </div>
 }
 
 function ReceiptForm({ doc, onClose }: { doc: Purchase; onClose: () => void }) {

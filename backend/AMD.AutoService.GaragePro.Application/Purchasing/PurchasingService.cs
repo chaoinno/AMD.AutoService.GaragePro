@@ -41,10 +41,14 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
     {
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
         var result = await repo.SearchAsync(kind, Clean(q), Clean(status), page, pageSize, ct);
-        return new PagedResult<PurchaseDto>(result.Items.Select(Map).ToList(), page, pageSize, result.Total, (int)Math.Ceiling(result.Total / (double)pageSize));
+        return new PagedResult<PurchaseDto>(result.Items.Select(x => Map(x)).ToList(), page, pageSize, result.Total, (int)Math.Ceiling(result.Total / (double)pageSize));
     });
 
-    public Task<Result<PurchaseDto>> GetAsync(string kind, Guid id, CancellationToken ct) => Run(async () => Map(await Document(kind, id, ct)));
+    public Task<Result<PurchaseDto>> GetAsync(string kind, Guid id, CancellationToken ct) => Run(async () =>
+    {
+        var doc = await Document(kind, id, ct);
+        return Map(doc, await repo.ApprovalAsync(kind, id, ct));
+    });
     public Task<Result<decimal>> PolicyAsync() => Run(() => Task.FromResult(options.ManagerApprovalThreshold));
 
     public async Task<Result<PurchaseDto>> SaveAsync(string kind, Guid? id, PurchaseInput input, CancellationToken ct)
@@ -144,7 +148,8 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             Audit(doc.Id, kind, action, $"{doc.Number}: {action} {Clean(input.Reason)}");
             return doc;
         }, true, ct);
-        return result.Success ? Result<PurchaseDto>.Ok(Map(result.Data!)) : Result<PurchaseDto>.Fail(result.Error!);
+        if (!result.Success) return Result<PurchaseDto>.Fail(result.Error!);
+        return Result<PurchaseDto>.Ok(Map(result.Data!, await repo.ApprovalAsync(kind, id, ct)));
     }
 
     public async Task<Result<PurchaseDto>> ConvertAsync(Guid id, ConvertPurchaseInput input, CancellationToken ct)
@@ -324,9 +329,10 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             UnitCost = cost, Reason = reason, PerformedByName = user.UserName, OccurredAt = Now };
         repo.Add(movement); return movement;
     }
-    private static PurchaseDto Map(PurchaseDocument x) => new(x.Id, x.Kind, x.Number, x.Status, x.SourceRequestId,
+    private static PurchaseDto Map(PurchaseDocument x, ActivityEvent? approval = null) => new(x.Id, x.Kind, x.Number, x.Status, x.SourceRequestId,
         x.SupplierId, x.SupplierName, x.WarehouseId, x.WarehouseName, x.RequiredDate, x.Note, x.PaymentTerms, x.CancelReason,
-        x.CreatedByName, Utc(x.CreatedAt), Utc(x.UpdatedAt), x.Lines.Sum(l => l.Quantity * l.UnitCost), Convert.ToBase64String(x.RowVersion),
+        x.CreatedByName, Utc(x.CreatedAt), x.ApprovedBy.HasValue ? approval?.PerformedByName : null,
+        x.ApprovedAt.HasValue ? Utc(x.ApprovedAt.Value) : null, Utc(x.UpdatedAt), x.Lines.Sum(l => l.Quantity * l.UnitCost), Convert.ToBase64String(x.RowVersion),
         x.Lines.OrderBy(l => l.Code).Select(l => new PurchaseLineDto(l.Id, l.CatalogItemId, l.Code, l.Name, l.Unit, l.Quantity, l.UnitCost, l.ReceivedGood, l.ReceivedDamaged, PurchasingRules.Outstanding(l))).ToList());
     private static ReceiptDto MapReceipt(GoodsReceipt x) => new(x.Id, x.Number, x.PurchaseOrderId, x.DeliveryNumber, Utc(x.ReceivedAt),
         x.ReceivedByName, x.Lines.Select(l => new ReceiptLineDto(l.PurchaseLineId, l.GoodQuantity, l.DamagedQuantity, l.UnitCost, l.Note)).ToList());
