@@ -34,9 +34,11 @@ public static class JobStateMachine
             [UserRole.Office, UserRole.Manager], [EventSource.Web],
             JobGuard.QuotationValid),
 
+        // [ASSUME] เปิดให้ Office/Manager ยืนยันเองจากเว็บได้ชั่วคราว — ระบบเริ่มงานซ่อมของช่างบนมือถือยังไม่มี
+        // (docs/04-project-plan.md: ซ่อม+QC ยังเป็น placeholder) ตัด Web/Office/Manager ออกทันทีที่มือถือทำ flow นี้ได้จริง
         new(JobStatus.Approved, JobStatus.InProgress,
             "ช่างกดเริ่มงาน (เริ่มจับเวลา) · ทำได้เฉพาะรายการที่อนุมัติ",
-            [UserRole.Technician], [EventSource.Mobile],
+            [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.HasApprovedLines),
 
         new(JobStatus.InProgress, JobStatus.WaitParts,
@@ -49,9 +51,10 @@ public static class JobStateMachine
             [UserRole.Office, UserRole.Manager], [EventSource.Web],
             JobGuard.PartsReceivedAndIssued),
 
+        // [ASSUME] เปิดให้ Office/Manager ยืนยันเองจากเว็บได้ชั่วคราว — ยังไม่มีระบบ QC จริง (ดูหมายเหตุ Approved→InProgress ด้านบน)
         new(JobStatus.InProgress, JobStatus.Qc,
             "ทุกรายการที่อนุมัติต้องเสร็จและมีรูปก่อน-หลังครบ",
-            [UserRole.Technician], [EventSource.Mobile],
+            [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.AllTasksDoneWithPhotos),
 
         new(JobStatus.Qc, JobStatus.InProgress,
@@ -59,14 +62,15 @@ public static class JobStateMachine
             [UserRole.Technician, UserRole.Manager], [EventSource.Mobile],
             JobGuard.QcFailReported),
 
+        // [ASSUME] เปิดให้ Office/Manager ยืนยันเองจากเว็บได้ชั่วคราว — เช่นเดียวกับด้านบน
         new(JobStatus.Qc, JobStatus.Ready,
             "ผ่านทุกหัวข้อ + ผลทดลองขับปกติ · รายการซ่อมถูกล็อก แก้ได้เฉพาะเมื่อเปิดงานใหม่",
-            [UserRole.Technician, UserRole.Manager], [EventSource.Mobile],
+            [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.QcPassed),
 
         new(JobStatus.Ready, JobStatus.Completed,
             "ยอดคงเหลือเป็น 0 หรือบันทึกลูกหนี้ที่อนุมัติแล้ว + ออกเอกสาร + ส่งมอบรถ",
-            [UserRole.Cashier, UserRole.Manager], [EventSource.Web],
+            [UserRole.Cashier, UserRole.Office, UserRole.Manager], [EventSource.Web],
             JobGuard.BalanceSettled | JobGuard.DocumentIssued | JobGuard.VehicleHandedOver)
     ];
 

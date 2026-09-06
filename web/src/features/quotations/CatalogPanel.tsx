@@ -1,16 +1,18 @@
 import { useQuery } from '@tanstack/react-query'
-import { CircleAlert, LoaderCircle, Package, Search, TriangleAlert, UserRound, Wrench } from 'lucide-react'
+import { CircleAlert, LoaderCircle, Package, Plus, Search, TriangleAlert, UserRound, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { isApiError } from '../../api/client'
 import { searchCatalog } from '../../api/catalog'
 import type { CatalogItem, UpsertLineSource } from '../../api/types'
 import { Money } from '../../components/Money'
 import { formatNumber } from '../../lib/format'
+import { useSession } from '../../lib/session'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { ScrollArea } from '../../components/ui/scroll-area'
+import { CatalogFormModal } from '../catalog/CatalogPage'
 
 type CatalogPanelProps = {
   readOnly: boolean
@@ -27,7 +29,10 @@ function getPrice(item: CatalogItem) {
 }
 
 export function CatalogPanel({ readOnly, adding, onAdd }: CatalogPanelProps) {
+  const { session } = useSession()
+  const canManageCatalog = Boolean(session?.user.canSeeCost)
   const [queryText, setQueryText] = useState('')
+  const [showCreateForm, setShowCreateForm] = useState(false)
   const normalizedQuery = queryText.trim()
   const query = useQuery({
     queryKey: ['catalog', normalizedQuery],
@@ -146,9 +151,26 @@ export function CatalogPanel({ readOnly, adding, onAdd }: CatalogPanelProps) {
             <span>ลองค้นด้วยรหัสหรือคำที่สั้นลง</span>
             <small>รหัสติดตาม (traceId): คำขอนี้สำเร็จและไม่พบรายการ</small>
             <Button variant="link" onClick={() => setQueryText('')}>ล้างคำค้น</Button>
+            {canManageCatalog ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={readOnly}
+                onClick={() => setShowCreateForm(true)}
+              >
+                <Plus aria-hidden="true" /> เพิ่มรายการใหม่
+              </Button>
+            ) : null}
           </div>
         )}
       </ScrollArea>
+
+      <CatalogFormModal
+        open={showCreateForm}
+        itemId={null}
+        initialName={normalizedQuery}
+        onClose={() => setShowCreateForm(false)}
+      />
     </Card>
   )
 }

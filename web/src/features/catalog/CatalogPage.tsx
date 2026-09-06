@@ -158,14 +158,20 @@ export function CatalogPage() {
   </AppShell>
 }
 
-function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: string | null; onClose: () => void }) {
+export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess }: {
+  open: boolean
+  itemId: string | null
+  onClose: () => void
+  initialName?: string
+  onSuccess?: (item: CatalogManagementItem) => void
+}) {
   const queryClient = useQueryClient()
   const details = useQuery({ queryKey: ['catalog-management-item', itemId], queryFn: () => getCatalogItem(itemId!), enabled: open && Boolean(itemId) })
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CatalogFormValues>({ resolver: zodResolver(catalogSchema), defaultValues: emptyForm })
   const type = watch('type')
   useEffect(() => {
     if (!open) return
-    if (!itemId) { reset(emptyForm); return }
+    if (!itemId) { reset({ ...emptyForm, name: initialName || emptyForm.name }); return }
     const item = details.data
     if (!item) return
     reset({
@@ -173,13 +179,14 @@ function CatalogFormModal({ open, itemId, onClose }: { open: boolean; itemId: st
       cost: String(item.cost ?? 0), price: String(item.price), standardHours: item.standardHours === null ? '' : String(item.standardHours),
       onHand: String(item.onHand), reserved: String(item.reserved), onOrder: String(item.onOrder), damaged: String(item.damaged), etaNote: item.etaNote || '',
     })
-  }, [details.data, itemId, open, reset])
+  }, [details.data, itemId, open, reset, initialName])
   const save = useMutation({
     mutationFn: (input: CatalogItemInput) => itemId ? updateCatalogItem(itemId, input) : createCatalogItem(input),
-    onSuccess: () => {
+    onSuccess: (item) => {
       toast.success(itemId ? 'แก้ไขสินค้าเรียบร้อยแล้ว' : 'เพิ่มสินค้าเรียบร้อยแล้ว')
       void queryClient.invalidateQueries({ queryKey: ['catalog-management'] })
       void queryClient.invalidateQueries({ queryKey: ['catalog'] })
+      onSuccess?.(item)
       onClose()
     },
   })

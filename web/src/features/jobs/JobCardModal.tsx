@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { attachmentFileUrl, getJobAttachments } from '../../api/attachments'
 import { isApiError } from '../../api/client'
+import { getJobIntakeChecklist } from '../../api/intake'
 import { getJob, transitionJob } from '../../api/jobs'
 import { createQuotation, getQuotations } from '../../api/quotations'
 import type { JobStatusToken, Job } from '../../api/types'
@@ -60,13 +61,24 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
     enabled: jobId !== null,
   })
 
+  // ใช้ query key เดียวกับ IntakeChecklistPanel — พอ panel ส่ง checklist สำเร็จแล้ว invalidate
+  // key นี้ stepper ก็ได้ isLocked ใหม่มาด้วยโดยอัตโนมัติ
+  const checklistQuery = useQuery({
+    queryKey: ['job-intake-checklist', jobId],
+    queryFn: () => getJobIntakeChecklist(jobId!),
+    enabled: jobId !== null,
+  })
+
   const close = () => {
     setViewStage(null)
     onClose()
   }
 
   const job = jobQuery.data
-  const currentStageIndex = job ? STAGE_INDEX_BY_STATUS[job.status] ?? 0 : 0
+  // ส่ง checklist สภาพรถขณะรับแล้ว (ล็อกแล้ว) ถือว่าขั้น "ตรวจสอบ" เสร็จ แม้ job.status จะยังเป็น waitinspect —
+  // การเปลี่ยน job.status ไป waitquote สงวนไว้สำหรับผลตรวจของช่างบนมือถือ (JobStateMachine: Technician/Mobile เท่านั้น)
+  const checklistDone = job?.status === 'waitinspect' && (checklistQuery.data?.isLocked ?? false)
+  const currentStageIndex = job ? (checklistDone ? 2 : STAGE_INDEX_BY_STATUS[job.status] ?? 0) : 0
   const stageIndex = viewStage ?? currentStageIndex
 
   return (
@@ -302,30 +314,69 @@ function QuoteStage({ job }: { job: Job }) {
     mutationFn: createQuotation,
     onSuccess: (quotation) => {
       setEditingQuotationId(quotation.id)
+      void queryClient.invalidateQueries({ queryKey: ['job-quotations', job.jobId] })
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.messageTh : 'สร้างใบเสนอราคาไม่สำเร็จ')
     },
   })
 
-  const transitionMutation = useMutation({
-    mutationFn: () => transitionJob(job.jobId, {
-      toStatus: 'inprogress',
-      reason: 'ลูกค้าอนุมัติแล้ว เริ่มดำเนินการซ่อม (ยืนยันด้วยตนเอง — ยังไม่มีระบบเบิกอะไหล่รองรับ)',
-    }),
-    onSuccess: (result) => {
-      toast.success(`เปลี่ยนสถานะเป็น ${result.statusLabel} แล้ว`)
-      void queryClient.invalidateQueries({ queryKey: ['job-detail', job.jobId] })
-      void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
+  // [BIZ] Quotation เป็น version-first (docs/02-domain-model.md invariant #1) — สร้างใบใหม่ซ้อนใบที่ยังไม่ถูก
+  // ปฏิเสธ/แทนที่ไม่ได้ (backend ตอบ QUOTE_ALREADY_EXISTS) ต้องปฏิเสธ (Rejected) ก่อนถึงจะเปิดรอบใหม่ได้ —
+  // ใบที่ยังไม่ถูกปฏิเสธให้ใช้ "ออกฉบับแก้ไข" ในตัวใบเดิมแทน
+  const canCreateAdditionalQuotation = query.data?.every((q) => q.status === 'rejected') ?? false
+
+  // ไล่ transition ที่เหลือให้ครบทีเดียว (เบิกอะไหล่/ซ่อม/QC/ชำระเงินยังเป็น placeholder —
+  // เว็บยืนยันเองแทนได้ตาม pattern manual-override ที่ backend รองรับ ดู JobStateMachine [ASSUME])
+  const REPAIR_COMPLETION_REASON = 'ยืนยันด้วยตนเองจากเว็บ — ระบบเบิกอะไหล่/ตรวจสอบคุณภาพ/รับชำระเงินอัตโนมัติยังไม่พร้อมใช้งาน (อยู่ระหว่างพัฒนา)'
+  const remainingChainToCompleted = (status: JobStatusToken): JobStatusToken[] => {
+    switch (status) {
+      case 'approved': return ['inprogress', 'qc', 'ready', 'completed']
+      case 'inprogress': return ['qc', 'ready', 'completed']
+      case 'waitparts': return ['inprogress', 'qc', 'ready', 'completed']
+      case 'qc': return ['ready', 'completed']
+      case 'ready': return ['completed']
+      default: return []
+    }
+  }
+
+  const completeRepairMutation = useMutation({
+    mutationFn: async () => {
+      for (const toStatus of remainingChainToCompleted(job.status)) {
+        await transitionJob(job.jobId, { toStatus, reason: REPAIR_COMPLETION_REASON })
+      }
+    },
+    onSuccess: () => {
+      toast.success('อนุมัติซ่อมแล้ว — งานเสร็จสมบูรณ์')
     },
     onError: (error) => {
       toast.error(isApiError(error) ? error.messageTh : 'เปลี่ยนสถานะไม่สำเร็จ')
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['job-detail', job.jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
     },
   })
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="job-card-panel-header">
         <CardTitle>ใบเสนอราคา &amp; รายการซ่อม</CardTitle>
+        <Button
+          size="sm"
+          onClick={() => createMutation.mutate({ jobId: job.jobId })}
+          disabled={createMutation.isPending || !canCreateAdditionalQuotation}
+          title={canCreateAdditionalQuotation ? undefined : 'มีใบเสนอราคาที่ยังไม่ถูกปฏิเสธอยู่แล้ว — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" แทน'}
+        >
+          {createMutation.isPending ? 'กำลังสร้าง…' : '+ สร้างใบเสนอราคา'}
+        </Button>
       </CardHeader>
       <CardContent>
+        {!canCreateAdditionalQuotation && query.data?.length ? (
+          <p className="form-message">
+            มีใบเสนอราคาที่ยังไม่ถูกปฏิเสธอยู่แล้ว — เปิดใบที่มีอยู่แล้วกด "ออกฉบับแก้ไข" แทนการสร้างใหม่
+          </p>
+        ) : null}
         {query.isPending ? (
           <p className="form-message">กำลังโหลดใบเสนอราคา…</p>
         ) : query.isError ? (
@@ -336,9 +387,6 @@ function QuoteStage({ job }: { job: Job }) {
         ) : !query.data.length ? (
           <div className="job-detail-empty">
             <p>งานนี้ยังไม่มีใบเสนอราคา</p>
-            <Button onClick={() => createMutation.mutate({ jobId: job.jobId })} disabled={createMutation.isPending}>
-              {createMutation.isPending ? 'กำลังสร้าง…' : 'สร้างใบเสนอราคา'}
-            </Button>
           </div>
         ) : (
           <ul className="job-detail-quotation-list">
@@ -357,17 +405,17 @@ function QuoteStage({ job }: { job: Job }) {
                   size="sm"
                   onClick={() => setEditingQuotationId(q.id)}
                 >
-                  เปิดใบเสนอราคา
+                  จัดการ
                 </Button>
               </li>
             ))}
           </ul>
         )}
 
-        {job.status === 'approved' ? (
+        {(['approved', 'inprogress', 'waitparts', 'qc', 'ready'] as JobStatusToken[]).includes(job.status) ? (
           <div className="job-card-panel-actions">
-            <Button onClick={() => transitionMutation.mutate()} disabled={transitionMutation.isPending}>
-              {transitionMutation.isPending ? 'กำลังเปลี่ยนสถานะ…' : 'ไปขั้นตอนเบิกอะไหล่/ดำเนินการซ่อม →'}
+            <Button onClick={() => completeRepairMutation.mutate()} disabled={completeRepairMutation.isPending}>
+              {completeRepairMutation.isPending ? 'กำลังเปลี่ยนสถานะ…' : 'อนุมัติซ่อม (เสร็จงาน) →'}
             </Button>
           </div>
         ) : null}
