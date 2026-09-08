@@ -61,7 +61,8 @@ public sealed class CatalogController(ICatalogRepository catalog, ICatalogServic
         {
             "CATALOG_NOT_FOUND" => StatusCodes.Status404NotFound,
             "CATALOG_MANAGE_FORBIDDEN" => StatusCodes.Status403Forbidden,
-            "CATALOG_CODE_DUPLICATE" => StatusCodes.Status409Conflict,
+            "CATALOG_CODE_DUPLICATE" or "CATEGORY_NOT_LEAF" => StatusCodes.Status409Conflict,
+            "CATEGORY_NOT_FOUND" or "WAREHOUSE_NOT_FOUND" => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status422UnprocessableEntity
         };
         return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));

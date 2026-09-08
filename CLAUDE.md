@@ -25,6 +25,9 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/03-api-contract.md](docs/03-api-contract.md) | endpoint map ทุกหน้าจอ |
 | [docs/04-project-plan.md](docs/04-project-plan.md) | แผน 10 phase |
 | [docs/05-legacy-db-mapping.md](docs/05-legacy-db-mapping.md) | **สิ่งที่ reuse จาก Garage DB ได้/ไม่ได้ + ความเสี่ยง** |
+| [docs/06-customer-vehicle-management.md](docs/06-customer-vehicle-management.md) | ลูกค้า/รถ · SQL scope ตามสาขา · ข้อจำกัดข้อมูล legacy ร่วมกัน |
+| [docs/staff-api.md](docs/staff-api.md) | API พนักงาน · อ่านคู่กับข้อจำกัดสาขาล่าสุดด้านล่าง (Admin ไม่ได้สิทธิ์ข้ามสาขา) |
+| [docs/06-purchasing-fifo.md](docs/06-purchasing-fifo.md) | PR/PO/GRN · Stock FIFO · สิทธิ์ · transaction/idempotency · ขอบเขตที่ยังไม่รวม |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -51,7 +54,8 @@ cd tools/devseed && dotnet run
 
 # Web
 cd web && pnpm install && pnpm dev          # http://localhost:5173
-pnpm tsc --noEmit && pnpm build
+pnpm exec tsc -b && pnpm build              # ใช้ -b เพราะ tsconfig หลักเป็น project references
+node --test tests/tableSort.test.mjs        # ทดสอบ comparator และ TanStack sorting (ตรวจด้วย Node 24)
 
 # Mobile
 export PATH="$PATH:/Users/pongsathon/Developement/flutter/bin"
@@ -89,6 +93,14 @@ Garage DB ตาม `ProjectAdd.aspx` ผ่าน `ILegacyJobWriter`/`LegacyJob
 (legacy id, อ่านอย่างเดียวผ่าน `CustomerVehicleService` ที่มีอยู่แล้ว — คนละ flow กับที่ถูกลบ)
 `Quotation`/`IntakeChecklist`/`Attachment`/`ActivityEvent` ผูกกับ `Job.Id` (Guid) โดยตรงแทน
 composite `(LegacyShardKey, LegacyBranchId, LegacyJobId)` เดิม
+
+> **[RISK — ตรวจพบ 2026-09-04] นโยบายกับโค้ดจัดการข้อมูลหลักยังไม่ตรงกัน:**
+> `CustomerVehicleRepository` ยังมี INSERT/UPDATE ของ Customer, Car, CarCustomer;
+> `StaffRepository` ยังเขียน Staff, User และข้อมูลประกอบพนักงานใน Garage เดิม
+> การจำกัดสาขาที่ทำล่าสุดไม่ใช่การย้ายข้อมูลเหล่านี้ไป GarageService และไม่ใช่การอนุมัติข้อยกเว้นใหม่
+> ก่อนเพิ่ม/ทดสอบคำสั่งเขียน legacy ต้องยืนยันแนวทางกับเจ้าของระบบหรือออกแบบย้ายการเขียนให้ตรงนโยบายนี้
+> ห้ามถือข้อความอธิบายพฤติกรรมปัจจุบันในเอกสารโมดูลเป็นสิทธิ์ให้เขียนฐานจริง
+> โมดูลจัดซื้อ/FIFO ใหม่เขียนเฉพาะ ServiceDb (`svc_*`) ไม่ได้เขียน Garage legacy
 
 ### 2. GaragePro เป็น multi-tenant SaaS แบ่ง shard
 
@@ -128,8 +140,11 @@ maindb 10.10.4.16   = db2 (replica คนละ host)
 10. **เอกสารที่ให้ลูกค้าห้ามแสดงต้นทุน/กำไร** แม้ role จะเห็นได้
 
 ### ค่า `[ASSUME]` ที่ยังไม่ได้รับการยืนยัน
-ส่วนลด >10% ต้องผู้จัดการ · margin <15% เตือน · PO >10,000 ต้องผู้จัดการ · SLA 90% · คอมมิชชัน 8/10/12%
+ส่วนลด >10% ต้องผู้จัดการ · margin <15% เตือน · SLA 90% · คอมมิชชัน 8/10/12%
 ตอนนี้เป็น const ใน `QuotationCalculator` — **ต้องย้ายไป config table ก่อน production**
+
+โมดูลจัดซื้อใช้ `Purchasing:ManagerApprovalThreshold` สำหรับวงเงินอนุมัติ PO แล้ว
+(ค่าเริ่มต้น 10,000 บาทยังเป็น `[ASSUME]` ต้องยืนยันก่อน production) ไม่ใช่ const ของ QuotationCalculator
 
 ### กฎใหม่: Job / รับรถ (เพิ่ม 2026-08-31)
 11. **`IntakeChecklistItem.ItemCode` ต้องมาจาก `IntakeChecklistTemplate` เท่านั้น** — code แปลกปลอมจาก client ถูกปฏิเสธ (`INTAKE_ITEM_UNKNOWN`)
@@ -237,6 +252,19 @@ Web ไม่ต้องมี ShiftSession ส่วน Mobile compatibility �
 - Web: desktop 1440 หลัก · 1024 ย่อ sidebar · **< 1024px ไม่รองรับ**
 - ข้อความ UI เป็นภาษาไทยทั้งหมด · โค้ดและตัวแปรเป็นอังกฤษ
 
+### ตารางจัดการข้อมูล (อัปเดต 2026-09-04 ตามคำขอผู้ใช้)
+
+- ใช้หัวตารางแบบ Jobs ผ่าน `DataTable`; ตารางรายการใหม่ใช้ `ManagementTable` ซึ่งต่อกับ DataTable เดียวกัน
+- คอลัมน์ข้อมูลต้องมี `accessorFn` หรือ `value` ที่ตรงกับค่าที่แสดง การใส่ `sortable` อย่างเดียวไม่เพียงพอ
+- ข้อความใช้ comparator ภาษาไทยใน `web/src/lib/tableSort.ts`; จำนวน/เงินใช้ number และวันที่ใช้ timestamp ไม่ใช้ข้อความที่ format แล้ว
+- มีลูกศรขึ้น/ลง การยกเลิกเรียง `aria-sort` และรองรับคีย์บอร์ด; รูปภาพ/ปุ่มดำเนินการไม่ต้องเรียง
+- **เป็นการเรียงฝั่ง client เฉพาะข้อมูลที่โหลดแล้ว**; ตารางแบ่งหน้าเรียงเฉพาะหน้าปัจจุบัน มีข้อความแจ้งขอบเขต ห้ามอ้างว่าเรียงทั้งฐาน
+- หมวดหมู่ใช้ subrows/expanded ของ TanStack เรียงเฉพาะหมวดระดับเดียวกันโดยคงแม่–ลูก ไม่ flatten แล้วเรียงปนกัน
+- ตารางรายการหลัก: หัว 14px · เนื้อหา 15–16px · ข้อความรอง 14px · เพิ่ม contrast/ระยะห่าง/สลับสีแถว และเลื่อนแนวนอนได้
+- ครอบคลุมลูกค้า รถ พนักงาน สินค้า ซัพพลายเออร์ คลัง หมวดหมู่ PR/PO สต็อก ล็อต/ประวัติ และรายการซัพพลายเออร์ของสินค้า
+  ตารางกรอกบรรทัดในฟอร์มจัดซื้อ/รับสินค้าเพิ่มความชัดของตัวหนังสือ แต่ยังไม่ได้เพิ่มการเรียงระหว่างกรอก
+- การปรับล่าสุดอยู่ใน CSS ของตาราง Web ไม่ได้เปลี่ยน shared design tokens หรือ UI ฝั่ง Flutter
+
 Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/src/lib/tokens.ts` —
 **ค่ามาจาก prototype ที่อนุมัติแล้ว ห้ามแก้ข้างเดียว ต้องแก้ให้ตรงกันทั้งสองที่**
 
@@ -257,12 +285,36 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   (ไม่มีค้นหา/ยืนยันนัดหมาย/ถ่ายรูป 5 มุม/QR บนมือถือ)
 - ✅ Mobile: login · เลือกสาขา/กะ · คิว (pull-to-refresh) · อนุมัติ · ลายเซ็น · โปรไฟล์/ปิดกะ
 - ✅ Web: คิว · editor 3 พาเนล · เอกสาร A4 พร้อมพิมพ์
-- ✅ Test: 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper · job service)
+- ✅ ข้อมูลหลัก Web: ซัพพลายเออร์/คลัง/หมวดหมู่ · เพิ่ม/แก้ไข/เปิดปิดใช้งาน · ปุ่มสร้างรหัสอัตโนมัติสำหรับรายการใหม่
+  · คลังใช้สาขาจากบัญชีอัตโนมัติ ไม่แสดงกล่องเลือก/แจ้งสาขาใน popup
+  · แก้โฟกัสฟอร์ม/บันทึก และอัปเดต detail cache หลังแก้ไขเพื่อเปิดซ้ำได้ค่าล่าสุด
+  · ไอคอนปิดใช้งานสอดคล้องกับหน้าสินค้า · คำอธิบาย endpoint แสดงใน Swagger
+- ✅ Scope ลูกค้า/รถ/พนักงาน: อ่านและจัดการตาม shard + สาขาจาก JWT ไม่ขยายสิทธิ์ด้วย `IsCustomerDataPrivate`
+  · รายการ/รายละเอียด/รูปภาพ/CSV ที่มีในแต่ละโมดูลใช้ scope เดียวกัน
+  · พนักงานส่ง BranchId ว่าง/0 ใช้สาขาปัจจุบัน ส่งสาขาอื่นคืน 403 แม้ Admin และไม่ย้ายสาขาผ่าน API นี้
+  · ลูกค้า/รถ legacy ไม่มี BranchId ใช้ผู้บันทึก/ความสัมพันธ์เจ้าของรถ/ประวัติงานของสาขา
+  · การเห็นลูกค้าไม่ทำให้เห็นรถต่างสาขาทุกคันของลูกค้านั้น
+  · **ลูกค้า/รถที่มีประวัติหลายสาขายังเป็นแถวร่วมกัน ไม่ใช่สำเนาแยกสาขา**; ดูข้อขัดแย้งนโยบาย legacy ด้านบน
+- ✅ จัดซื้อ/FIFO รุ่นแรก: Web `/purchasing`, `/inventory` + API PR/PO/GRN/ยอดยกมา/เบิก FIFO
+  · transaction + ActivityEvent · rowversion · RequestId กันรับ/เบิกซ้ำ · ล็อกแก้ยอดโดยตรงจากหน้าสินค้าหลังเริ่มใช้
+  · migration `20260904122540_AddPurchasingFifo` ใช้กับ ServiceDb แล้วในการตรวจครั้งนี้
+  · รายละเอียดสิทธิ์/สูตรยอด/ขอบเขตใน [docs/06-purchasing-fifo.md](docs/06-purchasing-fifo.md)
+- ✅ ตาราง Web: เรียงหัวคอลัมน์แบบ Jobs และขยายข้อความตามหัวข้อกฎ UI ด้านบน
+- ✅ ตารางพนักงาน: แสดงรูปวงกลม 56×56 ข้างชื่อ ผ่าน API รูปที่ตรวจ JWT/สาขาเดิม
+  · ไม่มีรูปหรือโหลด/อ่านรูปไม่ได้ใช้ตัวอักษรย่อแทน ไม่แสดงรูปแตก
+  · ขอรูปเฉพาะรายการที่มี PictureUrl; เปลี่ยนรูปแล้วโหลดใหม่ตาม LastUpdated และคืน blob URL เมื่อเลิกใช้
+  · ปรับเฉพาะ Web ไม่เพิ่มคำสั่งเขียนฐาน legacy
+- ✅ Test: บันทึกเดิม 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper · job service)
+  — เป็นผลก่อนงานล่าสุด ไม่ใช่จำนวนรวมปัจจุบัน ดูชุดทดสอบที่รันจริงด้านล่าง
 
 ### ยังไม่ได้ทำ
 - รับรถ 6 ขั้นเต็มรูปแบบบนมือถือ (ค้นหา/ยืนยันนัดหมาย/รูป 5 มุม/QR) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
   (spec เดิม — คนละอันกับ checklist 20 รายการที่ทำแล้วบนเว็บ) · ซ่อม+QC (placeholder ใน `JobCardModal`) ·
-  คลัง/จัดซื้อ · POS · รายงาน
+  POS · รายงาน
+- ส่วนต่อยอดคลัง/จัดซื้อ: VAT/ส่วนลด/ค่าขนส่ง/เจ้าหนี้ · พิมพ์ PO · ส่งคำสั่งซื้อไปภายนอก · แบ่ง PR เป็นหลาย PO
+  · โอนคลัง/คืนผู้ขาย/ตรวจนับปรับยอด · แนบรูป GRN · จอง/เบิกผูก job หรือ quotation อัตโนมัติ
+- เคลียร์ข้อขัดแย้งการเขียน legacy ของโมดูลลูกค้า/รถ/พนักงานให้ตรงนโยบายสถาปัตยกรรม
+- การเรียงตารางแบบ server-side ครอบคลุมทุกหน้า (ปัจจุบันเรียงเฉพาะหน้าหรือข้อมูลที่โหลดแล้ว)
 - RBAC ของ Job/Intake endpoint (ตอนนี้ gate ด้วย shift session เท่านั้น — ดู `[RISK]` ในหัวข้อกฎที่ห้ามละเมิด)
 - Offline queue ของ Flutter (`TMP-` + conflict) — **งานใหญ่ อย่าประเมินต่ำ**
 - Realtime (SignalR) · refresh token · หน้าตั้งค่า · หน้าส่งมอบรถ
@@ -275,9 +327,28 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 
 ## แนวทางการทำงาน
 
+- **อ่าน CLAUDE.md ก่อนเริ่มแก้เสมอ** แล้วอ่านเอกสารที่เกี่ยวข้องตามตารางด้านบน
+- **หลังทำงานให้อัปเดต CLAUDE.md** ในหัวข้อที่เกี่ยวข้อง: สิ่งที่ทำจริง กฎที่เปลี่ยน ไฟล์/เอกสารอ้างอิง
+  ผลตรวจที่รันจริง และงานค้าง/ข้อจำกัด อย่าเขียนว่าเสร็จทั้งระบบจากผลทดสอบเฉพาะส่วน
+- หากพบโค้ดขัดกับนโยบาย ให้บันทึก `[RISK]` และขอข้อยืนยันก่อนเปลี่ยนนโยบาย ไม่เขียนเอกสารย้อนหลังเพื่ออนุญาตเอง
 - **ตรวจ schema จริงก่อนเขียน SQL เสมอ** — ชื่อคอลัมน์ใน legacy ไม่ตรงกับที่เดา
   (`Car.CarNumber` = ทะเบียน · `Car.Chassis` = เลขตัวถัง · `Customer`/`Staff` ใช้ `FirstName`+`LastName`)
 - เขียน test ให้กฎธุรกิจก่อนต่อ UI — `QuotationCalculatorTests` ล็อกตัวเลขไว้ตรงกับ Demo prototype
   (8,838.20 และ 5,628.20) ถ้า test นี้แดง เอกสารที่ออกจากระบบจะไม่ตรงกับที่ออกแบบ
 - comment อธิบาย **ทำไม** ไม่ใช่ **อะไร** · ใส่ `[BIZ]` `[UI]` `[ASSUME]` `[SECURITY]` `[RISK]` ให้ตรงกับเอกสาร
 - เจอค่าที่ต้องเดา → ทำเป็น config/override table อย่า hard-code (ดู `svc_UserRoleOverride`)
+
+### ผลตรวจงานล่าสุด — 2026-09-04
+
+- จัดซื้อ: unit/regression ที่เกี่ยวข้อง 19 ผ่าน + SQL workflow integration 1 ผ่าน (เป็นผลของรอบทำโมดูลจัดซื้อ)
+- จำกัดสาขา: StaffService/StaffValidator/CustomerVehicleValidator รวม 19 ผ่าน + BranchScopeSqlTests 1 ผ่าน
+  · SQL scope test ใช้ตารางชั่วคราวเฉพาะ connection ไม่แก้ข้อมูลลูกค้าหรือพนักงานจริง
+  · ตั้ง `GARAGEPRO_BRANCH_SQL_CONNECTION` แล้วรัน `dotnet test backend/AMD.AutoService.GaragePro.Tests --filter FullyQualifiedName~BranchScopeSqlTests`
+- ตาราง: `node --test tests/tableSort.test.mjs` ผ่าน 3 tests (ตัวเลข/ภาษาไทย/รหัส, ขึ้นลงและยกเลิก, คงแม่–ลูก)
+  · ตรวจคลิก/คีย์บอร์ดและ computed font sizes ใน browser ด้วยข้อมูลสมมติของ component จริงแล้ว
+  · หน้า QA ชั่วคราวถูกนำออกหลังทดสอบ ไม่มีการเรียก API หรือบันทึกข้อมูลธุรกิจจาก fixture นี้
+- Backend build, Web TypeScript `tsc -b`, Vite production build และ `git diff --check` ผ่านในรอบที่เกี่ยวข้อง
+  · ยังมี warning ImageSharp NU1902 และ Vite bundle ใหญ่กว่า 500 kB ไม่ได้แก้ในงานนี้
+- ยังไม่ได้ทดสอบหน้าตารางทั้งหมดแบบ end-to-end ด้วยบัญชีที่ล็อกอิน; browser ที่ใช้ตรวจอยู่หน้า login
+- จำนวนผลทดสอบข้างต้นเป็นคนละรอบ/อาจมี regression ซ้ำกัน ไม่ใช่ผล full-suite ครั้งเดียว
+- เพิ่มรูปในตาราง staffs: ตรวจ TypeScript `tsc -b` ผ่าน; ยังไม่ได้ยืนยันรูปจริงด้วยบัญชีที่ล็อกอิน

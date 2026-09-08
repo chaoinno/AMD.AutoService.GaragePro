@@ -72,6 +72,11 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
   const contentRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const onOpenChangeRef = useRef(onOpenChange)
+
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  }, [onOpenChange])
+  const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
 
   useEffect(() => {
@@ -85,7 +90,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       ;(first ?? contentRef.current)?.focus()
     })
     const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') onOpenChangeRef.current(false)
+      if (event.key === 'Escape') onOpenChangeRef.currentRef.current(false)
     }
     document.addEventListener('keydown', handleEscape)
     return () => {
@@ -94,7 +99,6 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       document.body.classList.remove('modal-open')
       previousFocus.current?.focus()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on open/close, not on every onOpenChange identity change (avoids refocus/scroll-jump on unrelated re-renders)
   }, [open])
 
   if (!open) return null

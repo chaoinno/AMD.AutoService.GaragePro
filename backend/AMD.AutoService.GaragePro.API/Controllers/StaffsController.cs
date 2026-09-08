@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
-/// <summary>จัดการพนักงานและบัญชีผู้ใช้คู่กันใน Garage DB</summary>
+/// <summary>จัดการพนักงานและบัญชีผู้ใช้เฉพาะสาขาจาก JWT รวมถึงผู้ดูแลระบบ</summary>
 [ApiController]
 [Route("api/v1/staffs")]
 [Produces("application/json")]
@@ -15,33 +15,42 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 [RequireShiftSession]
 public sealed class StaffsController(IStaffService service) : ControllerBase
 {
+    /// <summary>ค้นหาและแบ่งหน้ารายการพนักงานเฉพาะสาขาที่เข้าสู่ระบบ</summary>
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] StaffSearchModel model, CancellationToken ct) =>
         Render(await service.SearchAsync(model.ToQuery(), ct));
 
+    /// <summary>รายละเอียดพนักงานในสาขาที่เข้าสู่ระบบ; ต่างสาขาคืน 404</summary>
     [HttpGet("{id:long}")]
     public async Task<IActionResult> Get(long id, CancellationToken ct) => Render(await service.GetAsync(id, ct));
 
+    /// <summary>ตัวอย่างรหัสพนักงานและบัญชีใหม่สำหรับสาขาที่เข้าสู่ระบบเท่านั้น</summary>
+    /// <param name="branchId">เว้นว่างเพื่อใช้สาขาจาก JWT; ส่งสาขาอื่นคืน 403 แม้เป็นผู้ดูแลระบบ</param>
+    /// <param name="ct">Cancellation token</param>
     [HttpGet("code-preview")]
     public async Task<IActionResult> Preview([FromQuery] int? branchId, CancellationToken ct) =>
         Render(await service.PreviewCodeAsync(branchId, ct));
 
+    /// <summary>เพิ่มพนักงานและบัญชีผู้ใช้ โดยใช้สาขาจาก JWT อัตโนมัติ (รูปไม่บังคับ)</summary>
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Create([FromForm] StaffForm form, CancellationToken ct) =>
         Render(await service.CreateAsync(form.ToRequest(), await ReadImage(form.Image, ct), ct), created: true);
 
+    /// <summary>แก้ไขพนักงานในสาขาที่เข้าสู่ระบบเท่านั้น ไม่อนุญาตให้ย้ายสาขา</summary>
     [HttpPut("{id:long}")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Update(long id, [FromForm] StaffForm form, CancellationToken ct) =>
         Render(await service.UpdateAsync(id, form.ToRequest(), await ReadImage(form.Image, ct), ct));
 
+    /// <summary>เปิด/ปิดใช้งานพนักงานและบัญชีเฉพาะสาขาที่เข้าสู่ระบบ</summary>
     [HttpPatch("{id:long}/status")]
     public async Task<IActionResult> Status(long id, [FromBody] StaffStatusRequest request, CancellationToken ct) =>
         Render(await service.SetStatusAsync(id, request, ct));
 
+    /// <summary>เปิดรูปพนักงานโดยตรวจสิทธิ์สาขาจาก JWT; ต่างสาขาคืน 404</summary>
     [HttpGet("{id:long}/image")]
     public async Task<IActionResult> Image(long id, CancellationToken ct)
     {
@@ -50,6 +59,7 @@ public sealed class StaffsController(IStaffService service) : ControllerBase
         return PhysicalFile(result.Data!.FullPath, result.Data.ContentType, result.Data.FileName);
     }
 
+    /// <summary>ข้อมูลประกอบฟอร์มพนักงาน; รายการสาขามีเฉพาะสาขาที่เข้าสู่ระบบ</summary>
     [HttpGet("reference-data")]
     public async Task<IActionResult> ReferenceData(CancellationToken ct) => Render(await service.GetReferenceDataAsync(ct));
 
@@ -96,6 +106,7 @@ public sealed class StaffSearchModel
 
 public sealed class StaffForm
 {
+    /// <summary>เว้นว่างหรือส่ง 0 เพื่อใช้สาขาจาก JWT; หากส่งค่าต้องตรงกับสาขาที่เข้าสู่ระบบ แม้เป็นผู้ดูแลระบบ</summary>
     public int BranchId { get; set; }
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;

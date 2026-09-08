@@ -146,6 +146,21 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+// Catalog edits can race with a receipt/issue; return a retryable conflict instead of an unhandled 500.
+app.Use(async (context, next) =>
+{
+    try { await next(context); }
+    catch (DbUpdateConcurrencyException) when (!context.Response.HasStarted)
+    {
+        context.Response.StatusCode = StatusCodes.Status409Conflict;
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = false, data = (object?)null,
+            error = new { code = "DATA_CONFLICT", messageTh = "ข้อมูลถูกแก้ไขพร้อมกัน กรุณาโหลดข้อมูลล่าสุดแล้วลองอีกครั้ง" },
+            traceId = context.TraceIdentifier
+        });
+    }
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

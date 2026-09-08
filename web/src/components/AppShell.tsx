@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
   Building2,
@@ -11,9 +11,16 @@ import {
   Users,
   Wrench,
   UserCog,
+  Truck,
+  Warehouse,
+  FolderTree,
+  ClipboardList,
+  ShoppingCart,
+  Boxes,
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router'
+import { purchases, type PurchaseKind } from '../api/purchasing'
 import { clearStoredSession, useSession } from '../lib/session'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
@@ -38,6 +45,14 @@ const navGroups = [
     items: [{ to: '/jobs', icon: Wrench, label: 'จ๊อบ' }],
   },
   {
+    label: 'Purchasing & Stock',
+    items: [
+      { to: '/purchasing/pr', icon: ClipboardList, label: 'ใบขอซื้อ (PR)', purchaseKind: 'PR' as PurchaseKind },
+      { to: '/purchasing/po', icon: ShoppingCart, label: 'ใบสั่งซื้อ (PO)', purchaseKind: 'PO' as PurchaseKind },
+      { to: '/inventory', icon: Boxes, label: 'สต็อก FIFO' },
+    ],
+  },
+  {
     label: 'Reports',
     items: [{ to: '/reports', icon: BarChart3, label: 'รายงาน' }],
   },
@@ -48,6 +63,9 @@ const navGroups = [
       { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
       { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
       { to: '/products', icon: Package, label: 'สินค้า' },
+      { to: '/suppliers', icon: Truck, label: 'ซัพพลายเออร์' },
+      { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
+      { to: '/catalog-categories', icon: FolderTree, label: 'หมวดหมู่สินค้า' },
     ],
   },
 ]
@@ -56,6 +74,19 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { session } = useSession()
+  const canUsePurchasing = ['manager', 'office'].includes(session?.user.role.toLowerCase() || '')
+  const prCount = useQuery({
+    queryKey: ['purchase-count', 'PR'],
+    queryFn: () => purchases('PR', '', '', 1, 100),
+    enabled: canUsePurchasing,
+    staleTime: 30_000,
+  })
+  const poCount = useQuery({
+    queryKey: ['purchase-count', 'PO'],
+    queryFn: () => purchases('PO', '', '', 1, 100),
+    enabled: canUsePurchasing,
+    staleTime: 30_000,
+  })
 
   const logout = () => {
     queryClient.clear()
@@ -81,6 +112,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
               <span className="sidebar__group-label">{group.label}</span>
               {group.items.map((item) => {
                 const Icon = item.icon
+                const count = item.purchaseKind === 'PR'
+                  ? prCount.data?.totalItems
+                  : item.purchaseKind === 'PO' ? poCount.data?.totalItems : undefined
                 return (
                   <NavLink
                     key={item.to}
@@ -89,6 +123,11 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   >
                     <Icon className="sidebar__icon" aria-hidden="true" />
                     <span className="sidebar__label">{item.label}</span>
+                    {item.purchaseKind && count !== undefined ? (
+                      <span className="sidebar__count" title={`เอกสารทั้งหมด ${count} รายการ`} aria-label={`${count} รายการ`}>
+                        {count > 999 ? '999+' : count}
+                      </span>
+                    ) : null}
                   </NavLink>
                 )
               })}

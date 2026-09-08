@@ -136,9 +136,55 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_Attachment", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ParentCategoryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_CatalogCategory_Code");
+
+                    b.HasIndex("ParentCategoryId");
+
+                    b.ToTable("svc_CatalogCategory", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", b =>
                 {
                     b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CategoryId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Code")
@@ -185,11 +231,23 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("PurchasingLocked")
+                        .HasColumnType("bit");
+
                     b.Property<int>("Reserved")
                         .HasColumnType("int");
 
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
                     b.Property<decimal?>("StandardHours")
                         .HasColumnType("decimal(6,2)");
+
+                    b.Property<bool>("StockManaged")
+                        .HasColumnType("bit");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -199,12 +257,168 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("nvarchar(40)");
 
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("WarehouseId");
 
                     b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
                         .IsUnique();
 
                     b.ToTable("svc_CatalogItem", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItemSupplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CatalogItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsPreferred")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LeadTimeDays")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MinOrderQty")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("SupplierCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SupplierItemCode")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_CatalogItemSupplier_Preferred")
+                        .HasFilter("[IsPreferred] = 1");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("CatalogItemId", "SupplierId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_CatalogItemSupplier_Item_Supplier");
+
+                    b.ToTable("svc_CatalogItemSupplier", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DeliveryNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("PurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReceivedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PurchaseOrderId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "RequestId")
+                        .IsUnique();
+
+                    b.ToTable("svc_GoodsReceipt", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceiptLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DamagedQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("GoodQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("GoodsReceiptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("PurchaseLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PurchaseLineId");
+
+                    b.HasIndex("GoodsReceiptId", "PurchaseLineId")
+                        .IsUnique();
+
+                    b.ToTable("svc_GoodsReceiptLine", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_GoodsReceiptLine_Quantity", "[GoodQuantity] >= 0 AND [DamagedQuantity] >= 0 AND [GoodQuantity] + [DamagedQuantity] > 0 AND [UnitCost] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
@@ -439,6 +653,190 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.HasKey("LegacyShardKey", "BranchId", "CounterDate");
 
                     b.ToTable("svc_JobNumberCounter", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("ApprovedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("CreatedBy")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CreatedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("nvarchar(2)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<string>("PaymentTerms")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<DateTime?>("RequiredDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("SourceRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("SupplierId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SupplierName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("WarehouseName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceRequestId")
+                        .IsUnique()
+                        .HasFilter("[SourceRequestId] IS NOT NULL");
+
+                    b.HasIndex("SupplierId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Kind", "Status", "CreatedAt");
+
+                    b.ToTable("svc_PurchaseDocument", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CatalogItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceivedDamaged")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceivedGood")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("DocumentId", "CatalogItemId")
+                        .IsUnique();
+
+                    b.ToTable("svc_PurchaseLine", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PurchaseLine_Quantity", "[Quantity] > 0 AND [ReceivedGood] >= 0 AND [ReceivedDamaged] >= 0 AND [ReceivedGood] + [ReceivedDamaged] <= [Quantity] AND [UnitCost] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseNumberCounter", b =>
+                {
+                    b.Property<string>("LegacyShardKey")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Kind")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.HasKey("LegacyShardKey", "LegacyBranchId", "Kind", "Date");
+
+                    b.ToTable("svc_PurchaseNumberCounter", (string)null);
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Quotation", b =>
@@ -864,6 +1262,221 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_ShiftSession", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockLot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CatalogItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid?>("GoodsReceiptLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ReceivedQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RemainingQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("GoodsReceiptLineId")
+                        .IsUnique()
+                        .HasFilter("[GoodsReceiptLineId] IS NOT NULL");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "CatalogItemId", "WarehouseId", "ReceivedAt");
+
+                    b.ToTable("svc_StockLot", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_StockLot_Quantity", "[ReceivedQuantity] > 0 AND [RemainingQuantity] >= 0 AND [RemainingQuantity] <= [ReceivedQuantity] AND [UnitCost] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("BalanceAfter")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BalanceBefore")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("CatalogItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("DamagedQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("OccurredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PerformedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid?>("StockLotId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("UnitCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogItemId");
+
+                    b.HasIndex("StockLotId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "OperationId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "CatalogItemId", "OccurredAt");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "OperationId", "StockLotId")
+                        .IsUnique()
+                        .HasFilter("[StockLotId] IS NOT NULL");
+
+                    b.ToTable("svc_StockMovement", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("PaymentTerms")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_Supplier_Code");
+
+                    b.ToTable("svc_Supplier", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.UserRoleOverride", b =>
                 {
                     b.Property<Guid>("Id")
@@ -901,6 +1514,52 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_UserRoleOverride", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_Warehouse_Code");
+
+                    b.ToTable("svc_Warehouse", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.ActivityEvent", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Job", "Job")
@@ -920,6 +1579,76 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Job");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", "ParentCategory")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", "Category")
+                        .WithMany("CatalogItems")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", "Warehouse")
+                        .WithMany("CatalogItems")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItemSupplier", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", "CatalogItem")
+                        .WithMany("Suppliers")
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Supplier", "Supplier")
+                        .WithMany("CatalogItems")
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("CatalogItem");
+
+                    b.Navigation("Supplier");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceiptLine", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("GoodsReceiptId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseLine", null)
+                        .WithMany()
+                        .HasForeignKey("PurchaseLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
@@ -942,6 +1671,40 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("IntakeChecklist");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", null)
+                        .WithMany()
+                        .HasForeignKey("SourceRequestId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Supplier", null)
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseLine", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Quotation", b =>
@@ -977,9 +1740,71 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Quotation");
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockLot", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceiptLine", null)
+                        .WithMany()
+                        .HasForeignKey("GoodsReceiptLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockMovement", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("CatalogItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.StockLot", null)
+                        .WithMany()
+                        .HasForeignKey("StockLotId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", b =>
+                {
+                    b.Navigation("CatalogItems");
+
+                    b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", b =>
+                {
+                    b.Navigation("Suppliers");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Quotation", b =>
@@ -987,6 +1812,16 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Approval");
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Supplier", b =>
+                {
+                    b.Navigation("CatalogItems");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", b =>
+                {
+                    b.Navigation("CatalogItems");
                 });
 #pragma warning restore 612, 618
         }

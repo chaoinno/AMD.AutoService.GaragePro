@@ -27,7 +27,10 @@ public sealed record CatalogManagementItemDto(
     int Damaged,
     int Available,
     string? EtaNote,
-    bool IsActive);
+    bool IsActive,
+    Guid? CategoryId = null,
+    Guid? WarehouseId = null,
+    bool StockLocked = false);
 
 public sealed record CatalogUpsertRequest(
     string Code,
@@ -42,6 +45,8 @@ public sealed record CatalogUpsertRequest(
     int Reserved,
     int OnOrder,
     int Damaged,
-    string? EtaNote);
+    string? EtaNote,
+    Guid? CategoryId = null,
+    Guid? WarehouseId = null);
 
 public sealed record CatalogStatusRequest(bool IsActive);

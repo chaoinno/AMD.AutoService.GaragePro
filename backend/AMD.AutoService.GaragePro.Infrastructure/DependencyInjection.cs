@@ -10,6 +10,9 @@ using AMD.AutoService.GaragePro.Application.Attachments;
 using AMD.AutoService.GaragePro.Application.Customers;
 using AMD.AutoService.GaragePro.Application.Staff;
 using AMD.AutoService.GaragePro.Application.Catalog;
+using AMD.AutoService.GaragePro.Application.CatalogCategories;
+using AMD.AutoService.GaragePro.Application.Suppliers;
+using AMD.AutoService.GaragePro.Application.Warehouses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +44,14 @@ public static class DependencyInjection
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
         services.AddScoped<ICatalogService, CatalogService>();
+        services.AddScoped<IMasterDataRepository, MasterDataRepository>();
+        services.AddScoped<ISupplierService, SupplierService>();
+        services.AddScoped<IWarehouseService, WarehouseService>();
+        services.AddScoped<ICatalogCategoryService, CatalogCategoryService>();
+        services.AddScoped<IPurchasingRepository, PurchasingRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingService>();
+        services.AddSingleton(configuration.GetSection("Purchasing").Get<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions>()
+            ?? new AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions());
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();

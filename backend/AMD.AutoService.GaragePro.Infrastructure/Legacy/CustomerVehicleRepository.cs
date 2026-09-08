@@ -17,79 +17,23 @@ public sealed class CustomerVehicleRepository(
 {
     private readonly LegacyShardOptions _options = options.Value;
 
-    private const string PrivateCustomerIds = """
-            SELECT owned.Id FROM Customer owned WITH (READUNCOMMITTED)
-            JOIN [User] scopeUser WITH (READUNCOMMITTED) ON scopeUser.Id = owned.LastUserId
-            JOIN Staff scopeStaff WITH (READUNCOMMITTED) ON scopeStaff.Id = scopeUser.StaffId
-            WHERE scopeStaff.BranchId = @BranchId
-            UNION ALL
-            SELECT scopeCc.CustomerId FROM CarCustomer scopeCc WITH (READUNCOMMITTED)
-            JOIN [User] scopeCcUser WITH (READUNCOMMITTED) ON scopeCcUser.Id = scopeCc.UpdatedBy
-            JOIN Staff scopeCcStaff WITH (READUNCOMMITTED) ON scopeCcStaff.Id = scopeCcUser.StaffId
-            WHERE scopeCc.CustomerId IS NOT NULL AND ISNULL(scopeCc.Status, 1) <> 0
-              AND scopeCcStaff.BranchId = @BranchId
-            UNION ALL
-            SELECT scopeJob.CustomerId FROM PJCarPickUp scopeJob WITH (READUNCOMMITTED)
-            WHERE scopeJob.CustomerId IS NOT NULL AND scopeJob.BranchId = @BranchId
-        """;
+    private static string CustomerScope() => $"c.Id IN ({BranchDataScope.CustomerIds})";
 
-    private const string SharedCustomerIds = """
-            SELECT shared.Id FROM Customer shared WITH (READUNCOMMITTED)
-            JOIN [User] ownerUser WITH (READUNCOMMITTED) ON ownerUser.Id = shared.LastUserId
-            JOIN Staff ownerStaff WITH (READUNCOMMITTED) ON ownerStaff.Id = ownerUser.StaffId
-            JOIN Branch ownerBranch WITH (READUNCOMMITTED) ON ownerBranch.Id = ownerStaff.BranchId
-            WHERE ISNULL(ownerBranch.IsCustomerDataPrivate, 0) = 0
-            UNION ALL
-            SELECT visible.Id FROM Customer visible WITH (READUNCOMMITTED)
-            JOIN [User] visibleUser WITH (READUNCOMMITTED) ON visibleUser.Id = visible.LastUserId
-            JOIN Staff visibleStaff WITH (READUNCOMMITTED) ON visibleStaff.Id = visibleUser.StaffId
-            WHERE visibleStaff.BranchId = @BranchId
-            UNION ALL
-            SELECT visibleCc.CustomerId FROM CarCustomer visibleCc WITH (READUNCOMMITTED)
-            JOIN [User] visibleCcUser WITH (READUNCOMMITTED) ON visibleCcUser.Id = visibleCc.UpdatedBy
-            JOIN Staff visibleCcStaff WITH (READUNCOMMITTED) ON visibleCcStaff.Id = visibleCcUser.StaffId
-            WHERE visibleCc.CustomerId IS NOT NULL AND ISNULL(visibleCc.Status, 1) <> 0
-              AND visibleCcStaff.BranchId = @BranchId
-            UNION ALL
-            SELECT visibleJob.CustomerId FROM PJCarPickUp visibleJob WITH (READUNCOMMITTED)
-            WHERE visibleJob.CustomerId IS NOT NULL AND visibleJob.BranchId = @BranchId
-        """;
+    private static string VehicleScope() => $"car.Id IN ({BranchDataScope.VehicleIds})";
 
-    private static string CustomerIds(bool isPrivate) => isPrivate ? PrivateCustomerIds : SharedCustomerIds;
-
-    private static string CustomerScope(bool isPrivate) => $"c.Id IN ({CustomerIds(isPrivate)})";
-
-    private static string VehicleScope(bool isPrivate) => $"""
-        car.Id IN (
-            SELECT vehicleJob.CarId FROM PJCarPickUp vehicleJob WITH (READUNCOMMITTED)
-            WHERE vehicleJob.CarId IS NOT NULL AND vehicleJob.BranchId = @BranchId
-            UNION ALL
-            SELECT vehicleCc.CarId FROM CarCustomer vehicleCc WITH (READUNCOMMITTED)
-            JOIN Customer c WITH (READUNCOMMITTED) ON c.Id = vehicleCc.CustomerId
-            WHERE vehicleCc.CarId IS NOT NULL AND ISNULL(vehicleCc.Status, 1) <> 0
-              AND {CustomerScope(isPrivate)}
-        )
-        """;
-
-    private static string VisibilitySetup(bool isPrivate) => $"""
+    private static string VisibilitySetup() => $"""
         CREATE TABLE #VisibleCustomer (Id bigint NOT NULL PRIMARY KEY);
         INSERT INTO #VisibleCustomer (Id)
-        {CustomerIds(isPrivate).Replace("UNION ALL", "UNION", StringComparison.Ordinal)};
+        {BranchDataScope.CustomerIds.Replace("UNION ALL", "UNION", StringComparison.Ordinal)};
 
         CREATE TABLE #VisibleVehicle (Id bigint NOT NULL PRIMARY KEY);
         INSERT INTO #VisibleVehicle (Id)
-        SELECT vehicleJob.CarId FROM PJCarPickUp vehicleJob WITH (READUNCOMMITTED)
-        WHERE vehicleJob.CarId IS NOT NULL AND vehicleJob.BranchId = @BranchId
-        UNION
-        SELECT vehicleCc.CarId FROM CarCustomer vehicleCc WITH (READUNCOMMITTED)
-        JOIN #VisibleCustomer visibleCustomer ON visibleCustomer.Id = vehicleCc.CustomerId
-        WHERE vehicleCc.CarId IS NOT NULL AND ISNULL(vehicleCc.Status, 1) <> 0;
+        {BranchDataScope.VehicleIds.Replace("UNION ALL", "UNION", StringComparison.Ordinal)};
         """;
 
     public async Task<PagedResult<CustomerSummaryDto>> SearchCustomersAsync(
         LegacyRequestScope scope, CustomerSearchQuery query, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var (where, parameters) = CustomerFilters(scope, query);
         var orderBy = query.SortBy?.ToLowerInvariant() switch
         {
@@ -102,7 +46,7 @@ public sealed class CustomerVehicleRepository(
 
         var sql = $"""
             SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-            {VisibilitySetup(isPrivate)}
+            {VisibilitySetup()}
             WITH filtered AS (
                 SELECT
                     c.Id,
@@ -120,6 +64,7 @@ public sealed class CustomerVehicleRepository(
                    CONVERT(bit, CASE WHEN ISNULL(c.Status, 1) = 0 THEN 1 ELSE 0 END) AS IsDeleted,
                    (SELECT COUNT(1) FROM CarCustomer countCc WITH (READUNCOMMITTED)
                     JOIN Car countCar WITH (READUNCOMMITTED) ON countCar.Id = countCc.CarId
+                    JOIN #VisibleVehicle countVisible ON countVisible.Id = countCar.Id
                     WHERE countCc.CustomerId = c.Id AND ISNULL(countCc.Status, 1) <> 0
                       AND ISNULL(countCar.Status, 1) <> 0) AS VehicleCount,
                    c.LastUpdated, f.TotalItems
@@ -147,7 +92,6 @@ public sealed class CustomerVehicleRepository(
     public async Task<CustomerDetailDto?> GetCustomerAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
             SELECT TOP 1 c.Id, ISNULL(c.Code, '') AS Code, ISNULL(c.FirstName, '') AS FirstName,
@@ -162,7 +106,7 @@ public sealed class CustomerVehicleRepository(
             LEFT JOIN province p WITH (READUNCOMMITTED) ON p.PROVINCE_ID = c.ProvinceId
             LEFT JOIN amphures a WITH (READUNCOMMITTED) ON a.AMPHUR_ID = c.AmphureId
             LEFT JOIN districts d WITH (READUNCOMMITTED) ON d.DISTRICT_ID = c.DistrictId
-            WHERE c.Id = @Id AND {CustomerScope(isPrivate)};
+            WHERE c.Id = @Id AND {CustomerScope()};
 
             SELECT car.Id, ISNULL(car.CarNumber, '') AS Registration, p.PROVINCE_NAME AS ProvinceName,
                 b.Name AS BrandName, m.Name AS ModelName, n.Name AS Nickname, y.AD AS [Year],
@@ -176,7 +120,7 @@ public sealed class CustomerVehicleRepository(
             LEFT JOIN CarModel m WITH (READUNCOMMITTED) ON m.Id = car.CarModelId
             LEFT JOIN CarNickName n WITH (READUNCOMMITTED) ON n.Id = car.CarNeckNameId
             LEFT JOIN [Year] y WITH (READUNCOMMITTED) ON y.Id = car.YearId
-            WHERE cc.CustomerId = @Id AND ISNULL(cc.Status, 1) <> 0
+            WHERE cc.CustomerId = @Id AND ISNULL(cc.Status, 1) <> 0 AND {VehicleScope()}
             ORDER BY ISNULL(car.LastUpdated, car.CreatedDate) DESC;
             """;
 
@@ -193,7 +137,6 @@ public sealed class CustomerVehicleRepository(
         LegacyRequestScope scope, CustomerUpsertRequest request, long? excludingId,
         CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
             SELECT TOP 1 c.Id, ISNULL(c.Code, '') AS Code,
@@ -202,7 +145,7 @@ public sealed class CustomerVehicleRepository(
                 CONVERT(bit, CASE WHEN ISNULL(c.Status, 1) = 0 THEN 1 ELSE 0 END) AS IsDeleted
             FROM Customer c WITH (READUNCOMMITTED)
             WHERE c.FirstName = @FirstName AND c.LastName = @LastName AND c.PhoneNumber1 = @PhoneNumber1
-              AND (@ExcludingId IS NULL OR c.Id <> @ExcludingId) AND {CustomerScope(isPrivate)}
+              AND (@ExcludingId IS NULL OR c.Id <> @ExcludingId) AND {CustomerScope()}
             ORDER BY c.Id DESC;
             """;
         await using var db = Open(scope.ShardKey);
@@ -233,7 +176,6 @@ public sealed class CustomerVehicleRepository(
     public async Task<bool> UpdateCustomerAsync(
         LegacyRequestScope scope, long id, CustomerUpsertRequest request, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             UPDATE c SET FirstName=@FirstName, LastName=@LastName, IdCard=@IdCard,
                 IdDriverLicense=@DriverLicense, GenderId=@GenderId, Address1=@Address1, Address2=@Address2,
@@ -241,7 +183,7 @@ public sealed class CustomerVehicleRepository(
                 PhoneNumber1=@PhoneNumber1, PhoneNumber2=@PhoneNumber2, Email=@Email, LineId=@LineId,
                 IsBlacklist=@IsBlacklist, BlacklistRemark=@BlacklistRemark, LastUpdated=GETDATE(),
                 LastUserId=@UserId, Status=1
-            FROM Customer c WHERE c.Id=@Id AND {CustomerScope(isPrivate)};
+            FROM Customer c WHERE c.Id=@Id AND {CustomerScope()};
             """;
         var parameters = CustomerParameters(request, scope.UserId);
         parameters.Add("Id", id); parameters.Add("BranchId", scope.BranchId);
@@ -252,10 +194,9 @@ public sealed class CustomerVehicleRepository(
     public async Task<bool> SoftDeleteCustomerAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             UPDATE c SET Status=0, LastUpdated=GETDATE(), LastUserId=@UserId
-            FROM Customer c WHERE c.Id=@Id AND {CustomerScope(isPrivate)};
+            FROM Customer c WHERE c.Id=@Id AND {CustomerScope()};
             """;
         await using var db = Open(scope.ShardKey);
         return await db.ExecuteAsync(new CommandDefinition(sql,
@@ -265,7 +206,6 @@ public sealed class CustomerVehicleRepository(
     public async Task<PagedResult<VehicleSummaryDto>> SearchVehiclesAsync(
         LegacyRequestScope scope, VehicleSearchQuery query, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var (where, parameters) = VehicleFilters(scope, query);
         var orderBy = query.SortBy?.ToLowerInvariant() switch
         {
@@ -278,7 +218,7 @@ public sealed class CustomerVehicleRepository(
 
         var sql = $"""
             SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
-            {VisibilitySetup(isPrivate)}
+            {VisibilitySetup()}
             WITH filtered AS (
                 SELECT car.Id,
                     ROW_NUMBER() OVER (ORDER BY {orderBy}) AS RowNumber,
@@ -310,7 +250,7 @@ public sealed class CustomerVehicleRepository(
                     c.PhoneNumber1
                 FROM CarCustomer ownerCc WITH (READUNCOMMITTED)
                 JOIN Customer c WITH (READUNCOMMITTED) ON c.Id=ownerCc.CustomerId
-                WHERE ownerCc.CarId=car.Id AND ISNULL(ownerCc.Status,1)<>0 AND {CustomerScope(isPrivate)}
+                WHERE ownerCc.CarId=car.Id AND ISNULL(ownerCc.Status,1)<>0 AND {CustomerScope()}
                 ORDER BY ownerCc.Id DESC) owner
             WHERE f.RowNumber BETWEEN @StartRow AND @EndRow ORDER BY f.RowNumber;
             """;
@@ -332,7 +272,6 @@ public sealed class CustomerVehicleRepository(
     public async Task<VehicleDetailDto?> GetVehicleAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
             SELECT TOP 1 car.Id, ISNULL(car.CarNumber,'') AS Registration, car.PorvindId AS ProvinceId,
@@ -361,14 +300,14 @@ public sealed class CustomerVehicleRepository(
             LEFT JOIN Machine ma WITH (READUNCOMMITTED) ON ma.Id=car.MachineId
             LEFT JOIN DriveSystem ds WITH (READUNCOMMITTED) ON ds.Id=car.DriveSystemId
             LEFT JOIN InsuranceType ins WITH (READUNCOMMITTED) ON ins.Id=car.InusrnceId
-            WHERE car.Id=@Id AND {VehicleScope(isPrivate)};
+            WHERE car.Id=@Id AND {VehicleScope()};
 
             SELECT c.Id, ISNULL(c.Code,'') AS Code,
                 LTRIM(RTRIM(ISNULL(c.FirstName,'')+' '+ISNULL(c.LastName,''))) AS FullName,
                 c.PhoneNumber1, c.IdCard
             FROM CarCustomer cc WITH (READUNCOMMITTED)
             JOIN Customer c WITH (READUNCOMMITTED) ON c.Id=cc.CustomerId
-            WHERE cc.CarId=@Id AND ISNULL(cc.Status,1)<>0 AND {CustomerScope(isPrivate)}
+            WHERE cc.CarId=@Id AND ISNULL(cc.Status,1)<>0 AND {CustomerScope()}
             ORDER BY cc.Id DESC;
             """;
         await using var db = Open(scope.ShardKey);
@@ -426,14 +365,13 @@ public sealed class CustomerVehicleRepository(
         LegacyRequestScope scope, long id, VehicleUpsertRequest request, VehicleImageUpload? image,
         CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         await using var db = Open(scope.ShardKey);
         await db.OpenAsync(ct);
         var oldPath = await db.QueryFirstOrDefaultAsync<string?>(new CommandDefinition(
-            $"SELECT TOP 1 car.ImageUrl FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope(isPrivate)}",
+            $"SELECT TOP 1 car.ImageUrl FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope()}",
             new { Id = id, scope.BranchId }, cancellationToken: ct));
         if (oldPath is null && !await db.ExecuteScalarAsync<bool>(new CommandDefinition(
-            $"SELECT CONVERT(bit, CASE WHEN EXISTS(SELECT 1 FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope(isPrivate)}) THEN 1 ELSE 0 END)",
+            $"SELECT CONVERT(bit, CASE WHEN EXISTS(SELECT 1 FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope()}) THEN 1 ELSE 0 END)",
             new { Id = id, scope.BranchId }, cancellationToken: ct))) return false;
 
         await using var transaction = (SqlTransaction)await db.BeginTransactionAsync(ct);
@@ -449,7 +387,7 @@ public sealed class CustomerVehicleRepository(
                     InusrnceId=@InsuranceId, InsuranceExpiredDate=@InsuranceExpiredDate,
                     LastUpdated=GETDATE(), UpdatedBy=@UserId, Status=1, PrimaryColorId=@PrimaryColorId
                     {(newPath is null ? string.Empty : ", ImageUrl=@ImageUrl")}
-                FROM Car car WHERE car.Id=@Id AND {VehicleScope(isPrivate)};
+                FROM Car car WHERE car.Id=@Id AND {VehicleScope()};
                 """;
             var parameters = VehicleParameters(request, scope.UserId);
             parameters.Add("Id", id); parameters.Add("BranchId", scope.BranchId);
@@ -484,10 +422,9 @@ public sealed class CustomerVehicleRepository(
     public async Task<bool> SoftDeleteVehicleAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
         var sql = $"""
             UPDATE car SET Status=0, LastUpdated=GETDATE(), UpdatedBy=@UserId
-            FROM Car car WHERE car.Id=@Id AND {VehicleScope(isPrivate)};
+            FROM Car car WHERE car.Id=@Id AND {VehicleScope()};
             """;
         await using var db = Open(scope.ShardKey);
         return await db.ExecuteAsync(new CommandDefinition(sql,
@@ -497,8 +434,7 @@ public sealed class CustomerVehicleRepository(
     public async Task<string?> GetVehicleImagePathAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default)
     {
-        var isPrivate = await IsCustomerDataPrivateAsync(scope, ct);
-        var sql = $"SELECT TOP 1 car.ImageUrl FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope(isPrivate)}";
+        var sql = $"SELECT TOP 1 car.ImageUrl FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope()}";
         await using var db = Open(scope.ShardKey);
         return await db.QueryFirstOrDefaultAsync<string?>(new CommandDefinition(sql,
             new { Id = id, scope.BranchId }, cancellationToken: ct));
@@ -554,19 +490,6 @@ public sealed class CustomerVehicleRepository(
     public Task<IReadOnlyList<LookupItemDto>> GetNicknamesAsync(int modelId, CancellationToken ct = default) =>
         QueryLookups("SELECT Id, Name FROM CarNickName WITH (READUNCOMMITTED) WHERE CarModelId=@Id AND ISNULL(Status,1)<>0 ORDER BY Name", new { Id = modelId }, ct);
 
-    private async Task<bool> IsCustomerDataPrivateAsync(LegacyRequestScope scope, CancellationToken ct)
-    {
-        const string sql = """
-            SELECT CONVERT(bit, ISNULL((
-                SELECT TOP 1 IsCustomerDataPrivate
-                FROM Branch WITH (READUNCOMMITTED)
-                WHERE Id=@BranchId), 0));
-            """;
-        await using var db = Open(scope.ShardKey);
-        return await db.ExecuteScalarAsync<bool>(new CommandDefinition(
-            sql, new { scope.BranchId }, cancellationToken: ct));
-    }
-
     private async Task<IReadOnlyList<LookupItemDto>> QueryLookups(string sql, object? parameters, CancellationToken ct)
     {
         await using var db = Open(_options.DefaultShard);
@@ -585,12 +508,12 @@ public sealed class CustomerVehicleRepository(
         }
         if (query.BrandId is > 0)
         {
-            filters.Add("EXISTS(SELECT 1 FROM CarCustomer fcc WITH (READUNCOMMITTED) JOIN Car fc WITH (READUNCOMMITTED) ON fc.Id=fcc.CarId WHERE fcc.CustomerId=c.Id AND ISNULL(fcc.Status,1)<>0 AND ISNULL(fc.Status,1)<>0 AND fc.BrandCarId=@BrandId)");
+            filters.Add("EXISTS(SELECT 1 FROM CarCustomer fcc WITH (READUNCOMMITTED) JOIN Car fc WITH (READUNCOMMITTED) ON fc.Id=fcc.CarId JOIN #VisibleVehicle visibleFilterCar ON visibleFilterCar.Id=fc.Id WHERE fcc.CustomerId=c.Id AND ISNULL(fcc.Status,1)<>0 AND ISNULL(fc.Status,1)<>0 AND fc.BrandCarId=@BrandId)");
             p.Add("BrandId", query.BrandId);
         }
         if (query.ModelId is > 0)
         {
-            filters.Add("EXISTS(SELECT 1 FROM CarCustomer fcc WITH (READUNCOMMITTED) JOIN Car fc WITH (READUNCOMMITTED) ON fc.Id=fcc.CarId WHERE fcc.CustomerId=c.Id AND ISNULL(fcc.Status,1)<>0 AND ISNULL(fc.Status,1)<>0 AND fc.CarModelId=@ModelId)");
+            filters.Add("EXISTS(SELECT 1 FROM CarCustomer fcc WITH (READUNCOMMITTED) JOIN Car fc WITH (READUNCOMMITTED) ON fc.Id=fcc.CarId JOIN #VisibleVehicle visibleFilterCar ON visibleFilterCar.Id=fc.Id WHERE fcc.CustomerId=c.Id AND ISNULL(fcc.Status,1)<>0 AND ISNULL(fc.Status,1)<>0 AND fc.CarModelId=@ModelId)");
             p.Add("ModelId", query.ModelId);
         }
         AddEqual(filters, p, "c.ProvinceId", "ProvinceId", query.ProvinceId);

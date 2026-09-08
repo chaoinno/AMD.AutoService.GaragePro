@@ -80,6 +80,7 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
     public async Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
     {
+        if (request.BranchId != scope.BranchId) return null;
         await using var db = Open(scope.ShardKey);
         await db.OpenAsync(ct);
         await using var tx = (SqlTransaction)await db.BeginTransactionAsync(ct);
@@ -128,6 +129,7 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
     public async Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
     {
+        if (request.BranchId != scope.BranchId) return null;
         await using var db = Open(scope.ShardKey);
         await db.OpenAsync(ct);
         await using var tx = (SqlTransaction)await db.BeginTransactionAsync(ct);
@@ -145,12 +147,12 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
             var p = StaffParameters(request, before.Code!);
             p.Add("Id", id); p.Add("Picture", savedImage ?? oldImage);
             await db.ExecuteAsync(new CommandDefinition("""
-                UPDATE Staff SET BranchId=@BranchId,FirstName=@FirstName,LastName=@LastName,GenderId=@GenderId,
+                UPDATE Staff SET FirstName=@FirstName,LastName=@LastName,GenderId=@GenderId,
                     IdCard=@IdCard,Address1=@Address1,Address2=@Address2,ProvinceId=@ProvinceId,AmphureId=@AmphureId,
                     DistrictId=@DistrictId,ZipCode=@ZipCode,PhoneNumber1=@PhoneNumber1,PhoneNumber2=@PhoneNumber2,
                     Email=@Email,LineId=@LineId,Salary=@Salary,StartJobDate=@StartJobDate,EndJobDate=@EndJobDate,
                     StaffSkillLevelId=@StaffSkillLevelId,ExperienceYear=@ExperienceYear,ExperienceMonth=@ExperienceMonth,
-                    Note=@Note,Picture=@Picture,LastUpdated=GETDATE() WHERE Id=@Id;
+                    Note=@Note,Picture=@Picture,LastUpdated=GETDATE() WHERE Id=@Id AND BranchId=@BranchId;
                 UPDATE [User] SET UserName=@UserName,Password=CASE WHEN @Password IS NULL THEN Password ELSE @Password END,
                     IsStaff=1,StaffId=@Id,LastUpdated=GETDATE() WHERE StaffId=@Id;
                 """, p, tx, cancellationToken: ct));
@@ -180,8 +182,8 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         if (before is null) return false;
         await db.ExecuteAsync(new CommandDefinition("""
             UPDATE Staff SET Status=CASE WHEN @IsActive=1 THEN 1 ELSE 0 END,
-                EndJobDate=CASE WHEN @IsActive=1 THEN NULL ELSE @EndJobDate END,LastUpdated=GETDATE() WHERE Id=@Id;
-            """, new { request.IsActive, request.EndJobDate, Id = id }, tx, cancellationToken: ct));
+                EndJobDate=CASE WHEN @IsActive=1 THEN NULL ELSE @EndJobDate END,LastUpdated=GETDATE() WHERE Id=@Id AND BranchId=@BranchId;
+            """, new { request.IsActive, request.EndJobDate, Id = id, scope.BranchId }, tx, cancellationToken: ct));
         var after = await ReadAuditSnapshotAsync(db, tx, id, ct);
         await WriteAuditAsync(db, tx, scope, before, after, before.Assignments, after.Assignments, ct);
         await tx.CommitAsync(ct);
@@ -191,7 +193,7 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
     public async Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default)
     {
         await using var db = Open(scope.ShardKey);
-        var code = await GenerateCodeAsync(db, null, branchId, lockCode: false, ct);
+        var code = await GenerateCodeAsync(db, null, scope.BranchId, lockCode: false, ct);
         return new(code, code, code);
     }
 
@@ -212,7 +214,7 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         CancellationToken ct = default)
     {
         const string sql = """
-            SELECT Id,Name FROM Branch WITH (READUNCOMMITTED) WHERE ISNULL(Status,1)<>0 AND (@IsAdministrator=1 OR Id=@BranchId) ORDER BY Name;
+            SELECT Id,Name FROM Branch WITH (READUNCOMMITTED) WHERE ISNULL(Status,1)<>0 AND Id=@BranchId ORDER BY Name;
             SELECT Id,Name FROM Gender WITH (READUNCOMMITTED) ORDER BY Id;
             SELECT Id,Name FROM Department WITH (READUNCOMMITTED) WHERE ISNULL(Status,1)<>0 ORDER BY Name;
             SELECT Id,Name FROM Position WITH (READUNCOMMITTED) WHERE ISNULL(Status,1)<>0 ORDER BY Name;
@@ -362,7 +364,7 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         int branchId, bool isAdministrator, long id, CancellationToken ct)
     {
         var allowed = await db.ExecuteScalarAsync<int>(new CommandDefinition("""
-            SELECT COUNT(1) FROM Staff s WHERE s.Id=@Id AND s.BranchId=@BranchId AND (@IsAdministrator=1 OR NOT EXISTS
+            SELECT COUNT(1) FROM Staff s WITH (UPDLOCK, HOLDLOCK) WHERE s.Id=@Id AND s.BranchId=@BranchId AND (@IsAdministrator=1 OR NOT EXISTS
                 (SELECT 1 FROM [User] u WHERE u.StaffId=s.Id AND ISNULL(u.IsAdministrator,0)=1));
             """, new { Id = id, BranchId = branchId, IsAdministrator = isAdministrator }, tx, cancellationToken: ct));
         return allowed == 0 ? null : await ReadAuditSnapshotAsync(db, tx, id, ct);

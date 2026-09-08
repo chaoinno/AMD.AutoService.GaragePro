@@ -62,6 +62,20 @@ public sealed class CatalogServiceTests
         Assert.Null(result.Data?.Cost);
     }
 
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task Managed_stock_cannot_be_overwritten_but_metadata_can_be_edited(bool stockManaged, bool purchasingLocked)
+    {
+        var item = Entity(); item.StockManaged = stockManaged; item.PurchasingLocked = purchasingLocked;
+        var repository = new StubRepository { Existing = item };
+        var service = new CatalogService(repository, new StubUser(UserRole.Manager));
+        var invalid = await service.UpdateAsync(item.Id, ValidInput() with { OnOrder = item.OnOrder, OnHand = 99 });
+        Assert.Equal("CATALOG_STOCK_LOCKED", invalid.Error?.Code); Assert.Equal(10, item.OnHand);
+        var valid = await service.UpdateAsync(item.Id, ValidInput() with { OnOrder = item.OnOrder, Name = "ชื่อใหม่" });
+        Assert.True(valid.Success); Assert.True(valid.Data!.StockLocked); Assert.Equal("ชื่อใหม่", item.Name);
+    }
+
     private static CatalogUpsertRequest ValidInput() => new(
         "P-OIL-1", LineType.Part, "น้ำมันเครื่อง", "ใช้ได้ทั่วไป", "ขวด",
         100m, 150m, null, 10, 2, 3, 0, "รับของวันพรุ่งนี้");

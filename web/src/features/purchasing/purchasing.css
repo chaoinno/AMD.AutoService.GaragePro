@@ -1,0 +1,53 @@
+.purchase-actions, .purchase-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 18px 0; }
+.purchase-page-heading { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; align-items: center; gap: 12px; margin-bottom: 14px; }
+.purchase-page-heading__icon { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 11px; }
+.purchase-page-heading__icon svg { width: 20px; height: 20px; }
+.purchase-page-heading__icon--pr { background: #eff6ff; color: #2563eb; }
+.purchase-page-heading__icon--po { background: #fff7ed; color: #c2410c; }
+.purchase-page-heading__copy { min-width: 0; }
+.purchase-page-heading h2 { font-size: 18px; line-height: 1.25; }
+.purchase-page-heading p { margin-top: 2px; color: #64748b; font-size: 12px; }
+.purchase-filters { display: flex; align-items: center; gap: 16px; padding: 18px; margin: 18px 0; }
+.purchase-filters .input-with-icon { flex: 1; }
+.purchase-filters > select { max-width: 240px; }
+.purchase-sub { display: block; color: #64748b; margin-top: 5px; font-size: 12px; }
+.purchase-status { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 10px; font-size: 12px; background: #f1f5f9; color: #475569; white-space: nowrap; }
+.purchase-status--pending, .purchase-status--partial { background: #fff7ed; color: #9a3412; }
+.purchase-status--approved, .purchase-status--complete, .purchase-status--converted { background: #ecfdf5; color: #047857; }
+.purchase-status--sent { background: #eff6ff; color: #1d4ed8; }
+.purchase-status--cancelled { background: #fff1f2; color: #be123c; }
+.purchase-pagination { justify-content: flex-end; }
+.purchase-pagination > span { margin-right: auto; color: #64748b; }
+.purchase-empty { padding: 30px; text-align: center; color: #64748b; }
+.purchase-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.purchase-picker { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 16px; margin: 20px 0; }
+.purchase-table-scroll { overflow-x: auto; margin: 16px 0; }
+.purchase-lines input[type=number] { min-width: 90px; max-width: 130px; }
+.purchase-lines td:first-child { min-width: 180px; }
+.purchase-total { display: flex; justify-content: flex-end; align-items: center; gap: 20px; padding: 18px; background: #f8fafc; border-radius: 10px; }
+.purchase-total strong { font-size: 20px; }
+.purchase-document-type { font-weight: 700; }
+.purchase-document-type--pr { color: var(--orange-600); }
+.purchase-document-type--po { color: #2563eb; }
+.purchase-summary { display: flex; align-items: center; justify-content: space-between; gap: 28px; padding: 20px 24px; background: var(--navy-900); border-radius: var(--radius-card); color: #fff; }
+.purchase-summary__facts { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: 22px; }
+.purchase-summary__facts > span:not(.purchase-status) { display: grid; gap: 2px; padding-left: 20px; border-left: 1px solid rgb(148 163 184 / 24%); }
+.purchase-summary small, .purchase-actor time { color: #94a3b8; font-size: 11px; font-weight: 500; }
+.purchase-summary strong { color: #f8fafc; font-size: 13px; }
+.purchase-summary__people { display: flex; flex: 0 0 auto; align-items: center; gap: 24px; padding-left: 24px; border-left: 1px solid rgb(148 163 184 / 24%); }
+.purchase-actor { display: flex; min-width: 155px; align-items: center; gap: 10px; }
+.purchase-actor > span:last-child { display: grid; gap: 1px; }
+.purchase-actor time { display: block; }
+.purchase-actor__avatar.ui-avatar, .purchase-actor__avatar--empty { width: 40px; height: 40px; border: 2px solid rgb(255 255 255 / 22%); background: #dbeafe; color: #1d4ed8; }
+.purchase-actor__avatar--empty { display: grid; flex: 0 0 auto; place-items: center; border-radius: var(--radius-pill); background: rgb(148 163 184 / 14%); color: #94a3b8; }
+.purchase-actor__avatar--empty svg { width: 17px; height: 17px; }
+.purchase-actor--pending strong { color: #cbd5e1; }
+.purchase-detail > p { margin: 18px 0; }
+.purchase-confirm { display: grid; gap: 16px; border: 1px solid #bfdbfe; background: #f8fbff; padding: 20px; border-radius: 12px; margin: 20px 0; }
+.purchase-receipt { display: grid; gap: 6px; padding: 16px 0; border-bottom: 1px solid #e2e8f0; }
+.purchase-receipt span { color: #64748b; font-size: 13px; }
+
+@media (max-width: 1350px) {
+  .purchase-summary { align-items: stretch; flex-direction: column; }
+  .purchase-summary__people { padding-top: 16px; padding-left: 0; border-top: 1px solid rgb(148 163 184 / 24%); border-left: 0; }
+}
