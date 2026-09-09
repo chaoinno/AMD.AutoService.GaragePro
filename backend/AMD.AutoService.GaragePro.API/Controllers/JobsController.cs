@@ -47,6 +47,14 @@ public sealed class JobsController(
         Ok(Envelope.From(Result<IReadOnlyList<JobStatusOptionDto>>.Ok(jobService.GetStatusOptions()),
             HttpContext.TraceIdentifier));
 
+    /// <summary>จำนวนงานที่ยังไม่ปิดของสาขาปัจจุบัน — ใช้แสดงตัวเลขที่เมนูจ๊อบ</summary>
+    [HttpGet("count-open")]
+    public async Task<IActionResult> CountOpen([FromQuery] int? jobTypeId, CancellationToken ct)
+    {
+        var result = await jobService.CountOpenAsync(jobTypeId, ct);
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
     [HttpGet("{jobId:guid}")]
     public async Task<IActionResult> Get(Guid jobId, CancellationToken ct)
     {

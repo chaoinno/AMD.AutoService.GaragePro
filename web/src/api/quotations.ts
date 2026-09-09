@@ -7,6 +7,16 @@ import type {
   UpsertLine,
 } from './types'
 
+export type LineDecisionInput = { decision: 'Approved' | 'Rejected'; rejectReason: string | null }
+
+export type SignQuotationInput = {
+  signatureImagePath: string
+  consentText: string
+  deviceInfo: string | null
+  witnessEmployeeId: number
+  witnessEmployeeName: string
+}
+
 export type QuotationFilter = '' | 'todo' | 'wait' | 'rev' | 'done'
 
 export function getQuotations(filter: QuotationFilter, jobId?: string) {
@@ -64,5 +74,23 @@ export function reviseQuotation(id: string | number, revisionReason: string) {
   return apiRequest<Quotation>(`/api/v1/quotations/${id}/revise`, {
     method: 'POST',
     body: JSON.stringify({ revisionReason }),
+  })
+}
+
+export function decideQuotationLine(
+  id: string | number,
+  lineId: string | number,
+  input: LineDecisionInput,
+) {
+  return apiRequest<Quotation>(`/api/v1/quotations/${id}/lines/${lineId}/decision`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+export function signQuotation(id: string | number, input: SignQuotationInput) {
+  return apiRequest<Quotation>(`/api/v1/quotations/${id}/sign`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   })
 }

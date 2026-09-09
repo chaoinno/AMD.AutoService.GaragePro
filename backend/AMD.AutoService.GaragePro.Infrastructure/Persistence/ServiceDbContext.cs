@@ -22,6 +22,13 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<Attachment> Attachments => Set<Attachment>();
     public DbSet<IntakeChecklist> IntakeChecklists => Set<IntakeChecklist>();
     public DbSet<IntakeChecklistItem> IntakeChecklistItems => Set<IntakeChecklistItem>();
+    public DbSet<QcChecklist> QcChecklists => Set<QcChecklist>();
+    public DbSet<QcChecklistItem> QcChecklistItems => Set<QcChecklistItem>();
+    public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<ReceiptNumberCounter> ReceiptNumberCounters => Set<ReceiptNumberCounter>();
+    public DbSet<HandoverRecord> HandoverRecords => Set<HandoverRecord>();
+    public DbSet<HandoverChecklistItem> HandoverChecklistItems => Set<HandoverChecklistItem>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<CatalogCategory> CatalogCategories => Set<CatalogCategory>();
@@ -52,6 +59,7 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.OverdueReason).HasMaxLength(500);
             e.Property(x => x.CancelReason).HasMaxLength(500);
             e.Property(x => x.RowVersion).IsRowVersion();
+            e.Property(x => x.VatIncluded).HasDefaultValue(true);
 
             // กันเปิดจ๊อบซ้ำบนรถคันเดียวกัน (เช็คระดับ application ด้วยเสมอ — ดู JobRepository.GetOpenByVehicleAsync)
             e.HasIndex(x => new { x.LegacyShardKey, x.BranchId, x.VehicleId, x.Status });
@@ -261,6 +269,111 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.UpdatedByUserName).HasMaxLength(200);
 
             e.HasIndex(x => new { x.IntakeChecklistId, x.ItemCode }).IsUnique();
+        });
+
+        b.Entity<QcChecklist>(e =>
+        {
+            e.ToTable("svc_QcChecklist");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.CreatedByUserName).HasMaxLength(200);
+            e.Property(x => x.TestDriveNote).HasMaxLength(1000);
+            e.Property(x => x.TestDriveRecordedByUserName).HasMaxLength(200);
+            e.Property(x => x.TestDriveKm).HasColumnType("decimal(8,1)");
+            e.Property(x => x.SubmittedByUserName).HasMaxLength(200);
+            e.Ignore(x => x.IsLocked);
+
+            // 1 งาน = 1 เช็คลิสต์ QC เสมอ (ไม่มีรอบตีกลับ — ดูหมายเหตุ [BIZ] บน entity)
+            e.HasOne(x => x.Job).WithMany()
+             .HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.JobId).IsUnique();
+
+            e.HasMany(x => x.Items).WithOne(x => x.QcChecklist!)
+             .HasForeignKey(x => x.QcChecklistId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<QcChecklistItem>(e =>
+        {
+            e.ToTable("svc_QcChecklistItem");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.CatalogCode).HasMaxLength(60).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(300).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.UpdatedByUserName).HasMaxLength(200);
+
+            e.HasIndex(x => new { x.QcChecklistId, x.QuotationLineId }).IsUnique();
+        });
+
+        b.Entity<Payment>(e =>
+        {
+            e.ToTable("svc_Payment");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Reference).HasMaxLength(200);
+            e.Property(x => x.RequestHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.ReceivedByName).HasMaxLength(200);
+            e.Property(x => x.Amount).HasColumnType("decimal(18,2)");
+
+            e.HasIndex(x => x.JobId);
+            // กันบันทึกชำระซ้ำเมื่อ client retry ด้วย RequestId เดิม (invariant #8)
+            e.HasIndex(x => x.RequestId).IsUnique();
+        });
+
+        b.Entity<Receipt>(e =>
+        {
+            e.ToTable("svc_Receipt");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.DocumentNo).HasMaxLength(40).IsRequired();
+            e.Property(x => x.IssuedByName).HasMaxLength(200);
+            e.Property(x => x.NetAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.VatAmount).HasColumnType("decimal(18,2)");
+            e.Property(x => x.TotalAmount).HasColumnType("decimal(18,2)");
+
+            // 1 job ออกใบเสร็จได้ใบเดียว (MVP — ไม่มี reprint/void)
+            e.HasIndex(x => x.JobId).IsUnique();
+            e.HasIndex(x => x.DocumentNo).IsUnique();
+        });
+
+        b.Entity<ReceiptNumberCounter>(e =>
+        {
+            e.ToTable("svc_ReceiptNumberCounter");
+            e.HasKey(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Year });
+            e.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
+        });
+
+        b.Entity<HandoverRecord>(e =>
+        {
+            e.ToTable("svc_HandoverRecord");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.CreatedByUserName).HasMaxLength(200);
+            e.Property(x => x.SignatureImagePath).HasMaxLength(500);
+            e.Property(x => x.SubmittedByUserName).HasMaxLength(200);
+            e.Ignore(x => x.IsLocked);
+
+            // 1 งาน = 1 ใบส่งมอบเสมอ (เหมือน QcChecklist)
+            e.HasOne(x => x.Job).WithMany()
+             .HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.JobId).IsUnique();
+
+            e.HasMany(x => x.Items).WithOne(x => x.HandoverRecord!)
+             .HasForeignKey(x => x.HandoverRecordId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<HandoverChecklistItem>(e =>
+        {
+            e.ToTable("svc_HandoverChecklistItem");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.ItemCode).HasMaxLength(40).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.UpdatedByUserName).HasMaxLength(200);
+
+            e.HasIndex(x => new { x.HandoverRecordId, x.ItemCode }).IsUnique();
         });
 
         b.Entity<ActivityEvent>(e =>

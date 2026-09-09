@@ -29,6 +29,12 @@ export function searchJobs(
   return apiRequest<Job[]>(`/api/v1/jobs/search?${params}`)
 }
 
+export function countOpenJobs(jobTypeId?: number) {
+  const params = new URLSearchParams()
+  if (jobTypeId) params.set('jobTypeId', String(jobTypeId))
+  return apiRequest<number>(`/api/v1/jobs/count-open?${params}`)
+}
+
 export function getJob(jobId: string) {
   return apiRequest<Job>(`/api/v1/jobs/${jobId}`)
 }

@@ -174,5 +174,18 @@ public sealed class StockFIFOController(PurchasingService service) : PurchasingA
     /// <remarks>ระบุ RequestId (UUID) เดิมเมื่อ retry พร้อมจำนวนเต็มบวกและเหตุผล เบิกได้ไม่เกินยอดพร้อมใช้ที่หักยอดจองแล้ว ไม่อนุญาตสต็อกติดลบ บันทึกประวัติแยกแต่ละล็อตภายใต้เลข ISS เดียวกัน</remarks>
     [HttpPost("issues")]
     public async Task<IActionResult> Issue(StockIssueInput input, CancellationToken ct) => Render(await service.IssueAsync(input, ct), true);
+
+    /// <summary>สร้างใบเบิกสินค้าหลายรายการในเอกสารเดียว ระบุผู้เบิก (พนักงาน) และผูกกับงาน (job) ได้</summary>
+    /// <remarks>ระบุ RequestId (UUID) เดิมเมื่อ retry พร้อมรายการสินค้า 1–100 รายการ เหตุผล และผู้เบิก เบิกได้ไม่เกินยอดพร้อมใช้ต่อสินค้า ออกเลขใบเบิก WD เดียวกันทุกบรรทัด</remarks>
+    [HttpPost("withdrawals")]
+    public async Task<IActionResult> Withdraw(StockWithdrawalInput input, CancellationToken ct) => Render(await service.WithdrawAsync(input, ct), true);
+
+    /// <summary>อ่านใบเบิกสินค้าที่สร้างแล้วด้วยเลข operation เพื่อแสดง/พิมพ์ซ้ำ</summary>
+    [HttpGet("withdrawals/{operationId:guid}")]
+    public async Task<IActionResult> WithdrawalDetail(Guid operationId, CancellationToken ct) => Render(await service.WithdrawalDetailAsync(operationId, ct));
+
+    /// <summary>รายการใบเบิกสินค้าที่ผูกกับ job นี้ ล่าสุดก่อน</summary>
+    [HttpGet("withdrawals/by-job/{jobId:guid}")]
+    public async Task<IActionResult> WithdrawalsByJob(Guid jobId, CancellationToken ct) => Render(await service.WithdrawalsByJobAsync(jobId, ct));
 }
 

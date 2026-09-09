@@ -30,3 +30,15 @@ public sealed record StockMovementDto(Guid Id, Guid OperationId, string Document
     decimal? UnitCost, string Reason, string PerformedByName, DateTime OccurredAt);
 public sealed record StockDetailDto(StockItemDto Item, IReadOnlyList<StockLotDto> Lots,
     IReadOnlyList<StockMovementDto> Movements);
+
+// ---- ใบเบิกสินค้า (withdrawal) — เบิกได้หลายรายการในเอกสารเดียว ผูก job ได้ ระบุผู้เบิกแยกจากผู้ทำรายการ ----
+public sealed record StockWithdrawalLineInput(Guid CatalogItemId, int Quantity);
+public sealed record StockWithdrawalInput(Guid RequestId, Guid WarehouseId, Guid? JobId,
+    long RequesterStaffId, string Reason, IReadOnlyList<StockWithdrawalLineInput> Lines);
+public sealed record StockWithdrawalLineDto(Guid CatalogItemId, string Code, string Name, string Unit,
+    int Quantity, decimal? UnitCost);
+public sealed record StockWithdrawalDto(Guid OperationId, string DocumentNumber, Guid WarehouseId, string WarehouseName,
+    Guid? JobId, string? JobNo, long RequesterStaffId, string RequesterName, string IssuedByName, string Reason,
+    DateTime OccurredAt, IReadOnlyList<StockWithdrawalLineDto> Lines, decimal? TotalCost);
+public sealed record StockWithdrawalSummaryDto(Guid OperationId, string DocumentNumber, DateTime OccurredAt,
+    string RequesterName, string IssuedByName, int LineCount, int TotalQuantity, string Reason);

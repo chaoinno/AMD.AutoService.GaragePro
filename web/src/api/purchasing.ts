@@ -37,6 +37,15 @@ export const stockDetail = (id: string) => apiRequest<StockDetail>(`/api/v1/inve
 export const stockOpening = (input: { catalogItemId: string; warehouseId: string; unitCost: number; expectedOnHand: number; expectedDamaged: number; reason: string }) => apiRequest<boolean>('/api/v1/inventory/opening-balances', { method: 'POST', body: JSON.stringify(input) })
 export const stockIssue = (input: IssueInput) => apiRequest<StockMovement[]>('/api/v1/inventory/issues', { method: 'POST', body: JSON.stringify(input) })
 
+export type WithdrawalLineInput = { catalogItemId: string; quantity: number }
+export type WithdrawalInput = { requestId: string; warehouseId: string; jobId: string | null; requesterStaffId: number; reason: string; lines: WithdrawalLineInput[] }
+export type WithdrawalLine = { catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number | null }
+export type Withdrawal = { operationId: string; documentNumber: string; warehouseId: string; warehouseName: string; jobId: string | null; jobNo: string | null; requesterStaffId: number; requesterName: string; issuedByName: string; reason: string; occurredAt: string; lines: WithdrawalLine[]; totalCost: number | null }
+export type WithdrawalSummary = { operationId: string; documentNumber: string; occurredAt: string; requesterName: string; issuedByName: string; lineCount: number; totalQuantity: number; reason: string }
+export const createWithdrawal = (input: WithdrawalInput) => apiRequest<Withdrawal>('/api/v1/inventory/withdrawals', { method: 'POST', body: JSON.stringify(input) })
+export const getWithdrawal = (operationId: string) => apiRequest<Withdrawal>(`/api/v1/inventory/withdrawals/${operationId}`)
+export const getJobWithdrawals = (jobId: string) => apiRequest<WithdrawalSummary[]>(`/api/v1/inventory/withdrawals/by-job/${jobId}`)
+
 // Retain an uncertain command across modal closes/reloads so retry uses the same UUID and payload.
 export function pendingCommand<T>(key: string): T | null {
   try { return JSON.parse(sessionStorage.getItem(key) || 'null') as T | null } catch { return null }

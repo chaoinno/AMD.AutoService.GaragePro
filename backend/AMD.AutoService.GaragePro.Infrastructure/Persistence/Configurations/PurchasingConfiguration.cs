@@ -71,12 +71,14 @@ public sealed class PurchasingConfiguration : IEntityTypeConfiguration<PurchaseD
         Base(e, "svc_StockMovement"); Scope(e); e.Property(x => x.DocumentNumber).HasMaxLength(40);
         e.Property(x => x.Type).HasMaxLength(20); e.Property(x => x.RequestHash).HasMaxLength(64);
         e.Property(x => x.UnitCost).HasPrecision(18, 2); e.Property(x => x.Reason).HasMaxLength(1000); e.Property(x => x.PerformedByName).HasMaxLength(200);
+        e.Property(x => x.RequesterName).HasMaxLength(200);
         e.HasOne<CatalogItem>().WithMany().HasForeignKey(x => x.CatalogItemId).OnDelete(DeleteBehavior.Restrict);
         e.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         e.HasOne<StockLot>().WithMany().HasForeignKey(x => x.StockLotId).OnDelete(DeleteBehavior.Restrict);
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.CatalogItemId, x.OccurredAt });
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.OperationId });
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.OperationId, x.StockLotId }).IsUnique().HasFilter("[StockLotId] IS NOT NULL");
+        e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.JobId }).HasFilter("[JobId] IS NOT NULL");
     }
     public void Configure(EntityTypeBuilder<PurchaseNumberCounter> e)
     {

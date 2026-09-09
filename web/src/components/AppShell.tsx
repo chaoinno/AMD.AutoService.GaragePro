@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { type ReactNode } from 'react'
 import { NavLink, useNavigate } from 'react-router'
+import { countOpenJobs } from '../api/jobs'
 import { purchases, type PurchaseKind } from '../api/purchasing'
 import { clearStoredSession, useSession } from '../lib/session'
 import { Avatar, AvatarFallback } from './ui/avatar'
@@ -42,11 +43,8 @@ type AppShellProps = {
 const navGroups = [
   {
     label: 'Workplace',
-    items: [{ to: '/jobs', icon: Wrench, label: 'จ๊อบ' }],
-  },
-  {
-    label: 'Purchasing & Stock',
     items: [
+      { to: '/jobs', icon: Wrench, label: 'จ๊อบ', jobsInShop: true as const },
       { to: '/purchasing/pr', icon: ClipboardList, label: 'ใบขอซื้อ (PR)', purchaseKind: 'PR' as PurchaseKind },
       { to: '/purchasing/po', icon: ShoppingCart, label: 'ใบสั่งซื้อ (PO)', purchaseKind: 'PO' as PurchaseKind },
       { to: '/inventory', icon: Boxes, label: 'สต็อก FIFO' },
@@ -87,6 +85,11 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     enabled: canUsePurchasing,
     staleTime: 30_000,
   })
+  const jobsInShopCount = useQuery({
+    queryKey: ['jobs-count-open', 9],
+    queryFn: () => countOpenJobs(9),
+    staleTime: 30_000,
+  })
 
   const logout = () => {
     queryClient.clear()
@@ -114,7 +117,12 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                 const Icon = item.icon
                 const count = item.purchaseKind === 'PR'
                   ? prCount.data?.totalItems
-                  : item.purchaseKind === 'PO' ? poCount.data?.totalItems : undefined
+                  : item.purchaseKind === 'PO' ? poCount.data?.totalItems
+                  : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
+                  : undefined
+                const countTitle = 'jobsInShop' in item && item.jobsInShop
+                  ? `จ๊อบรถในอู่ที่ยังไม่ปิดงาน ${count} รายการ`
+                  : `เอกสารทั้งหมด ${count} รายการ`
                 return (
                   <NavLink
                     key={item.to}
@@ -123,8 +131,8 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   >
                     <Icon className="sidebar__icon" aria-hidden="true" />
                     <span className="sidebar__label">{item.label}</span>
-                    {item.purchaseKind && count !== undefined ? (
-                      <span className="sidebar__count" title={`เอกสารทั้งหมด ${count} รายการ`} aria-label={`${count} รายการ`}>
+                    {count !== undefined ? (
+                      <span className="sidebar__count" title={countTitle} aria-label={`${count} รายการ`}>
                         {count > 999 ? '999+' : count}
                       </span>
                     ) : null}

@@ -386,6 +386,7 @@ export type AttachmentKind =
   | 'repair-after'
   | 'qc'
   | 'document'
+  | 'handover-signature'
 
 export type Attachment = {
   id: string

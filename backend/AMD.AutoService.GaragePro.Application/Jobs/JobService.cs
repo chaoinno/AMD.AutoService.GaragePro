@@ -19,6 +19,9 @@ public interface IJobService
 
     IReadOnlyList<JobStatusOptionDto> GetStatusOptions();
 
+    /// <summary>จำนวนงานที่ยังไม่ปิดของสาขาปัจจุบัน — ใช้แสดงตัวเลขในเมนูจ๊อบ</summary>
+    Task<Result<int>> CountOpenAsync(int? jobTypeId, CancellationToken ct = default);
+
     Task<Result<CreatedJobDto>> CreateAsync(CreateJobRequest request, CancellationToken ct = default);
 
     Task<Result<JobTransitionResultDto>> TransitionAsync(
@@ -33,6 +36,9 @@ public interface IJobService
 public sealed class JobService(
     IJobRepository jobs,
     IQuotationRepository quotations,
+    IQcChecklistRepository qcChecklists,
+    IPosRepository posRepo,
+    IHandoverRepository handoverRepo,
     IJobNumberGenerator jobNumbers,
     ICustomerVehicleService customerVehicles,
     ILegacyReader legacy,
@@ -41,6 +47,8 @@ public sealed class JobService(
 {
     private const int InShopTypeId = 9;      // รถในอู่
     private const int AppointmentTypeId = 10; // รถนัดหมาย
+    private const int ClosedTypeId = 11;      // ปิดจ๊อบ — ระบบตั้งเองเมื่อถึงสถานะจบ (ไม่ใช่ค่าที่เลือกตอนเปิดจ๊อบได้)
+    private const string ClosedTypeName = "ปิดจ๊อบ";
 
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -72,6 +80,9 @@ public sealed class JobService(
 
         return Result<IReadOnlyList<JobDto>>.Ok(results.Select(j => JobMapper.ToDto(j, Now)).ToList());
     }
+
+    public async Task<Result<int>> CountOpenAsync(int? jobTypeId, CancellationToken ct = default) =>
+        Result<int>.Ok(await jobs.CountOpenAsync(user.ShardKey, user.BranchId, jobTypeId, ct));
 
     public IReadOnlyList<JobStatusOptionDto> GetStatusOptions() =>
         Enum.GetValues<JobStatus>()
@@ -192,6 +203,14 @@ public sealed class JobService(
             job.CancelledAt = Now;
         }
 
+        // ปิดงานแล้ว (เสร็จสมบูรณ์/ยกเลิก) ไม่ใช่ "รถในอู่"/"รถนัดหมาย" อีกต่อไป —
+        // เปลี่ยนประเภทเป็น "ปิดจ๊อบ" ให้ตกออกจากรายการ/ตัวเลขในเมนูที่กรองตามประเภทเดิมโดยอัตโนมัติ
+        if (JobStateMachine.IsTerminal(to.Value))
+        {
+            job.JobTypeId = ClosedTypeId;
+            job.JobTypeName = ClosedTypeName;
+        }
+
         var description = isFullyComputed
             ? $"เปลี่ยนสถานะจาก {JobStateMachine.Describe(from)} เป็น {JobStateMachine.Describe(to.Value)}"
             : $"เปลี่ยนสถานะจาก {JobStateMachine.Describe(from)} เป็น {JobStateMachine.Describe(to.Value)} " +
@@ -227,10 +246,54 @@ public sealed class JobService(
         var isComputable =
             (from == JobStatus.WaitQuote && to == JobStatus.WaitApprove) ||
             (from == JobStatus.WaitApprove && to == JobStatus.Approved) ||
-            (from == JobStatus.Approved && to == JobStatus.InProgress);
+            (from == JobStatus.Approved && to == JobStatus.InProgress) ||
+            (from == JobStatus.Qc && to == JobStatus.Ready) ||
+            (from == JobStatus.Ready && to == JobStatus.Completed);
 
         if (!isComputable)
             return (JobGuard.None, false);
+
+        if (to == JobStatus.Completed)
+        {
+            // [BIZ] ยอดคงเหลือ/ใบเสร็จ/ส่งมอบ คำนวณจากข้อมูลจริงของ PosService/HandoverService
+            // (docs/01-workflow.md §3.9/§11 — ตัดขอบเขต split payment/reconciliation/มือถือออกแล้ว)
+            var completionGuard = JobGuard.None;
+
+            var quotationForBalance = await quotations.GetLatestForJobAsync(job.Id, ct);
+            if (quotationForBalance is not null)
+            {
+                QuotationCalculator.ApplyQuotationTotals(quotationForBalance);
+                var approved = QuotationCalculator.CalculateApprovedTotals(quotationForBalance, job.VatIncluded);
+                var paid = (await posRepo.GetPaymentsByJobAsync(job.Id, ct)).Sum(p => p.Amount);
+                if (Math.Round(approved.GrandTotal - paid, 2, MidpointRounding.AwayFromZero) <= 0m)
+                    completionGuard |= JobGuard.BalanceSettled;
+            }
+
+            if (await posRepo.GetReceiptByJobAsync(job.Id, ct) is not null)
+                completionGuard |= JobGuard.DocumentIssued;
+
+            var handover = await handoverRepo.GetByJobAsync(job.Id, ct);
+            if (handover?.IsLocked == true)
+                completionGuard |= JobGuard.VehicleHandedOver;
+
+            return (completionGuard, true);
+        }
+
+        if (to == JobStatus.Ready)
+        {
+            // [BIZ] QcPassed คำนวณจากเช็คลิสต์ QC จริง (ไม่มี process ตีกลับ — ผ่านอย่างเดียว, คำขอผู้ใช้ 2026-09-09)
+            // ดู QcChecklistService — checklist สร้างจากบรรทัดที่อนุมัติในใบเสนอราคา ณ ตอนเปิดหน้า QC
+            var checklist = await qcChecklists.GetByJobAsync(job.Id, ct);
+            if (checklist is null || checklist.Items.Count == 0)
+                return (JobGuard.None, true);
+
+            var allPassed = checklist.Items.All(i => i.Result == QcItemResult.Pass);
+            var testDriveRecorded = checklist.TestDriveRecordedAt.HasValue
+                && checklist.TestDriveKm.HasValue
+                && !string.IsNullOrWhiteSpace(checklist.TestDriveNote);
+
+            return (allPassed && testDriveRecorded ? JobGuard.QcPassed : JobGuard.None, true);
+        }
 
         var quotation = await quotations.GetLatestForJobAsync(job.Id, ct);
         if (quotation is null)

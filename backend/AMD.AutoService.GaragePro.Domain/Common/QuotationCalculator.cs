@@ -64,15 +64,17 @@ public static class QuotationCalculator
     /// <summary>
     /// ยอดเฉพาะบรรทัดที่ลูกค้าอนุมัติ — ใช้หลังลูกค้าเซ็น และเป็นฐานของการเรียกเก็บเงิน
     /// [BIZ] บรรทัดที่ไม่อนุมัติถูกล็อกออกจากการซ่อมและ POS
+    /// <paramref name="vatIncluded"/> = false (เฉพาะขั้นชำระเงิน — ดู Job.VatIncluded) ตัด VAT ออกจากยอดที่
+    /// ต้องชำระจริง ไม่ใช่แค่ซ่อนบนเอกสาร
     /// </summary>
-    public static ApprovedTotals CalculateApprovedTotals(Quotation quotation)
+    public static ApprovedTotals CalculateApprovedTotals(Quotation quotation, bool vatIncluded = true)
     {
         var approved = quotation.Lines
             .Where(l => l.ApprovalStatus == LineApprovalStatus.Approved)
             .ToList();
 
         var net = Round(approved.Sum(l => l.NetAmount));
-        var vat = Round(net * quotation.VatRate);
+        var vat = vatIncluded ? Round(net * quotation.VatRate) : 0m;
         var total = Round(net + vat);
 
         return new ApprovedTotals(

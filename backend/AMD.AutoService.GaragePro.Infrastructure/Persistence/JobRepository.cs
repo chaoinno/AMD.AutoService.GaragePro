@@ -57,6 +57,18 @@ public sealed class JobRepository(ServiceDbContext db) : IJobRepository
             .ToListAsync(ct);
     }
 
+    public Task<int> CountOpenAsync(
+        string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default)
+    {
+        var q = db.Jobs.Where(j =>
+            j.LegacyShardKey == shardKey && j.BranchId == branchId && !TerminalStatuses.Contains(j.Status));
+
+        if (jobTypeId is not null)
+            q = q.Where(j => j.JobTypeId == jobTypeId);
+
+        return q.CountAsync(ct);
+    }
+
     public async Task AddAsync(Job job, CancellationToken ct = default) =>
         await db.Jobs.AddAsync(job, ct);
 

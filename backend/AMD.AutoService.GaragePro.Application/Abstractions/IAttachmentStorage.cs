@@ -8,16 +8,14 @@ public sealed record AttachmentValidation(bool IsValid, string? Code, string? Me
 
 public interface IAttachmentStorage
 {
-    string RootPath { get; }
-
     AttachmentValidation Validate(string contentType, long sizeBytes);
 
     Task<StoredFile> SaveAsync(
         Stream content, string shardKey, int branchId, Guid jobId, string kind,
         string fileName, CancellationToken ct = default);
 
-    /// <summary>แปลง relative path เป็น path จริง — คืน false เมื่อชี้ออกนอก root หรือไม่มีไฟล์</summary>
-    bool TryResolve(string relativePath, out string fullPath);
+    /// <summary>ดาวน์โหลดไฟล์กลับมาเป็น stream — คืน null เมื่อไม่พบไฟล์ หรือ path ไม่ปลอดภัย (path traversal)</summary>
+    Task<Stream?> OpenReadAsync(string relativePath, CancellationToken ct = default);
 
     Task DeleteAsync(string relativePath, CancellationToken ct = default);
 }

@@ -29,7 +29,7 @@ public class PurchasingSqlTests
         async Task<Result<T>> Call<T>(Func<PurchasingService, Task<Result<T>>> call)
         {
             await using var db = NewDb();
-            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new()));
+            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new(), new ThrowingStaffRepository()));
         }
         var item = new CatalogItem { Code = "TEST-FIFO", Name = "ข้อมูลทดสอบ FIFO ชั่วคราว", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
         var warehouse = new Warehouse { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "คลังทดสอบชั่วคราว", LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
@@ -101,5 +101,19 @@ public class PurchasingSqlTests
         public long UserId => 0; public string UserName => "Purchasing SQL test"; public UserRole Role => UserRole.Manager;
         public string ShardKey { get; set; } = $"ft-{Guid.NewGuid():N}"[..19]; public int BranchId => 1;
         public EventSource Source => EventSource.System; public bool IsAdministrator => false; public Guid? SessionId => null;
+    }
+
+    // This suite never exercises withdrawal (Manager/Office staff lookup) — only PR/PO/GRN/opening/issue FIFO.
+    private sealed class ThrowingStaffRepository : IStaffRepository
+    {
+        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffStatusRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<string?> GetImagePathAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffReferenceDataDto> GetReferenceDataAsync(LegacyRequestScope scope, bool isAdministrator, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<IReadOnlyList<LookupItemDto>> GetSectorsAsync(LegacyRequestScope scope, int? departmentId, CancellationToken ct = default) => throw new NotImplementedException();
     }
 }

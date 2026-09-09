@@ -16,7 +16,8 @@ public sealed class PurchasingOptions
     public decimal ManagerApprovalThreshold { get; set; } = 10000m;
 }
 
-public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser user, TimeProvider clock, PurchasingOptions options)
+public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser user, TimeProvider clock,
+    PurchasingOptions options, IStaffRepository staffRepo)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
     private bool Manager => user.Role == UserRole.Manager;
@@ -298,6 +299,95 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         Audit(item.Id, "Stock", "issued", $"เบิก FIFO {number}: {item.Code} จำนวน {input.Quantity} — {input.Reason.Trim()}");
         return movements;
     }, true, ct);
+
+    /// <summary>เบิกสินค้าหลายรายการในใบเบิกเดียว ระบุผู้เบิก (พนักงาน) แยกจากผู้ทำรายการ ผูก job ได้</summary>
+    public Task<Result<StockWithdrawalDto>> WithdrawAsync(StockWithdrawalInput input, CancellationToken ct) => Run(async () =>
+    {
+        Valid(input.RequestId != Guid.Empty && input.Lines is { Count: > 0 and <= 100 } && Clean(input.Reason) is { Length: <= 1000 },
+            "กรุณาระบุ RequestId รายการสินค้า 1–100 รายการ และเหตุผลการเบิก");
+        Valid(input.Lines.Select(x => x.CatalogItemId).Distinct().Count() == input.Lines.Count, "ห้ามใส่สินค้าซ้ำในใบเบิกเดียวกัน");
+        Valid(input.Lines.All(x => x.Quantity is > 0 and <= 1000000), "จำนวนเบิกต้องเป็นจำนวนเต็ม 1–1,000,000");
+
+        var hash = Hash(input);
+        var existing = await repo.MovementsAsync(null, input.RequestId, ct);
+        if (existing.Count > 0)
+        {
+            Require(existing.All(x => x.RequestHash == hash && x.Type == "issue"), "PURCHASING_CONFLICT", "RequestId นี้ถูกใช้กับรายการอื่นแล้ว");
+            return await BuildWithdrawalDto(existing, ct);
+        }
+
+        var staff = await staffRepo.GetAsync(new LegacyRequestScope(user.ShardKey, user.BranchId, user.UserId, user.UserName), user.IsAdministrator, input.RequesterStaffId, ct);
+        Require(staff is { IsActive: true } && staff.BranchId == user.BranchId, "STAFF_NOT_FOUND", "ไม่พบพนักงานที่เลือกเป็นผู้เบิก หรือพนักงานถูกปิดใช้งานที่สาขานี้แล้ว");
+        var requesterName = $"{staff!.FirstName} {staff.LastName}".Trim();
+
+        Job? job = null;
+        if (input.JobId.HasValue)
+        {
+            job = await repo.JobAsync(input.JobId.Value, ct);
+            Require(job is not null, "JOB_NOT_FOUND", "ไม่พบงานที่อ้างอิงในสาขาปัจจุบัน");
+        }
+
+        await Warehouse(input.WarehouseId, ct);
+        var number = await repo.NumberAsync("WD", Now, ct);
+        var movements = new List<StockMovement>();
+        foreach (var line in input.Lines)
+        {
+            var item = await Item(line.CatalogItemId, ct);
+            Valid(item.StockManaged && item.IsActive && item.Type == LineType.Part, $"สินค้า {item.Code} ต้องเปิดใช้งานและตั้งยอด FIFO แล้ว");
+            Require(line.Quantity <= item.Available, "STOCK_INSUFFICIENT", $"จำนวนพร้อมใช้ของ {item.Code} ไม่พอ (ยอดจองถูกกันไว้แล้ว)");
+            var lots = (await repo.LotsAsync(item.Id, ct)).Where(x => x.WarehouseId == input.WarehouseId).ToList();
+            Require(lots.Sum(x => (long)x.RemainingQuantity) >= line.Quantity, "STOCK_INSUFFICIENT", $"จำนวนของ {item.Code} ในคลังที่เลือกไม่เพียงพอ");
+            var allocations = PurchasingRules.Allocate(lots, line.Quantity);
+            foreach (var (lot, quantity) in allocations)
+            {
+                var movement = Movement(item, lot.WarehouseId, lot.Id, input.RequestId, hash, number, "issue", -quantity, 0, lot.UnitCost, input.Reason.Trim());
+                movement.JobId = input.JobId; movement.RequesterStaffId = input.RequesterStaffId; movement.RequesterName = requesterName;
+                lot.RemainingQuantity -= quantity; item.OnHand -= quantity;
+                movements.Add(movement);
+            }
+        }
+        Audit(job?.Id ?? Guid.Empty, "Stock", "withdrawn",
+            $"เบิกสินค้า {number}: {movements.Select(x => x.CatalogItemId).Distinct().Count()} รายการ โดย {requesterName} — {input.Reason.Trim()}"
+            + (job is not null ? $" (งาน {job.JobNo})" : ""));
+        return await BuildWithdrawalDto(movements, ct);
+    }, true, ct);
+
+    /// <summary>อ่านใบเบิกสินค้าที่สร้างแล้วด้วยเลข operation เพื่อพิมพ์ซ้ำ</summary>
+    public Task<Result<StockWithdrawalDto>> WithdrawalDetailAsync(Guid operationId, CancellationToken ct) => Run(async () =>
+    {
+        var movements = await repo.MovementsAsync(null, operationId, ct);
+        Require(movements.Count > 0 && movements.All(x => x.Type == "issue"), "PURCHASING_NOT_FOUND", "ไม่พบใบเบิกสินค้านี้ในสาขาปัจจุบัน");
+        return await BuildWithdrawalDto(movements, ct);
+    });
+
+    /// <summary>รายการใบเบิกสินค้าที่ผูกกับ job นี้ ล่าสุดก่อน — จัดกลุ่มตามเลขที่ใบเบิกเดียวกัน</summary>
+    public Task<Result<IReadOnlyList<StockWithdrawalSummaryDto>>> WithdrawalsByJobAsync(Guid jobId, CancellationToken ct) => Run<IReadOnlyList<StockWithdrawalSummaryDto>>(async () =>
+    {
+        var movements = await repo.MovementsByJobAsync(jobId, ct);
+        return movements.GroupBy(x => x.OperationId)
+            .Select(g => new StockWithdrawalSummaryDto(g.Key, g.First().DocumentNumber, Utc(g.Max(x => x.OccurredAt)),
+                g.First().RequesterName ?? "", g.First().PerformedByName, g.Select(x => x.CatalogItemId).Distinct().Count(),
+                g.Sum(x => Math.Abs(x.Quantity)), g.First().Reason))
+            .OrderByDescending(x => x.OccurredAt).ToList();
+    });
+
+    private async Task<StockWithdrawalDto> BuildWithdrawalDto(IReadOnlyList<StockMovement> movements, CancellationToken ct)
+    {
+        var first = movements[0];
+        var warehouse = await Warehouse(first.WarehouseId, ct);
+        Job? job = first.JobId.HasValue ? await repo.JobAsync(first.JobId.Value, ct) : null;
+        var lines = new List<StockWithdrawalLineDto>();
+        foreach (var group in movements.GroupBy(x => x.CatalogItemId))
+        {
+            var item = await Item(group.Key, ct);
+            lines.Add(new StockWithdrawalLineDto(item.Id, item.Code, item.Name, item.Unit,
+                group.Sum(x => Math.Abs(x.Quantity)), Manager ? group.First().UnitCost : null));
+        }
+        return new StockWithdrawalDto(first.OperationId, first.DocumentNumber, first.WarehouseId, warehouse.Name,
+            first.JobId, job?.JobNo, first.RequesterStaffId ?? 0, first.RequesterName ?? "", first.PerformedByName,
+            first.Reason, Utc(movements.Max(x => x.OccurredAt)), lines,
+            Manager ? lines.Sum(x => x.Quantity * (x.UnitCost ?? 0)) : null);
+    }
 
     private async Task<PurchaseDocument> Document(string kind, Guid id, CancellationToken ct) => await repo.GetAsync(kind, id, ct)
         ?? throw new PurchasingException("PURCHASE_NOT_FOUND", "ไม่พบเอกสารในสาขาปัจจุบัน");

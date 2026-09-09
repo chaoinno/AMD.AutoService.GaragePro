@@ -106,6 +106,13 @@ public class StockMovement
     public string Reason { get; set; } = "";
     public string PerformedByName { get; set; } = "";
     public DateTime OccurredAt { get; set; }
+
+    // ---- ใบเบิกสินค้า (withdrawal) — เติมเฉพาะ movement ประเภท "issue" ที่มาจากใบเบิกหลายรายการ ----
+    /// <summary>งานที่เบิกสินค้าไปใช้ — null เมื่อเบิกจากหน้าสต็อกโดยไม่ผูก job</summary>
+    public Guid? JobId { get; set; }
+    /// <summary>ผู้เบิก (เช่น ช่างที่ขอเบิกของ) — คนละคนกับ PerformedByName ที่เป็นผู้ทำรายการ/ผู้จ่ายในระบบ</summary>
+    public long? RequesterStaffId { get; set; }
+    public string? RequesterName { get; set; }
 }
 
 public class PurchaseNumberCounter

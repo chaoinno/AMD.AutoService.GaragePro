@@ -18,3 +18,12 @@ public enum UserRole
     Manager,        // ผู้จัดการสาขา
     Lead            // หัวหน้าช่าง (รายงานแบบไม่มีตัวเงิน)
 }
+
+/// <summary>ช่องทางชำระเงิน — MVP: เป็น label เท่านั้น ไม่ต่อ EDC/QR gateway จริง (docs/01-workflow.md §3.9)</summary>
+public enum PaymentMethod
+{
+    Cash = 1,
+    Transfer,
+    Card,
+    Qr
+}

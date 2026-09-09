@@ -60,6 +60,27 @@ public class PurchasingServiceTests
     }
 
     [Fact]
+    public async Task Withdrawal_issues_multiple_lines_under_one_document_and_requires_known_active_staff()
+    {
+        var f = new Fixture(); f.Item.OnHand = 5;
+        Assert.True((await f.Service.OpeningAsync(new(f.Item.Id, f.Warehouse.Id, 10, 5, 0, "ยอดยกมา"), default)).Success);
+        var input = new StockWithdrawalInput(Guid.NewGuid(), f.Warehouse.Id, null, f.Requester.Id, "เบิกซ่อม", [new(f.Item.Id, 2)]);
+        var result = await f.Service.WithdrawAsync(input, default);
+        Assert.True(result.Success, result.Error?.MessageTh);
+        Assert.Equal($"{f.Requester.FirstName} {f.Requester.LastName}", result.Data!.RequesterName);
+        Assert.Equal(f.User.UserName, result.Data.IssuedByName);
+        Assert.Single(result.Data.Lines);
+        Assert.Equal(3, f.CurrentItem.OnHand);
+
+        // Same RequestId replays the original result without withdrawing again.
+        var replay = await f.Service.WithdrawAsync(input, default);
+        Assert.True(replay.Success); Assert.Equal(3, f.CurrentItem.OnHand);
+
+        Assert.Equal("STAFF_NOT_FOUND",
+            (await f.Service.WithdrawAsync(input with { RequestId = Guid.NewGuid(), RequesterStaffId = 12345 }, default)).Error?.Code);
+    }
+
+    [Fact]
     public async Task Invalid_later_receipt_line_rolls_back_entire_operation()
     {
         var f = new Fixture(); var second = new CatalogItem { Code = "B", Name = "B", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
@@ -155,7 +176,12 @@ public class PurchasingServiceTests
         public Warehouse Warehouse { get; } = new() { Code = "W", Name = "คลัง", LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Supplier Supplier { get; } = new() { Code = "S", Name = "ซัพพลายเออร์" };
         public CatalogItem CurrentItem => Repo.All<CatalogItem>().Single(x => x.Id == Item.Id);
-        public Fixture() { Repo = new(User); Repo.Add(Item); Repo.Add(Warehouse); Repo.Add(Supplier); Service = new(Repo, User, TimeProvider.System, new()); }
+        public Staff Requester { get; } = new(9001, "ช่าง เอ", "นามสกุล", 105, true);
+        public Fixture()
+        {
+            Repo = new(User); Repo.Add(Item); Repo.Add(Warehouse); Repo.Add(Supplier);
+            Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]));
+        }
         public PurchaseInput Input(int qty = 3, decimal cost = 20) => new(Warehouse.Id, Supplier.Id, null, "ทดสอบ", null, [new(Item.Id, qty, cost)]);
         public Task<PurchaseDto> SentPo(int qty = 3, decimal cost = 20) => SentPo(Input(qty, cost));
         public async Task<PurchaseDto> SentPo(PurchaseInput input)
@@ -195,10 +221,35 @@ public class PurchasingServiceTests
         public Task<IReadOnlyList<StockLot>> LotsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockLot>>(All<StockLot>().Where(x => x.CatalogItemId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> ids, CancellationToken ct) => Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(All<StockLot>().Where(x => ids.Contains(x.CatalogItemId) && Scope(x.LegacyShardKey, x.LegacyBranchId)).GroupBy(x => x.CatalogItemId).ToDictionary(x => x.Key, x => x.Sum(l => l.RemainingQuantity * l.UnitCost)));
         public Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? id, Guid? op, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => (!id.HasValue || x.CatalogItemId == id) && (!op.HasValue || x.OperationId == op) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
+        public Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => x.JobId == jobId && x.Type == "issue" && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
+        public Task<Job?> JobAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Job>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.BranchId)));
         public Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<GoodsReceipt>>(All<GoodsReceipt>().Where(x => x.PurchaseOrderId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<GoodsReceipt?> ReceiptAsync(Guid id, CancellationToken ct) => Task.FromResult(All<GoodsReceipt>().SingleOrDefault(x => x.RequestId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct) => Task.FromResult($"{kind}-{Guid.NewGuid():N}");
         public void Add<T>(T entity) where T : class => data.Add(entity);
         public void RemoveLines(IEnumerable<PurchaseLine> lines) { }
+    }
+
+    private sealed record Staff(long Id, string FirstName, string LastName, int BranchId, bool IsActive);
+
+    // Minimal stand-in for the legacy Dapper reader — only GetAsync is exercised by withdrawal tests.
+    private sealed class FakeStaffRepository(IReadOnlyList<Staff> staff) : IStaffRepository
+    {
+        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default)
+        {
+            var s = staff.SingleOrDefault(x => x.Id == id);
+            return Task.FromResult(s is null ? null : new StaffDetailDto(s.Id, s.BranchId, "สาขาทดสอบ", "S001", s.FirstName, s.LastName,
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null,
+                s.IsActive, new StaffAccountDto(s.Id, "user", false, s.IsActive), [], null, null));
+        }
+        public Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffStatusRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<string?> GetImagePathAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<StaffReferenceDataDto> GetReferenceDataAsync(LegacyRequestScope scope, bool isAdministrator, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<IReadOnlyList<LookupItemDto>> GetSectorsAsync(LegacyRequestScope scope, int? departmentId, CancellationToken ct = default) => throw new NotImplementedException();
     }
 }

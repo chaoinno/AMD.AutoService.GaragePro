@@ -16,6 +16,8 @@ public interface IPurchasingRepository
     Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct);
     Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> itemIds, CancellationToken ct);
     Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? itemId, Guid? operationId, CancellationToken ct);
+    Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct);
+    Task<Job?> JobAsync(Guid id, CancellationToken ct);
     Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid orderId, CancellationToken ct);
     Task<GoodsReceipt?> ReceiptAsync(Guid requestId, CancellationToken ct);
     Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct);

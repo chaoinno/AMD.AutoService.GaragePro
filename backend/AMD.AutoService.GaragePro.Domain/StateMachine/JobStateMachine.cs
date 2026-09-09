@@ -13,9 +13,13 @@ public static class JobStateMachine
 
     public static readonly IReadOnlyList<JobTransition> Transitions =
     [
+        // [ASSUME] เปิดให้ Office/Manager ยืนยันเองจากเว็บได้ชั่วคราว — ตรวจเช็ค 31 รายการ 8 หมวดของช่างบนมือถือ
+        // (docs/01-workflow.md §3.2) ยังไม่มี ใช้ checklist 20 รายการบนเว็บ (IntakeChecklistPanel) แทนไปพลางก่อน
+        // ตัด Web/Office/Manager ออกทันทีที่มือถือทำ flow ตรวจเช็คจริงได้ — guard นี้ไม่ใช่ isComputable จึงบังคับ
+        // ต้องมีเหตุผลเสมอเมื่อยืนยันจากเว็บ (JobService.ComputeGuardAsync)
         new(JobStatus.WaitInspect, JobStatus.WaitQuote,
             "ส่งผลตรวจครบทุกรายการที่บังคับ · รายการ “ไม่เกี่ยวข้อง” ต้องมีเหตุผล",
-            [UserRole.Technician], [EventSource.Mobile],
+            [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.InspectionComplete),
 
         new(JobStatus.WaitQuote, JobStatus.WaitApprove,
@@ -23,9 +27,13 @@ public static class JobStateMachine
             [UserRole.Office, UserRole.Manager], [EventSource.Web],
             JobGuard.QuotationValid),
 
+        // [ASSUME] เปิดให้ Office/Manager ยืนยันแทนลูกค้าเองจากเว็บได้ชั่วคราว — หน้าอนุมัติของลูกค้าบนมือถือ
+        // (docs/01-workflow.md §3.4) ยังไม่มี ตัด Web/Office/Manager ออกทันทีที่มือถือทำ flow นี้ได้จริง
+        // Guard ยังคงคำนวณจากข้อมูลจริงเสมอ (JobService.ComputeGuardAsync: isComputable=true) — ต้องมี
+        // การตัดสินใจครบทุกบรรทัดและ QuotationApproval จริงก่อน ไม่มีทาง manual-override ผ่าน reason ได้
         new(JobStatus.WaitApprove, JobStatus.Approved,
             "ลูกค้าตัดสินใจครบทุกบรรทัด + เซ็นยืนยัน · ลายเซ็นผูกกับเวอร์ชันนั้น",
-            [UserRole.FrontDesk], [EventSource.Mobile],
+            [UserRole.FrontDesk, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.AllLinesDecidedAndSigned | JobGuard.HasApprovedLines),
 
         // ออกเวอร์ชันใหม่ → การอนุมัติเดิมเป็นโมฆะ ทุกบรรทัดกลับเป็นรออนุมัติ

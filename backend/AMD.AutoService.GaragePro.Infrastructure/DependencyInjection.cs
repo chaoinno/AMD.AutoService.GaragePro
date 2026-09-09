@@ -1,6 +1,9 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Handover;
 using AMD.AutoService.GaragePro.Application.Intake;
 using AMD.AutoService.GaragePro.Application.Jobs;
+using AMD.AutoService.GaragePro.Application.Pos;
+using AMD.AutoService.GaragePro.Application.Qc;
 using AMD.AutoService.GaragePro.Application.Quotations;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
@@ -30,6 +33,9 @@ public static class DependencyInjection
         services.Configure<AttachmentOptions>(
             configuration.GetSection(AttachmentOptions.SectionName));
 
+        services.Configure<FtpOptions>(
+            configuration.GetSection(FtpOptions.SectionName));
+
         services.Configure<VehicleImageOptions>(
             configuration.GetSection(VehicleImageOptions.SectionName));
 
@@ -56,6 +62,13 @@ public static class DependencyInjection
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();
         services.AddScoped<IIntakeChecklistService, IntakeChecklistService>();
+        services.AddScoped<IQcChecklistRepository, QcChecklistRepository>();
+        services.AddScoped<IQcChecklistService, QcChecklistService>();
+        services.AddScoped<IPosRepository, PosRepository>();
+        services.AddScoped<IReceiptNumberGenerator, ReceiptNumberGenerator>();
+        services.AddScoped<IPosService, PosService>();
+        services.AddScoped<IHandoverRepository, HandoverRepository>();
+        services.AddScoped<IHandoverService, HandoverService>();
         services.AddScoped<ILegacyReader, LegacyReader>();
         services.AddScoped<IQuotationService, QuotationService>();
         services.AddScoped<IJobService, JobService>();
@@ -65,7 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
 
         services.AddScoped<IAttachmentRepository, AttachmentRepository>();
-        services.AddSingleton<IAttachmentStorage, AttachmentStorage>();
+        services.AddSingleton<IAttachmentStorage, FtpAttachmentStorage>();
         services.AddScoped<IAttachmentService, AttachmentService>();
         services.AddScoped<ICustomerVehicleRepository, CustomerVehicleRepository>();
         services.AddScoped<ICustomerVehicleService, CustomerVehicleService>();

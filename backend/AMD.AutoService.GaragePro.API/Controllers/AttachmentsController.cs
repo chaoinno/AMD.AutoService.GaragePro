@@ -61,7 +61,7 @@ public sealed class AttachmentsController(IAttachmentService service) : Controll
                 Envelope.From(result, HttpContext.TraceIdentifier));
 
         var file = result.Data!;
-        return PhysicalFile(file.FullPath, file.Meta.ContentType, file.Meta.FileName);
+        return File(file.Content, file.Meta.ContentType, file.Meta.FileName);
     }
 
     private IActionResult Render<T>(Result<T> result)

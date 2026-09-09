@@ -70,6 +70,23 @@ public sealed class JobServiceTests
     }
 
     [Fact]
+    public async Task CountOpenAsync_counts_only_open_jobs_of_the_current_branch_and_type()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB1", Status = JobStatus.WaitInspect });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB2", Status = JobStatus.InProgress });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB3", Status = JobStatus.Completed });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10, JobNo = "JB4", Status = JobStatus.WaitQuote });
+        jobs.Seed(new Job { LegacyShardKey = "db1", BranchId = 105, JobTypeId = 9, JobNo = "JB5", Status = JobStatus.WaitQuote });
+        var service = CreateService(jobs);
+
+        var result = await service.CountOpenAsync(9);
+
+        result.Success.Should().BeTrue();
+        result.Data.Should().Be(2);
+    }
+
+    [Fact]
     public async Task TransitionAsync_fails_when_job_has_no_svc_Job_row()
     {
         var service = CreateService(new FakeJobRepository());
@@ -193,6 +210,215 @@ public sealed class JobServiceTests
         result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
     }
 
+    [Fact]
+    public async Task TransitionAsync_rejects_qc_to_ready_without_reason_when_checklist_is_incomplete()
+    {
+        // ไม่มี process ตีกลับ (คำขอผู้ใช้ 2026-09-09) — Qc→Ready คำนวณได้จริงแล้ว ไม่อนุญาต manual override อีกต่อไป
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Qc));
+
+        var checklist = new QcChecklist { JobId = TestJobId };
+        checklist.Items.Add(new QcChecklistItem { QcChecklistId = checklist.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า", Result = QcItemResult.Pending });
+
+        var service = CreateService(jobs, qcChecklists: new FakeQcChecklistRepository(checklist),
+            role: UserRole.Office, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("ready", "ยืนยันเอง"));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_rejects_qc_to_ready_when_all_items_pass_but_test_drive_is_missing()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Qc));
+
+        var checklist = new QcChecklist { JobId = TestJobId };
+        checklist.Items.Add(new QcChecklistItem { QcChecklistId = checklist.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า", Result = QcItemResult.Pass });
+
+        var service = CreateService(jobs, qcChecklists: new FakeQcChecklistRepository(checklist),
+            role: UserRole.Office, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("ready", null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_advances_qc_to_ready_without_a_reason_when_checklist_and_test_drive_are_complete()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Qc));
+
+        var checklist = new QcChecklist
+        {
+            JobId = TestJobId, TestDriveKm = 5, TestDriveNote = "ขับปกติดี", TestDriveRecordedAt = DateTime.UtcNow
+        };
+        checklist.Items.Add(new QcChecklistItem { QcChecklistId = checklist.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า", Result = QcItemResult.Pass });
+
+        var service = CreateService(jobs, qcChecklists: new FakeQcChecklistRepository(checklist),
+            role: UserRole.Office, source: EventSource.Web);
+
+        // ไม่ส่ง reason — guard คำนวณได้จริงแล้วจึงไม่ต้อง manual override
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("ready", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Ready);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_rejects_ready_to_completed_without_reason_bypass_when_balance_not_settled()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            role: UserRole.Cashier, source: EventSource.Web);
+
+        // ไม่มีการชำระเงินเลย — ไม่อนุญาต manual override เพราะ guard นี้คำนวณได้จริงแล้ว
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", "ยืนยันเอง"));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_rejects_ready_to_completed_when_balance_settled_but_no_receipt_or_handover()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 963m } };
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments), role: UserRole.Cashier, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_advances_ready_to_completed_without_a_reason_when_paid_receipted_and_handed_over()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 963m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0001", TotalAmount = 963m };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(handover),
+            role: UserRole.Cashier, source: EventSource.Web);
+
+        // ไม่ส่ง reason — guard คำนวณได้จริงแล้วจึงไม่ต้อง manual override
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_reclassifies_job_type_as_closed_once_it_reaches_a_terminal_status()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 963m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0001", TotalAmount = 963m };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(handover),
+            role: UserRole.Cashier, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeTrue();
+        var saved = jobs.Saved.Single();
+        saved.JobTypeId.Should().Be(11);
+        saved.JobTypeName.Should().Be("ปิดจ๊อบ");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_reclassifies_job_type_as_closed_when_cancelled()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.WaitInspect));
+        var service = CreateService(jobs, role: UserRole.Manager, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(
+            TestJobId, new TransitionJobRequest("cancelled", "ลูกค้ายกเลิกงาน"));
+
+        result.Success.Should().BeTrue();
+        var saved = jobs.Saved.Single();
+        saved.Status.Should().Be(JobStatus.Cancelled);
+        saved.JobTypeId.Should().Be(11);
+        saved.JobTypeName.Should().Be("ปิดจ๊อบ");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_computes_balance_settled_without_vat_when_job_excludes_vat()
+    {
+        var jobs = new FakeJobRepository();
+        var job = SeedJob(JobStatus.Ready);
+        job.VatIncluded = false;
+        jobs.Seed(job);
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        // จ่ายแค่ 900 (ไม่รวม VAT 63) — ถ้า guard ไม่สนใจ VatIncluded จะยังขาดยอดและปฏิเสธ
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 900m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0001", TotalAmount = 900m };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(handover),
+            role: UserRole.Cashier, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
+    }
+
     // ---------- helpers ----------
 
     private static Job SeedJob(JobStatus status) => new()
@@ -227,11 +453,15 @@ public sealed class JobServiceTests
     private static JobService CreateService(
         FakeJobRepository jobs,
         FakeQuotationRepository? quotations = null,
+        FakeQcChecklistRepository? qcChecklists = null,
+        FakePosRepository? posRepo = null,
+        FakeHandoverRepository? handoverRepo = null,
         CustomerDetailDto? customer = null,
         VehicleDetailDto? vehicle = null,
         UserRole role = UserRole.Manager,
         EventSource source = EventSource.Web) =>
-        new(jobs, quotations ?? new FakeQuotationRepository(null),
+        new(jobs, quotations ?? new FakeQuotationRepository(null), qcChecklists ?? new FakeQcChecklistRepository(null),
+            posRepo ?? new FakePosRepository(), handoverRepo ?? new FakeHandoverRepository(null),
             new FakeJobNumberGenerator(), new FakeCustomerVehicleService(customer, vehicle),
             new FakeLegacyReader(), new StubCurrentUser(role, source), TimeProvider.System);
 
@@ -269,6 +499,13 @@ public sealed class JobServiceTests
                 .Where(j => j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId)
                 .ToList());
 
+        public Task<int> CountOpenAsync(
+            string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default) =>
+            Task.FromResult(_jobs.Count(j =>
+                j.LegacyShardKey == shardKey && j.BranchId == branchId
+                && j.Status is not (JobStatus.Completed or JobStatus.Cancelled)
+                && (jobTypeId is null || j.JobTypeId == jobTypeId)));
+
         public Task AddAsync(Job job, CancellationToken ct = default)
         {
             _jobs.Add(job);
@@ -296,6 +533,42 @@ public sealed class JobServiceTests
         public Task<int> GetNextVersionAsync(Guid jobId, CancellationToken ct = default) =>
             Task.FromResult(1);
         public Task AddAsync(Quotation q, CancellationToken ct = default) => Task.CompletedTask;
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+    }
+
+    private sealed class FakeQcChecklistRepository(QcChecklist? checklist) : IQcChecklistRepository
+    {
+        public Task<QcChecklist?> GetByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(checklist);
+        public Task AddAsync(QcChecklist c, CancellationToken ct = default) => Task.CompletedTask;
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+    }
+
+    private sealed class FakePosRepository(
+        IReadOnlyList<Payment>? payments = null, Receipt? receipt = null) : IPosRepository
+    {
+        public Task<IReadOnlyList<Payment>> GetPaymentsByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(payments ?? []);
+        public Task<Payment?> GetPaymentByRequestIdAsync(Guid requestId, CancellationToken ct = default) =>
+            Task.FromResult(payments?.FirstOrDefault(p => p.RequestId == requestId));
+        public Task<Payment?> GetPaymentAsync(Guid jobId, Guid paymentId, CancellationToken ct = default) =>
+            Task.FromResult(payments?.FirstOrDefault(p => p.Id == paymentId));
+        public Task AddPaymentAsync(Payment payment, CancellationToken ct = default) => Task.CompletedTask;
+        public Task RemovePaymentAsync(Payment payment, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<Receipt?> GetReceiptByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(receipt);
+        public Task AddReceiptAsync(Receipt receipt, CancellationToken ct = default) => Task.CompletedTask;
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+    }
+
+    private sealed class FakeHandoverRepository(HandoverRecord? record) : IHandoverRepository
+    {
+        public Task<HandoverRecord?> GetByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(record);
+        public Task AddAsync(HandoverRecord r, CancellationToken ct = default) => Task.CompletedTask;
         public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }

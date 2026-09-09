@@ -16,6 +16,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { isApiError, isForbiddenError } from '../../api/client'
 import { getTechnicians } from '../../api/catalog'
+import { transitionJob } from '../../api/jobs'
 import {
   addQuotationLine,
   deleteQuotationLine,
@@ -216,10 +217,32 @@ export function QuotationEditorModal({
   })
 
   const sendMutation = useMutation({
-    mutationFn: () => sendQuotation(id),
-    onSuccess: (quotation) => {
+    mutationFn: async () => {
+      const quotation = await sendQuotation(id)
+      // [BIZ] ส่งใบเสนอราคาแล้วต้องขยับ job ไป "รออนุมัติ" ด้วย — ไม่งั้น job ค้างที่ waitquote ตลอด
+      // แม้ลูกค้าจะเห็นใบเสนอราคาแล้ว (ตรงนี้ตั้งใจไม่ปล่อยให้ error หลุดออกไปทำให้ทั้ง mutation ดูเหมือนล้มเหลว
+      // เพราะการส่งใบเสนอราคาสำเร็จแล้วจริง — แค่ job status อาจไม่ขยับตาม)
+      let jobTransitionError: unknown = null
+      try {
+        await transitionJob(quotation.jobId, { toStatus: 'waitapprove' })
+      } catch (error) {
+        jobTransitionError = error
+      }
+      return { quotation, jobTransitionError }
+    },
+    onSuccess: ({ quotation, jobTransitionError }) => {
       applyServerQuotation(quotation)
+      void queryClient.invalidateQueries({ queryKey: ['job-detail', quotation.jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['job-quotations', quotation.jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
       toast.success('ส่งใบเสนอราคาให้ลูกค้าแล้ว')
+      if (jobTransitionError) {
+        toast.error(
+          isApiError(jobTransitionError)
+            ? `ส่งใบเสนอราคาสำเร็จ แต่เปลี่ยนสถานะจ๊อบเป็น "รออนุมัติ" ไม่สำเร็จ: ${jobTransitionError.messageTh}`
+            : 'ส่งใบเสนอราคาสำเร็จ แต่เปลี่ยนสถานะจ๊อบเป็น "รออนุมัติ" ไม่สำเร็จ',
+        )
+      }
       onOpenDocument(quotation.id)
     },
   })

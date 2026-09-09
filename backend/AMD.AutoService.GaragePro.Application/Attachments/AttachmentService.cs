@@ -32,7 +32,7 @@ public interface IAttachmentService
     Task<Result<AttachmentFile>> OpenAsync(string relativePath, CancellationToken ct = default);
 }
 
-public sealed record AttachmentFile(Attachment Meta, string FullPath);
+public sealed record AttachmentFile(Attachment Meta, Stream Content);
 
 public sealed class AttachmentService(
     IAttachmentStorage storage,
@@ -43,7 +43,7 @@ public sealed class AttachmentService(
 {
     /// <summary>ชนิดไฟล์ที่ระบบรู้จัก — กันการสร้างโฟลเดอร์มั่วจาก client</summary>
     private static readonly string[] AllowedKinds =
-        ["signature", "intake", "inspection", "repair-before", "repair-after", "qc", "document"];
+        ["signature", "intake", "inspection", "repair-before", "repair-after", "qc", "document", "handover-signature"];
 
     public async Task<Result<AttachmentDto>> UploadAsync(
         UploadAttachmentRequest request, CancellationToken ct = default)
@@ -115,11 +115,12 @@ public sealed class AttachmentService(
             return Result<AttachmentFile>.Fail("ATTACHMENT_OTHER_SCOPE",
                 "ไฟล์นี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
 
-        if (!storage.TryResolve(meta.RelativePath, out var fullPath))
+        var content = await storage.OpenReadAsync(meta.RelativePath, ct);
+        if (content is null)
             return Result<AttachmentFile>.Fail("ATTACHMENT_FILE_MISSING",
                 "ไม่พบไฟล์บนที่เก็บข้อมูล — อาจถูกลบหรือย้ายไปแล้ว");
 
-        return Result<AttachmentFile>.Ok(new AttachmentFile(meta, fullPath));
+        return Result<AttachmentFile>.Ok(new AttachmentFile(meta, content));
     }
 
     private static AttachmentDto ToDto(Attachment a) => new(

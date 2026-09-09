@@ -13,6 +13,9 @@ public interface IJobRepository
 
     Task<IReadOnlyList<Job>> SearchAsync(JobSearchQuery query, CancellationToken ct = default);
 
+    /// <summary>จำนวนงานที่ยังไม่ปิด (ไม่รวม Completed/Cancelled) — ใช้แสดงตัวเลขในเมนู</summary>
+    Task<int> CountOpenAsync(string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default);
+
     Task AddAsync(Job job, CancellationToken ct = default);
     Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default);
     Task<int> SaveChangesAsync(CancellationToken ct = default);

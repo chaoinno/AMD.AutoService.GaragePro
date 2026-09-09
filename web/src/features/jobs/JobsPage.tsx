@@ -39,6 +39,10 @@ const JOB_TYPE_OPTIONS = [
   { value: 10, label: 'รถนัดหมาย' },
 ] as const
 
+// ตัวกรองมีตัวเลือก "ปิดจ๊อบ" เพิ่ม — ประเภทนี้เลือกตอนเปิดจ๊อบไม่ได้ ระบบเปลี่ยนให้เองเมื่องานถึงสถานะจบ
+// (เสร็จสมบูรณ์/ยกเลิก) เพื่อให้ตกจากรายการ "รถในอู่"/"รถนัดหมาย" อัตโนมัติ
+const JOB_TYPE_FILTER_OPTIONS = [...JOB_TYPE_OPTIONS, { value: 11, label: 'ปิดจ๊อบ' }] as const
+
 const PAGE_SIZE = 50
 
 function useDebounced<T>(value: T, delay = 350) {
@@ -53,7 +57,7 @@ function useDebounced<T>(value: T, delay = 350) {
 export function JobsPage() {
   const [queryText, setQueryText] = useState('')
   const [searchText, setSearchText] = useState('')
-  const [typeFilter, setTypeFilter] = useState(0)
+  const [typeFilter, setTypeFilter] = useState(9)
   const [statusFilter, setStatusFilter] = useState<JobStatusToken | ''>('')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
@@ -283,7 +287,7 @@ export function JobsPage() {
             }}
           >
             <option value={0}>ทุกประเภท</option>
-            {JOB_TYPE_OPTIONS.map((item) => (
+            {JOB_TYPE_FILTER_OPTIONS.map((item) => (
               <option key={item.value} value={item.value}>{item.label}</option>
             ))}
           </Select>

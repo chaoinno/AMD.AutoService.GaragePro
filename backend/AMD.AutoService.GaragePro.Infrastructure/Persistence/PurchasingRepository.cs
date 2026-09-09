@@ -75,6 +75,10 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         if (operationId.HasValue) return await query.OrderBy(x => x.OccurredAt).ThenByDescending(x => x.BalanceBefore).ToListAsync(ct);
         return await query.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id).Take(200).ToListAsync(ct);
     }
+    public async Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) =>
+        await Movements.Where(x => x.JobId == jobId && x.Type == "issue").OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
+    public Task<Job?> JobAsync(Guid id, CancellationToken ct) => db.Set<Job>()
+        .SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.BranchId == user.BranchId, ct);
     public async Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid orderId, CancellationToken ct) => await Receipts.AsNoTracking().Include(x => x.Lines).Where(x => x.PurchaseOrderId == orderId).OrderByDescending(x => x.ReceivedAt).ToListAsync(ct);
     public Task<GoodsReceipt?> ReceiptAsync(Guid requestId, CancellationToken ct) => Receipts.Include(x => x.Lines).SingleOrDefaultAsync(x => x.RequestId == requestId, ct);
     public async Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct)

@@ -61,6 +61,10 @@ public class Job
     /// <summary>optimistic concurrency — 409 เมื่อเปลี่ยนสถานะจากข้อมูลเก่า</summary>
     public byte[]? RowVersion { get; set; }
 
+    /// <summary>ขั้นชำระเงินคิด VAT หรือไม่ — default true, ล็อกแก้ไม่ได้ทันทีที่เริ่มบันทึกชำระเงิน/ออกใบเสร็จแล้ว
+    /// (ดู PosService.SetVatIncludedAsync) ไม่ติ๊ก = ลดยอดที่ต้องชำระจริง ไม่ใช่แค่ปรับการแสดงผล</summary>
+    public bool VatIncluded { get; set; } = true;
+
     public bool IsOverdue(DateTime nowUtc) =>
         PromiseAt.HasValue && nowUtc > PromiseAt.Value && !JobStateMachine.IsTerminal(Status);
 }
