@@ -1,0 +1,55 @@
+# syntax=docker/dockerfile:1.7
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+COPY AMD.AutoService.GaragePro.sln ./
+COPY backend/AMD.AutoService.GaragePro.Domain/*.csproj backend/AMD.AutoService.GaragePro.Domain/
+COPY backend/AMD.AutoService.GaragePro.Application/*.csproj backend/AMD.AutoService.GaragePro.Application/
+COPY backend/AMD.AutoService.GaragePro.Infrastructure/*.csproj backend/AMD.AutoService.GaragePro.Infrastructure/
+COPY backend/AMD.AutoService.GaragePro.API/*.csproj backend/AMD.AutoService.GaragePro.API/
+RUN dotnet restore backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj
+
+COPY backend/ backend/
+RUN dotnet publish backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
+    --configuration Release \
+    --output /app/publish \
+    --no-restore \
+ && rm -f /app/publish/appsettings.Development.json
+
+# Bundle EF migrations into the runtime image. Deployment runs this executable
+# as a one-off job before replacing the API container.
+RUN dotnet tool install --tool-path /tools dotnet-ef --version 8.0.11 \
+ && Jwt__Key=build-only-placeholder-key-32-characters \
+    ConnectionStrings__ServiceDb='Server=localhost;Database=GarageService;User Id=build;Password=build;TrustServerCertificate=True' \
+    /tools/dotnet-ef migrations bundle \
+    --project backend/AMD.AutoService.GaragePro.Infrastructure/AMD.AutoService.GaragePro.Infrastructure.csproj \
+    --startup-project backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
+    --configuration Release \
+    --output /app/efbundle \
+    --force
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && addgroup --system appgroup \
+ && adduser --system --ingroup appgroup appuser \
+ && mkdir -p /app/storage \
+ && chown -R appuser:appgroup /app
+
+COPY --from=build --chown=appuser:appgroup /app/publish ./
+COPY --from=build --chown=appuser:appgroup /app/efbundle ./efbundle
+
+USER appuser
+EXPOSE 8080
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV DOTNET_BUNDLE_EXTRACT_BASE_DIR=/tmp/.net
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=5 \
+    CMD curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null || exit 1
+
+ENTRYPOINT ["dotnet", "AMD.AutoService.GaragePro.API.dll"]

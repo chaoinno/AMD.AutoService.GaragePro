@@ -1,0 +1,18 @@
+.git
+.gitignore
+.idea
+.vscode
+artifacts
+GaragePro Service Ops Design
+mobile
+tools
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.pnpm-store
+**/.dart_tool
+**/.env
+**/.env.*
+**/appsettings.Development.json
+**/*.log

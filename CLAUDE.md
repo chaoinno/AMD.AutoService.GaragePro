@@ -69,6 +69,76 @@ flutter run -d <udid> --dart-define=API_BASE_URL=http://localhost:5080
 scutil --nc start "Garage Pro VPN" && sleep 10 && scutil --nc status "Garage Pro VPN"
 ```
 
+## Production deployment — Web + API
+
+Production รันที่ `ssh garage_amd` จาก GitHub branch `main`; รอบนี้ deploy เฉพาะ `web/` และ `backend/`
+ไม่ build/deploy `mobile/`:
+
+| รายการ | ค่า |
+|---|---|
+| Source บน server | `/home/deployment/sources/AMD.AutoService.GaragePro` |
+| Deployment overlay | `/home/deployment/deployments/garagepro-service` |
+| Secret file (นอก Git, mode 600) | `/home/deployment/config/garagepro-service.env` |
+| Web | `https://gpservice.garage-pro.net` → Nginx → `127.0.0.1:3005` |
+| API | `https://gpservice-api.garage-pro.net` → Nginx → `127.0.0.1:5081` |
+| Containers | `garagepro_service_web`, `garagepro_service_api` |
+
+ไฟล์หลักอยู่ใน `deploy/production/`: multi-stage Dockerfiles, Compose, Nginx vhosts และ migration bundle
+โดย `.dockerignore` กัน `appsettings.Development.json` ที่มี secret ไม่ให้เข้า image เด็ดขาด รูปพนักงาน/รถอยู่ใน
+named volume `garagepro_service_storage`; ไฟล์แนบยังอยู่ FTP ตาม `Ftp__RootPath` เดิม
+
+ครั้งแรกบน Mac ให้สร้าง secret file โดยไม่พิมพ์ค่าออก terminal (ดึง DB/JWT จาก dotnet user-secrets ของ repo นี้
+และ FTP จาก config ของ AMD.GaragePro.Admin ที่ server):
+
+```bash
+./scripts/bootstrap-production-secrets.sh
+```
+
+Deploy ปกติจาก Mac (สคริปต์ไม่ commit/push):
+
+```bash
+./scripts/deploy-production.sh
+```
+
+ลำดับภายในคือ SSH ไป `git fetch` + `git pull --ff-only` (หยุดถ้า tracked file บน server ถูกแก้), sync เฉพาะ
+deployment overlay จาก Mac, build image, รัน EF migration bundle, `docker compose up -d --wait` แล้วตรวจ local/public
+health ถ้าเป็นครั้งแรกและยังไม่ลง vhost ให้ใช้ `SKIP_PUBLIC_CHECKS=1 ./scripts/deploy-production.sh` ก่อน
+
+งานที่ต้อง `sudo` แยกไว้ให้เจ้าของเครื่องรันและใส่รหัสเอง สคริปต์นี้ติดตั้งสอง vhost, ตรวจ `nginx -t`, ออก/ต่ออายุ
+Let's Encrypt certificate ผ่าน Certbot, เปิด HTTPS redirect และตรวจ public health:
+
+```bash
+ssh garage_amd
+/home/deployment/deployments/garagepro-service/install-nginx.sh <letsencrypt-email>
+```
+
+ตรวจ/แก้เหตุขัดข้องโดยไม่ restart บริการอื่น:
+
+```bash
+ssh garage_amd
+cd /home/deployment/deployments/garagepro-service
+export GARAGEPRO_SOURCE_DIR=/home/deployment/sources/AMD.AutoService.GaragePro
+export GARAGEPRO_DEPLOY_DIR=$PWD
+export GARAGEPRO_SECRETS_FILE=/home/deployment/config/garagepro-service.env
+docker compose ps
+docker compose logs --tail=200 api web
+curl -fsS http://127.0.0.1:5081/health
+curl -fsS http://127.0.0.1:3005/healthz
+```
+
+> ห้ามใส่ secret ใน Compose/CLAUDE.md/Git และห้ามใช้ `docker compose down -v` บน production เพราะจะลบ volume รูป
+> Deployment จะ migrate ฐานข้อมูลก่อนเปลี่ยน container; ถ้า migration หรือ health check ไม่ผ่าน สคริปต์จะหยุดทันที
+
+บันทึก initial deploy 2026-09-09: clone `main` application commit `d11deb9` แล้ว, secret file mode 600 ครบทุก key,
+EF bundle ตรวจแล้วว่า ServiceDb ไม่มี migration ค้าง และ container web/API healthy ที่ loopback ทั้งคู่
+production image ไม่มี `appsettings.Development.json`; bundle ของ frontend ชี้ API ไป
+`https://gpservice-api.garage-pro.net` ถูกต้อง ติดตั้ง Nginx vhost + Let's Encrypt แล้ว (certificate หมดอายุ
+2026-12-08) public web `/`/`/login` และ `/healthz` คืน 200, public API `/health` คืน 200 และ CORS preflight
+จาก `https://gpservice.garage-pro.net` คืน 204 พร้อม origin ที่ถูกต้อง
+ผลตรวจรอบนี้: backend 136 ผ่าน/3 skipped (SQL/FTP integration ที่ต้องมี environment), web comparator 3 ผ่าน,
+TypeScript + Vite production build ผ่าน, Docker build/health ผ่าน และ Nginx config syntax ผ่าน
+มี warning เดิม ImageSharp `NU1902` ระดับ moderate กับ Vite chunk ~848 kB ซึ่งยังไม่ได้แก้ในงาน deploy นี้
+
 ---
 
 ## สถาปัตยกรรมที่ต้องเข้าใจก่อนแก้โค้ด

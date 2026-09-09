@@ -1,0 +1,59 @@
+name: garagepro-service
+
+services:
+  api:
+    build:
+      context: ${GARAGEPRO_SOURCE_DIR:-../..}
+      dockerfile: ${GARAGEPRO_DEPLOY_DIR:-deploy/production}/Dockerfile.api
+    image: garagepro-service-api:latest
+    container_name: garagepro_service_api
+    restart: unless-stopped
+    env_file:
+      - path: ${GARAGEPRO_SECRETS_FILE:-/home/deployment/config/garagepro-service.env}
+        format: raw
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      TZ: Asia/Bangkok
+      AllowedOrigins__0: https://gpservice.garage-pro.net
+      LegacyShards__DefaultShard: db2
+      Jwt__Issuer: AMD.AutoService.GaragePro
+      Jwt__Audience: AMD.AutoService.GaragePro.Clients
+      Jwt__PreSessionMinutes: "15"
+      Jwt__SessionHours: "12"
+      Ftp__RootPath: /AutoServiceGaragePro/attachments/
+      VehicleImages__RootPath: /app/storage/vehicle-images
+      StaffImages__RootPath: /app/storage/staff-images
+    ports:
+      - "127.0.0.1:${API_PORT:-5081}:8080"
+    volumes:
+      - garagepro_service_storage:/app/storage
+    networks:
+      - internal
+
+  web:
+    build:
+      context: ${GARAGEPRO_SOURCE_DIR:-../..}
+      dockerfile: ${GARAGEPRO_DEPLOY_DIR:-deploy/production}/Dockerfile.web
+      additional_contexts:
+        deployment: ${GARAGEPRO_DEPLOY_DIR:-deploy/production}
+      args:
+        VITE_API_BASE_URL: https://gpservice-api.garage-pro.net
+        VITE_LEGACY_ASSET_BASE_URL: https://media.garage-pro.net/
+    image: garagepro-service-web:latest
+    container_name: garagepro_service_web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3005}:8080"
+    networks:
+      - internal
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  garagepro_service_storage:
