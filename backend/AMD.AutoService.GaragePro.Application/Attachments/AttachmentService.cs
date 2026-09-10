@@ -43,7 +43,8 @@ public sealed class AttachmentService(
 {
     /// <summary>ชนิดไฟล์ที่ระบบรู้จัก — กันการสร้างโฟลเดอร์มั่วจาก client</summary>
     private static readonly string[] AllowedKinds =
-        ["signature", "intake", "inspection", "repair-before", "repair-after", "qc", "document", "handover-signature"];
+        ["signature", "intake", "inspection", "repair-before", "repair-after", "qc", "document",
+         "handover-signature", "chat"];
 
     public async Task<Result<AttachmentDto>> UploadAsync(
         UploadAttachmentRequest request, CancellationToken ct = default)

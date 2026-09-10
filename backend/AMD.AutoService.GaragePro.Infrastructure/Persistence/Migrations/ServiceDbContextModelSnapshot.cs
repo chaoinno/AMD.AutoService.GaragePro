@@ -724,6 +724,72 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_Job", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobChatMention", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("StaffId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("StaffName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("StaffId");
+
+                    b.ToTable("svc_JobChatMention", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobChatMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Body")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("CreatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CreatedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ReplyToMessageId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReplyToMessageId");
+
+                    b.HasIndex("JobId", "CreatedAt");
+
+                    b.ToTable("svc_JobChatMessage", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobNumberCounter", b =>
                 {
                     b.Property<string>("LegacyShardKey")
@@ -2019,6 +2085,35 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("IntakeChecklist");
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobChatMention", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.JobChatMessage", "Message")
+                        .WithMany("Mentions")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobChatMessage", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Job", "Job")
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.JobChatMessage", "ReplyToMessage")
+                        .WithMany()
+                        .HasForeignKey("ReplyToMessageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Job");
+
+                    b.Navigation("ReplyToMessage");
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", null)
@@ -2173,6 +2268,11 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
                 {
                     b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.JobChatMessage", b =>
+                {
+                    b.Navigation("Mentions");
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>

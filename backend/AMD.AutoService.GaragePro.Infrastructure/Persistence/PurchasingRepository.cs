@@ -49,9 +49,17 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         // request available by direct id for audit/reference, but remove it from the PR worklist.
         if (kind == "PR") query = query.Where(x => x.Status != "converted");
         if (q is not null) query = query.Where(x => x.Number.Contains(q) || x.SupplierName != null && x.SupplierName.Contains(q));
-        if (status is not null) query = query.Where(x => x.Status == status);
+        // "open" is a synthetic filter value (not a real Status) meaning "not yet fully received/closed".
+        if (status == "open") query = query.Where(x => x.Status != "complete" && x.Status != "cancelled");
+        else if (status is not null) query = query.Where(x => x.Status == status);
         var count = await query.CountAsync(ct);
         return (await query.Include(x => x.Lines).OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct), count);
+    }
+    public Task<int> CountOpenAsync(string kind, CancellationToken ct)
+    {
+        var query = Documents.Where(x => x.Kind == kind && x.Status != "complete" && x.Status != "cancelled");
+        if (kind == "PR") query = query.Where(x => x.Status != "converted");
+        return query.CountAsync(ct);
     }
     public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Documents.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id && x.Kind == kind, ct);
     public Task<ActivityEvent?> ApprovalAsync(string kind, Guid documentId, CancellationToken ct) => db.ActivityEvents.AsNoTracking()

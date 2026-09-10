@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Customers;
@@ -226,7 +227,9 @@ public sealed class JobService(
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
-            OccurredAt = Now
+            OccurredAt = Now,
+            // ให้รายงานรอบเวลา (ReportsService) แยกสถานะแต่ละช่วงได้แน่นอน โดยไม่ต้อง parse ข้อความไทยที่เปราะบาง
+            PayloadJson = JsonSerializer.Serialize(new { from = from.ToString(), to = to.Value.ToString() })
         }, ct);
 
         await jobs.SaveChangesAsync(ct);

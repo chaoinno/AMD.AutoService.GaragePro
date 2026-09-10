@@ -151,6 +151,28 @@ public class PurchasingServiceTests
     }
 
     [Fact]
+    public async Task Open_po_filter_and_count_exclude_complete_and_cancelled_documents()
+    {
+        var f = new Fixture();
+        // A freshly created/converted PO sits in "draft" — must count as open, same as sent/partial.
+        var draftPo = (await f.Service.SaveAsync("PO", null, f.Input(), default)).Data!;
+        var openPo = await f.SentPo(3, 20);
+        var completePo = await f.SentPo(2, 20);
+        Assert.True((await f.Service.ReceiveAsync(completePo.Id, new(Guid.NewGuid(), "DEL", [new(completePo.Lines[0].Id, 2, 0, 20, null)]), default)).Success);
+        Assert.Equal("complete", (await f.Service.GetAsync("PO", completePo.Id, default)).Data!.Status);
+        var cancelledPo = (await f.Service.SaveAsync("PO", null, f.Input(), default)).Data!;
+        Assert.True((await f.Service.ActionAsync("PO", cancelledPo.Id, "cancel", new(cancelledPo.Version, "ไม่ต้องการสั่งซื้อแล้ว"), default)).Success);
+
+        var open = (await f.Service.SearchAsync("PO", null, "open", 1, 25, default)).Data!;
+        Assert.Equal(2, open.TotalItems);
+        Assert.Equal(new[] { draftPo.Id, openPo.Id }.OrderBy(x => x), open.Items.Select(x => x.Id).OrderBy(x => x));
+        Assert.Equal(2, (await f.Service.CountOpenAsync("PO", default)).Data);
+
+        var all = (await f.Service.SearchAsync("PO", null, null, 1, 25, default)).Data!;
+        Assert.Equal(4, all.TotalItems);
+    }
+
+    [Fact]
     public void Fifo_planning_rejects_insufficient_stock_without_mutating_lots_and_orders_ties()
     {
         var lots = new[] { new StockLot { Id = Guid.Parse("00000000-0000-0000-0000-000000000002"), ReceivedAt = DateTime.UnixEpoch, RemainingQuantity = 2 },
@@ -213,7 +235,12 @@ public class PurchasingServiceTests
         public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().SingleOrDefault(x => x.Id == id && x.Kind == kind && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<ActivityEvent?> ApprovalAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<ActivityEvent>().Where(x => x.EntityId == id && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve").OrderByDescending(x => x.OccurredAt).FirstOrDefault());
         public Task<(IReadOnlyList<PurchaseDocument> Items, int Total)> SearchAsync(string kind, string? q, string? status, int page, int pageSize, CancellationToken ct)
-        { var list = All<PurchaseDocument>().Where(x => x.Kind == kind && (kind != "PR" || x.Status != "converted") && (status == null || x.Status == status) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList(); return Task.FromResult(((IReadOnlyList<PurchaseDocument>)list, list.Count)); }
+        {
+            var list = All<PurchaseDocument>().Where(x => x.Kind == kind && (kind != "PR" || x.Status != "converted") && Scope(x.LegacyShardKey, x.LegacyBranchId))
+                .Where(x => status == "open" ? x.Status != "complete" && x.Status != "cancelled" : status == null || x.Status == status).ToList();
+            return Task.FromResult(((IReadOnlyList<PurchaseDocument>)list, list.Count));
+        }
+        public Task<int> CountOpenAsync(string kind, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().Count(x => x.Kind == kind && x.Status != "complete" && x.Status != "cancelled" && (kind != "PR" || x.Status != "converted") && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Task.FromResult(All<CatalogItem>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey!, x.LegacyBranchId ?? 0)));
         public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id));

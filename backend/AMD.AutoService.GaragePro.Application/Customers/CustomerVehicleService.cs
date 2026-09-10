@@ -20,6 +20,7 @@ public interface ICustomerVehicleService
     Task<Result<VehicleDetailDto>> UpdateVehicleAsync(long id, VehicleUpsertRequest request, VehicleImageUpload? image, CancellationToken ct = default);
     Task<Result<bool>> DeleteVehicleAsync(long id, CancellationToken ct = default);
     Task<Result<VehicleImageFile>> OpenVehicleImageAsync(long id, CancellationToken ct = default);
+    Task<Result<VehicleDetailDto>> UpdateVehicleImageAsync(long id, VehicleImageUpload image, CancellationToken ct = default);
 }
 
 public sealed class CustomerVehicleService(
@@ -152,6 +153,18 @@ public sealed class CustomerVehicleService(
         if (string.IsNullOrWhiteSpace(path) || !imageStorage.TryResolve(path, out var fullPath))
             return Result<VehicleImageFile>.Fail("VEHICLE_IMAGE_NOT_FOUND", "ไม่พบรูปของรถคันนี้");
         return Result<VehicleImageFile>.Ok(new(fullPath, imageStorage.GetContentType(path), Path.GetFileName(path)));
+    }
+
+    public async Task<Result<VehicleDetailDto>> UpdateVehicleImageAsync(
+        long id, VehicleImageUpload image, CancellationToken ct = default)
+    {
+        var validation = imageStorage.Validate(image);
+        if (!validation.IsValid) return Result<VehicleDetailDto>.Fail(validation.Code!, validation.MessageTh!, "image");
+
+        if (!await repository.UpdateVehicleImageAsync(Scope, id, image, ct))
+            return Result<VehicleDetailDto>.Fail("VEHICLE_NOT_FOUND", "ไม่พบรถหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+
+        return Result<VehicleDetailDto>.Ok((await repository.GetVehicleAsync(Scope, id, ct))!);
     }
 
     private static CustomerUpsertRequest Normalize(CustomerUpsertRequest r) => r with

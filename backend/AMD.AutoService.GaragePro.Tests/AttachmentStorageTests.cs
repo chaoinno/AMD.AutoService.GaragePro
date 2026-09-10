@@ -2,6 +2,8 @@ using System.Text;
 using AMD.AutoService.GaragePro.Infrastructure.Storage;
 using FluentAssertions;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace AMD.AutoService.GaragePro.Tests;
 
@@ -48,6 +50,8 @@ public sealed class AttachmentStorageTests
     public async Task Save_writes_file_and_can_be_read_back_and_deleted()
     {
         var host = Environment.GetEnvironmentVariable("GARAGEPRO_FTP_HOST")!;
+        // ต้องเป็นรูปจริง (ไม่ใช่ข้อความเปล่า) เพราะ SaveAsync ตอนนี้ decode รูปเพื่อเช็ค/ทำ resize ก่อนอัปโหลดเสมอ
+        await using var content = EncodePng(4, 4);
         var storage = CreateStorage(new FtpOptions
         {
             Host = host,
@@ -55,20 +59,20 @@ public sealed class AttachmentStorageTests
             Username = Environment.GetEnvironmentVariable("GARAGEPRO_FTP_USERNAME") ?? "",
             Password = Environment.GetEnvironmentVariable("GARAGEPRO_FTP_PASSWORD") ?? "",
             RootPath = Environment.GetEnvironmentVariable("GARAGEPRO_FTP_ROOT") ?? "/AutoServiceGaragePro/test/",
-        });
+        }, maxSizeBytes: 4096);
 
-        await using var content = new MemoryStream(Encoding.UTF8.GetBytes("garage-pro"));
         var saved = await storage.SaveAsync(content, "db2", 105, Guid.NewGuid(), "signature", "signature.png");
 
         try
         {
-            saved.SizeBytes.Should().Be(10);
+            saved.SizeBytes.Should().BeGreaterThan(0);
             saved.Sha256.Should().HaveLength(64);
 
             await using var readBack = await storage.OpenReadAsync(saved.RelativePath);
             readBack.Should().NotBeNull();
-            using var reader = new StreamReader(readBack!);
-            (await reader.ReadToEndAsync()).Should().Be("garage-pro");
+            using var roundTrip = await Image.LoadAsync(readBack!);
+            roundTrip.Width.Should().Be(4);
+            roundTrip.Height.Should().Be(4);
         }
         finally
         {
@@ -76,7 +80,64 @@ public sealed class AttachmentStorageTests
         }
     }
 
-    private static FtpAttachmentStorage CreateStorage(FtpOptions ftp) => new(
-        Options.Create(new AttachmentOptions { MaxSizeBytes = 100, AllowedContentTypes = ["image/png", "image/jpeg"] }),
+    [Fact]
+    public async Task PrepareUploadStreamAsync_leaves_non_image_extensions_untouched()
+    {
+        await using var content = new MemoryStream(Encoding.UTF8.GetBytes("%PDF-1.4 fake pdf content"));
+
+        var result = await FtpAttachmentStorage.PrepareUploadStreamAsync(content, ".pdf", CancellationToken.None);
+
+        result.Should().BeSameAs(content);
+    }
+
+    [Fact]
+    public async Task PrepareUploadStreamAsync_keeps_images_within_1024px_byte_for_byte()
+    {
+        await using var original = EncodePng(200, 150);
+        var originalBytes = original.ToArray();
+        original.Position = 0;
+
+        await using var result = await FtpAttachmentStorage.PrepareUploadStreamAsync(original, ".png", CancellationToken.None);
+
+        using var resultBytes = new MemoryStream();
+        await result.CopyToAsync(resultBytes);
+        resultBytes.ToArray().Should().Equal(originalBytes);
+    }
+
+    [Fact]
+    public async Task PrepareUploadStreamAsync_resizes_images_larger_than_1024px_preserving_aspect_ratio()
+    {
+        await using var original = EncodePng(2000, 1000);
+
+        await using var result = await FtpAttachmentStorage.PrepareUploadStreamAsync(original, ".png", CancellationToken.None);
+
+        using var resized = await Image.LoadAsync(result);
+        resized.Width.Should().Be(FtpAttachmentStorage.MaxImageDimensionPx);
+        resized.Height.Should().Be(512);
+    }
+
+    [Fact]
+    public async Task PrepareUploadStreamAsync_resizes_portrait_images_by_the_taller_side()
+    {
+        await using var original = EncodePng(1000, 2000);
+
+        await using var result = await FtpAttachmentStorage.PrepareUploadStreamAsync(original, ".png", CancellationToken.None);
+
+        using var resized = await Image.LoadAsync(result);
+        resized.Height.Should().Be(FtpAttachmentStorage.MaxImageDimensionPx);
+        resized.Width.Should().Be(512);
+    }
+
+    private static MemoryStream EncodePng(int width, int height)
+    {
+        using var image = new Image<Rgba32>(width, height);
+        var stream = new MemoryStream();
+        image.SaveAsPng(stream);
+        stream.Position = 0;
+        return stream;
+    }
+
+    private static FtpAttachmentStorage CreateStorage(FtpOptions ftp, long maxSizeBytes = 100) => new(
+        Options.Create(new AttachmentOptions { MaxSizeBytes = maxSizeBytes, AllowedContentTypes = ["image/png", "image/jpeg"] }),
         Options.Create(ftp));
 }

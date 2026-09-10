@@ -77,6 +77,13 @@ export const createVehicle = (input: VehicleInput, image?: File | null) =>
 export const updateVehicle = (id: number, input: VehicleInput, image?: File | null) =>
   apiRequest<VehicleDetail>(`/api/v1/vehicles/${id}`, { method: 'PUT', body: vehicleForm(input, image) })
 
+/// เปลี่ยนเฉพาะรูปรถ ไม่แตะข้อมูลอื่น — ใช้จากหน้าที่ไม่มีฟอร์มรถเต็มให้กรอกซ้ำ (เปิดจ๊อบ/การ์ดจ๊อบ)
+export const updateVehicleImage = (id: number, image: File) => {
+  const form = new FormData()
+  form.set('image', image)
+  return apiRequest<VehicleDetail>(`/api/v1/vehicles/${id}/image`, { method: 'POST', body: form })
+}
+
 export const getProvinces = () => apiRequest<LookupItem[]>('/api/v1/locations/provinces')
 export const getAmphures = (provinceId: number) => apiRequest<LookupItem[]>(`/api/v1/locations/amphures?provinceId=${provinceId}`)
 export const getDistricts = (amphureId: number) => apiRequest<LookupItem[]>(`/api/v1/locations/districts?amphureId=${amphureId}`)

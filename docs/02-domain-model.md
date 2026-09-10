@@ -230,6 +230,19 @@ Notification: id, employeeId, jobId, kind(warn|late|ok), title, body,
          createdAt, readAt, deepLink
 ```
 
+### JobChat ([เพิ่ม 2026-09-10] ฟีเจอร์ใหม่ — ไม่มีในเอกสาร design ต้นแบบ)
+```
+JobChatMessage: id, jobId, body(nullable — อนุญาตข้อความมีแต่รูป), replyToMessageId(self-FK, Restrict),
+         isDeleted, deletedAt(soft delete โดยเจ้าของข้อความเท่านั้น),
+         createdByUserId, createdByUserName, createdAt
+         ⚠️ ไม่มี BranchId/ShardKey แยก — scope ผ่าน Job เหมือน entity ลูกของ job อื่นทุกตัว
+         ⚠️ ไม่มีคอลัมน์ path รูป — รูปภาพเป็น Attachment ปกติ (Kind="chat", EntityId = JobChatMessage.Id)
+         ⚠️ mention ฝังเป็น token ในข้อความเอง "@[staffId:ชื่อ]" ไม่ parse จาก plain text ฝั่ง server
+
+JobChatMention: id, messageId, staffId, staffName(snapshot ตอนส่ง)
+         ← เก็บไว้ validate/query เท่านั้น (เช่น "ข้อความที่ถูกกล่าวถึง" ในอนาคต) ไม่ใช่แหล่งความจริงของการ render
+```
+
 ### Org / Auth
 ```
 Branch: id, name, technicianOnShiftCount, pendingJobCount, overdueJobCount

@@ -38,6 +38,9 @@ public interface ICustomerVehicleRepository
         LegacyRequestScope scope, long id, CancellationToken ct = default);
     Task<string?> GetVehicleImagePathAsync(
         LegacyRequestScope scope, long id, CancellationToken ct = default);
+    /// <summary>เปลี่ยนเฉพาะรูปรถ ไม่แตะข้อมูลอื่น (ทะเบียน/ยี่ห้อ/เจ้าของ ฯลฯ) — ใช้จากหน้าที่ไม่มีฟอร์มรถเต็มให้กรอกซ้ำ</summary>
+    Task<bool> UpdateVehicleImageAsync(
+        LegacyRequestScope scope, long id, VehicleImageUpload image, CancellationToken ct = default);
 
     Task<IReadOnlyList<LookupItemDto>> GetProvincesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<LookupItemDto>> GetAmphuresAsync(int provinceId, CancellationToken ct = default);

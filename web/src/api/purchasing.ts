@@ -30,6 +30,7 @@ export const savePurchase = (kind: PurchaseKind, id: string | null, input: Purch
 export const purchaseAction = (doc: Purchase, action: string, reason: string) => apiRequest<Purchase>(`${path(doc.kind)}/${doc.id}/${action}`, { method: 'POST', body: JSON.stringify({ version: doc.version, reason }) })
 export const convertPurchase = (doc: Purchase, supplierId: string) => apiRequest<Purchase>(`${path('PR')}/${doc.id}/convert`, { method: 'POST', body: JSON.stringify({ version: doc.version, supplierId }) })
 export const approvalThreshold = () => apiRequest<number>('/api/v1/purchase-orders/approval-threshold')
+export const countOpenPurchaseOrders = () => apiRequest<number>('/api/v1/purchase-orders/count-open')
 export const receipts = (id: string) => apiRequest<Receipt[]>(`${path('PO')}/${id}/receipts`)
 export const receive = (id: string, input: ReceiptInput) => apiRequest<Receipt>(`${path('PO')}/${id}/receipts`, { method: 'POST', body: JSON.stringify(input) })
 export const stockItems = (q: string) => apiRequest<StockItem[]>(`/api/v1/inventory/items?q=${encodeURIComponent(q)}`)

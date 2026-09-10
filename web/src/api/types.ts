@@ -378,6 +378,45 @@ export type JobTransitionResult = { status: JobStatusToken; statusLabel: string 
 
 export type JobStatusOption = { token: string; label: string }
 
+export type JobChatMention = { staffId: number; staffName: string }
+
+export type JobChatAttachment = {
+  id: string
+  relativePath: string
+  url: string
+  contentType: string
+  fileName: string
+}
+
+export type JobChatReplyPreview = {
+  id: string
+  body: string | null
+  isDeleted: boolean
+  createdByUserName: string
+}
+
+export type JobChatMessage = {
+  id: string
+  jobId: string
+  body: string | null
+  isDeleted: boolean
+  createdByUserId: number
+  createdByUserName: string
+  createdAt: string
+  replyTo: JobChatReplyPreview | null
+  mentions: JobChatMention[]
+  attachments: JobChatAttachment[]
+}
+
+export type JobChatPage = { messages: JobChatMessage[]; hasMore: boolean }
+
+export type SendJobChatMessageInput = {
+  body?: string | null
+  replyToMessageId?: string | null
+  mentionedStaffIds?: number[]
+  attachmentIds?: string[]
+}
+
 export type AttachmentKind =
   | 'signature'
   | 'intake'
@@ -387,6 +426,7 @@ export type AttachmentKind =
   | 'qc'
   | 'document'
   | 'handover-signature'
+  | 'chat'
 
 export type Attachment = {
   id: string

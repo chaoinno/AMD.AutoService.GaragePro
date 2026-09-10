@@ -52,6 +52,18 @@ public sealed class VehiclesController(ICustomerVehicleService service) : Contro
         return PhysicalFile(result.Data!.FullPath, result.Data.ContentType, result.Data.FileName);
     }
 
+    /// <summary>เปลี่ยนเฉพาะรูปรถ ไม่แตะข้อมูลอื่น — ใช้จากหน้าที่ไม่มีฟอร์มรถเต็มให้กรอกซ้ำ (เช่นตอนเปิดจ๊อบ/การ์ดจ๊อบ)</summary>
+    [HttpPost("{id:long}/image")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> UpdateImage(long id, [FromForm] VehicleImageForm form, CancellationToken ct)
+    {
+        var upload = await ReadImage(form.Image, ct);
+        if (upload is null)
+            return Render(Result<VehicleDetailDto>.Fail("VEHICLE_IMAGE_EMPTY", "กรุณาเลือกไฟล์รูป", "image"));
+        return Render(await service.UpdateVehicleImageAsync(id, upload, ct));
+    }
+
     /// <summary>ส่งออกรถเฉพาะสาขาที่เข้าสู่ระบบตาม filter เป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
     [HttpGet("export")]
     [Produces("text/csv")]
@@ -134,4 +146,9 @@ public sealed class VehicleForm
     public VehicleUpsertRequest ToRequest() => new(CustomerId, Registration, ProvinceId, BrandId, ModelId,
         NicknameId, YearId, PrimaryColorId, ColorMixId, GearId, MachineId, DriveSystemId, Vin,
         EngineNumber, InsuranceId, InsuranceExpiredDate);
+}
+
+public sealed class VehicleImageForm
+{
+    public IFormFile? Image { get; set; }
 }

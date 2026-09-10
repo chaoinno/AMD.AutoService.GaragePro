@@ -572,6 +572,213 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   คลิกเมนูที่รวมกลุ่มแล้วไปหน้าเดิมถูกต้อง)
 - ✅ Test: บันทึกเดิม 55 ผ่าน (auth · attachment storage · state machine · calculator · role mapper · job service)
   — เป็นผลก่อนงานล่าสุด ไม่ใช่จำนวนรวมปัจจุบัน ดูชุดทดสอบที่รันจริงด้านล่าง
+- ✅ **[แก้ไข 2026-09-10] 3 บั๊กที่ผู้ใช้แจ้ง — รูปแนบใน checklist ไม่ขึ้น / อัปโหลดรูปไม่ resize / สร้างใบเสนอราคาเพิ่มไม่ได้:**
+  · **รูปแนบไม่แสดง**: ยืนยัน `[RISK]` เดิมที่บันทึกไว้ตอนทำ FTP storage — `attachmentFileUrl()` ต่อ URL ตรงๆ ใช้กับ
+  `<img src>` ทั้งที่ `GET /api/v1/attachments/file` ต้อง Bearer token เสมอ เจอจริงในหน้ารายการที่มีปัญหา (checklist
+  รับรถ) และอีก 2 จุด (`IntakeReceiptDocument.tsx` ใบรับรถพิมพ์, `JobCardModal.tsx` `IntakeStage` แกลเลอรีเอกสารแนบ) —
+  เพิ่ม `web/src/components/AttachmentImage.tsx` (ใหม่) รวม pattern `downloadAttachment` (มี Bearer header) →
+  `URL.createObjectURL` → `revokeObjectURL` ตอน unmount ที่ `HandoverDocumentModal.tsx`/`StaffAvatar.tsx` ใช้อยู่แล้ว
+  ไว้เป็น component เดียวใช้ซ้ำได้ (จัดการ loading/error state ในตัว ไม่ใช่แค่รูปพัง) แทนที่ทั้ง 3 จุด และลบ
+  `attachmentFileUrl()` ที่ deprecated แล้วออกจาก `web/src/api/attachments.ts` เพราะไม่เหลือที่ใช้จริง
+  · **อัปโหลดรูปไม่ resize**: เดิมไม่มีการ resize เลยทั้ง client และ server (ตรวจแล้ว) — เพิ่มที่ server เท่านั้น
+  (`FtpAttachmentStorage.SaveAsync`/`PrepareUploadStreamAsync` ใหม่ internal) ตาม pattern `StaffImageStorage.cs` เดิม
+  (ImageSharp ที่มีอยู่แล้วในโปรเจกต์): รูป (png/jpg/webp) ที่กว้างหรือสูงเกิน 1024px ถูก `AutoOrient()` + resize ด้วย
+  `ResizeMode.Max` ให้ด้านที่ยาวที่สุดไม่เกิน 1024px (คงสัดส่วนเดิม) ก่อนอัปโหลดจริง — รูปที่ไม่เกิน 1024px อยู่แล้ว
+  คืนต้นฉบับ byte-ต่อ-byte ไม่ re-encode ซ้ำ (กันคุณภาพ/ขนาดไฟล์เปลี่ยนโดยไม่จำเป็น) PDF ไม่ผ่านเส้นทางนี้เลย ทำเป็น
+  server-side (ไม่ใช่ client-side) เพราะบังคับใช้ได้แน่นอนไม่ว่าอัปโหลดจากจุดไหน (เว็บ/มือถือ/อนาคต) — ยังไม่ได้เพิ่ม
+  resize ฝั่ง client (ยังไม่จำเป็นเพราะ server บังคับผลลัพธ์สุดท้ายอยู่แล้ว ถ้าต้องการประหยัด bandwidth ก่อนอัปโหลดค่อยทำเพิ่ม)
+  · **สร้างใบเสนอราคาเพิ่มไม่ได้**: พบ 2 ปัญหาจริงที่ทำให้ปุ่ม "+ สร้างใบเสนอราคา" ใน `JobCardModal.tsx` ค้าง disabled
+  ทั้งที่ backend อนุญาตแล้ว — (1) เงื่อนไขเดิม `query.data?.every(q => q.status === 'rejected')` เทียบกับ**ทุกใบ**ใน
+  ประวัติของ job แทนที่จะเทียบแค่ "ใบล่าสุด" (version สูงสุด) ตามที่ backend จริงเช็ค (`QuotationService.CreateAsync`
+  เช็คแค่ `GetLatestForJobAsync`) — แก้เป็นหา `latestQuotation` จาก `version` สูงสุดแล้วเช็คว่าเป็น `rejected`/`superseded`
+  เท่านั้น ตรงกับ semantics ของ backend เป๊ะ (2) **บั๊กจริงที่เจอเพิ่ม**: mutation "ออกฉบับแก้ไข" (`RevisionModal` ใน
+  `QuotationEditorModal.tsx`) ไม่เคย invalidate query `['job-quotations', jobId]` เลย (revise สลับ id ในตัว modal
+  เดิมไม่ปิด modal จึง `closeEditor` ที่ invalidate query ไม่ทำงาน) ทำให้รายการใบเสนอราคาใน `JobCardModal.tsx` ค้าง
+  สถานะเก่าจนกว่าจะปิด editor เองด้วยมือ — เพิ่ม `jobId` prop ให้ `RevisionModal` แล้ว invalidate `job-quotations`/
+  `job-detail` ใน `onSuccess` ของ mutation นั้นเลย · ปรับข้อความคำอธิบายปุ่มให้บอกสถานะใบล่าสุดจริงแทนข้อความตายตัวเดิม
+  · **[ยังคงเป็นกฎเดิม ไม่ได้เปลี่ยน]** Quotation ยังคง version-first (invariant #1) — สร้างใบใหม่ขนานกับใบที่ยัง
+  Draft/Sent/Partial/Approved ไม่ได้ (backend บล็อกด้วย `QUOTE_ALREADY_EXISTS` เสมอ) ต้องปฏิเสธ/ออกฉบับแก้ไขก่อน งานนี้
+  แก้แค่ให้ UI ไม่ disable ผิดพลาดตอนที่ backend อนุญาตจริงๆ (ใบล่าสุดถูกปฏิเสธ/ถูกแทนที่แล้ว) — ถ้าต้องการให้สร้าง
+  ใบเสนอราคาคู่ขนานกันจริงๆ ระหว่างที่ใบก่อนหน้ายัง active อยู่ (ไม่ใช่แค่ปลดบั๊กนี้) เป็นการเปลี่ยนนโยบายที่ต้องยืนยันแยก
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error), `dotnet test` ผ่านทั้ง 140 (เพิ่ม `AttachmentStorageTests.cs`
+  5 เทสต์ใหม่ครอบคลุม resize/ไม่ resize/PDF ผ่านไม่แตะ และแก้เทสต์ round-trip เดิมให้ใช้ไฟล์ PNG จริงแทนข้อความเปล่า
+  เพราะตอนนี้ decode รูปเสมอ, skip 3 ที่ต้องต่อ SQL/FTP จริงเหมือนเดิม) · Web `tsc -b`/`vite build` ผ่าน (ผ่าน
+  `node_modules/.bin/tsc`/`vite` ตรงๆ เพราะ pnpm/corepack ในเครื่องนี้ verify signature ไม่ผ่านเหมือนทุกครั้ง)
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** (เปิดดูรูป checklist ที่เคยพังจริง, อัปโหลดรูปใหญ่แล้วตรวจว่า resize
+  จริงบน FTP จริง — ยังติด FTP risk เดิม (`Ftp:Username`/`Password` ยังไม่ตั้งในเครื่อง dev นี้), revise แล้วกดสร้างใบใหม่
+  ทันทีโดยไม่ปิด modal ก่อน)
+- ✅ **[เพิ่ม 2026-09-10 รอบสอง] คลิกรูปดูพรีวิวในหน้าเดิม + อัปโหลด/แก้ไขรูปรถได้จากตอนเปิดจ๊อบและจากการ์ดจ๊อบ:**
+  · **พรีวิวรูปในหน้าเดิม**: เดิมคลิกรูปแนบ (checklist/แกลเลอรีเอกสารแนบ) เปิดเป็น `<a target="_blank">` ไปแท็บใหม่ —
+  เพิ่ม `web/src/components/ImageLightbox.tsx` (ใหม่, ใช้ `Dialog`/`DialogContent` จาก `ui/dialog.tsx` ตรงๆ ไม่ผ่าน
+  `ConfirmModal` เพื่อเลี่ยง header/title chrome ที่ไม่ต้องการสำหรับรูปเปล่าๆ — ได้ overlay/focus-trap/Escape/ปุ่มปิด
+  มาฟรีจาก `DialogContent` เดิม) `AttachmentImage.tsx` เปลี่ยนจาก `<a>` เป็น `<button>` (คลาสใหม่
+  `.image-preview-trigger` ล้างสไตล์ default ของปุ่ม) ที่เปิด lightbox แทน — พฤติกรรม/prop เดิม (`linkToFullImage`,
+  `linkClassName`) ไม่เปลี่ยนชื่อ แค่เปลี่ยนสิ่งที่มันทำตอนคลิก
+  · **รูปรถแสดงไม่ได้มาตั้งแต่แรกสำหรับทุกจ๊อบที่สร้างผ่านระบบใหม่ (บั๊กแฝงที่เพิ่งพบ)**: `VehicleImage.tsx` เดิมต่อ
+  `job.vehicleImagePath` เข้ากับ `legacyAssetBaseUrl` ตรงๆ เหมือนเป็น path ไฟล์ static ของ legacy — แต่
+  `JobService.CreateAsync` (`Application/Jobs/JobService.cs:130`) เก็บค่านี้เป็น `vehicle.ImageUrl` ซึ่งจริงๆ คือ
+  string `/api/v1/vehicles/{id}/image` (endpoint ที่ต้อง Bearer token) มาตั้งแต่ต้น (`CustomerVehicleRepository`
+  SQL projection สร้าง URL รูปแบบนี้เสมอ) ทำให้รูปรถของทุกจ๊อบใหม่ 401/404 เงียบๆ แล้ว fallback เป็นไอคอนรถตลอด —
+  เขียน `VehicleImage.tsx` ใหม่ทั้งหมดให้รับ `vehicleId` (ไม่ใช่ `path`) แล้วดึงผ่าน `apiDownload` + blob URL แบบเดียวกับ
+  `AttachmentImage`/`StaffAvatar` — เป็นผลพลอยได้คือรูปรถ**ไม่มีวันค้าง (stale) อีกต่อไป** เพราะดึงจาก endpoint ตรงของ
+  รถ (`/api/v1/vehicles/{vehicleId}/image`) สดทุกครั้งแทนสแนปช็อตที่ก็อปไว้ตอนสร้างจ๊อบครั้งเดียว — ไม่ต้องแก้/ลบคอลัมน์
+  `Job.VehicleImagePath` เดิม (ยังอยู่ในฐานข้อมูล เผื่ออนาคต แต่ web ไม่อ่านค่านี้มาแสดงผลอีกต่อไป) แก้จุดใช้งานทั้ง 2 จุด
+  (`JobsPage.tsx` ตารางจ๊อบ, `JobCardModal.tsx` `IntakeStage`) ให้ส่ง `vehicleId` แทน
+  · **อัปโหลด/เปลี่ยนรูปรถจากการ์ดจ๊อบ (ขั้นตอนรับรถ)**: การ์ด "ข้อมูลลูกค้า & รถ" ใน `IntakeStage` เพิ่มปุ่ม "เปลี่ยนรูปรถ"
+  ข้างรูป (คลิกดูพรีวิวได้ด้วย `clickToPreview`) เรียก endpoint ใหม่
+  · **อัปโหลดรูปรถตอนเปิดจ๊อบ**: `CreateJobModal`/`NewVehicleForm` (`JobsPage.tsx`) เพิ่มช่องเลือกรูป (ไม่บังคับ) ตอน
+  สร้างรถใหม่ ส่งพร้อม `createVehicle(input, image)` ที่มีอยู่แล้ว (รองรับรูปอยู่แล้วแต่ไม่เคยถูกเปิดใช้ในหน้านี้) —
+  ส่วนตอนเลือก "รถที่มีอยู่แล้ว" เพิ่มปุ่ม "อัปโหลด/เปลี่ยนรูป" ให้แนบรูปได้ทันที (ไม่ต้องรอเปิดจ๊อบสำเร็จก่อน เพราะเป็น
+  ข้อมูลของรถ ไม่ใช่ของจ๊อบ) ผ่าน endpoint ใหม่เดียวกัน (`VehiclePhotoQuickUpload` component ใหม่ใน `JobsPage.tsx`)
+  · **Endpoint ใหม่ `POST /api/v1/vehicles/{id}/image`** (`VehiclesController.UpdateImage`) — เปลี่ยนเฉพาะรูป ไม่ต้อง
+  resend ฟอร์มรถเต็ม (endpoint เดิม `PUT /api/v1/vehicles/{id}` ต้องส่งทุก field รวมทะเบียน/ยี่ห้อ/รุ่นที่หน้าการ์ด
+  จ๊อบ/ตอนเลือกรถเดิมไม่มีข้อมูลพร้อมส่งซ้ำ และ `VehicleDetailDto` ก็ไม่มี `CustomerId` ให้สร้าง request ใหม่ได้ครบอยู่ดี)
+  `ICustomerVehicleRepository.UpdateVehicleImageAsync` ใหม่ (`CustomerVehicleRepository.cs`) มิเรอร์การจัดการไฟล์ของ
+  `UpdateVehicleAsync` เดิมทุกจุด (save ไฟล์ใหม่ก่อน → UPDATE เฉพาะคอลัมน์ `ImageUrl` → ลบไฟล์เก่าหลัง commit สำเร็จ
+  → cleanup ไฟล์ใหม่ถ้า UPDATE ไม่โดนแถวไหนเลย) แต่ไม่แตะคอลัมน์อื่นหรือ `CarCustomer` เลย — **ยังคงเป็นคำสั่งเขียน
+  Garage legacy (`Car.ImageUrl`) ภายใต้ข้อยกเว้นเดิมที่มีอยู่แล้วสำหรับโมดูล Customer/Vehicle** (ดู `[RISK]` เรื่อง
+  นโยบายกับโค้ดจัดการข้อมูลหลักที่ยังไม่ตรงกันด้านบน) ไม่ใช่ข้อยกเว้นใหม่ที่ไม่เคยขอ
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error) — อัปเดต `FakeCustomerVehicleService` ใน
+  `JobServiceTests.cs` ให้ implement method ใหม่ (`NotImplementedException` เหมือน method อื่นที่ไม่เกี่ยวกับ test
+  เหล่านั้น) `dotnet test` ผ่านทั้ง 140 เท่าเดิม (ไม่ได้เพิ่ม unit test ใหม่สำหรับ `UpdateVehicleImageAsync` เพราะ
+  ต้องต่อ SQL จริงเหมือน `BranchScopeSqlTests` ที่ skip อยู่แล้ว — ไม่มี fake/in-memory ของ `CustomerVehicleRepository`
+  ในชุดทดสอบเดิมให้ต่อยอด) · Web `tsc -b`/`vite build` ผ่าน
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริงและยังไม่ได้รันกับ SQL จริง** (เปิดจ๊อบพร้อมอัปโหลดรูปรถใหม่, เปลี่ยนรูป
+  รถที่มีอยู่แล้วจากหน้าเปิดจ๊อบ, เปลี่ยนรูปรถจากการ์ดจ๊อบแล้วตรวจว่ารูปอัปเดตจริงไม่ค้าง cache, คลิกรูปดู lightbox ทุกจุด)
+  ต้องต่อ Garage Pro VPN ก่อนถึงจะทดสอบ endpoint นี้ได้จริง
+- ✅ **[เพิ่ม 2026-09-10] JobChat — widget แชทมุมล่างขวาของ Job Card**: ข้อความ/รูป/reply/mention ผูกกับ job
+  โดยตรง (ฟีเจอร์ใหม่ทั้งหมด ไม่มีในเอกสาร design เดิม) วางแผนผ่าน plan mode ก่อนเริ่มเขียนโค้ด
+  · เอนทิตีใหม่ `JobChatMessage`/`JobChatMention` (`Domain/Entities/JobChatMessage.cs`) — ไม่มีคอลัมน์
+  `BranchId`/`ShardKey` เหมือน entity ลูกของ job อื่นทุกตัว (scope ผ่าน `Job` เดียว) `ReplyToMessageId` เป็น
+  self-FK `OnDelete(Restrict)` (ลบจริงไม่มี — ใช้ soft delete เท่านั้น) migration
+  `20260910045219_AddJobChat` — **ยังไม่ได้รัน `dotnet ef database update` จริง** (sandbox ไม่ได้ต่อ VPN เหมือนทุกครั้ง)
+  · **รูปภาพไม่ได้เก็บ path ในเอนทิตีนี้เอง** — reuse ระบบ `Attachment` เดิมทั้งหมด (`Kind="chat"` เพิ่มใน
+  `AttachmentService.AllowedKinds`, ผูกด้วย `Attachment.EntityId = JobChatMessage.Id`) client อัปโหลดรูปผ่าน
+  `POST /api/v1/attachments` ก่อนแล้วส่ง `attachmentIds` แนบตอนสร้างข้อความ — server เช็ค kind/JobId/ยังไม่ถูกผูก
+  ก่อน set `EntityId` ให้ (all-or-nothing บนข้อความเดียว ไฟล์ที่อัปโหลดแล้วไม่เคยส่งเป็น orphan ที่ยอมรับได้
+  เหมือน attachment อื่นที่ไม่มี GC job)
+  · **Mention ฝังเป็น token ในข้อความเอง** รูปแบบ `@[staffId:ชื่อ]` (client สร้าง/parse เอง ไม่มี rich-text lib
+  ในสแตกนี้) server validate แต่ละ `mentionedStaffIds` ผ่าน `IStaffRepository.GetAsync` แบบเดียวกับที่
+  `PurchasingService.WithdrawAsync` validate ผู้เบิก (active + สาขาเดียวกันเท่านั้น) เก็บ snapshot ชื่อไว้ใน
+  `JobChatMention` กันปัญหาถ้าพนักงานถูกเปลี่ยนชื่อทีหลัง (ตารางนี้ไว้ query/validate เท่านั้น ไม่ใช่แหล่งความจริงของ
+  การ render — การ render อ่านจาก token ในข้อความโดยตรง)
+  · **ไม่ผูก role เพิ่มจาก `[RequireShiftSession]` เดิม** ตรงกับ `[RISK]` ที่บันทึกไว้แล้วเรื่อง RBAC ของ Job
+  endpoint ยังไม่ผูก role — chat ใช้ gate เดียวกัน ไม่ได้เพิ่มช่องโหว่ใหม่
+  · API ใหม่ `JobChatController` (`GET/POST/DELETE /api/v1/jobs/{jobId}/chat/messages`) — pagination แบบ
+  keyset สองทิศทาง (`beforeAt/beforeId` โหลดเก่ากว่า, `afterAt/afterId` poll ต่อ) ก็อป tie-break logic ตรงจาก
+  `JobRepository.SearchAsync` ลบข้อความเป็น soft delete โดยเจ้าของข้อความเท่านั้น (`CHAT_FORBIDDEN`)
+  · **Realtime = polling เท่านั้น** (ระบบไม่มี SignalR/WebSocket) — `JobChatPanel.tsx` ใช้ `useInfiniteQuery` +
+  `refetchInterval` 5 วิ ตอน panel เปิด (รีเฟรชทุกหน้าที่เคยโหลดแล้ว dedupe ด้วย `Map` ตอน flatten — เรียบง่ายกว่า
+  ทำ cursor "ใหม่กว่า" แยกอีกชุด เหมาะกับสเกลข้อความต่อ job ของระบบนี้) ตอน panel ปิด `JobChatWidget.tsx` peek
+  แค่ข้อความล่าสุด (`take=1`) ทุก 20 วิ เพื่อโชว์จุดแดง "มีข้อความใหม่" เทียบกับ id ที่จำไว้ใน localStorage ต่อเครื่อง
+  (`garagepro.jobchat.last-seen.{jobId}`) — **ไม่ sync ข้าม device/browser** (ตามที่ตกลงไว้ตอนวางแผน)
+  · **Mention popover ไม่ได้ทำ caret-tracking แบบ pixel-precise ตามที่คุยไว้ตอนวางแผน** — ใช้ dropdown แบบ
+  full-width เหนือกล่องข้อความแทน (`.job-chat-mention-list`, มิเรอร์ `ui-combobox__list` แต่ anchor เหนือ textarea
+  ไม่ใช่ที่ตำแหน่ง caret) ตัดสินใจแบบนี้เพราะ caret-mirror-div เป็นเทคนิคที่เปราะบาง (font metrics/wrapping) และ
+  widget นี้แคบ ไม่ใช่กล่องข้อความยาวหลายบรรทัดที่ caret-tracking จะมีประโยชน์ชัดเจน — ยัง reuse การพิมพ์
+  `@` ตรวจจับคำค้นหา + `getStaffs({keyword})` + คีย์บอร์ด (ลูกศร/Enter/Escape) แบบเดียวกับ `Combobox` เดิม
+  · component ใหม่ทั้งหมดอยู่ใต้ `web/src/features/jobs/chat/`: `JobChatWidget.tsx` (ปุ่มลอย + จุดแดง),
+  `JobChatPanel.tsx` (รายการข้อความ + reply preview + เรียก `AttachmentImage`/`ImageLightbox` เดิมสำหรับรูป),
+  `JobChatComposer.tsx` (กล่องพิมพ์ + แนบรูปหลายไฟล์ + mention popover), `mentionToken.ts` (parse/serialize
+  token ล้วน ไม่มี side effect — segment เป็น array ของ `{type:'text'|'mention'}` render ทีละ segment
+  **ไม่ใช้ `dangerouslySetInnerHTML` เลย**) mount ใน `JobCardModal.tsx` เป็น sibling ของ `.job-card-page`
+  ใน `<ConfirmModal>` (ไม่ใช่ลูกของ `<StageContent>`) จึงอยู่มุมเดิมตลอดแม้สลับ stage — `position: absolute`
+  อ้างอิงกับ `.ui-dialog__content` (positioned ancestor, `overflow: hidden`) ไม่ใช่ `.ui-dialog__body` ที่ scroll
+  ไม่ต้องแก้ `ConfirmModal.tsx` เลย
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error), `dotnet test` ผ่านทั้ง 151 (เพิ่ม
+  `JobChatServiceTests.cs` 11 ผ่าน ครอบคลุม branch mismatch, ข้อความว่างไม่มีรูป/มีแต่รูปผ่านได้, attachment
+  ผิด job/ถูกผูกไปแล้ว, mention พนักงาน inactive/ต่างสาขา, reply ข้ามจ๊อบ, reply preview ของข้อความที่ถูกลบ,
+  soft delete โดยเจ้าของเท่านั้น) · Web `tsc -b`/`vite build` ผ่าน (ผ่าน `node_modules/.bin/tsc`/`vite`
+  ตรงๆ เหมือนทุกครั้งที่ pnpm/corepack ในเครื่องนี้ verify signature ไม่ผ่าน)
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** (พิมพ์/แนบรูป/reply/mention จริง, เห็นจุดแดงตอนอีกคนส่งข้อความ,
+  โหลดข้อความเก่ากว่าด้วย "โหลดข้อความเก่ากว่า", ลบข้อความตัวเอง) และยังไม่ได้รัน migration กับ ServiceDb จริง —
+  ต้องทำทั้งสองก่อนใช้งานจริง
+- ✅ **[เพิ่ม 2026-09-10 รอบสาม] หน้า PO — ตัวเลือก "ทุกสถานะ" ซ่อนรับครบแล้ว/ยกเลิกเมื่อไม่มีคำค้นหา + ตัวเลขในเมนู PO
+  ตรงกัน**: เดิมหน้า `/purchasing/po` (`PurchasingPage.tsx`) ตัวเลือก "ทุกสถานะ" (`status=''`, ค่าเริ่มต้น) แสดงทุก
+  เอกสารจริงๆ ทำให้ PO ที่ `complete`/`cancelled` (รับครบแล้ว/ยกเลิก) ค้างปนอยู่ในรายการเสมอ — **ตัดสินใจตามที่ผู้ใช้
+  ยืนยันชัดเจน**: ไม่ได้เพิ่ม dropdown option ใหม่แยกต่างหาก แต่ปรับพฤติกรรมของ "ทุกสถานะ" เดิมเอง — เมื่อเลือก
+  "ทุกสถานะ" **และไม่มีคำค้นหา** จะไม่ดึง PO ที่ `complete`/`cancelled` มาแสดง (มองเป็นสถานะปิด/จบเหมือนกันทั้งคู่
+  ไม่ได้จำกัดแค่ `complete` ตามตัวอักษรคำขอเป๊ะๆ) — พิมพ์คำค้นหา (`q`) ขณะที่ยังเลือก "ทุกสถานะ" อยู่จะดึงมาทุกสถานะจริง
+  (รวมรับครบแล้ว/ยกเลิก) เพราะถือว่ากำลังค้นหาเอกสารเจาะจง (มี section-help บอกสถานะการกรองทั้งสองกรณีอยู่เสมอ) —
+  ถ้าผู้ใช้เลือกสถานะอื่นเองจาก dropdown (เช่น "รับครบแล้ว"/"ยกเลิก" ตรงๆ) ถือเป็นเจตนาชัดเจน ไม่ถูกซ่อนไม่ว่าจะมีคำ
+  ค้นหาหรือไม่ · ปรับเฉพาะ PO — PR ยังคงแสดงทุกสถานะจริงตอนเลือก "ทุกสถานะ" เหมือนเดิมตามที่ผู้ใช้ระบุขอบเขตเฉพาะ
+  หน้า PO เท่านั้น
+  · Backend: `status="open"` เป็นค่าพิเศษที่ `PurchasingRepository.SearchAsync` ตีความเป็น
+  `Status != "complete" && Status != "cancelled"` (ไม่ใช่ enum ค่าจริงของ `PurchaseDocument.Status` — กันชนกับสถานะ
+  จริงเพราะไม่มีสถานะไหนชื่อ "open" อยู่แล้ว) เพิ่ม endpoint ใหม่ `GET /api/v1/purchase-orders/count-open`
+  (`PurchaseOrdersController`/`PurchasingService.CountOpenAsync`/`IPurchasingRepository.CountOpenAsync`) นับ PO
+  ที่ยังไม่ปิด สโคปด้วย shard/สาขาเดิม (ผ่าน `Documents` property ที่กรองอยู่แล้ว) — endpoint นี้ยังผ่าน
+  `PurchasingService.Access()` เดิม (เฉพาะ Manager/Office เหมือนทุก endpoint ในโมดูลนี้ ต่างจาก Jobs' `count-open`
+  ที่เปิดทุก role) จึงไม่ต้องเพิ่ม guard ใหม่
+  · เมนู Sidebar (`AppShell.tsx`): ตัวเลขข้าง "ใบสั่งซื้อ (PO)" เปลี่ยนจากเดิมที่เรียก `purchases('PO','','',1,100)`
+  แล้วอ่าน `totalItems` (นับเอกสารทุกสถานะรวมกัน ไม่ตรงกับสิ่งที่ผู้ใช้ต้องดำเนินการต่อจริงๆ) มาเป็นเรียก
+  `countOpenPurchaseOrders()` ใหม่ตรงๆ (เบากว่าเดิมด้วย ไม่ต้องดึงเอกสารพร้อม lines 100 รายการมาทิ้งแค่นับ) — คง
+  queryKey เป็น `['purchase-count', 'PO', 'open']` (ขึ้นต้นด้วย `'purchase-count'` เดิม) เพื่อให้ `usePurchasingRefresh`
+  ที่ invalidate prefix `'purchase-count'` อยู่แล้วครอบคลุมต่อ ไม่ต้องแก้ invalidate list · ตัวเลขเมนู PR ไม่เปลี่ยน
+  (ยังนับทุกสถานะเหมือนเดิม ตามขอบเขตที่ผู้ใช้ระบุเฉพาะ PO)
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error), `dotnet test` ผ่านทั้ง 152 (เพิ่ม
+  `Open_po_filter_and_count_exclude_complete_and_cancelled_documents` ใน `PurchasingServiceTests.cs` ครอบคลุม
+  filter `open` คัด PO ที่ `complete`/`cancelled` ออก **แต่ยังคงเห็น PO สถานะ `draft`** (เช่น PO ที่เพิ่งแปลงจาก PR
+  ที่อนุมัติแล้วและยังไม่ได้กดส่งขออนุมัติ) เท่ากับ `sent`/`partial`, `CountOpenAsync` นับตรงกับผลกรอง, และ
+  "ทุกสถานะ" (`status=null`) ยังคงเห็นครบทุกเอกสารเหมือนเดิม) · Web `tsc -b`/`vite build` ผ่าน (ผ่าน
+  `node_modules/.bin/tsc`/`vite` ตรงๆ เพราะ pnpm/corepack ในเครื่องนี้ verify signature ไม่ผ่านเหมือนทุกครั้ง)
+  · **[พบระหว่างทดสอบจริง 2026-09-10]** ผู้ใช้แจ้งว่า PO ที่เพิ่งแปลงจาก PR (สถานะ `draft`) ไม่ขึ้นในรายการตอนกรอง
+  "ทุกสถานะ" — ตรวจโค้ดซ้ำและเพิ่ม unit test ยืนยันแล้วว่า `draft` **ไม่ได้ถูกกรองออก** โดยเจตนา (ตรรกะ `open` คัดออก
+  แค่ `complete`/`cancelled` เท่านั้น) จึงสรุปว่าอาการนี้เกิดจาก **backend API ที่รันอยู่ยังไม่ได้ build/restart ใหม่**
+  หลังแก้โค้ดรอบนี้ (`dotnet run` ธรรมดาไม่ hot-reload endpoint/repository) ทำให้ `status=open` ถูกตีความเป็นชื่อ
+  สถานะจริงที่ไม่มีอยู่ (คืนผลลัพธ์ว่างทั้งหมด ไม่ใช่แค่ซ่อน `draft`) — ยังไม่ได้รับการยืนยันจากผู้ใช้ว่า build/restart
+  แล้วแก้ปัญหาจริงหรือไม่
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** (เปิดหน้า PO ดูว่าเริ่มต้นไม่มี PO ที่รับครบแล้ว, ตัวเลขเมนูตรงกับ
+  จำนวนแถวที่เห็นจริง, พิมพ์ค้นหาแล้วเจอ PO ที่รับครบแล้วด้วย, เลือกสถานะอื่นเองจาก dropdown แล้วค้นหาไม่ถูกข้ามตัวกรอง)
+- ✅ **[เพิ่ม 2026-09-10 รอบสี่] Authentication เข้าได้เฉพาะสาขากลุ่ม "Service" เท่านั้น**: ก่อนหน้านี้
+  `LegacyUserReader.GetAccessibleBranchesAsync` กรองแค่ `Branch.Status` — สาขาที่ทำงานเคลม/สีตัวถังล้วน (คนละกลุ่มกับ
+  service) เข้าระบบนี้ได้เหมือนกันหมด ทั้งที่เป็น open question B ที่ค้างมาตั้งแต่ `docs/05-legacy-db-mapping.md` §7
+  — ผู้ใช้ยืนยันแล้วว่า **`Branch.BranchGroupId = 7` คือกลุ่ม "Service"** จึงเพิ่มเงื่อนไข `AND b.BranchGroupId = 7`
+  เข้าไปในทั้งสอง query ของ `GetAccessibleBranchesAsync` (`LegacyUserReader.cs`, ทั้งกรณีผู้ดูแลระบบและพนักงานทั่วไป)
+  — SQL ถูกแยกเป็น `internal static BuildAccessibleBranchesSql(bool isAdministrator)` เพื่อให้ทดสอบ SQL จริงได้ตรงกับ
+  production query เป๊ะ (`LegacyBranchGroupSqlTests.cs`, gate ด้วย `GARAGEPRO_BRANCH_SQL_CONNECTION` แบบเดียวกับ
+  `BranchScopeSqlTests` เดิม — **สร้างตารางชั่วคราวเท่านั้น ไม่แตะข้อมูลจริง**)
+  · **ผลกระทบ**: `AuthService.LoginAsync`/`OpenShiftAsync` เรียกฟังก์ชันนี้อยู่แล้ว จึงได้ผลทันทีทั้งสองจุด — พนักงานที่
+  `Staff.BranchId` ไม่ใช่กลุ่ม 7 login ไม่ได้อีกต่อไป (ใช้ error เดิม `AUTH_NO_BRANCH` ไม่ได้เพิ่ม error code ใหม่
+  เพราะข้อความเดิม "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน" ยังตรงกับความจริง) · **ผู้ดูแลระบบก็ถูกจำกัดด้วย** — เดิมเห็น
+  ทุกสาขา active ใน shard ตอนนี้เห็นเฉพาะกลุ่ม Service เท่านั้น **[RISK ที่ต้องตรวจก่อนใช้งานจริง]** ถ้ามี admin ที่
+  `Staff.BranchId` ของตัวเองอยู่นอกกลุ่ม 7 คนนั้นจะ login เว็บไม่ได้ไปด้วย — เป็นพฤติกรรมที่ตั้งใจตามคำขอ แต่ยังไม่เคย
+  ทดสอบจริงกับบัญชี admin จริงเพราะ sandbox นี้ต่อ VPN ไม่ได้
+  · แก้ `docs/05-legacy-db-mapping.md` §7 ข้อ B เป็น "ตอบแล้ว" พร้อมอ้างอิงจุดที่บังคับใช้จริงในโค้ด
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error), `dotnet test` ผ่านทั้ง 167 (SQL-fact test ใหม่ถูก skip
+  เพราะไม่มี `GARAGEPRO_BRANCH_SQL_CONNECTION` เหมือนเทสต์ SQL อื่นทุกตัวในสภาพแวดล้อมนี้) · **ยังไม่ได้รันกับฐานข้อมูล
+  จริงเพื่อยืนยันว่า `BranchGroupId` มีค่าอื่นที่ควรนับเป็น "Service" ด้วยหรือไม่** (เช่น สาขาผสม service+เคลม) — ถ้าพบ
+  ต้องยืนยันแยกก่อนเปลี่ยนเงื่อนไข
+- ✅ **[เพิ่ม 2026-09-10 รอบสี่] เมนู "รายงาน" — 4 รายงานแรกของระบบ**: เดิมเมนู Reports (`AppShell.tsx`) มีลิงก์เดียวไป
+  `/reports` ที่ไม่มี route จริงมาตั้งแต่แยกกลุ่มเมนู (กด 404 ตลอด) — ผู้ใช้ขอให้คิดรายงานที่น่าสนใจจาก feature ที่ทำไปแล้ว
+  และให้มีหน้าแดชบอร์ดด้วย เลือกทำทั้ง 4 อย่าง: **แดชบอร์ดวันนี้ / รอบเวลาทำงาน (SLA) / ยอดขาย-ต้นทุน-กำไร / สต็อกสินค้า**
+  — เป็น endpoint/หน้าใหม่ทั้งหมด ไม่มี entity ใหม่ (อ่านจาก `Job`/`ActivityEvent`/`Quotation`/`Payment`/`Receipt`/
+  `StockLot`/`CatalogItem` ที่มีอยู่แล้วทั้งหมด) Backend ใหม่: `IReportsRepository`/`ReportsRepository` (LINQ ตรงกับ
+  `ServiceDbContext` — ไม่ใช่ legacy จึงไม่ต้อง Dapper/READUNCOMMITTED) · `ReportsService` (`Application/Reports/`,
+  จำกัดเฉพาะ Manager/Office เหมือนโมดูลจัดซื้อ) · `ReportsController` (`GET /api/v1/reports/{dashboard,cycle-time,
+  sales-margin,stock}`) · สิทธิ์เห็นต้นทุน/กำไร/กำไร% ใน "ยอดขาย-ต้นทุน-กำไร" strip เป็น `null` ที่ server ตาม
+  `user.CanSeeCost` แบบเดียวกับ `QuotationMapper`/`CatalogService` (invariant #7) **ไม่ได้ทำรายงานคอมมิชชันช่าง** เพราะ
+  ตรวจโค้ดแล้วคอมมิชชันไม่เคยถูก implement จริงที่ไหนเลย (มีแต่ตัวเลข 8/10/12% ที่ยังเป็น `[ASSUME]` ใน CLAUDE.md) —
+  ทำ "ยอดขายค่าแรงต่อช่าง" แทน (ข้อมูลจริงจาก `QuotationLine.AssignedTechnicianName` ที่ snapshot ไว้อยู่แล้ว)
+  · **รอบเวลาทำงานต้องรู้ว่าแต่ละช่วงเวลาจ๊อบอยู่สถานะไหน** — เพิ่ม `PayloadJson` (`{"from":...,"to":...}`) ลงใน
+  `ActivityEvent` ของ `job.status.changed` ที่ `JobService.TransitionAsync` (คอลัมน์เดิมมีอยู่แล้ว ไม่มี migration)
+  แทนการ parse ข้อความไทยใน `DescriptionTh` ที่เปราะบาง — เทสต์ยืนยันว่า payload set ถูกต้อง (`JobServiceTests.cs`)
+  ตาราง "จ๊อบที่ค้างนานที่สุด" ไม่ต้องพึ่ง payload นี้เลย (อ่านจาก `Job.Status`/เวลาของ event ล่าสุดตรงๆ) จึงใช้งานได้ทันที
+  แม้ข้อมูลเก่าก่อนหน้านี้จะไม่มี payload — **ยังไม่มี SLA เป้าหมาย (เวลา/ชั่วโมง) ที่ยืนยันแล้ว** รายงานแสดงแค่ค่าเฉลี่ย/
+  P90 จริงให้ดูเทียบเคียงเท่านั้น ไม่ได้ตัดสินว่าผ่าน/ไม่ผ่าน SLA 90% ที่เป็น `[ASSUME]` เดิม
+  · Frontend: `web/src/api/reports.ts` + 4 หน้าใหม่ใน `web/src/features/reports/` (`DashboardReportPage`,
+  `CycleTimeReportPage`, `SalesMarginReportPage`, `StockReportPage`) ต่อ route `/reports/{dashboard,cycle-time,
+  sales-margin,stock}` (`/reports` redirect ไปแดชบอร์ด) เมนู Reports ใน `AppShell.tsx` ขยายจาก 1 เป็น 4 ลิงก์
+  · ไม่ได้เพิ่ม chart library — ทำ `StatTile`/`ReportBar` เป็น component เขียนเองด้วย CSS (สแตกนี้ไม่มี dependency
+  กราฟอยู่แล้ว) สีของแท่งกราฟสถานะจ๊อบใช้ค่าเดียวกับ `.job-status-*` ที่มีอยู่แล้วใน `index.css` (ไม่ใช้สีใหม่แยกจาก
+  ป้ายสถานะเดิม) ส่วนอายุสต็อกใช้ไล่เฉดเดียว (amber, sequential) ตามหลัก dataviz — ยังไม่ได้ตรวจ contrast/CVD ด้วย
+  สคริปต์ validator เพราะเป็นสีที่คัดมาจาก design token ที่อนุมัติแล้วของระบบ ไม่ใช่ palette ใหม่
+  · ทดสอบแล้ว: `dotnet build`/`dotnet test` ผ่านทั้ง 167 (เพิ่ม `ReportsServiceTests.cs` 8 ผ่าน ครอบคลุม role gate,
+  strip ต้นทุน/กำไรตาม role, คำนวณรอบเวลาต่อสถานะ+จัดอันดับจ๊อบค้างข้ามช่วงวันที่กรอง, bucket อายุสต็อก + เพิ่ม 1 test
+  ใน `JobServiceTests.cs` สำหรับ payload) · Web `tsc -b`/`vite build` ผ่าน (ผ่าน `node_modules/.bin/tsc`/`vite`
+  ตรงๆ เพราะ pnpm/corepack ในเครื่องนี้ verify signature ไม่ผ่านเหมือนทุกครั้ง)
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริงและยังไม่ได้รันกับ ServiceDb ที่มีข้อมูลจริง** (ตัวเลข/กราฟตรงกับข้อมูล
+  จริงหรือไม่, ตัวกรองวันที่ใช้งานได้จริง, หน้าที่ Office เห็นต้นทุนถูกซ่อนจริงในเบราว์เซอร์) — sandbox นี้ไม่ได้ต่อ VPN
 
 ### ยังไม่ได้ทำ
 - รับรถ 6 ขั้นเต็มรูปแบบบนมือถือ (ค้นหา/ยืนยันนัดหมาย/รูป 5 มุม/QR) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง

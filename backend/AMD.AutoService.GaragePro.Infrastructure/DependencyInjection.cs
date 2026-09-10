@@ -1,10 +1,12 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Handover;
 using AMD.AutoService.GaragePro.Application.Intake;
+using AMD.AutoService.GaragePro.Application.JobChat;
 using AMD.AutoService.GaragePro.Application.Jobs;
 using AMD.AutoService.GaragePro.Application.Pos;
 using AMD.AutoService.GaragePro.Application.Qc;
 using AMD.AutoService.GaragePro.Application.Quotations;
+using AMD.AutoService.GaragePro.Application.Reports;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using AMD.AutoService.GaragePro.Infrastructure.Storage;
@@ -69,6 +71,10 @@ public static class DependencyInjection
         services.AddScoped<IPosService, PosService>();
         services.AddScoped<IHandoverRepository, HandoverRepository>();
         services.AddScoped<IHandoverService, HandoverService>();
+        services.AddScoped<IJobChatRepository, JobChatRepository>();
+        services.AddScoped<IJobChatService, JobChatService>();
+        services.AddScoped<IReportsRepository, ReportsRepository>();
+        services.AddScoped<ReportsService>();
         services.AddScoped<ILegacyReader, LegacyReader>();
         services.AddScoped<IQuotationService, QuotationService>();
         services.AddScoped<IJobService, JobService>();

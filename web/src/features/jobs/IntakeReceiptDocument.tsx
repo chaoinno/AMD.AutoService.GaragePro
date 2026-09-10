@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Circle, MinusCircle } from 'lucide-react'
-import { attachmentFileUrl } from '../../api/attachments'
 import type { Attachment, IntakeCheckResult, IntakeChecklist, IntakeChecklistItem, Job } from '../../api/types'
+import { AttachmentImage } from '../../components/AttachmentImage'
 import { formatDate, formatDateTime } from '../../lib/format'
 
 const CATEGORY_LABEL_TH: Record<string, string> = {
@@ -123,7 +123,7 @@ export function IntakeReceiptDocument({ job, checklist, photos }: IntakeReceiptD
           <div className="job-detail-photo-grid">
             {photos.map((p) => (
               <div key={p.id} className="job-detail-photo-grid__item">
-                <img src={attachmentFileUrl(p.relativePath)} alt={p.fileName} />
+                <AttachmentImage relativePath={p.relativePath} alt={p.fileName} linkToFullImage={false} />
               </div>
             ))}
           </div>

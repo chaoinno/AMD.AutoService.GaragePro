@@ -46,7 +46,12 @@ function PurchasingWorkspace({ kind }: { kind: PurchaseKind }) {
   const [selected, setSelected] = useState<{ kind: PurchaseKind; id: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const navigate = useNavigate()
-  const query = useQuery({ queryKey: ['purchases', kind, q, status, page], queryFn: () => purchases(kind, q, status, page) })
+  // PO's "ทุกสถานะ" (status === '') hides complete/cancelled by default — those are done, not worklist items.
+  // Typing a search keyword looks across every status instead, since the user is hunting for a specific document.
+  // Picking any explicit status (including "รับครบแล้ว"/"ยกเลิก") always wins regardless of keyword.
+  const defaultsToOpen = kind === 'PO' && status === ''
+  const effectiveStatus = defaultsToOpen && !q.trim() ? 'open' : status
+  const query = useQuery({ queryKey: ['purchases', kind, q, effectiveStatus, page], queryFn: () => purchases(kind, q, effectiveStatus, page) })
   const { session } = useSession()
   const allowed = ['manager', 'office'].includes(session?.user.role.toLowerCase() || '')
   const copy = kind === 'PR'
@@ -58,6 +63,9 @@ function PurchasingWorkspace({ kind }: { kind: PurchaseKind }) {
     <Button disabled={!allowed} title={!allowed ? 'สำหรับผู้จัดการหรือธุรการจัดซื้อ' : undefined} onClick={() => setCreating(true)}><Plus />{copy.create}</Button>
   </section>
     <Card className="purchase-filters"><div className="input-with-icon"><Search /><Input aria-label="ค้นหาเอกสารจัดซื้อ" placeholder="ค้นหาเลขเอกสาร / ซัพพลายเออร์" value={q} onChange={e => { setQ(e.target.value); setPage(1) }} /></div><Select aria-label="สถานะเอกสาร" value={status} onChange={e => { setStatus(e.target.value); setPage(1) }}><option value="">ทุกสถานะ</option>{Object.entries(statuses).filter(([key]) => kind === 'PR' ? !['converted', 'sent', 'partial', 'complete'].includes(key) : key !== 'converted').map(([key, label]) => <option value={key} key={key}>{label}</option>)}</Select><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></Card>
+    {defaultsToOpen && (q.trim()
+      ? <p className="section-help">กำลังค้นหาในทุกสถานะ (รวมที่รับครบแล้ว/ยกเลิก) เพราะมีคำค้นหาอยู่</p>
+      : <p className="section-help">แสดงเฉพาะเอกสารที่ยังไม่รับครบ/ยังไม่ยกเลิก — พิมพ์ค้นหาหรือเลือกสถานะเพื่อดูรายการที่ปิดแล้ว</p>)}
     <QueryState query={query} loadingTitle={`กำลังโหลด${copy.title}`} emptyTitle={`ยังไม่มี${copy.title.replace('รายการ', '')}`} emptyReason={`กด “${copy.create}” เพื่อเริ่มต้น`} onRetry={() => void query.refetch()}>
       <Card className="management-table-card"><ManagementTable data={query.data?.items ?? []} sortScope="page" columns={[
         { id: 'number', header: 'เลขเอกสาร', value: (doc) => doc.number, render: (doc) => <><strong>{doc.number}</strong><small className="purchase-sub">{doc.lines.length} รายการ</small></> },

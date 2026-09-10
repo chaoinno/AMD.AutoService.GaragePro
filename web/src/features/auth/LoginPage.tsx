@@ -57,8 +57,8 @@ export function LoginPage() {
           <span className="login-intro__eyebrow">
             <ShieldCheck aria-hidden="true" /> ระบบภายในสำหรับพนักงาน
           </span>
-          <h1>จัดการงานบริการ<br />ได้ในที่เดียว</h1>
-          <p>เข้าสู่ระบบด้วยบัญชีพนักงานเดิม เพื่อเริ่มจัดการงานของสาขาคุณ</p>
+          <h1>จัดการงานอู่บริการซ่อมบำรุงรถยนต์<br />ได้ในแพลตฟอร์มเดียว</h1>
+          <p>เข้าสู่ระบบด้วยบัญชีพนักงาน เพื่อเริ่มจัดการงานของอู่คุณ</p>
         </div>
       </section>
 
@@ -68,7 +68,7 @@ export function LoginPage() {
             <LockKeyhole />
           </div>
           <CardTitle>เข้าสู่ระบบ</CardTitle>
-          <CardDescription>ใช้รหัสพนักงานและรหัสผ่านของ GaragePro</CardDescription>
+          <CardDescription>ใช้รหัสพนักงานและรหัสผ่าน</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="auth-form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>

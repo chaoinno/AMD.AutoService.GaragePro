@@ -19,6 +19,13 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
 {
     private readonly LegacyShardOptions _options = options.Value;
 
+    /// <summary>
+    /// [BIZ] ระบบนี้ใช้ได้เฉพาะสาขากลุ่ม "Service" เท่านั้น — ยืนยันกับผู้ใช้แล้ว 2026-09-10 ว่า
+    /// Branch.BranchGroupId = 7 คือกลุ่มนี้ (แก้ open question B ใน docs/05-legacy-db-mapping.md §7)
+    /// อู่ที่ทำงานเคลม/สีตัวถังล้วน (กลุ่มอื่น) ต้องเข้าระบบนี้ไม่ได้ แม้บัญชีจะ active ก็ตาม
+    /// </summary>
+    internal const int ServiceBranchGroupId = 7;
+
     private const string UserSelect = """
         SELECT
             u.Id                                   AS UserId,
@@ -89,6 +96,20 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
     {
         await using var db = Open(shardKey);
 
+        var sql = BuildAccessibleBranchesSql(user.IsAdministrator);
+
+        var rows = await db.QueryAsync<LegacyBranchSummaryDto>(
+            new CommandDefinition(sql, new { branchId = user.BranchId ?? 0 }, cancellationToken: ct));
+
+        return rows.ToList();
+    }
+
+    /// <summary>
+    /// แยกเป็น static method เพื่อให้ SQL test (BranchScopeSqlTests) รัน query จริงตรงกันเป๊ะกับ production
+    /// ผ่านตารางชั่วคราวได้ ไม่ต้องก็อปปี้ SQL ซ้ำ
+    /// </summary>
+    internal static string BuildAccessibleBranchesSql(bool isAdministrator)
+    {
         const string columns = """
             b.Id AS BranchId,
             b.Name AS Name,
@@ -96,12 +117,13 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
             ISNULL(b.PhoneNumber1, b.PhoneNumber2) AS Phone
             """;
 
-        // ผู้ดูแลระบบเห็นทุกสาขาใน shard · พนักงานทั่วไปเห็นเฉพาะสาขาตัวเอง
-        var sql = user.IsAdministrator
+        // ผู้ดูแลระบบเห็นทุกสาขากลุ่ม Service ใน shard · พนักงานทั่วไปเห็นเฉพาะสาขาตัวเอง (ถ้าเป็นกลุ่ม Service)
+        return isAdministrator
             ? $"""
                SELECT {columns}
                FROM Branch b WITH (READUNCOMMITTED)
                WHERE ISNULL(b.Status, 0) = 1
+                 AND b.BranchGroupId = {ServiceBranchGroupId}
                ORDER BY b.Name
                """
             : $"""
@@ -109,12 +131,8 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
                FROM Branch b WITH (READUNCOMMITTED)
                WHERE b.Id = @branchId
                  AND ISNULL(b.Status, 0) = 1
+                 AND b.BranchGroupId = {ServiceBranchGroupId}
                """;
-
-        var rows = await db.QueryAsync<LegacyBranchSummaryDto>(
-            new CommandDefinition(sql, new { branchId = user.BranchId ?? 0 }, cancellationToken: ct));
-
-        return rows.ToList();
     }
 
     private SqlConnection Open(string shardKey)

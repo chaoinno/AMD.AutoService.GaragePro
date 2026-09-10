@@ -51,6 +51,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         return Map(doc, await repo.ApprovalAsync(kind, id, ct));
     });
     public Task<Result<decimal>> PolicyAsync() => Run(() => Task.FromResult(options.ManagerApprovalThreshold));
+    public Task<Result<int>> CountOpenAsync(string kind, CancellationToken ct) => Run(() => repo.CountOpenAsync(kind, ct));
 
     public async Task<Result<PurchaseDto>> SaveAsync(string kind, Guid? id, PurchaseInput input, CancellationToken ct)
     {

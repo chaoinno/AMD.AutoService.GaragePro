@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Circle, Printer, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { attachmentFileUrl, getJobAttachments, uploadAttachment } from '../../api/attachments'
+import { getJobAttachments, uploadAttachment } from '../../api/attachments'
 import { isApiError } from '../../api/client'
+import { updateVehicleImage } from '../../api/customerVehicles'
 import { getHandover, saveHandoverItem, submitHandover, type HandoverItem } from '../../api/handover'
 import { getJobIntakeChecklist } from '../../api/intake'
 import { getJob, transitionJob } from '../../api/jobs'
+import { AttachmentImage } from '../../components/AttachmentImage'
 import {
   getPaymentSummary,
   issueReceipt,
@@ -33,6 +35,7 @@ import { Money } from '../../components/Money'
 import { StateBlock } from '../../components/StateBlock'
 import { StatusChip } from '../../components/StatusChip'
 import { VehicleImage } from '../../components/VehicleImage'
+import { JobChatWidget } from './chat/JobChatWidget'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -121,94 +124,99 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
       onClose={close}
       size="xlarge"
     >
-      {jobId === null ? null : jobQuery.isPending ? (
-        <StateBlock
-          variant="loading"
-          title="กำลังโหลดข้อมูลจ๊อบ"
-          reason="ระบบกำลังอ่านข้อมูลล่าสุด"
-          traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
-          actionLabel="โหลดใหม่"
-          onAction={() => void jobQuery.refetch()}
-        />
-      ) : jobQuery.isError || !job ? (
-        <StateBlock
-          variant="error"
-          title="โหลดข้อมูลจ๊อบไม่สำเร็จ"
-          reason={isApiError(jobQuery.error) ? jobQuery.error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
-          traceId={isApiError(jobQuery.error) ? jobQuery.error.traceId : undefined}
-          actionLabel="ลองใหม่"
-          onAction={() => void jobQuery.refetch()}
-        />
-      ) : (
-        <div className="job-card-page">
-          <header className="job-card-header">
-            <div>
-              <div className="job-card-header__title">ใบสั่งงานซ่อม (Job Card)</div>
-              <div className="job-card-header__jobno">
-                เลขที่ <strong>{job.jobNo}</strong>
+      {jobId === null ? null : (
+        <>
+          {jobQuery.isPending ? (
+            <StateBlock
+              variant="loading"
+              title="กำลังโหลดข้อมูลจ๊อบ"
+              reason="ระบบกำลังอ่านข้อมูลล่าสุด"
+              traceId="ยังไม่มี traceId ระหว่างรอการตอบกลับ"
+              actionLabel="โหลดใหม่"
+              onAction={() => void jobQuery.refetch()}
+            />
+          ) : jobQuery.isError || !job ? (
+            <StateBlock
+              variant="error"
+              title="โหลดข้อมูลจ๊อบไม่สำเร็จ"
+              reason={isApiError(jobQuery.error) ? jobQuery.error.messageTh : 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}
+              traceId={isApiError(jobQuery.error) ? jobQuery.error.traceId : undefined}
+              actionLabel="ลองใหม่"
+              onAction={() => void jobQuery.refetch()}
+            />
+          ) : (
+            <div className="job-card-page">
+            <header className="job-card-header">
+              <div>
+                <div className="job-card-header__title">ใบสั่งงานซ่อม (Job Card)</div>
+                <div className="job-card-header__jobno">
+                  เลขที่ <strong>{job.jobNo}</strong>
+                </div>
               </div>
-            </div>
-            <div className="job-card-header__meta">
-              <dl className="job-card-header__meta-item">
-                <dt>ทะเบียนรถ</dt>
-                <dd className="mono">{job.vehicleRegistration || 'ไม่ระบุทะเบียน'}</dd>
-              </dl>
-              <div className="job-card-header__divider" aria-hidden="true" />
-              <dl className="job-card-header__meta-item">
-                <dt>วันที่รับรถ</dt>
-                <dd>{formatDateTime(job.createdAt)}</dd>
-              </dl>
-              <JobStatusChip status={job.status} label={job.statusLabel} />
-            </div>
-          </header>
+              <div className="job-card-header__meta">
+                <dl className="job-card-header__meta-item">
+                  <dt>ทะเบียนรถ</dt>
+                  <dd className="mono">{job.vehicleRegistration || 'ไม่ระบุทะเบียน'}</dd>
+                </dl>
+                <div className="job-card-header__divider" aria-hidden="true" />
+                <dl className="job-card-header__meta-item">
+                  <dt>วันที่รับรถ</dt>
+                  <dd>{formatDateTime(job.createdAt)}</dd>
+                </dl>
+                <JobStatusChip status={job.status} label={job.statusLabel} />
+              </div>
+            </header>
 
-          <nav className="job-card-stepper" aria-label="ขั้นตอนของงาน">
-            <ol className="job-card-stepper__list">
-              {STAGES.map((stage, index) => {
-                const done = index < currentStageIndex
-                const active = index === currentStageIndex
-                const viewing = index === stageIndex
-                return (
-                  <li key={stage.key} className="job-card-stepper__step">
-                    <button
-                      type="button"
-                      className="job-card-stepper__button"
-                      onClick={() => setViewStage(index)}
-                    >
-                      <span
-                        className={[
-                          'job-card-stepper__circle',
-                          done ? 'job-card-stepper__circle--done' : '',
-                          active ? 'job-card-stepper__circle--active' : '',
-                          viewing ? 'job-card-stepper__circle--viewing' : '',
-                        ].filter(Boolean).join(' ')}
+            <nav className="job-card-stepper" aria-label="ขั้นตอนของงาน">
+              <ol className="job-card-stepper__list">
+                {STAGES.map((stage, index) => {
+                  const done = index < currentStageIndex
+                  const active = index === currentStageIndex
+                  const viewing = index === stageIndex
+                  return (
+                    <li key={stage.key} className="job-card-stepper__step">
+                      <button
+                        type="button"
+                        className="job-card-stepper__button"
+                        onClick={() => setViewStage(index)}
                       >
-                        {done ? '✓' : index + 1}
-                      </span>
-                      <span
-                        className={[
-                          'job-card-stepper__label',
-                          done || active ? 'job-card-stepper__label--reached' : '',
-                          viewing ? 'job-card-stepper__label--viewing' : '',
-                        ].filter(Boolean).join(' ')}
-                      >
-                        {stage.label}
-                      </span>
-                    </button>
-                    {index < STAGES.length - 1 ? (
-                      <span
-                        className={`job-card-stepper__connector ${done ? 'job-card-stepper__connector--done' : ''}`}
-                        aria-hidden="true"
-                      />
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ol>
-          </nav>
+                        <span
+                          className={[
+                            'job-card-stepper__circle',
+                            done ? 'job-card-stepper__circle--done' : '',
+                            active ? 'job-card-stepper__circle--active' : '',
+                            viewing ? 'job-card-stepper__circle--viewing' : '',
+                          ].filter(Boolean).join(' ')}
+                        >
+                          {done ? '✓' : index + 1}
+                        </span>
+                        <span
+                          className={[
+                            'job-card-stepper__label',
+                            done || active ? 'job-card-stepper__label--reached' : '',
+                            viewing ? 'job-card-stepper__label--viewing' : '',
+                          ].filter(Boolean).join(' ')}
+                        >
+                          {stage.label}
+                        </span>
+                      </button>
+                      {index < STAGES.length - 1 ? (
+                        <span
+                          className={`job-card-stepper__connector ${done ? 'job-card-stepper__connector--done' : ''}`}
+                          aria-hidden="true"
+                        />
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ol>
+            </nav>
 
-          <StageContent stageKey={STAGES[stageIndex]?.key ?? 'intake'} job={job} checklistDone={checklistDone} />
-        </div>
+            <StageContent stageKey={STAGES[stageIndex]?.key ?? 'intake'} job={job} checklistDone={checklistDone} />
+            </div>
+          )}
+          <JobChatWidget jobId={jobId} />
+        </>
       )}
     </ConfirmModal>
   )
@@ -244,9 +252,23 @@ function NotYetAvailableStage({ reason }: { reason: string }) {
 }
 
 function IntakeStage({ job }: { job: Job }) {
+  const queryClient = useQueryClient()
+  const vehicleImageInputRef = useRef<HTMLInputElement>(null)
+
   const attachmentsQuery = useQuery({
     queryKey: ['job-attachments', job.jobId],
     queryFn: () => getJobAttachments(job.jobId),
+  })
+
+  const updateVehicleImageMutation = useMutation({
+    mutationFn: (file: File) => updateVehicleImage(job.vehicleId, file),
+    onSuccess: () => {
+      toast.success('เปลี่ยนรูปรถแล้ว')
+      void queryClient.invalidateQueries({ queryKey: ['vehicle-image', job.vehicleId] })
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.messageTh : 'เปลี่ยนรูปรถไม่สำเร็จ')
+    },
   })
 
   return (
@@ -256,7 +278,29 @@ function IntakeStage({ job }: { job: Job }) {
           <CardHeader><CardTitle>ข้อมูลลูกค้า &amp; รถ</CardTitle></CardHeader>
           <CardContent>
             <div className="job-detail-info">
-              <VehicleImage path={job.vehicleImagePath} className="job-detail-info__image" />
+              <div className="job-detail-info__image-wrap">
+                <VehicleImage vehicleId={job.vehicleId} className="job-detail-info__image" clickToPreview />
+                <input
+                  ref={vehicleImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="intake-item__file-input"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) updateVehicleImageMutation.mutate(file)
+                    e.target.value = ''
+                  }}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="job-detail-info__image-change"
+                  disabled={updateVehicleImageMutation.isPending}
+                  onClick={() => vehicleImageInputRef.current?.click()}
+                >
+                  {updateVehicleImageMutation.isPending ? 'กำลังอัปโหลด…' : 'เปลี่ยนรูปรถ'}
+                </Button>
+              </div>
               <dl className="job-detail-info__grid">
                 <div><dt>ชื่อลูกค้า</dt><dd>{job.customerName || 'ไม่ระบุชื่อ'}</dd></div>
                 <div><dt>เบอร์โทรศัพท์</dt><dd>{job.customerPhone || 'ไม่ระบุเบอร์โทร'}</dd></div>
@@ -288,17 +332,15 @@ function IntakeStage({ job }: { job: Job }) {
             ) : (
               <div className="job-detail-photo-grid">
                 {attachmentsQuery.data.map((a) => (
-                  <a
+                  <AttachmentImage
                     key={a.id}
-                    className="job-detail-photo-grid__item"
-                    href={attachmentFileUrl(a.relativePath)}
-                    target="_blank"
-                    rel="noreferrer"
+                    linkClassName="job-detail-photo-grid__item"
+                    relativePath={a.relativePath}
+                    alt={a.fileName}
                   >
-                    <img src={attachmentFileUrl(a.relativePath)} alt={a.fileName} loading="lazy" />
                     <span className="job-detail-photo-grid__kind">{a.kind}</span>
                     <span className="job-detail-photo-grid__meta">{a.uploadedByName} · {formatDateTime(a.uploadedAt)}</span>
-                  </a>
+                  </AttachmentImage>
                 ))}
               </div>
             )}
@@ -404,9 +446,17 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
   })
 
   // [BIZ] Quotation เป็น version-first (docs/02-domain-model.md invariant #1) — สร้างใบใหม่ซ้อนใบที่ยังไม่ถูก
-  // ปฏิเสธ/แทนที่ไม่ได้ (backend ตอบ QUOTE_ALREADY_EXISTS) ต้องปฏิเสธ (Rejected) ก่อนถึงจะเปิดรอบใหม่ได้ —
-  // ใบที่ยังไม่ถูกปฏิเสธให้ใช้ "ออกฉบับแก้ไข" ในตัวใบเดิมแทน
-  const canCreateAdditionalQuotation = query.data?.every((q) => q.status === 'rejected') ?? false
+  // ปฏิเสธ/แทนที่ไม่ได้ (backend ตอบ QUOTE_ALREADY_EXISTS ถ้าใบล่าสุดไม่ใช่ Rejected/Superseded — ดู
+  // QuotationService.CreateAsync) ต้องเทียบกับ "ใบล่าสุด" (version สูงสุด) เท่านั้น ไม่ใช่ทุกใบในประวัติ
+  // (เดิมใช้ .every() ทำให้ใบเก่าที่ถูกปฏิเสธไปแล้วก่อนหน้า — ซึ่งยังค้างอยู่ในลิสต์เสมอเพราะไม่เคย superseded —
+  // พอมีใบใหม่กว่าที่ยัง draft/sent มาปน จะยัง false ถูกต้องอยู่แล้ว แต่เขียนแบบนี้ไม่ตรงกับ intent ของ backend
+  // ตรงๆ และทำให้พังถ้า backend เปลี่ยนไปคืน superseded ในลิสต์นี้ด้วยในอนาคต)
+  const latestQuotation = query.data?.reduce<(typeof query.data)[number] | null>(
+    (latest, q) => (!latest || q.version > latest.version ? q : latest),
+    null,
+  )
+  const canCreateAdditionalQuotation =
+    !latestQuotation || latestQuotation.status === 'rejected' || latestQuotation.status === 'superseded'
 
   // [BIZ] Approved→InProgress คำนวณ guard จริงได้ (JobService.ComputeGuardAsync: isComputable=true —
   // เช็คว่ามีบรรทัดที่ลูกค้าอนุมัติแล้วจริง) จึงไม่ต้องส่ง reason และไม่ใช่ manual override เหมือน transition อื่น
@@ -434,7 +484,11 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
           size="sm"
           onClick={() => createMutation.mutate({ jobId: job.jobId })}
           disabled={createMutation.isPending || !canCreateAdditionalQuotation}
-          title={canCreateAdditionalQuotation ? undefined : 'มีใบเสนอราคาที่ยังไม่ถูกปฏิเสธอยู่แล้ว — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" แทน'}
+          title={
+            canCreateAdditionalQuotation
+              ? undefined
+              : `ใบเสนอราคาล่าสุด (${latestQuotation?.statusLabelTh ?? ''}) ยังไม่ถูกปฏิเสธหรือถูกแทนที่ — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" แทน`
+          }
         >
           {createMutation.isPending ? 'กำลังสร้าง…' : '+ สร้างใบเสนอราคา'}
         </Button>
@@ -442,7 +496,8 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
       <CardContent>
         {!canCreateAdditionalQuotation && query.data?.length ? (
           <p className="form-message">
-            มีใบเสนอราคาที่ยังไม่ถูกปฏิเสธอยู่แล้ว — เปิดใบที่มีอยู่แล้วกด "ออกฉบับแก้ไข" แทนการสร้างใหม่
+            ใบเสนอราคาล่าสุด ({latestQuotation?.statusLabelTh}) ยังไม่ถูกปฏิเสธหรือถูกแทนที่ — เปิดใบที่มีอยู่แล้วกด
+            "ออกฉบับแก้ไข" แทนการสร้างใหม่
           </p>
         ) : null}
         {query.isPending ? (

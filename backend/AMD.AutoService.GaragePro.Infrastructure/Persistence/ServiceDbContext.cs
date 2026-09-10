@@ -33,6 +33,8 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<CatalogCategory> CatalogCategories => Set<CatalogCategory>();
     public DbSet<CatalogItemSupplier> CatalogItemSuppliers => Set<CatalogItemSupplier>();
+    public DbSet<JobChatMessage> JobChatMessages => Set<JobChatMessage>();
+    public DbSet<JobChatMention> JobChatMentions => Set<JobChatMention>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -374,6 +376,37 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.UpdatedByUserName).HasMaxLength(200);
 
             e.HasIndex(x => new { x.HandoverRecordId, x.ItemCode }).IsUnique();
+        });
+
+        b.Entity<JobChatMessage>(e =>
+        {
+            e.ToTable("svc_JobChatMessage");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Body).HasMaxLength(4000);
+            e.Property(x => x.CreatedByUserName).HasMaxLength(200);
+
+            e.HasOne(x => x.Job).WithMany()
+             .HasForeignKey(x => x.JobId).OnDelete(DeleteBehavior.Restrict);
+
+            // self-FK ต้อง Restrict — SQL Server ปฏิเสธ cascade path ที่ย้อนกลับตัวเองตอน migrate
+            e.HasOne(x => x.ReplyToMessage).WithMany()
+             .HasForeignKey(x => x.ReplyToMessageId).OnDelete(DeleteBehavior.Restrict);
+
+            e.HasIndex(x => new { x.JobId, x.CreatedAt }); // ใช้ทำ keyset pagination
+
+            e.HasMany(x => x.Mentions).WithOne(x => x.Message!)
+             .HasForeignKey(x => x.MessageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<JobChatMention>(e =>
+        {
+            e.ToTable("svc_JobChatMention");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.StaffName).HasMaxLength(200);
+
+            e.HasIndex(x => x.StaffId); // ใช้หา "ข้อความที่ฉันถูกกล่าวถึง" ในอนาคต
         });
 
         b.Entity<ActivityEvent>(e =>

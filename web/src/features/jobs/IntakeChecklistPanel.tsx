@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, Circle, ImagePlus, Loader2, MinusCircle } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { attachmentFileUrl, getJobAttachments, uploadAttachment } from '../../api/attachments'
+import { getJobAttachments, uploadAttachment } from '../../api/attachments'
 import { isApiError } from '../../api/client'
 import { getJobIntakeChecklist, saveIntakeChecklistItem, submitIntakeChecklist } from '../../api/intake'
 import type { Attachment, IntakeCheckResult, IntakeChecklistItem, Job } from '../../api/types'
+import { AttachmentImage } from '../../components/AttachmentImage'
 import { StateBlock } from '../../components/StateBlock'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
@@ -260,9 +261,7 @@ function IntakeChecklistRow({
       {canPhoto ? (
         <div className="intake-item__photos">
           {photos.map((p) => (
-            <a key={p.id} className="intake-item__photo" href={attachmentFileUrl(p.relativePath)} target="_blank" rel="noreferrer">
-              <img src={attachmentFileUrl(p.relativePath)} alt={p.fileName} loading="lazy" />
-            </a>
+            <AttachmentImage key={p.id} linkClassName="intake-item__photo" relativePath={p.relativePath} alt={p.fileName} />
           ))}
           {!locked ? (
             <>

@@ -142,6 +142,23 @@ public sealed class JobServiceTests
     }
 
     [Fact]
+    public async Task TransitionAsync_writes_from_to_status_payload_for_reports_to_reconstruct_the_timeline()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.WaitInspect));
+        var service = CreateService(jobs, role: UserRole.Technician, source: EventSource.Mobile);
+
+        await service.TransitionAsync(
+            TestJobId, new TransitionJobRequest("waitquote", "ตรวจเช็คเสร็จแล้วนอกระบบ (โมดูล Inspection ยังไม่พร้อม)"));
+
+        var payload = jobs.Events.Single(e => e.EventType == "job.status.changed").PayloadJson;
+        payload.Should().NotBeNullOrWhiteSpace();
+        using var doc = System.Text.Json.JsonDocument.Parse(payload!);
+        doc.RootElement.GetProperty("from").GetString().Should().Be("WaitInspect");
+        doc.RootElement.GetProperty("to").GetString().Should().Be("WaitQuote");
+    }
+
+    [Fact]
     public async Task TransitionAsync_computes_QuotationValid_guard_and_rejects_when_a_labor_line_has_no_technician()
     {
         var jobs = new FakeJobRepository();
@@ -626,6 +643,9 @@ public sealed class JobServiceTests
         public Task<Result<bool>> DeleteVehicleAsync(long id, CancellationToken ct = default) =>
             throw new NotImplementedException();
         public Task<Result<VehicleImageFile>> OpenVehicleImageAsync(long id, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Result<VehicleDetailDto>> UpdateVehicleImageAsync(
+            long id, VehicleImageUpload image, CancellationToken ct = default) =>
             throw new NotImplementedException();
     }
 }

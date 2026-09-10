@@ -225,9 +225,12 @@ img {
 .sidebar__nav {
   display: flex;
   flex: 1;
+  min-height: 0;
   flex-direction: column;
   gap: 18px;
   padding: 20px 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .sidebar__group {
@@ -316,6 +319,63 @@ img {
   padding: 8px 10px;
   border-top: 1px solid rgb(255 255 255 / 10%);
   border-radius: 0;
+}
+
+.sidebar__toggle {
+  display: flex;
+  min-height: 44px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+  margin: 0 12px;
+  padding: 8px 10px;
+  border: 0;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 0;
+  background: transparent;
+  color: #cbd5e1;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.sidebar__toggle:hover {
+  background: rgb(255 255 255 / 7%);
+  color: white;
+}
+
+/* เปิด/ปิดเมนู (ย่อเป็นแถบไอคอน) — ใช้ค่าความกว้าง/selector ชุดเดียวกับ @media 1024–1150px ด้านล่าง
+   เพื่อให้ผู้ใช้กดย่อเองได้ทุกความกว้างหน้าจอที่รองรับ (>=1024px) ไม่ใช่แค่หน้าจอแคบอัตโนมัติ */
+.app-shell--sidebar-collapsed {
+  grid-template-columns: 68px minmax(0, 1fr);
+}
+
+.app-shell--sidebar-collapsed .brand {
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+.app-shell--sidebar-collapsed .brand__copy,
+.app-shell--sidebar-collapsed .sidebar__label,
+.app-shell--sidebar-collapsed .sidebar__group-label,
+.app-shell--sidebar-collapsed .sidebar__count {
+  display: none;
+}
+
+.app-shell--sidebar-collapsed .sidebar__nav {
+  padding-inline: 8px;
+}
+
+.app-shell--sidebar-collapsed .sidebar__link,
+.app-shell--sidebar-collapsed .sidebar__footer,
+.app-shell--sidebar-collapsed .sidebar__toggle {
+  justify-content: center;
+  padding-inline: 8px;
+}
+
+.app-shell--sidebar-collapsed .sidebar__footer {
+  margin-inline: 8px;
 }
 
 .app-shell__body {
@@ -977,6 +1037,18 @@ img {
   border-radius: 12px;
 }
 
+.job-detail-info__image-wrap {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 8px;
+  width: 180px;
+}
+
+.job-detail-info__image-change {
+  width: 100%;
+}
+
 .job-detail-info__image--empty {
   display: grid;
   place-items: center;
@@ -1053,6 +1125,46 @@ img {
   gap: 14px;
 }
 
+/* ปุ่มคลิกดูรูปเต็ม (แทน <a target="_blank">) — ล้างสไตล์ default ของ <button> เท่านั้น ปล่อย display/ขนาดให้คลาส
+   ที่ผสมมาด้วย (เช่น .job-detail-photo-grid__item, .intake-item__photo) กำหนดเองเหมือนเดิม */
+.image-preview-trigger {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+/* ใช้เมื่อ trigger ครอบ <img> ไว้อีกชั้น (เช่น VehicleImage) — ให้รูปเต็มกล่องของปุ่มที่ได้ className/ขนาดจริงไปแล้ว */
+.image-preview-trigger__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-lightbox__content {
+  width: auto;
+  max-width: 90vw;
+  height: auto;
+  max-height: 90vh;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.image-lightbox__image {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: var(--radius-card);
+}
+
 .job-detail-photo-grid__item {
   display: flex;
   flex-direction: column;
@@ -1063,11 +1175,19 @@ img {
   text-decoration: none;
 }
 
-.job-detail-photo-grid__item img {
+.job-detail-photo-grid__item img,
+.job-detail-photo-grid__item .attachment-image {
   width: 100%;
   height: 120px;
   object-fit: cover;
   background: #eef3f8;
+}
+
+.attachment-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
 }
 
 .job-detail-photo-grid__kind {
@@ -1091,6 +1211,264 @@ img {
   flex-direction: column;
   gap: 20px;
 }
+
+/* JobChat widget — ลอยมุมล่างขวาของ .ui-dialog__content (positioned ancestor) จึงไม่ขยับตอนเลื่อน
+   .ui-dialog__body และไม่หายตอนสลับ stage เพราะ mount เป็น sibling ของ .job-card-page ไม่ใช่ลูกของมัน */
+.job-chat-widget {
+  position: absolute;
+  right: 20px;
+  bottom: 16px;
+  z-index: 30;
+}
+
+.job-chat-widget__launcher {
+  position: relative;
+  display: flex;
+  width: 52px;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--navy-900);
+  color: #fff;
+  box-shadow: 0 14px 32px rgb(15 36 64 / 30%);
+  cursor: pointer;
+}
+.job-chat-widget__launcher:hover { background: var(--navy-700); }
+.job-chat-widget__launcher svg { width: 24px; height: 24px; }
+.job-chat-widget__dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: var(--radius-pill);
+  background: var(--red-600);
+}
+
+.job-chat-panel {
+  display: flex;
+  width: min(360px, calc(90vw - 40px));
+  height: min(520px, calc(90vh - 80px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: #fff;
+  box-shadow: 0 24px 60px rgb(15 36 64 / 30%);
+}
+
+.job-chat-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--navy-900);
+  color: #fff;
+  font-weight: 600;
+}
+.job-chat-panel__close {
+  display: flex;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+.job-chat-panel__close svg { width: 18px; height: 18px; }
+
+.job-chat-panel__messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.job-chat-panel__load-more {
+  align-self: center;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+}
+.job-chat-panel__load-more:disabled { opacity: 0.6; cursor: default; }
+
+.job-chat-panel__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 24px 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.job-chat-panel__status--error { color: var(--red-600); }
+
+.job-chat-bubble {
+  max-width: 85%;
+  padding: 8px 10px;
+  border-radius: var(--radius-input);
+  background: #f1f5f9;
+  align-self: flex-start;
+}
+.job-chat-bubble--own { background: var(--blue-50); align-self: flex-end; }
+
+.job-chat-bubble__meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.job-chat-bubble__author { font-weight: 700; color: var(--navy-900); }
+
+.job-chat-bubble__reply {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 8px;
+  margin-bottom: 5px;
+  border-left: 3px solid var(--blue-600);
+  border-radius: 4px;
+  background: rgb(255 255 255 / 60%);
+  color: var(--muted);
+  font-size: 12px;
+}
+.job-chat-bubble__reply strong { color: var(--navy-900); }
+
+.job-chat-bubble__deleted { margin: 0; color: var(--muted); font-size: 13px; font-style: italic; }
+.job-chat-bubble__body { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: 14px; }
+
+.job-chat-mention-chip {
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--blue-50);
+  color: #1552b3;
+  font-weight: 600;
+}
+
+.job-chat-bubble__attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.job-chat-bubble__attachment-image { width: 92px; height: 92px; border-radius: 8px; object-fit: cover; }
+
+.job-chat-bubble__reply-action {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--blue-600);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.job-chat-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.job-chat-composer__reply {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-input);
+  background: var(--blue-50);
+}
+.job-chat-composer__reply-text { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.job-chat-composer__reply button { display: flex; border: none; background: transparent; color: var(--muted); cursor: pointer; }
+.job-chat-composer__reply-close { width: 14px; height: 14px; }
+
+.job-chat-composer__images { display: flex; flex-wrap: wrap; gap: 6px; }
+.job-chat-composer__image { position: relative; width: 56px; height: 56px; border-radius: 8px; overflow: hidden; }
+.job-chat-composer__image img { width: 100%; height: 100%; object-fit: cover; }
+.job-chat-composer__image button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  padding: 2px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: rgb(15 36 64 / 70%);
+  color: #fff;
+  cursor: pointer;
+}
+.job-chat-composer__image-remove { width: 11px; height: 11px; }
+
+.job-chat-composer__input-row { display: flex; align-items: flex-end; gap: 6px; }
+.job-chat-composer__textarea-wrap { position: relative; flex: 1; }
+.job-chat-composer__textarea {
+  width: 100%;
+  min-height: 40px;
+  max-height: 120px;
+  padding: 8px 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-input);
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  resize: none;
+}
+.job-chat-composer__textarea:focus { outline: 2px solid var(--ring); outline-offset: 1px; }
+
+.job-chat-mention-list {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: #fff;
+  box-shadow: 0 18px 44px rgb(15 36 64 / 16%);
+}
+.job-chat-mention-list__status { padding: 8px 9px; color: var(--muted); font-size: 13px; }
+.job-chat-mention-list__option { padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 13px; }
+.job-chat-mention-list__option:hover,
+.job-chat-mention-list__option--active { background: #f1f5f9; }
+
+.job-chat-composer__icon-button,
+.job-chat-composer__send {
+  display: flex;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.job-chat-composer__icon-button { background: #e6effc; color: #1552b3; }
+.job-chat-composer__icon-button svg,
+.job-chat-composer__send svg { width: 18px; height: 18px; }
+.job-chat-composer__send { background: var(--blue-600); color: #fff; }
+.job-chat-composer__send:disabled { background: var(--faint); cursor: default; }
 
 .job-card-header {
   display: flex;
@@ -1454,7 +1832,8 @@ img {
   border-radius: 8px;
 }
 
-.intake-item__photo img {
+.intake-item__photo img,
+.intake-item__photo .attachment-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -3850,6 +4229,18 @@ img {
 .selected-owner > svg { width: 20px; height: 20px; color: var(--blue-600); }
 .selected-owner > span { display: flex; flex-direction: column; }
 .selected-owner small { color: var(--muted); font-size: 11px; }
+
+.selected-vehicle { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px; border: 1px solid #b9d1f4; border-radius: var(--radius-input); background: var(--blue-50); }
+.selected-vehicle__image { width: 56px; height: 42px; flex-shrink: 0; border-radius: 8px; }
+.selected-vehicle__image--empty { display: grid; place-items: center; border: 1px solid #dbe3ee; color: #91a0b3; background: #eef3f8; }
+.selected-vehicle__image--empty svg { width: 20px; height: 20px; }
+.selected-vehicle__text { display: flex; flex: 1; flex-direction: column; min-width: 120px; }
+.selected-vehicle small { color: var(--muted); font-size: 11px; }
+
+.vehicle-image-picker { display: flex; align-items: center; gap: 12px; }
+.vehicle-image-picker__preview { display: flex; width: 84px; height: 62px; flex-shrink: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); border-radius: 10px; object-fit: cover; background: #eef3f8; }
+.vehicle-image-picker__preview--empty { color: #91a0b3; }
+.vehicle-image-picker__preview--empty svg { width: 24px; height: 24px; }
 .owner-results { display: grid; max-height: 220px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-input); }
 .owner-results > button { display: flex; align-items: flex-start; flex-direction: column; gap: 2px; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--border); background: white; color: var(--text); cursor: pointer; text-align: left; }
 .owner-results > button:hover { background: var(--blue-50); }

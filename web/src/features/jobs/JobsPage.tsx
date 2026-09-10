@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ClipboardList, Plus, Search, UserRound } from 'lucide-react'
+import { CarFront, ClipboardList, Plus, Search, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -16,6 +16,7 @@ import {
   getNicknames,
   getProvinces,
   getVehicleReferenceData,
+  updateVehicleImage,
 } from '../../api/customerVehicles'
 import type { CustomerSummary, CustomerVehicleSummary, Job, JobStatusToken } from '../../api/types'
 import { isApiError } from '../../api/client'
@@ -111,7 +112,7 @@ export function JobsPage() {
       header: 'รูปรถ',
       size: 116,
       enableSorting: false,
-      cell: ({ row }) => <VehicleImage path={row.original.vehicleImagePath} />,
+      cell: ({ row }) => <VehicleImage vehicleId={row.original.vehicleId} clickToPreview />,
     },
     {
       id: 'vehicle',
@@ -514,12 +515,14 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
           <section>
             <h3>รถ *</h3>
             {selectedVehicleId ? (
-              <div className="selected-owner">
-                <span>
+              <div className="selected-vehicle">
+                <VehicleImage vehicleId={selectedVehicleId} className="selected-vehicle__image" clickToPreview />
+                <span className="selected-vehicle__text">
                   <strong>
                     {customer?.vehicles.find((v) => v.id === selectedVehicleId)?.registration ?? 'รถที่เพิ่งสร้าง'}
                   </strong>
                 </span>
+                <VehiclePhotoQuickUpload vehicleId={selectedVehicleId} />
                 <Button type="button" variant="ghost" onClick={() => setSelectedVehicleId(null)}>เปลี่ยน</Button>
               </div>
             ) : creatingVehicle ? (
@@ -639,6 +642,20 @@ function NewVehicleForm({
   const nicknamesQuery = useQuery({ queryKey: ['nicknames', modelId], queryFn: () => getNicknames(modelId), enabled: modelId > 0 })
   const provincesQuery = useQuery({ queryKey: ['provinces'], queryFn: getProvinces })
 
+  const [image, setImage] = useState<File | null>(null)
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!image) {
+      setImagePreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(image)
+    setImagePreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [image])
+
   const mutation = useMutation({
     mutationFn: (values: NewVehicleValues) => createVehicle({
       customerId,
@@ -650,7 +667,7 @@ function NewVehicleForm({
       yearId: Number(values.yearId),
       primaryColorId: Number(values.primaryColorId) || undefined,
       vin: values.vin || undefined,
-    }),
+    }, image),
     onSuccess: (vehicle) => onCreated(vehicle.id),
   })
 
@@ -719,6 +736,27 @@ function NewVehicleForm({
       <Field label="VIN" error={errors.vin?.message}>
         <Input maxLength={17} {...register('vin')} />
       </Field>
+      <Field label="รูปรถ (ถ้ามี)">
+        <div className="vehicle-image-picker">
+          {imagePreviewUrl ? (
+            <img className="vehicle-image-picker__preview" src={imagePreviewUrl} alt="ตัวอย่างรูปรถ" />
+          ) : (
+            <span className="vehicle-image-picker__preview vehicle-image-picker__preview--empty">
+              <CarFront aria-hidden="true" />
+            </span>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="intake-item__file-input"
+            onChange={(e) => setImage(e.target.files?.[0] ?? null)}
+          />
+          <Button type="button" variant="outline" size="sm" onClick={() => imageInputRef.current?.click()}>
+            {image ? 'เปลี่ยนรูป' : 'เลือกรูปรถ'}
+          </Button>
+        </div>
+      </Field>
       <div className="job-card-panel-actions">
         <Button type="button" variant="ghost" onClick={onCancel}>ยกเลิก</Button>
         <Button type="button" disabled={mutation.isPending} onClick={() => void submit()}>
@@ -726,6 +764,42 @@ function NewVehicleForm({
         </Button>
       </div>
     </div>
+  )
+}
+
+/// อัปโหลด/เปลี่ยนรูปรถที่เลือกอยู่ทันที (ไม่ต้องรอเปิดจ๊อบสำเร็จก่อน) — ใช้ตอนเลือกรถที่มีอยู่แล้วแต่ยังไม่มีรูป
+function VehiclePhotoQuickUpload({ vehicleId }: { vehicleId: number }) {
+  const queryClient = useQueryClient()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const mutation = useMutation({
+    mutationFn: (file: File) => updateVehicleImage(vehicleId, file),
+    onSuccess: () => {
+      toast.success('อัปโหลดรูปรถแล้ว')
+      void queryClient.invalidateQueries({ queryKey: ['vehicle-image', vehicleId] })
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.messageTh : 'อัปโหลดรูปรถไม่สำเร็จ')
+    },
+  })
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="intake-item__file-input"
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) mutation.mutate(file)
+          e.target.value = ''
+        }}
+      />
+      <Button type="button" variant="outline" size="sm" disabled={mutation.isPending} onClick={() => inputRef.current?.click()}>
+        {mutation.isPending ? 'กำลังอัปโหลด…' : 'อัปโหลด/เปลี่ยนรูป'}
+      </Button>
+    </>
   )
 }
 

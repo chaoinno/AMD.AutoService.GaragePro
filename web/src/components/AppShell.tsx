@@ -4,10 +4,14 @@ import {
   Building2,
   CarFront,
   ChevronDown,
+  ChevronsLeft,
+  ChevronsRight,
   CircleHelp,
+  Clock3,
   LogOut,
   Package,
   Search,
+  TrendingUp,
   Users,
   Wrench,
   UserCog,
@@ -18,10 +22,10 @@ import {
   ShoppingCart,
   Boxes,
 } from 'lucide-react'
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
-import { purchases, type PurchaseKind } from '../api/purchasing'
+import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { clearStoredSession, useSession } from '../lib/session'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
@@ -52,7 +56,12 @@ const navGroups = [
   },
   {
     label: 'Reports',
-    items: [{ to: '/reports', icon: BarChart3, label: 'รายงาน' }],
+    items: [
+      { to: '/reports/dashboard', icon: BarChart3, label: 'แดชบอร์ดวันนี้' },
+      { to: '/reports/cycle-time', icon: Clock3, label: 'รอบเวลาทำงาน (SLA)' },
+      { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
+      { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
+    ],
   },
   {
     label: 'Master Data',
@@ -68,10 +77,20 @@ const navGroups = [
   },
 ]
 
+const SIDEBAR_COLLAPSED_KEY = 'garagepro.sidebar.collapsed'
+
 export function AppShell({ children, title = 'จ๊อบ', documentMode = false }: AppShellProps) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { session } = useSession()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1',
+  )
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed
+    setSidebarCollapsed(next)
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+  }
   const canUsePurchasing = ['manager', 'office'].includes(session?.user.role.toLowerCase() || '')
   const prCount = useQuery({
     queryKey: ['purchase-count', 'PR'],
@@ -79,9 +98,11 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     enabled: canUsePurchasing,
     staleTime: 30_000,
   })
+  // PO's badge tracks documents that still need attention (not yet fully received/closed),
+  // unlike PR's which counts every document — see countOpenPurchaseOrders on the backend.
   const poCount = useQuery({
-    queryKey: ['purchase-count', 'PO'],
-    queryFn: () => purchases('PO', '', '', 1, 100),
+    queryKey: ['purchase-count', 'PO', 'open'],
+    queryFn: () => countOpenPurchaseOrders(),
     enabled: canUsePurchasing,
     staleTime: 30_000,
   })
@@ -100,7 +121,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
   const displayName = session?.user.displayName ?? 'ผู้ใช้งาน'
 
   return (
-    <div className={`app-shell ${documentMode ? 'app-shell--document' : ''}`}>
+    <div className={`app-shell ${documentMode ? 'app-shell--document' : ''} ${sidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}>
       <aside className="sidebar print-hidden">
         <div className="brand">
           <img className="brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
@@ -117,17 +138,21 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                 const Icon = item.icon
                 const count = item.purchaseKind === 'PR'
                   ? prCount.data?.totalItems
-                  : item.purchaseKind === 'PO' ? poCount.data?.totalItems
+                  : item.purchaseKind === 'PO' ? poCount.data
                   : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
                   : undefined
                 const countTitle = 'jobsInShop' in item && item.jobsInShop
                   ? `จ๊อบรถในอู่ที่ยังไม่ปิดงาน ${count} รายการ`
+                  : item.purchaseKind === 'PO'
+                  ? `ใบสั่งซื้อที่ยังไม่รับครบ ${count} รายการ`
                   : `เอกสารทั้งหมด ${count} รายการ`
                 return (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
+                    aria-label={item.label}
+                    title={sidebarCollapsed ? item.label : undefined}
                   >
                     <Icon className="sidebar__icon" aria-hidden="true" />
                     <span className="sidebar__label">{item.label}</span>
@@ -142,7 +167,19 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
             </div>
           ))}
         </nav>
-        <div className="sidebar__footer">
+        <button
+          type="button"
+          className="sidebar__toggle"
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? 'ขยายเมนู' : 'ย่อเมนู'}
+          title={sidebarCollapsed ? 'ขยายเมนู' : 'ย่อเมนู'}
+        >
+          {sidebarCollapsed
+            ? <ChevronsRight className="sidebar__icon" aria-hidden="true" />
+            : <ChevronsLeft className="sidebar__icon" aria-hidden="true" />}
+          <span className="sidebar__label">ย่อเมนู</span>
+        </button>
+        <div className="sidebar__footer" title={sidebarCollapsed ? 'ช่วยเหลือ' : undefined}>
           <CircleHelp className="sidebar__icon" aria-hidden="true" />
           <span className="sidebar__label">ช่วยเหลือ</span>
         </div>

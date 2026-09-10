@@ -90,6 +90,10 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
     public async Task<IActionResult> Search(string? q, string? status, int page = 1, int pageSize = 25, CancellationToken ct = default) =>
         Render(await service.SearchAsync("PO", q, status, page, pageSize, ct));
 
+    /// <summary>นับจำนวน PO ที่ยังไม่รับครบ/ยังไม่ปิด (ไม่รวม complete และ cancelled) ของสาขาที่เข้าสู่ระบบ — ใช้กับตัวเลขในเมนู</summary>
+    [HttpGet("count-open")]
+    public async Task<IActionResult> CountOpen(CancellationToken ct) => Render(await service.CountOpenAsync("PO", ct));
+
     /// <summary>อ่านรายละเอียดใบสั่งซื้อ พร้อมรายการสินค้าและ version สำหรับป้องกันแก้ไขทับกัน</summary>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct) => Render(await service.GetAsync("PO", id, ct));

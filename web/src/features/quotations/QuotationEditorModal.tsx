@@ -517,6 +517,7 @@ export function QuotationEditorModal({
         <RevisionModal
           open={revisionOpen}
           quotationId={quotation.id}
+          jobId={quotation.jobId}
           onClose={() => setRevisionOpen(false)}
           onRevised={onRevised}
         />
@@ -540,14 +541,17 @@ type RevisionForm = z.infer<typeof revisionSchema>
 function RevisionModal({
   open,
   quotationId,
+  jobId,
   onClose,
   onRevised,
 }: {
   open: boolean
   quotationId: string
+  jobId: string
   onClose: () => void
   onRevised: (quotationId: string) => void
 }) {
+  const queryClient = useQueryClient()
   const {
     register,
     handleSubmit,
@@ -561,6 +565,11 @@ function RevisionModal({
       reset()
       onClose()
       toast.success('สร้างใบเสนอราคาฉบับแก้ไขแล้ว')
+      // [BUG แก้แล้ว] เดิมไม่ invalidate 'job-quotations' — รายการใบเสนอราคาใน JobCardModal ค้างสถานะเก่า
+      // (เช่นใบก่อนหน้ายังโชว์ว่ายังไม่ superseded) จนกว่าจะปิด editor ทั้งหมด ทำให้ปุ่ม "สร้างใบเสนอราคา" ดูเหมือนถูก
+      // disable ผิดพลาดค้างอยู่ทั้งที่ backend อนุญาตแล้ว (ล่าสุดเป็น superseded/rejected จริง)
+      void queryClient.invalidateQueries({ queryKey: ['job-quotations', jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['job-detail', jobId] })
       onRevised(quotation.id)
     },
   })

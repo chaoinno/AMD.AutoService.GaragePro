@@ -16,6 +16,10 @@ import { WarehousePage } from './features/master-data/WarehousePage'
 import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
 import { PurchasingPage } from './features/purchasing/PurchasingPage'
 import { InventoryPage } from './features/purchasing/InventoryPage'
+import { DashboardReportPage } from './features/reports/DashboardReportPage'
+import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
+import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
+import { StockReportPage } from './features/reports/StockReportPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -44,6 +48,11 @@ export default function App() {
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><Navigate to="/reports/dashboard" replace /></ProtectedRoute>} />
+          <Route path="/reports/dashboard" element={<ProtectedRoute><DashboardReportPage /></ProtectedRoute>} />
+          <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
+          <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
+          <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

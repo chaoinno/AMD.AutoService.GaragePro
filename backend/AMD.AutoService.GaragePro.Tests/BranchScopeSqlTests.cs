@@ -72,3 +72,35 @@ public sealed class BranchScopeSqlTests
         return result;
     }
 }
+
+public sealed class LegacyBranchGroupSqlTests
+{
+    [BranchScopeSqlFact]
+    public async Task Only_active_service_group_branches_are_accessible()
+    {
+        await using var db = new SqlConnection(Environment.GetEnvironmentVariable("GARAGEPRO_BRANCH_SQL_CONNECTION"));
+        await db.OpenAsync();
+        await db.ExecuteAsync("""
+            CREATE TABLE #Branch (Id int PRIMARY KEY, Name nvarchar(100), Status bit, BranchGroupId int,
+                Address1 nvarchar(100) NULL, Address2 nvarchar(100) NULL, PhoneNumber1 nvarchar(20) NULL, PhoneNumber2 nvarchar(20) NULL);
+            INSERT #Branch (Id, Name, Status, BranchGroupId) VALUES
+                (1, N'อู่บริการ A', 1, 7),
+                (2, N'อู่เคลม/สีตัวถัง B', 1, 3),
+                (3, N'อู่บริการปิดสาขา C', 0, 7);
+            """);
+
+        // Dapper maps a primitive generic type to the query's first column (BranchId here),
+        // so the production SELECT can run as-is — no derived-table wrapping (which would break
+        // the admin query's trailing ORDER BY, invalid inside a subquery without TOP/OFFSET).
+        static string ToTempTable(string sql) => Regex.Replace(sql, @"\bBranch\b", "#Branch");
+
+        var adminSql = ToTempTable(LegacyUserReader.BuildAccessibleBranchesSql(isAdministrator: true));
+        var adminRows = (await db.QueryAsync<int>(adminSql, new { branchId = 0 })).ToArray();
+        Assert.Equal(new[] { 1 }, adminRows);
+
+        var staffSql = ToTempTable(LegacyUserReader.BuildAccessibleBranchesSql(isAdministrator: false));
+        Assert.Equal(new[] { 1 }, (await db.QueryAsync<int>(staffSql, new { branchId = 1 })).ToArray());
+        Assert.Empty(await db.QueryAsync<int>(staffSql, new { branchId = 2 }));
+        Assert.Empty(await db.QueryAsync<int>(staffSql, new { branchId = 3 }));
+    }
+}

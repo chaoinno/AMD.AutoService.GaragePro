@@ -2,6 +2,12 @@ using System.Security.Cryptography;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using FluentFTP;
 using Microsoft.Extensions.Options;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Formats.Webp;
+using SixLabors.ImageSharp.Processing;
 
 namespace AMD.AutoService.GaragePro.Infrastructure.Storage;
 
@@ -40,6 +46,14 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
         ".png", ".jpg", ".jpeg", ".webp", ".pdf"
     };
 
+    // [เพิ่ม] resize รูปที่ใหญ่กว่า 1024px (ด้านใดด้านหนึ่ง) ก่อนอัปโหลด — ไม่แตะ PDF เลย
+    private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".png", ".jpg", ".jpeg", ".webp"
+    };
+
+    internal const int MaxImageDimensionPx = 1024;
+
     private readonly AttachmentOptions _options = options.Value;
     private readonly FtpOptions _ftp = ftpOptions.Value;
     private readonly string _rootPrefix = "/" + ftpOptions.Value.RootPath.Trim('/') + "/";
@@ -73,15 +87,67 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
             $"{id:N}{extension.ToLowerInvariant()}");
 
         // ตัด/แฮชระหว่างอัปโหลดสตรีมตรงเข้า FTP เลย ไม่ต้องพักไฟล์ไว้ที่ดิสก์ในเครื่องก่อน
-        var limited = new HashingLimitedStream(content, _options.MaxSizeBytes);
+        // (รูปที่เกิน 1024px ต้อง decode มาลง memory ก่อนเพื่อ resize — ดู PrepareUploadStreamAsync — ไฟล์ที่ไม่ใช่
+        // รูป (เช่น PDF) หรือรูปที่ไม่เกินขนาดอยู่แล้วยังคงสตรีมผ่านโดยไม่แตะต้นฉบับเหมือนเดิม)
+        var uploadSource = await PrepareUploadStreamAsync(content, extension, ct);
+        try
+        {
+            var limited = new HashingLimitedStream(uploadSource, _options.MaxSizeBytes);
 
-        await using var client = CreateClient();
-        await client.Connect(ct);
-        await client.UploadStream(limited, _rootPrefix + relativePath,
-            FtpRemoteExists.Overwrite, createRemoteDir: true, token: ct);
+            await using var client = CreateClient();
+            await client.Connect(ct);
+            await client.UploadStream(limited, _rootPrefix + relativePath,
+                FtpRemoteExists.Overwrite, createRemoteDir: true, token: ct);
 
-        return new StoredFile(id, relativePath, limited.TotalBytesRead, limited.GetSha256Hex());
+            return new StoredFile(id, relativePath, limited.TotalBytesRead, limited.GetSha256Hex());
+        }
+        finally
+        {
+            if (!ReferenceEquals(uploadSource, content))
+                await uploadSource.DisposeAsync();
+        }
     }
+
+    /// <summary>
+    /// รูป (png/jpg/webp) ที่กว้างหรือสูงเกิน 1024px ถูก resize ลงมาก่อนอัปโหลดจริง (คงสัดส่วนเดิม, ปรับ orientation
+    /// ตาม EXIF) — รูปที่ไม่เกิน 1024px อยู่แล้วคืนต้นฉบับตรงๆ ไม่ re-encode ซ้ำ (กันคุณภาพ/ขนาดไฟล์เพี้ยนโดยไม่จำเป็น)
+    /// PDF ไม่ผ่านเส้นทางนี้เลย — คืน stream เดิมของผู้เรียกตรงๆ
+    /// </summary>
+    internal static async Task<Stream> PrepareUploadStreamAsync(Stream content, string extension, CancellationToken ct)
+    {
+        if (!ImageExtensions.Contains(extension))
+            return content;
+
+        var buffer = new MemoryStream();
+        await content.CopyToAsync(buffer, ct);
+        buffer.Position = 0;
+
+        using var image = await Image.LoadAsync(buffer, ct);
+        if (image.Width <= MaxImageDimensionPx && image.Height <= MaxImageDimensionPx)
+        {
+            buffer.Position = 0;
+            return buffer;
+        }
+
+        image.Mutate(x => x.AutoOrient().Resize(new ResizeOptions
+        {
+            Mode = ResizeMode.Max,
+            Size = new Size(MaxImageDimensionPx, MaxImageDimensionPx),
+        }));
+
+        await buffer.DisposeAsync();
+        var resized = new MemoryStream();
+        await image.SaveAsync(resized, GetEncoder(extension), ct);
+        resized.Position = 0;
+        return resized;
+    }
+
+    private static IImageEncoder GetEncoder(string extension) => extension.ToLowerInvariant() switch
+    {
+        ".png" => new PngEncoder(),
+        ".webp" => new WebpEncoder(),
+        _ => new JpegEncoder { Quality = 88 },
+    };
 
     public async Task<Stream?> OpenReadAsync(string relativePath, CancellationToken ct = default)
     {

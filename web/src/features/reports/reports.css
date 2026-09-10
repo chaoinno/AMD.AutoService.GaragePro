@@ -1,0 +1,28 @@
+.report-page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.report-page-heading h2 { font-size: 18px; line-height: 1.25; }
+.report-page-heading p { margin-top: 2px; color: #64748b; font-size: 12px; }
+.report-date-filter { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.report-date-filter label { display: grid; gap: 4px; font-size: 12px; color: #64748b; }
+
+.stat-tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-tile { display: flex; align-items: center; gap: 14px; padding: 16px 18px; }
+.stat-tile__icon { display: grid; flex: 0 0 auto; width: 40px; height: 40px; place-items: center; border-radius: 10px; background: #eef1f6; color: var(--navy-900); }
+.stat-tile__icon svg { width: 18px; height: 18px; }
+.stat-tile__icon--warning { background: #fdf3e2; color: #8a5a00; }
+.stat-tile__icon--danger { background: #fbe9e9; color: #a31d1d; }
+.stat-tile__body { display: grid; gap: 2px; min-width: 0; }
+.stat-tile__label { font-size: 12px; color: #64748b; }
+.stat-tile__value { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; font-size: 22px; font-weight: 600; color: var(--navy-900); }
+.stat-tile__hint { color: #94a3b8; font-size: 11px; }
+
+.report-num { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.report-bar-group { display: grid; gap: 10px; padding: 18px 20px; }
+.report-bar { display: grid; grid-template-columns: 130px minmax(0, 1fr) 90px; align-items: center; gap: 12px; }
+.report-bar__label { font-size: 13px; color: var(--navy-900); }
+.report-bar__track { height: 10px; border-radius: 6px; background: #eef1f6; overflow: hidden; }
+.report-bar__fill { height: 100%; border-radius: 6px; min-width: 3px; transition: width 0.2s ease; }
+.report-bar__value { font-size: 13px; text-align: right; color: var(--navy-900); }
+
+.report-section-title { display: flex; align-items: center; gap: 8px; margin: 24px 0 10px; font-size: 14px; font-weight: 600; color: var(--navy-900); }
+.report-cost-hidden { color: #94a3b8; font-style: italic; }

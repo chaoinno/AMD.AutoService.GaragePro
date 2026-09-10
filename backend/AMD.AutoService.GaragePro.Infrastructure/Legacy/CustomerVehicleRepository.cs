@@ -440,6 +440,41 @@ public sealed class CustomerVehicleRepository(
             new { Id = id, scope.BranchId }, cancellationToken: ct));
     }
 
+    // เปลี่ยนเฉพาะคอลัมน์ ImageUrl — มิเรอร์การจัดการรูปใน UpdateVehicleAsync (save ไฟล์ใหม่ก่อน, UPDATE, ลบไฟล์เก่า
+    // หลัง commit สำเร็จ, cleanup ไฟล์ใหม่ถ้า UPDATE ไม่โดนแถวไหนเลย) แต่ไม่แตะคอลัมน์อื่นหรือ CarCustomer เลย
+    public async Task<bool> UpdateVehicleImageAsync(
+        LegacyRequestScope scope, long id, VehicleImageUpload image, CancellationToken ct = default)
+    {
+        await using var db = Open(scope.ShardKey);
+        await db.OpenAsync(ct);
+
+        var oldPath = await db.QueryFirstOrDefaultAsync<string?>(new CommandDefinition(
+            $"SELECT TOP 1 car.ImageUrl FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope()}",
+            new { Id = id, scope.BranchId }, cancellationToken: ct));
+        if (oldPath is null && !await db.ExecuteScalarAsync<bool>(new CommandDefinition(
+            $"SELECT CONVERT(bit, CASE WHEN EXISTS(SELECT 1 FROM Car car WITH (READUNCOMMITTED) WHERE car.Id=@Id AND {VehicleScope()}) THEN 1 ELSE 0 END)",
+            new { Id = id, scope.BranchId }, cancellationToken: ct))) return false;
+
+        var newPath = await imageStorage.SaveAsync(id, image, ct);
+        var affected = await db.ExecuteAsync(new CommandDefinition(
+            $"""
+            UPDATE car SET ImageUrl=@ImageUrl, LastUpdated=GETDATE(), UpdatedBy=@UserId
+            FROM Car car WHERE car.Id=@Id AND {VehicleScope()};
+            """,
+            new { Id = id, scope.BranchId, scope.UserId, ImageUrl = "Images/" + newPath }, cancellationToken: ct));
+
+        if (affected == 0)
+        {
+            await imageStorage.DeleteAsync(newPath, CancellationToken.None);
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(oldPath))
+            await imageStorage.DeleteAsync(oldPath, CancellationToken.None);
+
+        return true;
+    }
+
     public Task<IReadOnlyList<LookupItemDto>> GetProvincesAsync(CancellationToken ct = default) =>
         QueryLookups("SELECT PROVINCE_ID AS Id, PROVINCE_NAME AS Name FROM province WITH (READUNCOMMITTED) ORDER BY PROVINCE_NAME", null, ct);
 
