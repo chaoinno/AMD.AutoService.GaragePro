@@ -22,7 +22,7 @@ import {
   ShoppingCart,
   Boxes,
 } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
@@ -86,6 +86,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1',
   )
+  useEffect(() => {
+    document.title = `${title} | GaragePro`
+  }, [title])
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
     setSidebarCollapsed(next)

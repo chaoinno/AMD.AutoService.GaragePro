@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { CircleAlert, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck, UserRound } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import { z } from 'zod'
@@ -29,6 +29,10 @@ export function LoginPage() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+
+  useEffect(() => {
+    document.title = 'เข้าสู่ระบบ | แพลตฟอร์มสำหรับจัดการงานอู่บริการซ่อมบำรุงรถยนต์ GaragePro'
+  }, [])
 
   const mutation = useMutation({
     mutationFn: ({ userName, password }: LoginForm) => {
