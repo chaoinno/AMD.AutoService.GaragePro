@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Boxes, CheckCircle2, Clock3, RefreshCw, Search } from 'lucide-react'
+import { Boxes, CheckCircle2, Clock3, FileSpreadsheet, RefreshCw, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { getWarehouses } from '../../api/masterData'
@@ -15,12 +15,18 @@ import { Textarea } from '../../components/ui/textarea'
 import { useSession } from '../../lib/session'
 import { Field, InlineError, QueryState } from '../master-data/MasterDataCommon'
 import { dateTime, money, usePurchasingRefresh } from './PurchasingPage'
+import { exportInventory } from './inventoryExport'
 
 export function InventoryPage() {
   const [q, setQ] = useState(''); const [selected, setSelected] = useState<string | null>(null)
   const query = useQuery({ queryKey: ['inventory', q], queryFn: () => stockItems(q) })
   const { session } = useSession(); const manager = Boolean(session?.user.canSeeCost)
-  return <AppShell title="สต็อก FIFO"><section className="management-heading"><div><span className="page-eyebrow">INVENTORY</span><h2>สต็อกและต้นทุน FIFO</h2><p>รับล็อตเก่าก่อน เบิกล็อตเก่าก่อน · จำนวนพร้อมใช้ = คงเหลือ − จองแล้ว</p></div><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></section>
+  const excel = useMutation({
+    mutationFn: () => exportInventory(query.data ?? [], manager),
+    onSuccess: () => toast.success('ส่งออก Excel เรียบร้อยแล้ว'),
+    onError: (error: Error) => toast.error(error.message || 'ส่งออกไม่สำเร็จ กรุณาลองใหม่'),
+  })
+  return <AppShell title="สต็อก FIFO"><section className="management-heading"><div><span className="page-eyebrow">INVENTORY</span><h2>สต็อกและต้นทุน FIFO</h2><p>รับล็อตเก่าก่อน เบิกล็อตเก่าก่อน · จำนวนพร้อมใช้ = คงเหลือ − จองแล้ว</p></div><div className="purchase-list-actions"><Button variant="outline" disabled={excel.isPending || query.isFetching || query.isError || !query.data?.length} title="ส่งออกรายการที่แสดงตามคำค้นหา สูงสุด 200 รายการ" onClick={() => excel.mutate()}><FileSpreadsheet aria-hidden="true" />{excel.isPending ? 'กำลังส่งออก…' : 'ส่งออก Excel'}</Button><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></div></section>
     <Card className="purchase-filters"><div className="input-with-icon"><Search /><Input aria-label="ค้นหาสต็อก" placeholder="ค้นหารหัส / ชื่อสินค้า" value={q} onChange={e => setQ(e.target.value)} /></div><span className="section-help">สูงสุด 200 ผลค้นหา · กดรายละเอียดเพื่อดูล็อตและประวัติ</span></Card>
     <QueryState query={query} loadingTitle="กำลังโหลดสต็อก" emptyTitle="ยังไม่มีสินค้าอะไหล่ที่ตรงกับการค้นหา" emptyReason="เพิ่มสินค้าจากเมนูสินค้า หรือลองเปลี่ยนคำค้น" onRetry={() => void query.refetch()}>
       <Card className="management-table-card"><ManagementTable data={query.data ?? []} sortScope="loaded" columns={[
