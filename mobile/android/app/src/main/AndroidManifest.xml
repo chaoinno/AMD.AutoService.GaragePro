@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- build release/profile ไม่ได้รวม manifest ของ debug — ถ้าไม่ประกาศที่นี่ HTTP ทุกคำขอจะพังเงียบๆ -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- image_picker เรียกกล้องผ่าน intent ของระบบ จึงไม่ต้องขอ CAMERA — แต่แท็บเล็ตที่ไม่มีกล้องต้องยังติดตั้งได้ -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="garage_pro_service_ops"
         android:name="${applicationName}"

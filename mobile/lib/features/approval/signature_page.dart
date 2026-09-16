@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:signature/signature.dart';
 
 import '../../api/client.dart';
+import '../../models/attachment.dart';
 import '../../core/tokens.dart';
 import '../../models/quotation.dart';
 import '../../widgets/common.dart';
@@ -398,16 +399,16 @@ class _SignaturePageState extends ConsumerState<SignaturePage> {
       // อัปโหลดลายเซ็นขึ้น server ก่อน แล้วเก็บ path ที่ server คืนมา
       // ไม่ใช้ path ในเครื่อง เพราะเว็บต้องดึงรูปนี้ไปแสดงบนเอกสารได้
       final file = await _writeSignatureFile();
-      final storedPath = await ref.read(apiProvider).uploadAttachment(
+      final stored = await ref.read(attachmentsApiProvider).upload(
             file: file,
             jobId: widget.quotation.jobId,
-            kind: 'signature',
+            kind: AttachmentKind.signature,
             entityId: widget.quotation.id,
           );
 
-      await ref.read(apiProvider).sign(
+      await ref.read(quotationsApiProvider).sign(
             widget.quotation.id,
-            signatureImagePath: storedPath,
+            signatureImagePath: stored.relativePath,
             consentText: _consentText,
             deviceInfo: _deviceInfo(),
             witnessEmployeeId: session.user.userId,

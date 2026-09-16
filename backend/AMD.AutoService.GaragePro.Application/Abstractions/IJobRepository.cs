@@ -16,6 +16,10 @@ public interface IJobRepository
     /// <summary>จำนวนงานที่ยังไม่ปิด (ไม่รวม Completed/Cancelled) — ใช้แสดงตัวเลขในเมนู</summary>
     Task<int> CountOpenAsync(string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default);
 
+    /// <summary>นับจ๊อบที่ยังไม่ปิด แยกตามสถานะ พร้อมจำนวนที่เกินเวลานัดส่งในแต่ละสถานะ</summary>
+    Task<IReadOnlyList<JobStatusTally>> CountOpenByStatusAsync(
+        string shardKey, int branchId, int? jobTypeId, DateTime nowUtc, CancellationToken ct = default);
+
     Task AddAsync(Job job, CancellationToken ct = default);
     Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default);
     Task<int> SaveChangesAsync(CancellationToken ct = default);

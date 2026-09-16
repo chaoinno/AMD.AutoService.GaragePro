@@ -313,3 +313,45 @@ class InfoBanner extends StatelessWidget {
     );
   }
 }
+
+/// ป้ายสถานะจ๊อบ — คู่กับ JobStatusChip.tsx ของเว็บ
+/// [UI] สี + ไอคอน + ข้อความเสมอ · [label] ให้ override ด้วย statusLabel ที่ server ส่งมา
+/// เพื่อให้ข้อความไทยมาจากแหล่งเดียว (JobStateMachine.Describe) ไม่ใช่แมปสองชุดที่ drift กันได้
+class JobStatusChip extends StatelessWidget {
+  const JobStatusChip(this.token, {super.key, this.label, this.compact = false});
+
+  final String token;
+  final String? label;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = JobStatusStyle.of(token);
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? T.s8 : T.s12,
+        vertical: compact ? 4 : 6,
+      ),
+      decoration: BoxDecoration(
+        color: s.bg,
+        borderRadius: BorderRadius.circular(T.rChip),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(s.icon, size: compact ? 13 : 15, color: s.fg),
+          const SizedBox(width: 5),
+          Text(
+            label?.trim().isNotEmpty == true ? label!.trim() : s.labelTh,
+            style: TextStyle(
+              fontSize: compact ? 12 : 13,
+              fontWeight: FontWeight.w700,
+              color: s.fg,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

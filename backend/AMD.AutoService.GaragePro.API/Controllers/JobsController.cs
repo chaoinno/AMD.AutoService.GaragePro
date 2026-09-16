@@ -55,6 +55,14 @@ public sealed class JobsController(
         return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
     }
 
+    /// <summary>จำนวนจ๊อบที่ยังไม่ปิด แยกตามสถานะ + จำนวนที่เกินเวลานัดส่ง (สโคปตามสาขาใน JWT)</summary>
+    [HttpGet("counts")]
+    public async Task<IActionResult> Counts([FromQuery] int? jobTypeId, CancellationToken ct)
+    {
+        var result = await jobService.CountsAsync(jobTypeId, ct);
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
     [HttpGet("{jobId:guid}")]
     public async Task<IActionResult> Get(Guid jobId, CancellationToken ct)
     {

@@ -23,6 +23,8 @@ public interface IJobService
     /// <summary>จำนวนงานที่ยังไม่ปิดของสาขาปัจจุบัน — ใช้แสดงตัวเลขในเมนูจ๊อบ</summary>
     Task<Result<int>> CountOpenAsync(int? jobTypeId, CancellationToken ct = default);
 
+    Task<Result<JobCountsDto>> CountsAsync(int? jobTypeId, CancellationToken ct = default);
+
     Task<Result<CreatedJobDto>> CreateAsync(CreateJobRequest request, CancellationToken ct = default);
 
     Task<Result<JobTransitionResultDto>> TransitionAsync(
@@ -84,6 +86,35 @@ public sealed class JobService(
 
     public async Task<Result<int>> CountOpenAsync(int? jobTypeId, CancellationToken ct = default) =>
         Result<int>.Ok(await jobs.CountOpenAsync(user.ShardKey, user.BranchId, jobTypeId, ct));
+
+    /// <summary>
+    /// คืนสถานะที่ยังเดินต่อได้ **ครบทุกตัวเสมอ รวมที่เป็นศูนย์** เพื่อให้หน้าจอมีรายการคงที่
+    /// ไม่กระโดดสลับตำแหน่งเวลาจำนวนเปลี่ยน · เรียงตามลำดับ lifecycle ไม่ใช่ตามจำนวน
+    /// </summary>
+    private static readonly JobStatus[] OpenStatusOrder =
+    [
+        JobStatus.WaitInspect, JobStatus.WaitQuote, JobStatus.WaitApprove, JobStatus.Approved,
+        JobStatus.InProgress, JobStatus.WaitParts, JobStatus.Qc, JobStatus.Ready
+    ];
+
+    public async Task<Result<JobCountsDto>> CountsAsync(
+        int? jobTypeId, CancellationToken ct = default)
+    {
+        var tallies = await jobs.CountOpenByStatusAsync(user.ShardKey, user.BranchId, jobTypeId, Now, ct);
+        var byStatus = tallies.ToDictionary(t => t.Status);
+
+        var items = OpenStatusOrder
+            .Select(status => new JobStatusCountDto(
+                JobStateMachine.ToToken(status),
+                JobStateMachine.Describe(status),
+                byStatus.TryGetValue(status, out var tally) ? tally.Count : 0))
+            .ToList();
+
+        return Result<JobCountsDto>.Ok(new JobCountsDto(
+            TotalOpen: tallies.Sum(t => t.Count),
+            Overdue: tallies.Sum(t => t.Overdue),
+            ByStatus: items));
+    }
 
     public IReadOnlyList<JobStatusOptionDto> GetStatusOptions() =>
         Enum.GetValues<JobStatus>()
@@ -170,6 +201,15 @@ public sealed class JobService(
         if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
             return Result<JobTransitionResultDto>.Fail(
                 "JOB_NOT_FOUND", "ไม่พบข้อมูลสถานะของจ๊อบนี้ — เปิดหน้าจ๊อบอีกครั้งก่อนเปลี่ยนสถานะ");
+
+        // ตรวจโครงสร้างก่อน (เส้นทางนี้มีจริงไหม · role/เครื่องทำได้ไหม) โดยสมมติว่า guard ผ่านหมด
+        // ต้องมาก่อนการบังคับ reason ด้านล่าง ไม่งั้น transition ที่เป็นไปไม่ได้เลย เช่น กำลังซ่อม → พร้อมส่งมอบ
+        // จะได้ข้อความ "ยังไม่มีระบบตรวจสอบอัตโนมัติ กรุณาระบุเหตุผล" ซึ่งชี้ทางผิดสนิท
+        // (ผู้ใช้พิมพ์เหตุผลแล้วก็ยังไปต่อไม่ได้ เพราะปัญหาคือเส้นทางไม่มีอยู่ ไม่ใช่ขาดเหตุผล)
+        var structural = JobStateMachine.CanTransition(
+            job.Status, to.Value, user.Role, user.Source, ~JobGuard.None);
+        if (!structural.Allowed)
+            return Result<JobTransitionResultDto>.Fail(structural.ErrorCode!, structural.MessageTh!);
 
         var (computedGuard, isFullyComputed) = await ComputeGuardAsync(job, to.Value, ct);
 

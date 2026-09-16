@@ -105,14 +105,35 @@ public sealed class HandoverServiceTests
         return record;
     }
 
-    private static HandoverService CreateService(FakeHandoverRepository repo) =>
-        new(repo, new FakeJobRepository(), new StubCurrentUser(), TimeProvider.System);
+    [Fact]
+    public async Task GetOrCreateAsync_is_open_to_front_desk_because_handing_the_car_back_is_their_job()
+    {
+        var result = await CreateService(new FakeHandoverRepository(), UserRole.FrontDesk)
+            .GetOrCreateAsync(TestJobId);
 
-    private sealed class StubCurrentUser : ICurrentUser
+        result.Success.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.Lead)]
+    public async Task GetOrCreateAsync_still_rejects_roles_that_never_hand_the_car_back(UserRole role)
+    {
+        var result = await CreateService(new FakeHandoverRepository(), role).GetOrCreateAsync(TestJobId);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("HANDOVER_FORBIDDEN");
+    }
+
+    private static HandoverService CreateService(
+        FakeHandoverRepository repo, UserRole role = UserRole.Cashier) =>
+        new(repo, new FakeJobRepository(), new StubCurrentUser(role), TimeProvider.System);
+
+    private sealed class StubCurrentUser(UserRole role = UserRole.Cashier) : ICurrentUser
     {
         public long UserId => 7;
-        public string UserName => "แคชเชียร์ ทดสอบ";
-        public UserRole Role => UserRole.Cashier;
+        public string UserName => "ผู้ใช้ทดสอบ";
+        public UserRole Role => role;
         public string ShardKey => "db2";
         public int BranchId => 105;
         public EventSource Source => EventSource.Web;
@@ -133,6 +154,9 @@ public sealed class HandoverServiceTests
         public Task<IReadOnlyList<Job>> SearchAsync(JobSearchQuery query, CancellationToken ct = default) =>
             throw new NotImplementedException();
         public Task<int> CountOpenAsync(string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<IReadOnlyList<JobStatusTally>> CountOpenByStatusAsync(
+            string shardKey, int branchId, int? jobTypeId, DateTime nowUtc, CancellationToken ct = default) =>
             throw new NotImplementedException();
         public Task AddAsync(Job job, CancellationToken ct = default) => throw new NotImplementedException();
         public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;

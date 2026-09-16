@@ -69,6 +69,28 @@ public sealed class JobRepository(ServiceDbContext db) : IJobRepository
         return q.CountAsync(ct);
     }
 
+    public async Task<IReadOnlyList<JobStatusTally>> CountOpenByStatusAsync(
+        string shardKey, int branchId, int? jobTypeId, DateTime nowUtc, CancellationToken ct = default)
+    {
+        var q = db.Jobs.Where(j =>
+            j.LegacyShardKey == shardKey && j.BranchId == branchId && !TerminalStatuses.Contains(j.Status));
+
+        if (jobTypeId is not null)
+            q = q.Where(j => j.JobTypeId == jobTypeId);
+
+        // นับทั้งยอดต่อสถานะและยอดเกินกำหนดใน query เดียว — เลี่ยงยิงสองรอบด้วยเงื่อนไขชุดเดียวกัน
+        // เงื่อนไขเกินกำหนดต้องตรงกับ Job.IsOverdue (PromiseAt มีค่า และเลยเวลาแล้ว)
+        var rows = await q
+            .GroupBy(j => j.Status)
+            .Select(g => new JobStatusTally(
+                g.Key,
+                g.Count(),
+                g.Count(j => j.PromiseAt != null && j.PromiseAt < nowUtc)))
+            .ToListAsync(ct);
+
+        return rows;
+    }
+
     public async Task AddAsync(Job job, CancellationToken ct = default) =>
         await db.Jobs.AddAsync(job, ct);
 

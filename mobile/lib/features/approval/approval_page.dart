@@ -6,6 +6,7 @@ import '../../api/client.dart';
 import '../../core/tokens.dart';
 import '../../models/quotation.dart';
 import '../../widgets/common.dart';
+import '../jobs/data/jobs_providers.dart';
 import 'signature_page.dart';
 
 /// หน้าลูกค้าอนุมัติราคา — ขั้นที่ 5 ของ Demo
@@ -15,7 +16,7 @@ import 'signature_page.dart';
 /// [BIZ] ต้องตัดสินใจครบทุกบรรทัดก่อนเซ็น · ลายเซ็นผูกกับเวอร์ชันนี้
 final quotationProvider =
     FutureProvider.autoDispose.family<Quotation, String>((ref, id) async {
-  return ref.watch(apiProvider).getQuotation(id);
+  return ref.watch(quotationsApiProvider).get(id);
 });
 
 class ApprovalPage extends ConsumerStatefulWidget {
@@ -161,7 +162,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
 
     setState(() => _busyLines.add(line.id));
     try {
-      await ref.read(apiProvider).decideLine(
+      await ref.read(quotationsApiProvider).decideLine(
             q.id,
             line.id,
             approve: approve,
@@ -251,8 +252,23 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       MaterialPageRoute(builder: (_) => SignaturePage(quotation: q)),
     );
 
-    if (signed == true) {
-      ref.invalidate(quotationProvider(widget.quotationId));
+    if (signed != true) return;
+    ref.invalidate(quotationProvider(widget.quotationId));
+
+    // QuotationService.SignAsync เปลี่ยนแค่สถานะ "ใบเสนอราคา" ไม่ได้ขยับ "จ๊อบ" ให้
+    // ถ้าไม่ยิง transition ต่อ จ๊อบจะค้างที่ waitapprove ตลอดกาล (บั๊กแบบเดียวกับที่เว็บเคยเจอ)
+    // guard AllLinesDecidedAndSigned|HasApprovedLines คำนวณจากข้อมูลจริง จึงไม่ต้องส่ง reason
+    try {
+      await ref.read(jobsApiProvider).transition(q.jobId, 'approved');
+      ref
+        ..invalidate(jobDetailProvider(q.jobId))
+        ..invalidate(jobQuotationsProvider(q.jobId));
+      await ref.read(jobListProvider.notifier).load();
+    } on ApiException catch (e) {
+      // ไม่กลบข้อความจาก server — ลายเซ็นบันทึกสำเร็จแล้ว แต่จ๊อบไม่ขยับ ต้องบอกให้รู้ว่าทำไม
+      if (mounted) {
+        _toast('เซ็นเรียบร้อย แต่จ๊อบยังไม่เปลี่ยนสถานะ — ${e.messageTh}');
+      }
     }
   }
 

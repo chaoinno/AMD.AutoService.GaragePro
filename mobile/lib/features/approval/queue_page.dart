@@ -9,7 +9,7 @@ import 'approval_page.dart';
 
 /// คิวใบเสนอราคาที่รอลูกค้าอนุมัติ — จุดเข้าของหน้าร้าน
 final queueProvider = FutureProvider.autoDispose<List<QuotationSummary>>(
-  (ref) => ref.watch(apiProvider).getQueue(filter: 'wait'),
+  (ref) => ref.watch(quotationsApiProvider).queue(filter: 'wait'),
 );
 
 class QueuePage extends ConsumerWidget {
@@ -168,7 +168,7 @@ class QueuePage extends ConsumerWidget {
     if (session == null) return;
 
     try {
-      await ref.read(apiProvider).closeShift(session.sessionId);
+      await ref.read(authApiProvider).closeShift(session.sessionId);
       await ref.read(sessionProvider.notifier).clear();
     } on ApiException catch (e) {
       if (context.mounted) {

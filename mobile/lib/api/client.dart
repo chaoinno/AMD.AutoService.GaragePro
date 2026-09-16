@@ -1,37 +1,25 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../app/navigation.dart';
 import '../models/auth.dart';
-import '../models/quotation.dart';
+import 'api_client.dart';
+import 'attachments_api.dart';
+import 'auth_api.dart';
+import 'job_chat_api.dart';
+import 'customers_api.dart';
+import 'handover_api.dart';
+import 'intake_api.dart';
+import 'jobs_api.dart';
+import 'pos_api.dart';
+import 'qc_api.dart';
+import 'quotations_api.dart';
+import 'reports_api.dart';
+import 'staffs_api.dart';
 
-/// ข้อผิดพลาดจาก API — [UI] ทุก error state ต้องมี สาเหตุ + ปุ่มถัดไป + รหัสอ้างอิง
-class ApiException implements Exception {
-  ApiException(this.code, this.messageTh, {this.traceId, this.details});
-
-  final String code;
-  final String messageTh;
-  final String? traceId;
-  final Object? details;
-
-  /// เซสชันหมดอายุ — ต้องเด้งกลับหน้าเข้าสู่ระบบ
-  bool get isUnauthorized => code == 'AUTH_REQUIRED';
-
-  /// ยังไม่ได้เลือกสาขา/กะ
-  bool get requiresShift => code == 'AUTH_SHIFT_REQUIRED';
-
-  @override
-  String toString() => '$code: $messageTh';
-}
-
-/// ค่าเริ่มต้นสำหรับ dev — Android emulator ใช้ 10.0.2.2 แทน localhost
-const defaultBaseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://localhost:5080',
-);
+export 'api_client.dart' show ApiException, ApiClient, defaultBaseUrl;
 
 // ---------------------------------------------------------------- providers
 
@@ -42,10 +30,18 @@ final sharedPrefsProvider = Provider<SharedPreferences>(
 /// เซสชันปัจจุบัน — null = ยังไม่ได้เข้าสู่ระบบ
 final sessionProvider = NotifierProvider<SessionNotifier, Session?>(SessionNotifier.new);
 
-final apiProvider = Provider<GarageProApi>((ref) {
-  final session = ref.watch(sessionProvider);
-  return GarageProApi(accessToken: session?.accessToken);
-});
+/// ผลล็อกอินที่ยังเลือกสาขา/กะไม่เสร็จ — token ตัวนี้ใช้เรียก /auth/branches และ /auth/shift-sessions ได้
+/// เก็บใน provider ไม่ใช่ GoRouterState.extra เพราะ extra หายเมื่อ restart process แล้ว route จะพัง
+final pendingLoginProvider = NotifierProvider<PendingLoginNotifier, LoginResult?>(
+  PendingLoginNotifier.new,
+);
+
+class PendingLoginNotifier extends Notifier<LoginResult?> {
+  @override
+  LoginResult? build() => null;
+
+  void set(LoginResult? value) => state = value;
+}
 
 class SessionNotifier extends Notifier<Session?> {
   static const _key = 'garagepro.session';
@@ -75,170 +71,42 @@ class SessionNotifier extends Notifier<Session?> {
   }
 }
 
-// ---------------------------------------------------------------- api client
+/// client เดียวของทั้งแอป — ไม่สร้าง Dio ใหม่ทุกครั้งที่เซสชันเปลี่ยน เพราะอ่าน token ตอนยิงคำขอ
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(
+    readToken: () =>
+        ref.read(sessionProvider)?.accessToken ?? ref.read(pendingLoginProvider)?.accessToken,
+    onAuthFailure: (error) => _handleAuthFailure(ref, error),
+  );
+});
 
-class GarageProApi {
-  GarageProApi({String? accessToken, String baseUrl = defaultBaseUrl})
-      : _dio = Dio(BaseOptions(
-          baseUrl: '$baseUrl/api/v1',
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 30),
-          headers: {'Content-Type': 'application/json'},
-        )) {
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        options.headers['Authorization'] =
-            accessToken == null ? null : 'Bearer $accessToken';
-        // [BIZ] ทุก ActivityEvent ต้องรู้ว่ามาจากมือถือ
-        // ตัวตนทั้งหมดอยู่ใน JWT แล้ว — ไม่ส่งชื่อผู้ใช้ทาง header อีก
-        // (HTTP header รับได้แค่ ASCII ชื่อไทยเคยทำให้ request พังทั้งหมด)
-        options.headers['X-Client-Source'] = 'mobile';
-        handler.next(options);
-      },
-    ));
-  }
+/// เซสชันหมดอายุ/ไม่มีสาขาในโทเคน — ระบบไม่มี refresh token จึงต้องให้เข้าสู่ระบบใหม่เท่านั้น
+void _handleAuthFailure(Ref ref, ApiException error) {
+  // หน้าที่ถูก push แบบ imperative (เช่นหน้าเซ็นลายเซ็น) ซ้อนอยู่เหนือ stack ของ router
+  // ถ้าไม่ pop ก่อน ผู้ใช้จะเห็นหน้าเซ็นค้างทับหน้า login
+  rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
 
-  final Dio _dio;
+  ref.read(pendingLoginProvider.notifier).set(null);
+  ref.read(sessionProvider.notifier).clear();
 
-  // ---- auth ----
-
-  Future<LoginResult> login(String userName, String password) async {
-    final data = await _unwrap<Map<String, dynamic>>(
-      () => _dio.post('/auth/login', data: {'userName': userName, 'password': password}),
-    );
-    return LoginResult.fromJson(data);
-  }
-
-  Future<List<ShiftOption>> getShifts(int branchId) async {
-    final data = await _unwrap<List<dynamic>>(
-      () => _dio.get('/auth/branches/$branchId/shifts'),
-    );
-    return data.map((e) => ShiftOption.fromJson(e as Map<String, dynamic>)).toList();
-  }
-
-  Future<Session> openShift({required int branchId, required String shiftId}) async {
-    final data = await _unwrap<Map<String, dynamic>>(
-      () => _dio.post('/auth/shift-sessions', data: {'branchId': branchId, 'shiftId': shiftId}),
-    );
-    return Session.fromJson(data);
-  }
-
-  Future<void> closeShift(String sessionId) =>
-      _unwrap<bool>(() => _dio.post('/auth/shift-sessions/$sessionId/close'));
-
-  // ---- quotations ----
-
-  Future<List<QuotationSummary>> getQueue({String? filter}) async {
-    final data = await _unwrap<List<dynamic>>(
-      () => _dio.get('/quotations', queryParameters: {
-        if (filter != null && filter.isNotEmpty) 'filter': filter,
-      }),
-    );
-    return data
-        .map((e) => QuotationSummary.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<Quotation> getQuotation(String id) async {
-    final data = await _unwrap<Map<String, dynamic>>(() => _dio.get('/quotations/$id'));
-    return Quotation.fromJson(data);
-  }
-
-  /// ลูกค้าตัดสินใจรายบรรทัด — [BIZ] ไม่อนุมัติต้องมีเหตุผลเสมอ
-  Future<Quotation> decideLine(
-    String quotationId,
-    String lineId, {
-    required bool approve,
-    String? rejectReason,
-  }) async {
-    final data = await _unwrap<Map<String, dynamic>>(
-      () => _dio.put('/quotations/$quotationId/lines/$lineId/decision', data: {
-        'decision': approve ? 'Approved' : 'Rejected',
-        if (!approve) 'rejectReason': rejectReason,
-      }),
-    );
-    return Quotation.fromJson(data);
-  }
-
-  /// ลูกค้าเซ็นยืนยัน — ลายเซ็นผูกกับเวอร์ชันปัจจุบันของใบนี้
-  Future<Quotation> sign(
-    String quotationId, {
-    required String signatureImagePath,
-    required String consentText,
-    required String deviceInfo,
-    required int witnessEmployeeId,
-    required String witnessEmployeeName,
-  }) async {
-    final data = await _unwrap<Map<String, dynamic>>(
-      () => _dio.post('/quotations/$quotationId/sign', data: {
-        'signatureImagePath': signatureImagePath,
-        'consentText': consentText,
-        'deviceInfo': deviceInfo,
-        'witnessEmployeeId': witnessEmployeeId,
-        'witnessEmployeeName': witnessEmployeeName,
-      }),
-    );
-    return Quotation.fromJson(data);
-  }
-
-  // ---- attachments ----
-
-  /// อัปโหลดไฟล์แนบแล้วคืน relative path ที่ server เก็บไว้
-  /// ใช้กับลายเซ็น รูปรับรถ รูปก่อน/หลัง
-  Future<String> uploadAttachment({
-    required File file,
-    required String jobId,
-    required String kind,
-    String? entityId,
-  }) async {
-    final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path, filename: file.uri.pathSegments.last),
-      'jobId': jobId,
-      'kind': kind,
-      'entityId': ?entityId,
-    });
-
-    final data = await _unwrap<Map<String, dynamic>>(
-      () => _dio.post('/attachments', data: form,
-          options: Options(contentType: 'multipart/form-data')),
-    );
-
-    return data['relativePath'] as String;
-  }
-
-  /// แกะ envelope — success คืน data, ไม่ success โยน ApiException พร้อมข้อความไทยจาก server
-  Future<T> _unwrap<T>(Future<Response<dynamic>> Function() send) async {
-    try {
-      final response = await send();
-      final body = response.data as Map<String, dynamic>;
-
-      if (body['success'] == true) return body['data'] as T;
-
-      final error = body['error'] as Map<String, dynamic>?;
-      throw ApiException(
-        error?['code'] as String? ?? 'UNKNOWN',
-        error?['messageTh'] as String? ?? 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ',
-        traceId: body['traceId'] as String?,
-        details: error?['details'],
-      );
-    } on DioException catch (e) {
-      final body = e.response?.data;
-      if (body is Map<String, dynamic> && body['error'] is Map) {
-        final error = body['error'] as Map<String, dynamic>;
-        throw ApiException(
-          error['code'] as String? ?? 'UNKNOWN',
-          error['messageTh'] as String? ?? 'เกิดข้อผิดพลาด',
-          traceId: body['traceId'] as String?,
-          details: error['details'],
-        );
-      }
-
-      throw ApiException(
-        'NETWORK_ERROR',
-        e.type == DioExceptionType.connectionError
-            ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจสอบสัญญาณและ VPN แล้วลองใหม่'
-            : 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (${e.type.name})',
-      );
-    }
-  }
+  showAppMessage(
+    error.requiresShift
+        ? 'โทเคนนี้ยังไม่ผูกกับสาขา — เข้าสู่ระบบใหม่แล้วเลือกสาขาและกะอีกครั้ง'
+        : 'เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่',
+    traceId: error.traceId,
+    isError: true,
+  );
 }
+
+final authApiProvider = Provider((ref) => AuthApi(ref.watch(apiClientProvider)));
+final jobsApiProvider = Provider((ref) => JobsApi(ref.watch(apiClientProvider)));
+final jobChatApiProvider = Provider((ref) => JobChatApi(ref.watch(apiClientProvider)));
+final attachmentsApiProvider = Provider((ref) => AttachmentsApi(ref.watch(apiClientProvider)));
+final staffsApiProvider = Provider((ref) => StaffsApi(ref.watch(apiClientProvider)));
+final quotationsApiProvider = Provider((ref) => QuotationsApi(ref.watch(apiClientProvider)));
+final qcApiProvider = Provider((ref) => QcApi(ref.watch(apiClientProvider)));
+final intakeApiProvider = Provider((ref) => IntakeApi(ref.watch(apiClientProvider)));
+final posApiProvider = Provider((ref) => PosApi(ref.watch(apiClientProvider)));
+final handoverApiProvider = Provider((ref) => HandoverApi(ref.watch(apiClientProvider)));
+final reportsApiProvider = Provider((ref) => ReportsApi(ref.watch(apiClientProvider)));
+final customersApiProvider = Provider((ref) => CustomersApi(ref.watch(apiClientProvider)));

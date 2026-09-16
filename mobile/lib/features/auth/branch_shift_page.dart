@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
+import '../../app/router.dart';
 import '../../core/tokens.dart';
 import '../../models/auth.dart';
 import '../../widgets/common.dart';
@@ -214,8 +216,8 @@ class _BranchShiftPageState extends ConsumerState<BranchShiftPage> {
 
     try {
       // token ขั้นแรกจาก login ใช้เรียก endpoint เลือกสาขา/กะได้
-      final api = GarageProApi(accessToken: widget.login.accessToken);
-      final shifts = await api.getShifts(branch.branchId);
+      // (apiClientProvider อ่าน token จาก pendingLoginProvider เมื่อยังไม่มีเซสชัน)
+      final shifts = await ref.read(authApiProvider).getShifts(branch.branchId);
 
       if (!mounted) return;
       setState(() {
@@ -243,16 +245,16 @@ class _BranchShiftPageState extends ConsumerState<BranchShiftPage> {
     });
 
     try {
-      final api = GarageProApi(accessToken: widget.login.accessToken);
-      final session = await api.openShift(
+      final session = await ref.read(authApiProvider).openShift(
         branchId: _branch!.branchId,
         shiftId: _shift!.shiftId,
       );
 
       await ref.read(sessionProvider.notifier).save(session);
+      ref.read(pendingLoginProvider.notifier).set(null);
 
-      // เซสชันพร้อมแล้ว — AuthGate จะพาเข้าแอปเอง
-      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+      // เซสชันพร้อมแล้ว — redirect ของ router จะพาไปหน้าแรกตามบทบาทเอง
+      if (mounted) context.go(landingFor(session.user.role));
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {

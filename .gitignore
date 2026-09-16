@@ -22,3 +22,7 @@ mobile/.flutter-plugins*
 appsettings.*.local.json
 *.env
 .env*
+
+# ผลพลอยได้จากเครื่องมือ dev — ไม่เข้า repo
+/.playwright-mcp/
+/artifacts/

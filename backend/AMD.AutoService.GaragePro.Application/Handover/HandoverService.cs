@@ -148,8 +148,12 @@ public sealed class HandoverService(
 
     private async Task<Result<bool>> ValidateAsync(Guid jobId, CancellationToken ct)
     {
-        if (user.Role is not (UserRole.Cashier or UserRole.Office or UserRole.Manager))
-            return Result<bool>.Fail("HANDOVER_FORBIDDEN", "เฉพาะแคชเชียร์ ธุรการ หรือผู้จัดการเท่านั้นที่ใช้หน้านี้ได้");
+        // FrontDesk อยู่ในชุดนี้เพราะ docs/01-workflow.md §4 ระบุ "ส่งมอบรถ" เป็นหน้าที่ของพนักงานหน้าร้านโดยตรง
+        // ที่เดิมจำกัดไว้แค่ 3 role เพราะตอนนั้นหน้าส่งมอบมีแต่บนเว็บซึ่งหน้าร้านไม่ได้ใช้ ไม่ใช่เพราะนโยบาย
+        if (user.Role is not (UserRole.FrontDesk or UserRole.Cashier or UserRole.Office or UserRole.Manager))
+            return Result<bool>.Fail(
+                "HANDOVER_FORBIDDEN",
+                "เฉพาะพนักงานหน้าร้าน แคชเชียร์ ธุรการ หรือผู้จัดการเท่านั้นที่ใช้หน้านี้ได้");
 
         var job = await jobs.GetAsync(jobId, ct);
         if (job is null)

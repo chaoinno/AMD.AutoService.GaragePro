@@ -40,6 +40,7 @@ dependencies:
   signature: ^6.4.0
   intl: ^0.20.3
   shared_preferences: ^2.5.5
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +63,30 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  assets:
+    # โลโก้จริงจากไฟล์แบรนด์ (GaragePro v2 Redesign/LOGO GaragePro/2.png)
+    # logo_mark = ตราหกเหลี่ยมล้วน (ฟ้า/ขาว) ใช้บนพื้นเข้มได้
+    # logo_full = รวมตัวอักษร "GaragePro" ที่เป็นสีดำ — ใช้ได้เฉพาะบนพื้นสว่าง
+    - assets/images/logo_mark.png
+    - assets/images/logo_full.png
+    - assets/fonts/OFL-NotoSansThai.txt
+    - assets/fonts/OFL-IBMPlexMono.txt
+
+  # ฟอนต์ต้อง bundle จริง ไม่งั้น T.fontTh/T.fontMono ใน core/tokens.dart จะ fallback เงียบๆ
+  # และ FontFeature.tabularFigures() ของ T.money จะไม่มีผล (ตัวเลขเงินไม่เรียงหลัก) ขัดกับกฎ UI
+  # ทั้งสองตระกูลเป็น SIL OFL — เก็บไฟล์ license ไว้ใน assets ด้านบนและลงทะเบียนใน main.dart
+  fonts:
+    - family: NotoSansThai
+      fonts:
+        # variable font (แกน wdth,wght) ไฟล์เดียวครอบทุกน้ำหนัก — เล็กกว่าไฟล์ static 4 ไฟล์รวมกันมาก
+        - asset: assets/fonts/NotoSansThai-Variable.ttf
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
 
   # To add assets to your application, add an assets section, like this:
   # assets:

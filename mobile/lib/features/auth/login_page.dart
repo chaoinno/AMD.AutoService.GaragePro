@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../core/tokens.dart';
+import '../../app/routes.dart';
 import '../../widgets/common.dart';
-import 'branch_shift_page.dart';
 
 /// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User)
 /// รหัสพนักงานเป็นตัวเลข เช่น 22061050001
@@ -146,7 +147,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   const Text(
                     'ระบบภายในของอู่ · ใช้ได้เฉพาะพนักงานที่ได้รับสิทธิ์',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: T.faint, height: 1.7),
+                    style: TextStyle(fontSize: 13, color: T.faintOnDark, height: 1.7),
                   ),
                 ],
               ),
@@ -201,12 +202,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      final result = await ref.read(apiProvider).login(userName, password);
+      final result = await ref.read(authApiProvider).login(userName, password);
+      // token ขั้นแรกต้องเข้า provider ก่อนเปิดหน้าเลือกสาขา/กะ
+      // เพราะ ApiClient อ่าน token จากที่นี่ตอนยังไม่มีเซสชันเต็ม
+      ref.read(pendingLoginProvider.notifier).set(result);
       if (!mounted) return;
 
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(builder: (_) => BranchShiftPage(login: result)),
-      );
+      // router จะ redirect ไป /auth/shift เองเมื่อเห็นว่ามีผลล็อกอินค้างอยู่
+      context.go(Routes.shift);
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {
@@ -226,34 +229,21 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: T.blue600,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Icon(Icons.build_circle_outlined, color: Colors.white, size: 32),
+          // ใช้ตราหกเหลี่ยมล้วน ไม่ใช่โลโก้เต็ม เพราะตัวอักษร "GaragePro" ในไฟล์แบรนด์เป็นสีดำ
+          // ซึ่งอ่านไม่ออกบนพื้น navy ของหน้านี้ — ข้อความใช้ของแอปที่เป็นสีขาวอยู่แล้วด้านล่าง
+          Image.asset(
+            'assets/images/logo_mark.png',
+            width: 76,
+            height: 76,
+            // จอความละเอียดสูงจะ decode ที่ 3x ของขนาดจริง พอดีกับไฟล์ 512px
+            filterQuality: FilterQuality.medium,
           ),
           const SizedBox(height: T.s12),
           const Text('GaragePro',
               style: TextStyle(
                   fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.4)),
           const Text('Auto Services',
-              style: TextStyle(fontSize: 14, color: T.faint, height: 1.6)),
+              style: TextStyle(fontSize: 14, color: T.faintOnDark, height: 1.6)),
         ],
       );
-}
-
-/// จุดตัดสินใจว่าจะเข้าแอปหรือให้ล็อกอินก่อน
-class AuthGate extends ConsumerWidget {
-  const AuthGate({super.key, required this.authenticated});
-
-  final Widget authenticated;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(sessionProvider);
-    return session == null ? const LoginPage() : authenticated;
-  }
 }

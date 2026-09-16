@@ -46,6 +46,19 @@ public sealed record CreateJobRequest(
 
 public sealed record CreatedJobDto(Guid JobId, string JobNo);
 
+/// <summary>
+/// จำนวนจ๊อบที่ "ยังไม่ปิด" แยกตามสถานะ สำหรับหน้าหลักของมือถือและ badge เมนู
+/// นับเฉพาะสถานะที่ยังเดินต่อได้ (ไม่รวม Completed/Cancelled) เพราะจ๊อบที่ปิดแล้วสะสมไปเรื่อยๆ
+/// ตัวเลขจะโตไม่มีเพดานและไม่บอกอะไรกับคนที่ต้องลงมือทำงานต่อ — ถ้าต้องการยอดรวมย้อนหลังให้ใช้ /reports
+/// </summary>
+public sealed record JobCountsDto(
+    int TotalOpen,
+    int Overdue,
+    IReadOnlyList<JobStatusCountDto> ByStatus);
+
+/// <summary>ผลนับดิบจาก repository — service เป็นคนแปลง JobStatus เป็น token/ข้อความไทย</summary>
+public sealed record JobStatusTally(JobStatus Status, int Count, int Overdue);
+
 public sealed record JobStatusOptionDto(string Token, string Label);
 
 public sealed record TransitionJobRequest(string ToStatus, string? Reason);

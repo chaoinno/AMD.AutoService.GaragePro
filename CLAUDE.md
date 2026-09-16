@@ -246,6 +246,18 @@ entity กำหนด `Id = Guid.NewGuid()` เอง ถ้าไม่ปร�
 ตารางใหม่หายไปเงียบๆ จนกว่าจะมีคนเรียกใช้ → `Invalid object name`
 → **ใช้ `Database.MigrateAsync()` เท่านั้น**
 
+### 🔴 Dart: `whenComplete(() => map.remove(key))` ทำให้ future รอตัวเอง
+แคชรูปใน `mobile/lib/features/attachments/data/attachment_cache.dart` เคยเขียนว่า
+`_inFlight[key] ??= fetch().whenComplete(() => _inFlight.remove(key))`
+`Map.remove` **คืนค่าที่ถูกลบ** ซึ่งคือ Future ตัวที่ `whenComplete` กำลังสร้างอยู่พอดี และ `whenComplete`
+จะรอ Future ที่ callback คืนมาให้เสร็จก่อน = **รอตัวเอง ค้างถาวร**
+อาการ: รูปทุกใบในแอปหมุนไม่รู้จบ ไม่มี error ให้เห็น ไม่มีอะไรใน log ทั้งฝั่งแอปและ server
+(หลงคิดว่าเป็นปัญหาเครือข่าย/FTP/timeout อยู่นาน) — `receiveTimeout` ก็ไม่ช่วยเพราะคำขอ HTTP จบไปแล้วตั้งแต่แรก
+→ callback ของ `whenComplete` ต้องเป็น block ที่คืน `void` เสมอ: `.whenComplete(() { map.remove(key); })`
+→ มีเทสต์กันไว้แล้วที่ `mobile/test/attachment_cache_test.dart` และ `mobile/test/auth_image_test.dart`
+→ **`pumpAndSettle()` ใช้จับบั๊กแบบนี้ไม่ได้** เพราะ `CircularProgressIndicator` หมุนตลอด ทำให้ timeout เสมอ
+   ไม่ว่าโค้ดจะถูกหรือผิด — ต้องใช้ `pump(Duration(...))` แล้วเช็ค widget ที่คาดหวังแทน
+
 ### 🟡 iOS ATS บล็อก HTTP
 `mobile/ios/Runner/Info.plist` มี `NSAllowsLocalNetworking` + exception domain สำหรับ `localhost` (dev เท่านั้น)
 
@@ -850,21 +862,120 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริงและยังไม่ได้รันกับ ServiceDb ที่มีข้อมูลจริง** (ตัวเลข/กราฟตรงกับข้อมูล
   จริงหรือไม่, ตัวกรองวันที่ใช้งานได้จริง, หน้าที่ Office เห็นต้นทุนถูกซ่อนจริงในเบราว์เซอร์) — sandbox นี้ไม่ได้ต่อ VPN
 
+- ✅ **[เพิ่ม 2026-09-14] แอป Flutter — ยกโมดูลจากเว็บมาลงมือถือทั้งชุด (งานใหญ่ที่สุดของ `mobile/` ตั้งแต่ commit แรก)**
+  `mobile/` ไม่เคยถูกแก้เลยตั้งแต่ `2e6fc5b` — มีแค่ 11 ไฟล์ (login → เลือกสาขา/กะ → คิวใบเสนอราคา → อนุมัติ → เซ็น)
+  ขณะที่เว็บเพิ่มโมดูลมา 8 รอบ ทำให้ `JobStateMachine.cs` ต้องเปิด `[ASSUME]` ถึง 5 จุดให้เว็บกดยืนยันแทนช่าง/ลูกค้า
+  รอบนี้ปิดช่องว่างนั้นตามบทบาทใน design (ใบเสนอราคา/จัดซื้อ/คลัง/ข้อมูลหลัก **ยังคงอยู่บนเว็บ ไม่ได้ยกมา**)
+  · **ตัดสินใจไว้ล่วงหน้ากับผู้ใช้**: online-only (ยังไม่ทำ offline queue/Drift/`TMP-` เพราะ OQ#3 ยังไม่มีคำตอบและ
+  backend ยังไม่มี `/sync/batch`) · ใช้ `IntakeChecklist` 20 รายการ + `QcChecklist` ที่มีอยู่ **ไม่สร้าง** Inspection
+  31 รายการหรือ `RepairTask`/จับเวลา/`PartsRequest` ใหม่ · เปิดสิทธิ์ให้มือถือส่งมอบ+ปิดงานได้ · รับชำระเงินบนมือถือได้
+  ตาม role ที่ backend อนุญาตอยู่แล้ว
+
+  **แก้ backend 2 จุด (ทั้งคู่เป็นการเปิดสิทธิ์ ไม่ใช่การผ่อน guard):**
+  · `JobStateMachine.cs` `Ready→Completed` เพิ่ม `EventSource.Mobile` — **ไม่ได้ลดการตรวจสอบ** เพราะ guard
+  `BalanceSettled|DocumentIssued|VehicleHandedOver` เป็น `isComputable = true` ใน `JobService.ComputeGuardAsync`
+  อยู่แล้ว คำนวณจาก `Payment`/`Receipt`/`HandoverRecord` จริงเสมอ และ manual-override ด้วย `reason` ไม่ได้
+  ต่างจาก 5 transition `[ASSUME]` เดิม
+  · `HandoverService.cs:151` เพิ่ม `UserRole.FrontDesk` — `docs/01-workflow.md` §4 ระบุ "ส่งมอบรถ" เป็นหน้าที่ของ
+  `frontdesk` ตรงๆ ที่เดิมจำกัดแค่ 3 role เพราะหน้าส่งมอบมีแต่บนเว็บซึ่งหน้าร้านไม่ได้ใช้ ไม่ใช่เพราะนโยบาย
+  · **ไม่แตะ `PosService`** (คงที่ Cashier/Office/Manager) และ **ไม่ตัด `[ASSUME]` Web/Office/Manager ออกจาก 5
+  transition เดิม** — ต้องรอให้แอปถึงมือผู้ใช้จริงก่อน ไม่งั้นเว็บใช้งานไม่ได้ทันทีที่ deploy backend ใหม่
+
+  **โครงสร้างฝั่งแอป (P0):**
+  · เปิดใช้ `go_router` ที่ประกาศไว้แต่ไม่เคยถูกใช้เลย (`grep GoRouter lib/` เคยได้ 0 ผลลัพธ์) — `lib/app/router.dart`
+  ใช้ `StatefulShellRoute.indexedStack` 5 branch + `redirect` ที่อ่าน `sessionProvider`/`pendingLoginProvider`
+  แทน `AuthGate` เดิม (ลบแล้ว) · `pendingLoginProvider` ใหม่ถือ token ขั้นแรกระหว่างเลือกสาขา/กะ แทนการส่ง
+  `LoginResult` ผ่าน constructor (เดิม `BranchShiftPage` สร้าง `GarageProApi` ของตัวเองขึ้นมาใหม่)
+  · แตก `GarageProApi` (god-class 9 เมธอด) เป็น `lib/api/api_client.dart` (Dio + interceptor + `unwrap`/`unwrapBytes`
+  + `ApiException`) แล้วให้ `{auth,jobs,job_chat,attachments,staffs,quotations,qc,intake,pos,handover,reports,customers}_api.dart`
+  ถือ `ApiClient` ตัวเดียวกัน — **ตรรกะแกะ envelope และข้อความ `NETWORK_ERROR` ภาษาไทยคงเดิมทุกบรรทัด**
+  · **`X-Client-Source: mobile` ยกมาครบ** — ค่านี้ไม่ใช่ JWT claim แต่เป็นตัวตัดสิน `EventSource` ใน `JobStateMachine`
+  ถ้าหายไปจะถูกนับเป็น Web แล้ว `InProgress→WaitParts` กับ `Qc→InProgress` จะพังด้วย `JOB_TRANSITION_FORBIDDEN_SOURCE`
+  · จัดการ `AUTH_REQUIRED`/`AUTH_SHIFT_REQUIRED` แบบรวมศูนย์ที่ `unwrap` (เดิม `isUnauthorized`/`requiresShift`
+  เป็น dead code ไม่มีอะไรเรียก) — ล้างเซสชัน + `popUntil` หน้าที่ push แบบ imperative ออกก่อน (ไม่งั้นหน้าเซ็น
+  ลายเซ็นจะค้างทับหน้า login) + debounce ไม่ให้ 401 หลายคำขอพร้อมกันสั่งเด้งซ้ำ
+  · `lib/core/roles.dart` (`AppRole` + capability ที่สะท้อนกฎ backend) · `lib/core/job_transitions.dart`
+  (กระจกเงาของ `JobStateMachine.cs` ใช้ตัดสินแค่ว่าจะ *แสดง* ปุ่มอะไร server ยังเป็นผู้ตัดสินเสมอ)
+
+  **หน้าจอที่เพิ่ม:** คิวงาน keyset infinite scroll + ค้นหา + กรองประเภท/สถานะ · การ์ดจ๊อบ (แถบขั้นตอน 6 ขั้น
+  เลื่อนแนวนอน + `StickyActionBar` การกระทำถัดไป + แกลเลอรีไฟล์แนบ) · แชทในจ๊อบ (หน้าเต็ม ไม่ใช่ widget ลอยแบบเว็บ
+  เพราะคีย์บอร์ดกินครึ่งจอ) · รับรถ/เปิดจ๊อบ (ค้นหา+สร้างลูกค้า → เลือก/เพิ่มรถ → เปิดจ๊อบ) · เช็คลิสต์สภาพรถ 20 รายการ
+  + รูป · QC + ทดลองขับ · ชำระเงิน+ใบเสร็จ · ส่งมอบรถ+ลายเซ็น · รายงาน 4 แท็บ (อ่านอย่างเดียว) · โปรไฟล์/ปิดกะ
+  · **แชท poll เฉพาะข้อความใหม่** (cursor `afterAt`/`afterId` ที่เว็บไม่เคยใช้) แทนการดึงทุกหน้าซ้ำทุก 5 วิแบบเว็บ
+  และหยุด poll เมื่อแอปเข้า background (`AppLifecycleListener`) — เว็บดึงทั้งประวัติซ้ำทุก 5 วิซึ่งกินเน็ตมือถือฟรีๆ
+  · `mention_token.dart` พอร์ตจาก `mentionToken.ts` แบบตรงตัว (render ด้วย `TextSpan` ไม่ใช้ package html/markdown)
+  — **สองไฟล์นี้ต้องให้ผลตรงกันเสมอ** ไม่งั้นอีกฝั่งจะเห็นข้อความดิบ `@[41:สมชาย]` มีเทสต์ครอบไว้แล้ว
+  · **`AuthImage`** — `/attachments/file` และ `/vehicles/{id}/image` ต้องมี Bearer เสมอ ห้ามใช้ `Image.network`
+  (บทเรียนเดียวกับที่เว็บเพิ่งเจ็บ) โหลดเป็นไบต์ + แคช LRU จำกัดด้วย**ขนาดรวม 32 MB ไม่ใช่จำนวนรายการ** +
+  `cacheWidth` ตามพื้นที่จริง (รูป 1024px decode เต็มขนาดกิน ~4 MB/ใบ ในกริดจะทำให้แอปตายบนเครื่องเล็ก)
+  · **รับชำระเงินกันเก็บซ้ำจริง** — `newRequestId()` (UUID v4) สร้างครั้งเดียวต่อคำขอ ถ้าเจอ `NETWORK_ERROR`
+  จะ**เก็บคำขอเดิมไว้พร้อม RequestId เดิม**แล้วให้กด "ลองใหม่" เป็นการยืนยันคำขอเดิม ไม่ใช่เก็บเงินรอบใหม่
+  (`docs/01-workflow.md` §5 ข้อ 6: สถานะที่ไม่ทราบผลต้องไม่แสดงว่าล้มเหลว และห้ามจ่ายซ้ำ)
+
+  **สิ่งแวดล้อม/แพ็กเกจที่เพิ่ม:**
+  · **`android/app/src/main/AndroidManifest.xml` ไม่มี `INTERNET` เลย** — มีแต่ใน manifest ของ debug/profile
+  แปลว่า **build release ทุกตัวจะยิง HTTP ไม่ได้เลยแบบไม่มีอะไรฟ้อง** (แก้แล้ว) + `uses-feature camera required=false`
+  · `ios/Runner/Info.plist` เพิ่ม `NSCameraUsageDescription`/`NSPhotoLibraryUsageDescription` (ไม่มีแล้วแอป**crash ทันที**
+  ที่เปิดกล้อง) · เพิ่ม `image_picker` (เลือกแทน `camera` เพราะไม่ต้องจัดการ focus/EXIF/lifecycle เอง และไม่ต้องประกาศ
+  permission `CAMERA` ซึ่งถ้าประกาศจะกลายเป็นต้องขอ runtime grant ที่ไม่ประกาศแล้วไม่ต้องขอ)
+  · **bundle ฟอนต์จริงแล้ว** — `T.fontTh`/`T.fontMono` ชี้ไปฟอนต์ที่ไม่เคยมีใน `pubspec.yaml` มาก่อน จึง fallback เงียบๆ
+  ทำให้ `FontFeature.tabularFigures()` ของ `T.money` **ไม่มีผลจริง** (ตัวเลขเงินไม่เรียงหลัก ขัดกฎ UI)
+  ตอนนี้มี `assets/fonts/` (NotoSansThai variable + IBMPlexMono 400/600, SIL OFL ลงทะเบียน license ใน `main.dart`)
+  · **แก้สี token ที่ web/mobile ไม่ตรงกัน 2 ค่า** โดยยึดค่าฝั่งเว็บ: `pageBg` `#F1F4F9`→`#EEF1F6` ·
+  `faint` `#8FA6C4`→`#94A3B8` + เพิ่ม `faintOnDark` สำหรับหน้า login พื้น navy (ค่าเดิมอ่านไม่ออกบนพื้นเข้ม)
+  · เพิ่ม `JobStatusStyle` ครบ 10 สถานะจ๊อบ (เดิม `StatusStyle` มีแค่ 7 สถานะใบเสนอราคา) แยกคนละคลาสโดยตั้งใจ
+  เพราะ token `approved` มีอยู่ทั้งสองโดเมน ถ้ารวมกันการพิมพ์ผิดจะ resolve ข้ามโดเมนแบบเงียบๆ
+
+  **ทดสอบแล้ว:** `dotnet build` ผ่าน (0 error) · `dotnet test` ผ่าน **168 / skip 4** (SQL/FTP integration ตามเดิม)
+  เพิ่ม 5 เทสต์: ปิดงานจากมือถือได้เมื่อ guard ครบ · ยังถูกปฏิเสธด้วย `JOB_GUARD_NOT_SATISFIED` เมื่อยังไม่เซ็นรับรถ ·
+  FrontDesk เข้าหน้าส่งมอบได้ · Technician/Lead ยังถูกปฏิเสธ
+  · Mobile `dart analyze lib/ test/` **สะอาด 0 issue** · `flutter test` ผ่าน **26** (mention token 11 ·
+  job transitions/roles 9 · job status map 4 · money format 1 · smoke test ที่ pump ทั้งแอปจริง 1)
+  · **`flutter build ios --no-codesign` ผ่าน** — พิสูจน์ว่า plugin/ฟอนต์/Info.plist ประกอบได้จริง ไม่ใช่แค่ analyze ผ่าน
+  · `mobile/test/widget_test.dart` เดิมเป็น template ที่อ้าง `MyApp` ซึ่งไม่มีอยู่จริง — **ทั้ง suite compile ไม่ผ่าน**
+  มาตลอด (`flutter test` จึงไม่เคยรันอะไรเลย) แก้เป็น smoke test จริงแล้ว
+  · **ยังไม่ได้ทดสอบกับ API จริงเลยสักครั้ง** — sandbox ไม่ได้ต่อ Garage Pro VPN ทุกอย่างเป็นผล analyze/test/build
+  เท่านั้น ต้องเดิน 13 ขั้นของ Demo บนเครื่องจริง 2 เครื่องก่อนใช้งานจริง และ **ต้องรัน migration ที่ค้างอยู่**
+  (`AddQcChecklist`, `AddPaymentAndHandover`, `AddJobVatIncluded`, `AddJobChat`, `AddStockWithdrawal…`) ที่ยังไม่เคย
+  `dotnet ef database update` กับ ServiceDb จริง — มือถือเรียก endpoint เหล่านี้ทั้งหมด
+
+  > **[RISK — พบระหว่างทำงานนี้ ไม่ได้แก้] สีสถานะจ๊อบของเว็บไม่ตรงกับ prototype ที่อนุมัติแล้ว 8 จาก 10 token:**
+  > `web/src/index.css:927-936` (ของจริงที่ render) ต่างจากตาราง "Status color map" ใน `docs/01-workflow.md` §8
+  > ทุก token ยกเว้น `approved` และ `cancelled` — และที่หนักกว่านั้นคือ `waitapprove` กับ `inprogress` ใช้สีเดียวกันเป๊ะ
+  > (`#fdf1e6`/`#c1691f`) ซึ่งขัดกฎ "ทุกสถานะต้องแยกแยะได้" ฝั่งมือถือยึดค่าตาม docs §8 (prototype ที่อนุมัติแล้ว)
+  > **ไม่ได้แก้ CSS ของเว็บเพราะเป็นการเปลี่ยนสิ่งที่ผู้ใช้เห็นทุกวันและอยู่นอกขอบเขตที่ตกลง** — ต้องเลือกว่าจะยึดฝั่งไหน
+  > แล้วแก้ให้ตรงกันทั้งสองที่ ถ้ายึด docs ให้แก้ `index.css` ถ้ายึดเว็บให้แก้ `tokens.dart` + docs พร้อมกัน
+  > นอกจากนี้ `completed` (ขาวบนเขียว `#0E9F8C`) ได้ contrast ~2.9:1 ต่ำกว่า WCAG AA — คงค่าตาม prototype ไว้ก่อน
+  >
+  > **[RISK] `web/src/lib/tokens.ts` ไม่ถูก import จากที่ไหนเลย** (`grep` ได้ 0 ผลลัพธ์) — ของจริงคือ `:root` ใน
+  > `index.css` ทำให้กฎใน CLAUDE.md ที่ว่า "token อยู่ทั้ง `tokens.dart` และ `tokens.ts` ต้องแก้พร้อมกัน" ไม่เป็นจริง
+  > ตอนนี้ต้องแก้ **3 ที่** ควรตัดสินใจว่าจะ gen `index.css` จาก `tokens.ts` หรือลบไฟล์ตายนี้ทิ้ง
+  >
+  > **[RISK] `Job.AssignedTechnicianId` เป็นคอลัมน์ตาย** — มีใน entity แต่ **ไม่เคยถูกเขียนที่ไหนเลย** และไม่อยู่ใน
+  > `JobDto` ช่างที่ผูกกับงานจริงอยู่ที่ `QuotationLine.AssignedTechnicianId` ทำให้หน้า "งานของฉัน" (`/jobs/mine`
+  > ใน docs §6) **ทำไม่ได้จริง** — แอปจึงให้ช่างใช้คิวของสาขากรองด้วยสถานะแทน และตั้งชื่อแท็บว่า "งานที่ต้องทำ"
+  > ไม่ใช่ "งานของฉัน" เพื่อไม่ให้สื่อเกินจริง · ถ้าต้องการของจริงต้องเพิ่มตัวกรอง assignee ใน `GET /jobs/search`
+  >
+  > **[RISK] `GET /jobs/counts` แยกตามสถานะไม่มี** — มีแค่ `count-open?jobTypeId` ที่คืนเลขเดียว หน้าหลักจึงแสดง
+  > ได้แค่ 2 ตัวเลข (รถในอู่/รถนัดหมาย) ไม่ใช่ 5 ตัวตาม docs §6 และเขียนบอกผู้ใช้ตรงๆ แทนการเดาตัวเลข
+
 ### ยังไม่ได้ทำ
-- รับรถ 6 ขั้นเต็มรูปแบบบนมือถือ (ค้นหา/ยืนยันนัดหมาย/รูป 5 มุม/QR) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
+- รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
+  ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
   (spec เดิม — คนละอันกับ checklist 20 รายการที่ทำแล้วบนเว็บ) · `RepairTask`/รูปก่อน-หลังบังคับต่อรายการซ่อม
   (guard `AllTasksDoneWithPhotos` ของ `InProgress→Qc` ยังเป็น manual-override เพราะยังไม่มี entity นี้) ·
   เช็คลิสต์ QC ตายตัว 6 ข้อ + ทดลองขับตามระยะทางจริงของ docs/01-workflow.md §3.6 (ตอนนี้ QC เช็คลิสต์อิงบรรทัด
   ที่อนุมัติในใบเสนอราคาแทนตามคำขอผู้ใช้ 2026-09-09 — ดูหัวข้อ Job ด้านบน) · QC ตีกลับส่งช่างแก้ไขจากเว็บ
   (ตัดสินใจแล้วว่า**ไม่ทำ** — ไม่มี process ตีกลับในระบบตามคำขอผู้ใช้ 2026-09-09, `Qc→InProgress` ยังจำกัดแค่
-  Technician/Mobile ในโค้ดเหมือนเดิม) · POS · รายงาน
+  Technician/Mobile ในโค้ดเหมือนเดิม — **แต่มือถือทำได้แล้ว** เพราะ transition นี้เปิดให้ `EventSource.Mobile` อยู่แล้ว)
 - ส่วนต่อยอดคลัง/จัดซื้อ: VAT/ส่วนลด/ค่าขนส่ง/เจ้าหนี้ · พิมพ์ PO · ส่งคำสั่งซื้อไปภายนอก · แบ่ง PR เป็นหลาย PO
   · โอนคลัง/คืนผู้ขาย/ตรวจนับปรับยอด · แนบรูป GRN · จอง/เบิกผูก job หรือ quotation อัตโนมัติ
 - เคลียร์ข้อขัดแย้งการเขียน legacy ของโมดูลลูกค้า/รถ/พนักงานให้ตรงนโยบายสถาปัตยกรรม
 - การเรียงตารางแบบ server-side ครอบคลุมทุกหน้า (ปัจจุบันเรียงเฉพาะหน้าหรือข้อมูลที่โหลดแล้ว)
 - RBAC ของ Job/Intake endpoint (ตอนนี้ gate ด้วย shift session เท่านั้น — ดู `[RISK]` ในหัวข้อกฎที่ห้ามละเมิด)
-- Offline queue ของ Flutter (`TMP-` + conflict) — **งานใหญ่ อย่าประเมินต่ำ**
-- Realtime (SignalR) · refresh token · หน้าตั้งค่า · หน้าส่งมอบรถ
+- Offline queue ของ Flutter (`TMP-` + conflict) · หน้า `/sync` — **งานใหญ่ อย่าประเมินต่ำ** (ตกลงกันแล้วว่ารอบนี้ online-only)
+- มือถือ: สแกน QR (`/jobs/by-qr/{code}` ยังไม่มี endpoint) · push notification · พิมพ์เอกสาร A4 (ต้องเพิ่ม `printing`+`pdf`)
+- Realtime (SignalR) · refresh token · หน้าตั้งค่า
 
 ### Open questions ที่ยัง block อยู่
 ดู [docs/01-workflow.md §10](docs/01-workflow.md) — ที่สำคัญที่สุดคือ **#3 นโยบาย offline conflict**

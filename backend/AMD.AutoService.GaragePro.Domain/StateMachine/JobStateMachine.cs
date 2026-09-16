@@ -76,9 +76,14 @@ public static class JobStateMachine
             [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.QcPassed),
 
+        // เปิดให้ทำจากมือถือได้ด้วย — ส่งมอบรถเป็นหน้าที่ของหน้าร้านที่ยืนอยู่กับลูกค้าข้างรถ
+        // (docs/01-workflow.md §9 ระบุหน้าส่งมอบบนมือถือเป็น [GAP·สูง] ที่ต้องปิด)
+        // ไม่ใช่การผ่อนการตรวจสอบ: guard ทั้ง 3 ตัวนี้ isComputable = true ใน JobService.ComputeGuardAsync
+        // จึงคำนวณจาก Payment/Receipt/HandoverRecord จริงเสมอ และ manual-override ด้วย reason ไม่ได้
         new(JobStatus.Ready, JobStatus.Completed,
             "ยอดคงเหลือเป็น 0 หรือบันทึกลูกหนี้ที่อนุมัติแล้ว + ออกเอกสาร + ส่งมอบรถ",
-            [UserRole.Cashier, UserRole.Office, UserRole.Manager], [EventSource.Web],
+            [UserRole.Cashier, UserRole.Office, UserRole.Manager],
+            [EventSource.Mobile, EventSource.Web],
             JobGuard.BalanceSettled | JobGuard.DocumentIssued | JobGuard.VehicleHandedOver)
     ];
 

@@ -436,6 +436,135 @@ public sealed class JobServiceTests
         jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
     }
 
+    [Fact]
+    public async Task TransitionAsync_closes_the_job_from_mobile_once_payment_receipt_and_handover_are_done()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 1000, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 1070m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0002", TotalAmount = 1070m };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(handover),
+            role: UserRole.Cashier, source: EventSource.Mobile);
+
+        // guard ทั้งสามตัวคำนวณจากข้อมูลจริง จึงปิดงานได้โดยไม่ต้องส่ง reason
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_still_rejects_closing_from_mobile_when_the_car_has_not_been_handed_over()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 1000, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 1070m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0003", TotalAmount = 1070m };
+
+        // ชำระครบและออกใบเสร็จแล้ว แต่ยังไม่ได้เซ็นรับรถ — การเปิดสิทธิ์มือถือต้องไม่ข้าม guard นี้
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(null),
+            role: UserRole.Cashier, source: EventSource.Mobile);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Ready);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_reports_the_real_reason_when_the_path_does_not_exist_at_all()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.InProgress));
+        var service = CreateService(jobs, role: UserRole.Technician, source: EventSource.Mobile);
+
+        // กำลังซ่อม → พร้อมส่งมอบ ไม่มีเส้นทางนี้ในตาราง ต้องบอกตรงๆ ว่าเปลี่ยนไม่ได้
+        // ห้ามตอบว่า "กรุณาระบุเหตุผล" เพราะผู้ใช้พิมพ์เหตุผลแล้วก็ยังไปต่อไม่ได้อยู่ดี
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("ready", null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_TRANSITION_NOT_ALLOWED");
+    }
+
+    [Fact]
+    public async Task TransitionAsync_reports_forbidden_source_before_asking_for_a_reason()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.WaitParts));
+        // WaitParts→InProgress ทำได้จากเว็บเท่านั้น — มือถือต้องรู้ว่าเป็นเรื่องเครื่อง ไม่ใช่เรื่องเหตุผล
+        var service = CreateService(jobs, role: UserRole.Office, source: EventSource.Mobile);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("inprogress", null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_TRANSITION_FORBIDDEN_SOURCE");
+    }
+
+    [Fact]
+    public async Task CountsAsync_groups_open_jobs_by_status_and_counts_overdue_ones()
+    {
+        var now = DateTime.UtcNow;
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB1", Status = JobStatus.WaitInspect });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB2", Status = JobStatus.WaitInspect, PromiseAt = now.AddHours(-3) });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB3", Status = JobStatus.Qc, PromiseAt = now.AddHours(+3) });
+        // ปิดแล้ว · คนละประเภท · คนละ shard — ต้องไม่ถูกนับทั้งสามกรณี
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 11, JobNo = "JB4", Status = JobStatus.Completed });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10, JobNo = "JB5", Status = JobStatus.Ready });
+        jobs.Seed(new Job { LegacyShardKey = "db1", BranchId = 105, JobTypeId = 9, JobNo = "JB6", Status = JobStatus.Ready });
+
+        var result = await CreateService(jobs).CountsAsync(9);
+
+        result.Success.Should().BeTrue();
+        var data = result.Data!;
+        data.TotalOpen.Should().Be(3);
+        data.Overdue.Should().Be(1);
+
+        // สถานะที่ยังเดินต่อได้ต้องมาครบทุกตัวรวมที่เป็นศูนย์ เพื่อให้หน้าจอมีรายการคงที่
+        data.ByStatus.Should().HaveCount(8);
+        data.ByStatus.Select(s => s.Status).Should().ContainInOrder(
+            "waitinspect", "waitquote", "waitapprove", "approved",
+            "inprogress", "waitparts", "qc", "ready");
+        data.ByStatus.Single(s => s.Status == "waitinspect").Count.Should().Be(2);
+        data.ByStatus.Single(s => s.Status == "qc").Count.Should().Be(1);
+        data.ByStatus.Single(s => s.Status == "waitquote").Count.Should().Be(0);
+        // ข้อความไทยต้องมาจาก JobStateMachine ไม่ใช่แมปแยกของ service
+        data.ByStatus.Single(s => s.Status == "ready").StatusLabelTh.Should().Be("พร้อมส่งมอบ");
+    }
+
+    [Fact]
+    public async Task CountsAsync_without_a_type_filter_counts_every_open_job_type()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, JobNo = "JB1", Status = JobStatus.WaitInspect });
+        jobs.Seed(new Job { LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10, JobNo = "JB2", Status = JobStatus.Ready });
+
+        var result = await CreateService(jobs).CountsAsync(null);
+
+        result.Data!.TotalOpen.Should().Be(2);
+    }
+
     // ---------- helpers ----------
 
     private static Job SeedJob(JobStatus status) => new()
@@ -522,6 +651,19 @@ public sealed class JobServiceTests
                 j.LegacyShardKey == shardKey && j.BranchId == branchId
                 && j.Status is not (JobStatus.Completed or JobStatus.Cancelled)
                 && (jobTypeId is null || j.JobTypeId == jobTypeId)));
+
+        public Task<IReadOnlyList<JobStatusTally>> CountOpenByStatusAsync(
+            string shardKey, int branchId, int? jobTypeId, DateTime nowUtc, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<JobStatusTally>>(_jobs
+                .Where(j => j.LegacyShardKey == shardKey && j.BranchId == branchId
+                    && j.Status is not (JobStatus.Completed or JobStatus.Cancelled)
+                    && (jobTypeId == null || j.JobTypeId == jobTypeId))
+                .GroupBy(j => j.Status)
+                .Select(g => new JobStatusTally(
+                    g.Key,
+                    g.Count(),
+                    g.Count(j => j.PromiseAt != null && j.PromiseAt < nowUtc)))
+                .ToList());
 
         public Task AddAsync(Job job, CancellationToken ct = default)
         {

@@ -204,6 +204,9 @@ public sealed class JobChatServiceTests
             throw new NotImplementedException();
         public Task<int> CountOpenAsync(string shardKey, int branchId2, int? jobTypeId, CancellationToken ct = default) =>
             throw new NotImplementedException();
+        public Task<IReadOnlyList<JobStatusTally>> CountOpenByStatusAsync(
+            string shardKey, int branchId, int? jobTypeId, DateTime nowUtc, CancellationToken ct = default) =>
+            throw new NotImplementedException();
         public Task AddAsync(Job job, CancellationToken ct = default) => throw new NotImplementedException();
         public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
