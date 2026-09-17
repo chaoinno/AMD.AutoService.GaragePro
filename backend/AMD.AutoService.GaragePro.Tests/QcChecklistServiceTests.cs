@@ -154,6 +154,8 @@ public sealed class QcChecklistServiceTests
             throw new NotImplementedException();
         public Task<IReadOnlyList<Job>> SearchAsync(JobSearchQuery query, CancellationToken ct = default) =>
             throw new NotImplementedException();
+        public Task<IReadOnlyList<Job>> GetAppointmentsAsync(JobAppointmentQuery query, CancellationToken ct = default) =>
+            throw new NotImplementedException();
         public Task<int> CountOpenAsync(string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default) =>
             throw new NotImplementedException();
         public Task AddAsync(Job job, CancellationToken ct = default) => throw new NotImplementedException();

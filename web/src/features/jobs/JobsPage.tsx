@@ -32,8 +32,12 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
-import { formatDateTime } from '../../lib/format'
+import { formatDateTime, localInputToIso, nowLocalInputValue } from '../../lib/format'
 import { JobCardModal } from './JobCardModal'
+import { JobsCalendar } from './JobsCalendar'
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
+import { CalendarDays, List as ListIcon } from 'lucide-react'
+import './jobs.css'
 
 const JOB_TYPE_OPTIONS = [
   { value: 9, label: 'รถในอู่' },
@@ -60,6 +64,7 @@ export function JobsPage() {
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState(9)
   const [statusFilter, setStatusFilter] = useState<JobStatusToken | ''>('')
+  const [view, setView] = useState<'list' | 'calendar'>('list')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
@@ -81,6 +86,7 @@ export function JobsPage() {
       if (!last || lastPage.length < PAGE_SIZE) return undefined
       return { beforeCreatedAt: last.createdAt, beforeJobId: last.jobId }
     },
+    enabled: view === 'list',
   })
 
   const jobs = useMemo(() => jobsQuery.data?.pages.flat() ?? [], [jobsQuery.data])
@@ -159,6 +165,18 @@ export function JobsPage() {
       size: 220,
       sortDescFirst: true,
       cell: ({ row }) => <time className="job-created-at">{formatDateTime(row.original.createdAt)}</time>,
+    },
+    {
+      id: 'appointmentAt',
+      accessorFn: (job) => (job.appointmentAt ? new Date(job.appointmentAt).getTime() : 0),
+      header: 'วันเวลานัดหมาย',
+      size: 220,
+      sortDescFirst: true,
+      cell: ({ row }) => (
+        <time className="job-created-at">
+          {row.original.appointmentAt ? formatDateTime(row.original.appointmentAt) : '—'}
+        </time>
+      ),
     },
     {
       id: 'actions',
@@ -241,9 +259,17 @@ export function JobsPage() {
           <h2>จ๊อบ</h2>
           <p>ดูรายการรถที่เข้ารับบริการและเปิดจ๊อบใหม่</p>
         </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus aria-hidden="true" /> เปิดจ๊อบ
-        </Button>
+        <div className="jobs-view-toggle">
+          <Tabs value={view} onValueChange={(value) => setView(value as 'list' | 'calendar')}>
+            <TabsList>
+              <TabsTrigger value="list"><ListIcon aria-hidden="true" /> รายการ</TabsTrigger>
+              <TabsTrigger value="calendar"><CalendarDays aria-hidden="true" /> ปฏิทินนัดหมาย</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus aria-hidden="true" /> เปิดจ๊อบ
+          </Button>
+        </div>
       </section>
 
       <form
@@ -278,21 +304,25 @@ export function JobsPage() {
           </Button>
         ) : null}
 
-        <Label className="field jobs-filter">
-          <span className="sr-only">กรองตามประเภท</span>
-          <Select
-            value={typeFilter}
-            onChange={(event) => {
-              setTypeFilter(Number(event.target.value))
-              setAutoLoadEnabled(false)
-            }}
-          >
-            <option value={0}>ทุกประเภท</option>
-            {JOB_TYPE_FILTER_OPTIONS.map((item) => (
-              <option key={item.value} value={item.value}>{item.label}</option>
-            ))}
-          </Select>
-        </Label>
+        {view === 'list' ? (
+          <Label className="field jobs-filter">
+            <span className="sr-only">กรองตามประเภท</span>
+            <Select
+              value={typeFilter}
+              onChange={(event) => {
+                setTypeFilter(Number(event.target.value))
+                setAutoLoadEnabled(false)
+              }}
+            >
+              <option value={0}>ทุกประเภท</option>
+              {JOB_TYPE_FILTER_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>{item.label}</option>
+              ))}
+            </Select>
+          </Label>
+        ) : (
+          <span className="jobs-filter-note">ปฏิทินแสดงเฉพาะงานนัดหมาย (ประเภท "รถนัดหมาย")</span>
+        )}
 
         <Label className="field jobs-filter">
           <span className="sr-only">กรองตามสถานะ</span>
@@ -311,7 +341,13 @@ export function JobsPage() {
         </Label>
       </form>
 
-      {content}
+      {view === 'list' ? content : (
+        <JobsCalendar
+          query={searchText}
+          status={statusFilter || undefined}
+          onSelectJob={setSelectedJobId}
+        />
+      )}
       <CreateJobModal open={createOpen} onClose={() => setCreateOpen(false)} />
       <JobCardModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
     </AppShell>
@@ -325,6 +361,16 @@ const jobDetailsSchema = z.object({
   senderName: z.string().trim().max(200).optional(),
   senderPhoneNumber: z.string().trim().max(50).optional(),
   detail: z.string().trim().max(500, 'รายละเอียดต้องไม่เกิน 500 ตัวอักษร').optional(),
+  // [BIZ] บังคับเฉพาะงานประเภทรถนัดหมาย (jobTypeId=10) — ตรงกับกฎที่ API บังคับอยู่แล้วใน JobService.ValidateAppointment
+  appointmentAt: z.string().optional(),
+}).superRefine((values, ctx) => {
+  if (values.jobTypeId === 10 && !values.appointmentAt) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['appointmentAt'],
+      message: 'กรุณาระบุวันเวลาที่ลูกค้าจะนำรถเข้า',
+    })
+  }
 })
 type JobDetailsValues = z.infer<typeof jobDetailsSchema>
 
@@ -399,7 +445,9 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
     },
   })
 
-  const jobDetailsDefaults: JobDetailsValues = { jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '' }
+  const jobDetailsDefaults: JobDetailsValues = {
+    jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '', appointmentAt: '',
+  }
   const jobForm = useForm<JobDetailsValues>({
     resolver: zodResolver(jobDetailsSchema),
     defaultValues: jobDetailsDefaults,
@@ -426,6 +474,9 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
       senderName: values.senderName || undefined,
       senderPhoneNumber: values.senderPhoneNumber || undefined,
       detail: values.detail || undefined,
+      appointmentAt: values.jobTypeId === 10 && values.appointmentAt
+        ? localInputToIso(values.appointmentAt)
+        : undefined,
     })
   })
 
@@ -571,6 +622,11 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
                 <div><span>สถานะ</span><strong>รอตรวจสอบ</strong></div>
               </div>
             </div>
+            {jobForm.watch('jobTypeId') === 10 ? (
+              <Field label="วันเวลาที่ลูกค้าจะนำรถเข้า *" error={jobForm.formState.errors.appointmentAt?.message}>
+                <Input type="datetime-local" step={900} min={nowLocalInputValue()} {...jobForm.register('appointmentAt')} />
+              </Field>
+            ) : null}
             <div className="form-grid--two">
               <Field label="ชื่อผู้ส่งรถ"><Input {...jobForm.register('senderName')} /></Field>
               <Field label="เบอร์โทรผู้ส่งรถ" error={jobForm.formState.errors.senderPhoneNumber?.message}>

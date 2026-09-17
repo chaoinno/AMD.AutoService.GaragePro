@@ -404,7 +404,7 @@ function DocumentLineGroup({
           return (
             <tr className={rejected ? 'document-line--rejected' : undefined} key={line.id}>
               <td className="document-center money">{line.sequence}</td>
-              <td className="document-code">{line.catalogCode}</td>
+              <td className="document-code">{line.catalogCode || '—'}</td>
               <td>
                 <strong>{line.name}</strong>
                 {line.note ? <small className="document-line-note">{line.note}</small> : null}

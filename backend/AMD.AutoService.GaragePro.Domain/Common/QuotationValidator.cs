@@ -38,14 +38,18 @@ public static class QuotationValidator
         }
 
         // [BIZ] ห้ามมีรายการซ้ำ — รวมจำนวนเป็นบรรทัดเดียวก่อนส่ง
-        var duplicates = quotation.Lines
-            .GroupBy(l => l.CatalogCode, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Count() > 1)
-            .ToList();
+        // รายการนอกแคตตาล็อก (CatalogCode ว่าง) ไม่มีรหัสให้เทียบ — เทียบด้วยชื่อแทน
+        // (docs/07-quotation-adhoc-line.md — ไม่งั้นทุกรายการนอกแคตตาล็อกจะถูกมองว่าซ้ำกันหมดเพราะ code ว่างเท่ากัน)
+        // ใช้ FindDuplicateGroups ร่วมกับตอนบันทึก/นำเทมเพลตไปใช้ (docs/08) เพื่อไม่ให้นิยาม "ซ้ำ" เพี้ยนกัน
+        var duplicateGroups = FindDuplicateGroups(quotation.Lines.Select(l => (l.CatalogCode, l.Name)));
 
-        foreach (var group in duplicates)
+        foreach (var group in duplicateGroups.CodeDuplicates)
             errors.Add(new("QUOTE_DUPLICATE_LINE",
-                $"รหัส {group.Key} ซ้ำกัน {group.Count()} บรรทัด — ต้องรวมเป็นบรรทัดเดียว"));
+                $"รหัส {group.Key} ซ้ำกัน {group.Count} บรรทัด — ต้องรวมเป็นบรรทัดเดียว"));
+
+        foreach (var group in duplicateGroups.NameDuplicates)
+            errors.Add(new("QUOTE_DUPLICATE_LINE",
+                $"รายการนอกแคตตาล็อก “{group.Key}” ซ้ำกัน {group.Count} บรรทัด — ต้องรวมเป็นบรรทัดเดียว"));
 
         // [ASSUME] ส่วนลด > 10% หรือโปรประกันคู่สัญญา ต้องผู้จัดการอนุมัติ
         var needsApproval = quotation.Lines
@@ -101,9 +105,41 @@ public static class QuotationValidator
 
         return new QuotationValidationResult(errors, []);
     }
+
+    /// <summary>กฎ "ซ้ำ" เดียวกันสำหรับทั้งการส่งใบเสนอราคา (ValidateForSend) และการบันทึก/นำเทมเพลตไปใช้
+    /// (QuotationTemplateService/QuotationService.ApplyTemplateAsync — docs/08-quotation-template.md)
+    /// รหัสแคตตาล็อกที่ไม่ว่างเทียบแบบไม่สนตัวพิมพ์ใหญ่เล็ก · ที่ว่าง (ad-hoc) เทียบด้วยชื่อที่ตัดช่องว่างแล้ว</summary>
+    public static QuotationDuplicateGroups FindDuplicateGroups(
+        IEnumerable<(string CatalogCode, string Name)> lines)
+    {
+        var list = lines.ToList();
+
+        var codeDuplicates = list
+            .Where(l => !string.IsNullOrWhiteSpace(l.CatalogCode))
+            .GroupBy(l => l.CatalogCode, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => (Key: g.Key, Count: g.Count()))
+            .ToList();
+
+        var nameDuplicates = list
+            .Where(l => string.IsNullOrWhiteSpace(l.CatalogCode))
+            .GroupBy(l => l.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => (Key: g.Key, Count: g.Count()))
+            .ToList();
+
+        return new QuotationDuplicateGroups(codeDuplicates, nameDuplicates);
+    }
 }
 
 public sealed record QuotationIssue(string Code, string MessageTh, Guid? LineId = null);
+
+public sealed record QuotationDuplicateGroups(
+    IReadOnlyList<(string Key, int Count)> CodeDuplicates,
+    IReadOnlyList<(string Key, int Count)> NameDuplicates)
+{
+    public bool HasAny => CodeDuplicates.Count > 0 || NameDuplicates.Count > 0;
+}
 
 public sealed record QuotationValidationResult(
     IReadOnlyList<QuotationIssue> Errors,

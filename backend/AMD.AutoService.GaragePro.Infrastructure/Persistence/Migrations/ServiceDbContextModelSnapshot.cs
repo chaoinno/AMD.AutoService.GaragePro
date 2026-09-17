@@ -590,6 +590,12 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("ActualArrivalAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("AppointmentAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<long?>("AssignedTechnicianId")
                         .HasColumnType("bigint");
 
@@ -716,6 +722,9 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("JobNo");
+
+                    b.HasIndex("LegacyShardKey", "BranchId", "AppointmentAt")
+                        .HasFilter("[AppointmentAt] IS NOT NULL");
 
                     b.HasIndex("LegacyShardKey", "BranchId", "Status");
 
@@ -1467,6 +1476,113 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_QuotationLine", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.QuotationTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_QuotationTemplate_Code");
+
+                    b.ToTable("svc_QuotationTemplate", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.QuotationTemplateLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CatalogCode")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Promotion")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("QuotationTemplateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("StandardHours")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<decimal?>("UnitCost")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("UnitPrice")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuotationTemplateId", "Sequence");
+
+                    b.ToTable("svc_QuotationTemplateLine", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Receipt", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2203,6 +2319,17 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Quotation");
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.QuotationTemplateLine", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.QuotationTemplate", "QuotationTemplate")
+                        .WithMany("Lines")
+                        .HasForeignKey("QuotationTemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("QuotationTemplate");
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockLot", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
@@ -2289,6 +2416,11 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Approval");
 
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.QuotationTemplate", b =>
+                {
                     b.Navigation("Lines");
                 });
 

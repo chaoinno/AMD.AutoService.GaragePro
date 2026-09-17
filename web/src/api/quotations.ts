@@ -1,5 +1,6 @@
 import { apiRequest } from './client'
 import type {
+  ApplyTemplateInput,
   CreateQuotationInput,
   Quotation,
   QuotationSummary,
@@ -59,6 +60,14 @@ export function updateQuotationLine(
 export function deleteQuotationLine(id: string | number, lineId: string | number) {
   return apiRequest<Quotation>(`/api/v1/quotations/${id}/lines/${lineId}`, {
     method: 'DELETE',
+  })
+}
+
+/// เพิ่มหลายบรรทัดจากเทมเพลตในครั้งเดียว — docs/08-quotation-template.md
+export function applyQuotationTemplate(id: string | number, input: ApplyTemplateInput) {
+  return apiRequest<Quotation>(`/api/v1/quotations/${id}/lines/from-template`, {
+    method: 'POST',
+    body: JSON.stringify(input),
   })
 }
 

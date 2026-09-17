@@ -27,6 +27,20 @@ public interface IJobService
 
     Task<Result<JobTransitionResultDto>> TransitionAsync(
         Guid jobId, TransitionJobRequest request, CancellationToken ct = default);
+
+    /// <summary>เลื่อน/แก้วันเวลานัดหมาย — เฉพาะงานประเภทรถนัดหมายและยังไม่ถึงสถานะจบ</summary>
+    Task<Result<JobDto>> UpdateAppointmentAsync(
+        Guid jobId, UpdateJobAppointmentRequest request, CancellationToken ct = default);
+
+    /// <summary>แปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่ (JobTypeId=9) พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง —
+    /// ใช้เมื่อลูกค้านำรถเข้าจริงตามนัด (หรือมาก่อน/หลังนัดก็ได้ ไม่ผูกกับวันนัดหมายที่ตั้งไว้)</summary>
+    Task<Result<JobDto>> ConvertToInShopAsync(
+        Guid jobId, ConvertToInShopRequest request, CancellationToken ct = default);
+
+    /// <summary>งานนัดหมายในช่วงเวลาที่กำหนด (มุมมองปฏิทิน) — กรองด้วย AppointmentAt ไม่ว่าง</summary>
+    Task<Result<JobCalendarDto>> GetCalendarAsync(
+        DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken,
+        CancellationToken ct = default);
 }
 
 /// <summary>
@@ -51,7 +65,44 @@ public sealed class JobService(
     private const int ClosedTypeId = 11;      // ปิดจ๊อบ — ระบบตั้งเองเมื่อถึงสถานะจบ (ไม่ใช่ค่าที่เลือกตอนเปิดจ๊อบได้)
     private const string ClosedTypeName = "ปิดจ๊อบ";
 
+    // [BIZ] วันนัดหมายห้ามน้อยกว่าวันเวลาปัจจุบัน (ยืนยันกับผู้ใช้ 2026-09-17) — เผื่อ tolerance สั้นๆ
+    // กันเวลา client/server คลาดกันไม่กี่นาทีตอนเลือก "ตอนนี้เลย" พอดี ไม่ใช่ grace period ให้เลือกวันในอดีตจริงๆ
+    private const int AppointmentPastToleranceMinutes = 5;
+    // [ASSUME] เพดานอนาคตที่ยอมรับ — ยังไม่ได้ยืนยันกับเจ้าของระบบ
+    private const int AppointmentMaxYearsAhead = 2;
+    // [ASSUME] วันเข้าอู่จริงห้ามเป็นอนาคต (จะ "บันทึกว่ารถเข้าแล้ว" ล่วงหน้าไม่ได้) เผื่อ tolerance เดียวกัน
+    private const int ArrivalFutureToleranceMinutes = 5;
+    // [ASSUME] เพดานมุมมองปฏิทิน — กันดึงข้อมูลเกินจำเป็นเวลากรองช่วงกว้าง
+    private const int CalendarMaxRangeDays = 92;
+    private const int CalendarRowLimit = 500;
+
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    /// <summary>[BIZ] AppointmentAt ไม่ว่าง ⟺ งานนี้เป็นรถนัดหมาย — บังคับให้ตรงกันเสมอที่ API
+    /// (ห้ามเพิกเฉยเงียบๆ เมื่อ type 9 ส่งค่ามา เพราะจะทำให้มีข้อมูลที่ไม่มีหน้าจอไหนแสดง)</summary>
+    private Result<DateTime?> ValidateAppointment(int jobTypeId, DateTimeOffset? appointmentAt)
+    {
+        if (jobTypeId == AppointmentTypeId && appointmentAt is null)
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "กรุณาระบุวันเวลาที่ลูกค้าจะนำรถเข้า สำหรับงานประเภทรถนัดหมาย", "appointmentAt");
+
+        if (jobTypeId != AppointmentTypeId && appointmentAt is not null)
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "ระบุวันเวลานัดหมายได้เฉพาะงานประเภทรถนัดหมาย", "appointmentAt");
+
+        if (appointmentAt is null)
+            return Result<DateTime?>.Ok(null);
+
+        var utc = appointmentAt.Value.UtcDateTime;
+        if (utc < Now.AddMinutes(-AppointmentPastToleranceMinutes))
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "วันเวลานัดหมายต้องไม่น้อยกว่าวันเวลาปัจจุบัน", "appointmentAt");
+        if (utc > Now.AddYears(AppointmentMaxYearsAhead))
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "วันเวลานัดหมายต้องไม่เกิน 2 ปีข้างหน้า", "appointmentAt");
+
+        return Result<DateTime?>.Ok(utc);
+    }
 
     public async Task<Result<JobDto>> GetAsync(Guid jobId, CancellationToken ct = default)
     {
@@ -82,6 +133,36 @@ public sealed class JobService(
         return Result<IReadOnlyList<JobDto>>.Ok(results.Select(j => JobMapper.ToDto(j, Now)).ToList());
     }
 
+    /// <summary>มุมมองปฏิทินนัดหมาย — คืนงานทุกงานที่มี AppointmentAt อยู่ในช่วง [from, to) เรียงจากนัดใกล้ที่สุด
+    /// (ไม่ใช่ keyset cursor แบบ SearchAsync เพราะปฏิทินต้องการทุกแถวในเดือนนั้น ไม่ใช่หน้าแบ่งหน้า)</summary>
+    public async Task<Result<JobCalendarDto>> GetCalendarAsync(
+        DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken, CancellationToken ct = default)
+    {
+        JobStatus? status = null;
+        if (!string.IsNullOrWhiteSpace(statusToken))
+        {
+            status = JobStateMachine.ParseToken(statusToken);
+            if (status is null)
+                return Result<JobCalendarDto>.Fail(
+                    "JOB_STATUS_UNKNOWN", $"ไม่รู้จักสถานะ '{statusToken}'", nameof(statusToken));
+        }
+
+        var fromUtc = from.UtcDateTime;
+        var toUtc = to.UtcDateTime;
+        if (toUtc <= fromUtc || (toUtc - fromUtc).TotalDays > CalendarMaxRangeDays)
+            return Result<JobCalendarDto>.Fail(
+                "JOB_CALENDAR_RANGE",
+                "ช่วงวันที่ของปฏิทินต้องไม่เกิน 3 เดือนและวันสิ้นสุดต้องอยู่หลังวันเริ่มต้น");
+
+        var appointmentQuery = new JobAppointmentQuery(
+            user.ShardKey, user.BranchId, fromUtc, toUtc, keyword, status, CalendarRowLimit + 1);
+        var rows = await jobs.GetAppointmentsAsync(appointmentQuery, ct);
+        var truncated = rows.Count > CalendarRowLimit;
+        var items = (truncated ? rows.Take(CalendarRowLimit) : rows).Select(j => JobMapper.ToDto(j, Now)).ToList();
+
+        return Result<JobCalendarDto>.Ok(new JobCalendarDto(items, truncated, CalendarRowLimit));
+    }
+
     public async Task<Result<int>> CountOpenAsync(int? jobTypeId, CancellationToken ct = default) =>
         Result<int>.Ok(await jobs.CountOpenAsync(user.ShardKey, user.BranchId, jobTypeId, ct));
 
@@ -95,6 +176,11 @@ public sealed class JobService(
     {
         if (request.JobTypeId is not (InShopTypeId or AppointmentTypeId))
             return Result<CreatedJobDto>.Fail("JOB_VALIDATION", "กรุณาเลือกประเภทงาน", nameof(request.JobTypeId));
+
+        var appointmentResult = ValidateAppointment(request.JobTypeId, request.AppointmentAt);
+        if (!appointmentResult.Success)
+            return Result<CreatedJobDto>.Fail(appointmentResult.Error!);
+        var appointmentAt = appointmentResult.Data;
 
         var customerResult = await customerVehicles.GetCustomerAsync(request.CustomerId, ct);
         if (!customerResult.Success)
@@ -134,6 +220,7 @@ public sealed class JobService(
             SenderName = string.IsNullOrWhiteSpace(request.SenderName) ? null : request.SenderName.Trim(),
             SenderPhoneNumber = string.IsNullOrWhiteSpace(request.SenderPhoneNumber) ? null : request.SenderPhoneNumber.Trim(),
             Detail = string.IsNullOrWhiteSpace(request.Detail) ? null : request.Detail.Trim(),
+            AppointmentAt = appointmentAt,
             CreatedByUserId = user.UserId,
             CreatedByUserName = user.UserName,
             CreatedAt = Now,
@@ -147,7 +234,9 @@ public sealed class JobService(
             EntityId = job.Id,
             EntityType = nameof(Job),
             EventType = "job.opened",
-            DescriptionTh = $"เปิดจ๊อบ {jobNo}",
+            DescriptionTh = appointmentAt is null
+                ? $"เปิดจ๊อบ {jobNo}"
+                : $"เปิดจ๊อบ {jobNo} · นัดหมาย {appointmentAt.Value.AddHours(7):dd/MM/yyyy HH:mm} น.",
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
@@ -236,6 +325,113 @@ public sealed class JobService(
 
         return Result<JobTransitionResultDto>.Ok(
             new JobTransitionResultDto(JobStateMachine.ToToken(job.Status), JobStateMachine.Describe(job.Status)));
+    }
+
+    /// <summary>เลื่อน/แก้วันเวลานัดหมาย — ไม่ใช่ state transition จึงไม่ผ่าน JobStateMachine แต่ล็อกแก้ไม่ได้
+    /// หลังจ๊อบถึงสถานะจบแล้ว (ไม่ใช่แค่หลัง waitinspect เพราะยังไม่มี transition "รถมาถึงแล้ว" ในระบบ —
+    /// จ๊อบค้างที่ waitinspect/waitquote ได้จริงขณะที่ลูกค้าขอเลื่อนนัด)
+    /// สิทธิ์: [Authorize] + [RequireShiftSession] เท่านั้น เหมือน endpoint อื่นของ JobsController —
+    /// [RISK] สืบทอดช่องโหว่ RBAC เดิมที่ CLAUDE.md บันทึกไว้แล้ว ไม่ได้เพิ่ม/ลดสิทธิ์ใหม่ในงานนี้</summary>
+    public async Task<Result<JobDto>> UpdateAppointmentAsync(
+        Guid jobId, UpdateJobAppointmentRequest request, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (JobStateMachine.IsTerminal(job.Status))
+            return Result<JobDto>.Fail("JOB_APPOINTMENT_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดหมายไม่ได้");
+
+        if (job.JobTypeId != AppointmentTypeId)
+            return Result<JobDto>.Fail(
+                "JOB_VALIDATION", "แก้ไขวันเวลานัดหมายได้เฉพาะงานประเภทรถนัดหมาย", "appointmentAt");
+
+        var appointmentResult = ValidateAppointment(AppointmentTypeId, request.AppointmentAt);
+        if (!appointmentResult.Success)
+            return Result<JobDto>.Fail(appointmentResult.Error!);
+
+        var oldAppointment = job.AppointmentAt;
+        job.AppointmentAt = appointmentResult.Data;
+
+        var descriptionTh = oldAppointment is null
+            ? $"ตั้งวันเวลานัดหมายเป็น {job.AppointmentAt!.Value.AddHours(7):dd/MM/yyyy HH:mm} น."
+            : $"เปลี่ยนวันเวลานัดหมายจาก {oldAppointment.Value.AddHours(7):dd/MM/yyyy HH:mm} " +
+              $"เป็น {job.AppointmentAt!.Value.AddHours(7):dd/MM/yyyy HH:mm} น.";
+
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = "job.appointment.changed",
+            DescriptionTh = descriptionTh,
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                from = oldAppointment?.ToString("O"),
+                to = job.AppointmentAt!.Value.ToString("O")
+            })
+        }, ct);
+
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+    }
+
+    /// <summary>[BIZ] เพิ่ม 2026-09-17 ตามคำขอผู้ใช้ — แปลงงานนัดหมายเป็นรถในอู่เมื่อรถมาถึงจริง (ไม่ผูกกับ
+    /// วันนัดหมายที่ตั้งไว้ มาก่อน/หลังนัดก็แปลงได้) ไม่แตะ JobStateMachine เลย (ไม่ใช่ state transition แค่
+    /// เปลี่ยนหมวดหมู่ + บันทึกเวลา) AppointmentAt เดิมไม่ถูกล้าง — เก็บไว้เป็นประวัติว่าเดิมนัดวันไหน</summary>
+    public async Task<Result<JobDto>> ConvertToInShopAsync(
+        Guid jobId, ConvertToInShopRequest request, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (job.JobTypeId != AppointmentTypeId)
+            return Result<JobDto>.Fail(
+                "JOB_TYPE_CONVERSION_NOT_ALLOWED", "แปลงเป็นรถในอู่ได้เฉพาะงานประเภทรถนัดหมายเท่านั้น");
+
+        var arrivalUtc = request.ActualArrivalAt.UtcDateTime;
+        if (arrivalUtc > Now.AddMinutes(ArrivalFutureToleranceMinutes))
+            return Result<JobDto>.Fail(
+                "JOB_VALIDATION", "วันเวลาที่รถเข้าอู่จริงต้องไม่เกินวันเวลาปัจจุบัน", "actualArrivalAt");
+
+        job.JobTypeId = InShopTypeId;
+        job.JobTypeName = "รถในอู่";
+        job.ActualArrivalAt = arrivalUtc;
+
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = "job.converted_to_in_shop",
+            DescriptionTh = $"แปลงประเภทงานจากรถนัดหมายเป็นรถในอู่ · เข้าอู่จริงเมื่อ {arrivalUtc.AddHours(7):dd/MM/yyyy HH:mm} น.",
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                fromJobTypeId = AppointmentTypeId,
+                toJobTypeId = InShopTypeId,
+                actualArrivalAt = arrivalUtc.ToString("O")
+            })
+        }, ct);
+
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
     }
 
     /// <summary>

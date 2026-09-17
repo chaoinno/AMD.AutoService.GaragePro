@@ -64,12 +64,17 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
     enabled: Boolean(approvedQuotationId),
   })
   const [prefilling, setPrefilling] = useState(false)
+  const [skippedAdHocCount, setSkippedAdHocCount] = useState(0)
   const prefilledRef = useRef(false)
 
   useEffect(() => {
     if (prefilledRef.current || uncertain || !approvedQuotation.data) return
     prefilledRef.current = true
-    const partLines = approvedQuotation.data.lines.filter(l => l.type === 'part' && l.approvalStatus === 'approved')
+    const approvedPartLines = approvedQuotation.data.lines.filter(l => l.type === 'part' && l.approvalStatus === 'approved')
+    // [BIZ] รายการนอกแคตตาล็อกไม่มี catalogItemId ให้เบิกจากสต็อกได้ — ข้ามอย่างชัดเจนแทนยิงค้นหาแล้วปล่อยให้หายเงียบๆ
+    // เหมือนก่อนหน้านี้ (docs/07-quotation-adhoc-line.md)
+    const partLines = approvedPartLines.filter(l => !l.isAdHoc)
+    setSkippedAdHocCount(approvedPartLines.length - partLines.length)
     if (!partLines.length) return
     setPrefilling(true)
     void (async () => {
@@ -152,6 +157,12 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
           </div>
 
           {prefilling && <p role="status" className="section-help">กำลังดึงรายการสินค้าจากใบเสนอราคาที่อนุมัติแล้วให้อัตโนมัติ…</p>}
+          {skippedAdHocCount > 0 && (
+            <p role="status" className="section-help">
+              มี {skippedAdHocCount} รายการนอกแคตตาล็อกในใบเสนอราคานี้ — เป็นของซื้อนอกที่ไม่มีในคลัง จึงไม่ดึงมาเป็นรายการเบิกให้อัตโนมัติ
+              (เบิกได้ปกติถ้ามีสินค้าที่ใกล้เคียงในคลังจริง ค้นหาเพิ่มเองได้ด้านล่าง)
+            </p>
+          )}
 
           <section className="purchase-picker">
             <Field label="ค้นหาสินค้าเพื่อเพิ่มรายการ">

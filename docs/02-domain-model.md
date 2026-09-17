@@ -94,7 +94,24 @@ Job: id(JB-xxxx), branchId, customerId, vehicleId,
      tempNo(TMP-xxxx, nullable)   ← ออฟไลน์
      isOverdue (derived: now > promiseAt && status ∉ {completed,cancelled})
      overdueReason (text — บังคับแสดงเป็นข้อความ ไม่ใช่แค่สีแดง)
+     appointmentAt (nullable)     ← [เพิ่ม 2026-09-16] ดูหมายเหตุด้านล่าง
+     actualArrivalAt (nullable)   ← [เพิ่ม 2026-09-17] วันเวลาที่รถเข้าอู่จริง (ดูหมายเหตุด้านล่าง)
 ```
+
+> **[เพิ่ม 2026-09-16] `Job.AppointmentAt`** — วันเวลาที่ลูกค้าจะนำรถเข้า **บังคับเฉพาะ `JobTypeId=10`
+> (รถนัดหมาย)** และแก้ไข/เลื่อนนัดได้ภายหลังจนกว่าจ๊อบจะถึงสถานะจบ (`completed`/`cancelled`) — คนละฟิลด์กับ
+> `promiseAt` (วันนัด "รับรถคืน") **[BIZ invariant #15]** ตอนเปิดจ๊อบ/แก้ไขนัดหมาย `AppointmentAt` ไม่ว่าง ⟺
+> `JobTypeId=10` บังคับที่ API ทั้งสองทิศทาง (type 10 ต้องมีค่า, type อื่นห้ามส่งค่ามา) — ใช้เป็นตัวกรองมุมมอง
+> ปฏิทินนัดหมายแทน `JobTypeId==10` เพราะ `JobTypeId` ถูกเปลี่ยนเป็น `11` "ปิดจ๊อบ" เองตอนถึงสถานะจบ (ดูกฎข้อ 14
+> ใน CLAUDE.md) ถ้ากรองด้วยประเภทจะทำให้นัดหมายเก่าที่จบงานแล้วหายจากปฏิทินย้อนหลัง
+> **[แก้ไข 2026-09-17]** `AppointmentAt` ไม่ว่างไม่ได้ ⟺ `JobTypeId=10` เสมอไปอีกต่อไป — ตั้งแต่เพิ่ม
+> `JobService.ConvertToInShopAsync` (แปลง `JobTypeId` 10→9 เมื่อรถมาถึงจริง) ค่า `AppointmentAt` **ไม่ถูกล้าง**
+> เพื่อเก็บประวัติว่าเดิมนัดวันไหน จึงมีจ๊อบ `JobTypeId=9` ที่ `AppointmentAt` ไม่ว่างได้ (ปฏิทินยังคงแสดงจ๊อบเหล่านี้
+> ต่อไปตามช่วงวันนัดเดิม ไม่ใช่บั๊ก — เป็นพฤติกรรมที่ตั้งใจให้เห็นประวัติการนัดแม้แปลงประเภทไปแล้ว) เงื่อนไข
+> ที่ยังคงจริงเสมอคือทิศทางเดียว: **`JobTypeId=10` ⟹ `AppointmentAt` ไม่ว่าง**
+> **`Job.ActualArrivalAt`** — วันเวลาที่รถเข้าอู่จริง บันทึกเฉพาะตอนแปลงประเภทผ่าน `ConvertToInShopAsync`
+> เท่านั้น (ไม่ผูกกับวันนัดหมายที่ตั้งไว้ — มาก่อน/หลังนัดก็แปลงได้) ต้องไม่เกินวันเวลาปัจจุบัน คนละฟิลด์กับ
+> `CreatedAt` (วันที่เปิดจ๊อบ/จองนัดไว้ล่วงหน้า)
 
 ### IntakeRecord
 ```
@@ -135,6 +152,25 @@ ApprovalRecord: id, quotationId, quotationVersion,   ← binding บังคั
            witnessEmployeeId, consentText, ipAddress
 ```
 > **[BIZ]** ออกเวอร์ชันใหม่ → เวอร์ชันเดิม `superseded`, ApprovalRecord เดิม **ใช้ไม่ได้**, ทุก line กลับเป็น `pending`
+
+> **[เพิ่ม 2026-09-15]** `QuotationLine.catalogCode` **ว่างได้** = รายการนอกแคตตาล็อก (ad-hoc line) — ไม่มี FK ไป
+> `CatalogItem` อยู่แล้ว (เป็น snapshot ตาม version-first) จึงไม่ต้องเพิ่มคอลัมน์ใหม่ ดู
+> [docs/07-quotation-adhoc-line.md](07-quotation-adhoc-line.md)
+
+### QuotationTemplate ([เพิ่ม 2026-09-16] ฟีเจอร์ใหม่ — ไม่มีในเอกสาร design ต้นแบบ)
+```
+QuotationTemplate:     id, code, name, description, legacyShardKey, legacyBranchId,
+                       isActive, createdDate, lastUpdated
+QuotationTemplateLine: id, quotationTemplateId, sequence, catalogCode(ว่างได้ = นอกแคตตาล็อก),
+                       name, type, unit, quantity,
+                       unitPrice(nullable — null = ใช้ราคาสดจากแคตตาล็อกตอนนำไปใช้),
+                       unitCost(nullable — เฉพาะนอกแคตตาล็อก), standardHours(nullable),
+                       discountPercent, promotion, source(LineSource), note
+                       ← ไม่มี assignedTechnicianId โดยตั้งใจ (ดูเหตุผลใน docs/08)
+```
+> ชุดรายการมาตรฐาน (เช่น "เช็คระยะ 10,000 กม.") ที่ผู้จัดการเตรียมไว้แล้วเพิ่มลงใบเสนอราคาได้หลายบรรทัดในคลิกเดียว
+> ตอนนำไปใช้ บรรทัดแคตตาล็อกอ่าน Name/Type/Unit/Cost สดจากแคตตาล็อกเสมอ (ที่เก็บในเทมเพลตใช้แสดงผลก่อนใช้งานเท่านั้น)
+> — รายละเอียดเต็มดูที่ [docs/08-quotation-template.md](08-quotation-template.md)
 
 ### RepairTask
 ```

@@ -28,6 +28,8 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/06-customer-vehicle-management.md](docs/06-customer-vehicle-management.md) | ลูกค้า/รถ · SQL scope ตามสาขา · ข้อจำกัดข้อมูล legacy ร่วมกัน |
 | [docs/staff-api.md](docs/staff-api.md) | API พนักงาน · อ่านคู่กับข้อจำกัดสาขาล่าสุดด้านล่าง (Admin ไม่ได้สิทธิ์ข้ามสาขา) |
 | [docs/06-purchasing-fifo.md](docs/06-purchasing-fifo.md) | PR/PO/GRN · Stock FIFO · สิทธิ์ · transaction/idempotency · ขอบเขตที่ยังไม่รวม |
+| [docs/07-quotation-adhoc-line.md](docs/07-quotation-adhoc-line.md) | รายการนอกแคตตาล็อกในใบเสนอราคา (ad-hoc line) · ฟิลด์บังคับ · สิทธิ์ · ผลกระทบต่อเบิกสต็อก/QC |
+| [docs/08-quotation-template.md](docs/08-quotation-template.md) | เทมเพลตใบเสนอราคา · การแปลงเทมเพลต→บรรทัด (ราคาสดจากแคตตาล็อก) · สิทธิ์ · error code ใหม่ |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -225,9 +227,30 @@ maindb 10.10.4.16   = db2 (replica คนละ host)
       (ตรวจด้วย `JobStateMachine.IsTerminal`) — ค่านี้เลือกตอนเปิดจ๊อบไม่ได้ (ยังคงบังคับ 9/10 เท่านั้นที่ `CreateAsync`)
       เป็นค่าที่ระบบตั้งเองครั้งเดียวตอนจบงานและเป็น terminal อยู่แล้วจึงไม่มีทางเปลี่ยนกลับ · ทำให้ตัวกรอง "รถในอู่"
       (ที่ตอนนี้เป็นค่าเริ่มต้นของหน้ารายการจ๊อบ) ไม่ดึงงานที่ปิดแล้วมาปนอัตโนมัติ โดยไม่ต้องพึ่งตัวกรองสถานะเพิ่ม
+15. **[เพิ่ม 2026-09-16] `JobTypeId=10` (รถนัดหมาย) ⟹ `Job.AppointmentAt` ไม่ว่าง** บังคับที่ API ตอนเปิดจ๊อบ/
+    แก้ไขนัดหมาย (type 10 ต้องมีค่า → `JOB_VALIDATION` field `appointmentAt` ถ้าไม่ส่ง · type อื่นห้ามส่งค่ามา →
+    `JOB_VALIDATION` เช่นกัน) **[แก้ไข 2026-09-17] ไม่ใช่ทิศทางเดียวกัน (⟺) อีกต่อไป** — ตั้งแต่มี
+    `ConvertToInShopAsync` (กฎข้อ 17) ค่า `AppointmentAt` อาจไม่ว่างได้แม้ `JobTypeId=9` แล้ว (ไม่ถูกล้างตอนแปลง
+    ประเภท เก็บไว้เป็นประวัติ) · **วันเวลานัดหมายห้ามน้อยกว่าวันเวลาปัจจุบัน** (ยืนยันกับผู้ใช้ 2026-09-17 — เผื่อ
+    tolerance 5 นาทีกันเวลา client/server คลาดกัน ไม่ใช่ grace period ให้เลือกอดีตจริงๆ) แก้ไข/เลื่อนนัดได้ภายหลัง
+    ผ่าน `PUT /jobs/{id}/appointment` จนกว่าจะถึงสถานะจบ (`JOB_APPOINTMENT_LOCKED`) · ใช้เป็นตัวกรองมุมมองปฏิทิน
+    นัดหมาย (`GET /jobs/calendar`) แทน `JobTypeId==10` เพราะกฎข้อ 14 เปลี่ยน `JobTypeId` เป็น 11 เองตอนปิดงาน —
+    ถ้ากรองด้วยประเภทนัดหมายเก่าที่ปิดแล้วจะหายจากปฏิทินย้อนหลัง (ปฏิทินยังแสดงจ๊อบที่ถูกแปลงเป็นรถในอู่แล้วต่อไป
+    ตามช่วงวันนัดเดิม — เป็นพฤติกรรมที่ตั้งใจ ดูกฎข้อ 17)
+16. **[เพิ่ม 2026-09-16] เทมเพลตใบเสนอราคา** — สร้าง/แก้ไข/เปิดปิดใช้งาน = ผู้จัดการเท่านั้น (`MASTER_DATA_MANAGE_FORBIDDEN`)
+    นำไปใช้ (`POST /quotations/{id}/lines/from-template`) = ทุกคนที่แก้ใบเสนอราคาได้ · บรรทัดแคตตาล็อกอ่านราคา/ชื่อ
+    **สดจากแคตตาล็อกเสมอตอนนำไปใช้** ไม่ใช่ค่าที่ cache ไว้ในเทมเพลต · รหัสแคตตาล็อกที่หายไปแล้ว → ปฏิเสธทั้งชุดไม่เพิ่ม
+    สักบรรทัด (`QUOTE_TEMPLATE_ITEM_MISSING`) · รายละเอียดเต็มดู [docs/08-quotation-template.md](docs/08-quotation-template.md)
+17. **[เพิ่ม 2026-09-17] แปลงงานนัดหมายเป็นรถในอู่ (`PUT /jobs/{id}/convert-to-in-shop`)** — เปลี่ยน `JobTypeId`
+    10→9 พร้อมบันทึก `Job.ActualArrivalAt` (วันเวลาที่รถเข้าอู่จริง) **ไม่ผูกกับวันนัดหมายที่ตั้งไว้เลย** (มาก่อน/
+    หลังนัดก็แปลงได้ ไม่ตรวจสอบว่า "ถึงวันนัด" แล้วหรือยัง — เป็นการยืนยันด้วยพนักงานล้วนๆ) `AppointmentAt` เดิม
+    **ไม่ถูกล้าง** (ดูข้อยกเว้นในกฎข้อ 15) ปฏิเสธถ้า `JobTypeId != 10` (`JOB_TYPE_CONVERSION_NOT_ALLOWED`) หรือ
+    ถ้า `ActualArrivalAt` เป็นอนาคต (`JOB_VALIDATION`) — ไม่แตะ `JobStateMachine` เลย (ไม่ใช่ state transition
+    แค่เปลี่ยนหมวดหมู่ + timestamp) เขียน `ActivityEvent` `job.converted_to_in_shop` เสมอ
 
 > **[RISK]** `JobsController`/`IntakeChecklistController` ตอนนี้ gate ด้วย `[RequireShiftSession]` เท่านั้น
 > ยังไม่ผูก role ตาม `docs/01-workflow.md §4` (เช่น ใครก็ตามที่ login แล้วมีกะเปิดอยู่สร้าง/เปลี่ยนสถานะ job ได้หมด) — ต้องปิดช่องนี้ก่อน production
+> ปฏิทินนัดหมาย, เทมเพลตใบเสนอราคา และปุ่มแปลงเป็นรถในอู่ที่เพิ่งเพิ่มสืบทอดช่องโหว่นี้เช่นกัน ไม่ได้แก้ในงานนี้
 
 ---
 
@@ -257,6 +280,16 @@ API ส่ง `0.07` — ต้องคูณ 100 ก่อนแสดง ไ�
 (กันชนเลขซ้ำเวลาออกพร้อมกันหลาย request ต่อ branch/วันเดียวกัน) — ถ้าต่อท้ายด้วย `.SingleAsync()`/`.FirstAsync()`
 EF จะห่อ query เป็น subquery ทำให้ `MERGE`/`OUTPUT` composable ไม่ได้ (SQL error)
 → ต้องใช้ `.ToListAsync()` แล้วดึงตัวแรกเอง
+
+### 🔴 [แก้แล้ว 2026-09-16] DateTime ต้องระบุ `Kind=Utc` ทั้งขาเข้า/ขาออก ไม่งั้นเวลาที่แสดงคลาดเคลื่อน +7 ชม.
+ก่อนหน้านี้ไม่มีที่ไหนระบุ `DateTimeKind` เลย (ไม่มี converter ที่ `ServiceDbContext`, ไม่มี JSON date converter
+ที่ `Program.cs`) — EF อ่าน `datetime2` กลับมาเป็น `Kind=Unspecified` เสมอ ทำให้ JSON ที่ API ส่งออกไม่มี `Z`
+ต่อท้าย แล้ว `new Date(...)` ฝั่งเว็บตีความเป็นเวลาท้องถิ่นแทนที่จะเป็น UTC → **เวลาทุกจุดบนเว็บ (createdAt,
+promiseAt ฯลฯ) แสดงเร็วกว่าเวลาไทยจริง 7 ชั่วโมงมาตลอด** โดยไม่มีใครสังเกตเพราะ `curl`/backend test ไม่โดน
+→ แก้ที่จุดเดียวด้วย `ServiceDbContext.ConfigureConventions` (ผูก `ValueConverter<DateTime,DateTime>`/
+`<DateTime?,DateTime?>` ที่บังคับ `DateTime.SpecifyKind(v, DateTimeKind.Utc)` ตอนอ่านทุกคอลัมน์ทั่วทั้งโมเดล
+โดยไม่ต้องแก้ทีละ DTO) — ฝั่งเว็บเพิ่ม `parseApiInstant` ใน `web/src/lib/format.ts` เป็นชั้นป้องกันสุดท้าย
+(เติม `Z` เองถ้าค่าที่ได้ไม่มีโซนเวลา เช่นจาก DTO ที่มาจาก Dapper อ่าน legacy ที่ไม่ผ่าน EF)
 
 ---
 
@@ -397,6 +430,23 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 ### เสร็จแล้ว
 - ✅ Auth: login ด้วยบัญชีเดิม · ตรวจ User/Staff active · Web ผูก Staff.BranchId อัตโนมัติ · JWT · role mapping
 - ✅ Quotation: สร้าง · แก้บรรทัด · validate · ส่ง · **ออกฉบับแก้ไข** · อนุมัติรายบรรทัด · เซ็น
+  · **[เพิ่ม 2026-09-15] รายการนอกแคตตาล็อก (ad-hoc line)**: ทุกคนที่แก้ใบเสนอราคาได้เพิ่มรายการที่ไม่มีในแคตตาล็อกได้
+  คีย์แค่ ประเภท + ชื่อ + ราคา/หน่วย (จำนวน default 1, หน่วย default ตามประเภท, ต้นทุนไม่บังคับ) จากปุ่ม "เพิ่มรายการเอง
+  (ไม่มีในแคตตาล็อก)" ใน `CatalogPanel.tsx` (แทนที่ปุ่ม "เพิ่มรายการใหม่" เดิมที่เปิด `CatalogFormModal` เต็มรูปและ
+  gate ด้วย `canSeeCost` เท่านั้น) — มี checkbox "บันทึกเข้าแคตตาล็อกเพื่อใช้ครั้งต่อไป" ให้เลือกได้ (แสดงเฉพาะ
+  `canSeeCost` เพราะ `CatalogService.EnsureCanManage` บังคับสิทธิ์นี้อยู่แล้ว) พร้อมรหัสอัตโนมัติ `AD-{yyMMdd}-{HHmmss}`
+  · **ตัวแทน**: `ad-hoc line = QuotationLine.CatalogCode ว่าง` (sentinel, ไม่มีคอลัมน์ใหม่ ไม่มี migration — เดิม
+  ไม่มี FK ไป `CatalogItem` อยู่แล้วเพราะเป็น snapshot ตาม version-first) `QuotationLineDto`/`QuotationLine` (web) เพิ่ม
+  `isAdHoc` (derived) ให้ client ไม่ต้องเดาจาก string ว่าง · ชื่อ/หน่วย/ต้นทุนของบรรทัด ad-hoc **แก้ได้ในที่** ผ่าน
+  `LineEditor.tsx` (บรรทัดจากแคตตาล็อกยังล็อกชื่อ/หน่วย/ต้นทุนเหมือนเดิม — `UpdateLineAsync` เช็ค `isAdHoc` ก่อนยอมแก้)
+  ต้นทุนยังเป็นค่าที่ server ควบคุมตามกฎข้อ 7 เดิม (ไม่มีสิทธิ์เห็นต้นทุน → บังคับเก็บเป็น 0 เสมอแม้ client ส่งมา)
+  · `QuotationValidator.ValidateForSend` เดิมเช็ครายการซ้ำด้วย `CatalogCode` — เพิ่ม branch แยกสำหรับ ad-hoc ให้เทียบ
+  ด้วยชื่อแทน (ไม่งั้นทุกรายการนอกแคตตาล็อกจะถูกมองว่าซ้ำกันหมดเพราะ code ว่างเท่ากัน) กฎอื่นยังบังคับเหมือนเดิมทุกข้อ
+  (ค่าแรงต้องระบุช่างก่อนส่ง ฯลฯ) · รายละเอียด/เหตุผลการตัดสินใจเต็มดูที่ [docs/07-quotation-adhoc-line.md](docs/07-quotation-adhoc-line.md)
+  · **ข้อจำกัด**: บรรทัด ad-hoc **เบิกจากสต็อกไม่ได้** (`StockWithdrawalModal` ข้ามให้อัตโนมัติพร้อมข้อความแจ้งจำนวนที่ข้าม
+  แทนที่จะยิงค้นหาแล้วปล่อยหายเงียบๆ แบบเดิม) แต่ยังเข้าเช็คลิสต์ QC ได้ปกติ (QC สร้างจาก snapshot ของบรรทัดอนุมัติ
+  โดยตรง ไม่แตะ `CatalogItem`) · ทดสอบแล้ว: `dotnet build`/`dotnet test` ผ่านทั้ง 183 (เพิ่ม `QuotationServiceTests.cs`
+  16 ผ่านใหม่) · Web `tsc -b`/`vite build` ผ่าน · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง**
 - ✅ Attachment: อัปโหลด · เปิดไฟล์ · ลายเซ็นจากมือถือขึ้น server จริง
 - ✅ Job (ใหม่, เว็บเท่านั้น): เปิดจ๊อบลง `svc_Job` · เลขจ๊อบ `JB{yyMMdd}{BranchId:D4}{seq:D3}` ต่อสาขา/วัน
   (กันชนด้วย `MERGE ... WITH (HOLDLOCK)`) · การ์ดจ๊อบ 6 stage ขับเคลื่อนด้วย `Job.Status` ผ่าน `JobCardModal`
@@ -849,6 +899,68 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   ตรงๆ เพราะ pnpm/corepack ในเครื่องนี้ verify signature ไม่ผ่านเหมือนทุกครั้ง)
   · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริงและยังไม่ได้รันกับ ServiceDb ที่มีข้อมูลจริง** (ตัวเลข/กราฟตรงกับข้อมูล
   จริงหรือไม่, ตัวกรองวันที่ใช้งานได้จริง, หน้าที่ Office เห็นต้นทุนถูกซ่อนจริงในเบราว์เซอร์) — sandbox นี้ไม่ได้ต่อ VPN
+- ✅ **[เพิ่ม 2026-09-16] วันเวลานัดหมาย + ปฏิทินจ๊อบ + เทมเพลตใบเสนอราคา** — 3 ฟีเจอร์ตามคำขอผู้ใช้ วางแผนผ่าน
+  plan mode ก่อนเริ่มเขียนโค้ด
+  · **[แก้บั๊กเดิมทั้งระบบ] DateTimeKind** — ดูหัวข้อ "บทเรียนที่เจ็บมาแล้ว" ด้านบน แก้ที่จุดเดียวด้วย
+  `ServiceDbContext.ConfigureConventions` กระทบทุก DateTime ในระบบ (เวลาที่แสดงบนเว็บทุกจุดตรงกับเวลาไทยจริง
+  ตั้งแต่ตอนนี้ ไม่ใช่แค่ฟิลด์ใหม่ที่เพิ่มวันนี้) — ไม่มี migration ที่เกี่ยวข้อง (แค่การแปลง Kind ตอนอ่าน ไม่กระทบ
+  ชนิดคอลัมน์ในฐานข้อมูล ยืนยันแล้วว่า migration ที่ generate หลังแก้ไม่มี diff ของ column type)
+  · **วันเวลานัดหมาย**: `Job.AppointmentAt` (nullable, UTC) ใหม่ — บังคับเฉพาะ `JobTypeId=10` (กฎข้อ 15) แก้ไข/
+  เลื่อนนัดได้ภายหลังผ่าน `PUT /api/v1/jobs/{id}/appointment` (เขียน `ActivityEvent job.appointment.changed`
+  เสมอ ไม่ใช่ state transition จึงไม่ผ่าน `JobStateMachine`) ล็อกแก้ไม่ได้เมื่อถึงสถานะจบ (`JOB_APPOINTMENT_LOCKED`)
+  ไม่ใช่แค่หลัง `waitinspect` เพราะยังไม่มี transition "รถมาถึงแล้ว" ในระบบ · เว็บ: `CreateJobModal` แสดงช่อง
+  `datetime-local` (ตัวแรกในโปรเจกต์ — เดิมมีแต่ `type="date"`) เฉพาะตอนเลือกประเภท "รถนัดหมาย", การ์ดจ๊อบมีปุ่ม
+  "แก้ไข/เลื่อนนัด" · migration `20260916154819_AddJobAppointmentAt` — บันทึกไว้ตอนแรกว่ายังไม่ได้รัน แต่
+  **[แก้ไข 2026-09-17] ยืนยันแล้วว่าถูกรันจริงบน ServiceDb แล้ว** (พบตอนตรวจ `dotnet ef migrations list` ในรอบ
+  ถัดมา ซึ่งครั้งนี้ sandbox ต่อ VPN ได้ — ไม่ทราบว่าใครรัน/รันเมื่อไหร่ ระหว่างสองรอบงาน)
+  · **ปฏิทินนัดหมาย**: ปุ่มสลับ "รายการ/ปฏิทินนัดหมาย" บนหน้า `/jobs` (ใช้ `Tabs` ที่มีอยู่แล้วเป็น segmented
+  control) endpoint ใหม่ `GET /api/v1/jobs/calendar?from=&to=&q=&status=` (คนละ contract กับ `/jobs/search`
+  เดิม — คืนทุกแถวในช่วง `[from, to)` ไม่ใช่ keyset cursor, ช่วงสูงสุด 92 วัน เกิน 500 แถวคืน `truncated: true`)
+  **กรองด้วย `AppointmentAt != null` ไม่ใช่ `JobTypeId == 10`** (ดูเหตุผลในกฎข้อ 15) เดือนปฏิทินคำนวณเองด้วย
+  `calendarMonth.ts` (pure function, ไม่เพิ่ม date/calendar library) ชิปนัดหมายใช้สี/ไอคอน/ข้อความจาก
+  `JobStatusChip`/`.job-status-*` เดิม สไตล์ใหม่อยู่ที่ `web/src/features/jobs/jobs.css` (แยกไฟล์ตาม pattern
+  `reports.css`/`purchasing.css` เดิม ไม่แตะ `index.css`)
+  · **เทมเพลตใบเสนอราคา**: เมนูใหม่ "เทมเพลตใบเสนอราคา" ใต้ Master Data + ปุ่ม "เพิ่มรายการด้วยเทมเพลต" ทั้งใน
+  การ์ดจ๊อบ (ขั้นเสนอราคา) และหน้าต่างแก้ไขใบเสนอราคา (พาเนลแคตตาล็อก) — รายละเอียดเต็ม (การแปลงราคา/ต้นทุน,
+  กรณีรหัสหาย/ถูกปิดใช้งาน/ซ้ำ, สิทธิ์) ดูที่ [docs/08-quotation-template.md](docs/08-quotation-template.md)
+  migration `20260916154843_AddQuotationTemplate` — เช่นเดียวกับข้างบน **[แก้ไข 2026-09-17] ยืนยันแล้วว่าถูกรันจริงแล้ว**
+  · **[RISK]** ทั้งปฏิทินนัดหมายและ endpoint เทมเพลตยังอยู่ใต้ `[RequireShiftSession]` เท่านั้น สืบทอดช่องโหว่ RBAC
+  เดิมที่บันทึกไว้แล้ว (กฎข้อ 14 ด้านบน) ไม่ได้แก้ในงานนี้
+  · ทดสอบแล้ว: `dotnet build` ทั้ง solution ผ่าน (0 error), `dotnet test` ผ่านทั้ง 210 (เพิ่ม 10 ใน
+  `JobServiceTests.cs`, ใหม่ `QuotationTemplateServiceTests.cs` 12 ผ่าน, เพิ่ม 10 ใน `QuotationServiceTests.cs`
+  ครอบคลุม apply template ทุกเส้นทาง — ไม่รวม 4 ที่ skip เพราะต้องต่อ SQL/FTP จริงเหมือนเดิม) · Web `tsc -b`
+  (`--force` ยืนยันซ้ำ) และ `vite build` ผ่าน (bundle warning เดิม ~940 kB ไม่ใช่ของใหม่) · `node --test
+  tests/*.test.mjs` ผ่านทั้ง 10 (3 เดิม + ใหม่ `calendarMonth.test.mjs` 7 ผ่าน) — **ต้องรันด้วย Node 24**
+  (เครื่องนี้ default เป็น Node 22.2.0 ซึ่ง `node --test` import `.ts` ตรงๆ ไม่ได้ ติดตั้ง Node 24 ผ่าน `nvm`
+  เพิ่มในเครื่องนี้เพื่อรันเทสต์ชุดนี้โดยเฉพาะ ตรงกับที่ CLAUDE.md เตือนไว้แล้วว่า "ตรวจด้วย Node 24")
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** (เปิดจ๊อบนัดหมายพร้อมวันเวลาแล้วเห็นในปฏิทินตรงช่อง,
+  เลื่อนนัดจากการ์ดจ๊อบ, สร้าง/แก้เทมเพลตแล้ว apply จากทั้ง 2 จุด, ตรวจว่า apply เทมเพลตซ้ำโดน
+  `QUOTE_TEMPLATE_DUPLICATE_LINE`, ปิดใช้งานสินค้าที่เทมเพลตอ้างถึงแล้วเห็น badge เตือนก่อน apply) — **[แก้ไข
+  2026-09-17] migration ทั้งสองตัวถูกรันกับ ServiceDb จริงแล้ว** (ยืนยันซ้ำในรอบถัดมา ดูหัวข้อถัดไป)
+- ✅ **[เพิ่ม 2026-09-17] ปุ่ม "แปลงเป็นรถในอู่" ในการ์ดจ๊อบ + วันนัดหมายห้ามน้อยกว่าวันเวลาปัจจุบัน** ตามคำขอผู้ใช้
+  · **แถวประเภทงาน** ใน `IntakeStage` เดิมเป็นข้อความเฉยๆ ตอนนี้แสดงเป็น chip + ปุ่ม "รถเข้าอู่แล้ว → เปลี่ยนเป็น
+  รถในอู่" ข้างกัน (แสดงเฉพาะ `jobTypeId === 10`) กดแล้วเปิด `ConvertToInShopModal` ใหม่ ให้ยืนยันวันเวลาที่รถเข้า
+  อู่จริง (default = ตอนนี้, แก้ไขได้แต่ห้ามเป็นอนาคต — `max={nowLocalInputValue()}`) เรียก
+  `PUT /api/v1/jobs/{id}/convert-to-in-shop` ใหม่ (ดูกฎข้อ 17 ด้านบน) — **ไม่ผูกกับวันนัดหมายที่ตั้งไว้เลย**
+  ยืนยันกับผู้ใช้แล้วว่ามาก่อน/หลังนัดก็แปลงได้ ไม่ต้องรอ "ถึงวันนัด" ก่อนปุ่มถึงจะกดได้
+  · `Job.ActualArrivalAt` (nullable, UTC) ใหม่ — คนละฟิลด์กับ `CreatedAt`/`AppointmentAt` migration
+  `20260917012834_AddJobActualArrivalAt` — **[อัปเดต] รันกับ ServiceDb จริงแล้ว** (sandbox รอบนี้ต่อ VPN ได้จริง
+  โดยไม่คาดคิด — ยืนยันด้วย `SELECT 1`/`nc`/`ping` ไป `10.10.4.11` ก่อนรัน และตรวจ `dotnet ef migrations list`
+  หลังรันว่าไม่มี `(Pending)` เหลือ — ระหว่างตรวจพบว่า migration ของเมื่อวาน `AddJobAppointmentAt`/
+  `AddQuotationTemplate` ก็ถูกรันจริงไปแล้วเช่นกัน ไม่ทราบว่าใครรัน — แก้ข้อความที่บันทึกผิดไว้เมื่อวานแล้ว)
+  · **วันนัดหมายห้ามน้อยกว่าวันเวลาปัจจุบัน** (ยืนยันกับผู้ใช้ชัดเจน) — เดิม `ValidateAppointment` มี grace period
+  24 ชม.ให้เลือกอดีตได้ (`[ASSUME]` ที่ยังไม่ยืนยัน) ตอนนี้เปลี่ยนเป็น tolerance 5 นาทีเท่านั้น (กันเวลา
+  client/server คลาดกันตอนเลือก "ตอนนี้เลย" พอดี ไม่ใช่ grace ให้เลือกอดีตจริงๆ) ใช้กับทั้งตอนเปิดจ๊อบและตอนเลื่อนนัด
+  · ฝั่งเว็บ: ช่องเลือกวันนัดหมายทั้ง 2 จุด (`CreateJobModal` ใน `JobsPage.tsx`, `RescheduleAppointmentModal` ใน
+  `JobCardModal.tsx`) ใส่ `min={nowLocalInputValue()}` กันเลือกอดีตตั้งแต่ตอนกรอกในเบราว์เซอร์เอง (เพิ่ม
+  `nowLocalInputValue()` ใหม่ใน `web/src/lib/format.ts`) — ฝั่ง backend ยังบังคับซ้ำเสมอ (ไม่ได้เชื่อ client ล้วน)
+  · **แถวนัดหมายในการ์ดจ๊อบยังแสดงต่อแม้แปลงประเภทไปแล้ว** (เงื่อนไขเปลี่ยนจาก `jobTypeId===10` เป็น
+  `jobTypeId===10 || appointmentAt` เพื่อคงประวัติว่าเดิมนัดวันไหน) แต่ปุ่ม "แก้ไข/เลื่อนนัด" ซ่อนไปหลังแปลงแล้ว
+  (เลื่อนนัดของรถที่เข้าอู่แล้วไม่มีความหมาย) เพิ่มแถวใหม่ "วันเวลาที่รถเข้าอู่จริง" แสดงเมื่อมี `actualArrivalAt`
+  · ทดสอบแล้ว: `dotnet build`/`dotnet test` ผ่านทั้ง 216 (เพิ่ม `ConvertToInShopAsync` 4 test +
+  `CreateAsync_fails_when_appointment_is_even_slightly_in_the_past`/`_accepts_an_appointment_at_the_current_moment`
+  ใน `JobServiceTests.cs`) · Web `tsc -b --force`/`vite build` ผ่าน
+  · **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริงและยังไม่ได้รัน migration กับ ServiceDb จริง**
 
 ### ยังไม่ได้ทำ
 - รับรถ 6 ขั้นเต็มรูปแบบบนมือถือ (ค้นหา/ยืนยันนัดหมาย/รูป 5 มุม/QR) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
@@ -865,6 +977,8 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 - RBAC ของ Job/Intake endpoint (ตอนนี้ gate ด้วย shift session เท่านั้น — ดู `[RISK]` ในหัวข้อกฎที่ห้ามละเมิด)
 - Offline queue ของ Flutter (`TMP-` + conflict) — **งานใหญ่ อย่าประเมินต่ำ**
 - Realtime (SignalR) · refresh token · หน้าตั้งค่า · หน้าส่งมอบรถ
+- สร้าง/แก้นัดหมายด้วยการคลิกช่องว่างในปฏิทิน (ตอนนี้แก้ได้จากการ์ดจ๊อบเท่านั้น) · จัดลำดับบรรทัดในเทมเพลต
+  ใบเสนอราคาแบบลาก (v1 = เรียงตามลำดับที่เพิ่ม) · `RowVersion` ที่ header เทมเพลต (ตอนนี้ last-write-wins)
 
 ### Open questions ที่ยัง block อยู่
 ดู [docs/01-workflow.md §10](docs/01-workflow.md) — ที่สำคัญที่สุดคือ **#3 นโยบาย offline conflict**

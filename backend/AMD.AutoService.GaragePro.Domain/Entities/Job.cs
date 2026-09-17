@@ -42,6 +42,20 @@ public class Job
     public string? Detail { get; set; }
 
     public DateTime? PromiseAt { get; set; }
+
+    /// <summary>วันเวลาที่ลูกค้าจะนำรถเข้า — บังคับเฉพาะงานประเภทรถนัดหมาย (JobTypeId=10) เท่านั้น
+    /// คนละความหมายกับ PromiseAt (วันนัด "รับรถคืน") · เก็บเป็น UTC เสมอ
+    /// [BIZ] AppointmentAt ไม่ว่าง ⟺ งานนี้เป็นรถนัดหมาย — ใช้เป็นตัวกรองปฏิทินนัดหมายแทน JobTypeId
+    /// เพราะ JobTypeId ถูกเปลี่ยนเป็น 11 "ปิดจ๊อบ" เองตอนถึงสถานะจบ (ดู JobService.TransitionAsync)
+    /// ค่านี้**ไม่ถูกล้าง**แม้ภายหลัง JobTypeId จะถูกแปลงเป็น 9 ผ่าน JobService.ConvertToInShopAsync — เก็บไว้
+    /// เป็นประวัติว่าเดิมนัดวันไหน (ปฏิทินยังอ้างอิงฟิลด์นี้ต่อได้แม้ประเภทงานเปลี่ยนไปแล้ว)</summary>
+    public DateTime? AppointmentAt { get; set; }
+
+    /// <summary>[เพิ่ม 2026-09-17] วันเวลาที่รถเข้าอู่จริง — บันทึกตอนแปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่
+    /// (JobTypeId=9) ผ่าน JobService.ConvertToInShopAsync คนละความหมายกับ CreatedAt (วันที่เปิดจ๊อบ/จองนัด)
+    /// และ AppointmentAt (วันที่นัดไว้ล่วงหน้า) — null จนกว่าจะมีการแปลงประเภทจริง</summary>
+    public DateTime? ActualArrivalAt { get; set; }
+
     public long? AssignedTechnicianId { get; set; }
     public string? AssignedTechnicianName { get; set; }
     public int? MileageAtIntake { get; set; }

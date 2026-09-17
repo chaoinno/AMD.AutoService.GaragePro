@@ -57,6 +57,33 @@ public sealed class JobRepository(ServiceDbContext db) : IJobRepository
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<Job>> GetAppointmentsAsync(
+        JobAppointmentQuery query, CancellationToken ct = default)
+    {
+        var q = db.Jobs.Where(j =>
+            j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId &&
+            j.AppointmentAt != null && j.AppointmentAt >= query.FromUtc && j.AppointmentAt < query.ToUtc);
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var k = query.Keyword.Trim();
+            q = q.Where(j =>
+                EF.Functions.Like(j.JobNo, $"%{k}%") ||
+                EF.Functions.Like(j.VehicleRegistration, $"%{k}%") ||
+                EF.Functions.Like(j.CustomerName, $"%{k}%") ||
+                (j.CustomerPhone != null && EF.Functions.Like(j.CustomerPhone, $"%{k}%")));
+        }
+
+        if (query.Status is not null)
+            q = q.Where(j => j.Status == query.Status);
+
+        return await q
+            .OrderBy(j => j.AppointmentAt)
+            .ThenBy(j => j.Id)
+            .Take(query.Take)
+            .ToListAsync(ct);
+    }
+
     public Task<int> CountOpenAsync(
         string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default)
     {

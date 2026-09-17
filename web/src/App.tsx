@@ -14,6 +14,7 @@ import { CatalogPage } from './features/catalog/CatalogPage'
 import { SupplierPage } from './features/master-data/SupplierPage'
 import { WarehousePage } from './features/master-data/WarehousePage'
 import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
+import { QuotationTemplatePage } from './features/master-data/QuotationTemplatePage'
 import { PurchasingPage } from './features/purchasing/PurchasingPage'
 import { InventoryPage } from './features/purchasing/InventoryPage'
 import { DashboardReportPage } from './features/reports/DashboardReportPage'
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
           <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
+          <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />

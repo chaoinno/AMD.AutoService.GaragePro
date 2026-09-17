@@ -73,6 +73,7 @@ public static class QuotationMapper
         Id: l.Id,
         Sequence: l.Sequence,
         CatalogCode: l.CatalogCode,
+        IsAdHoc: string.IsNullOrWhiteSpace(l.CatalogCode),
         Name: l.Name,
         Type: l.Type == LineType.Part ? "part" : "labor",
         Source: l.Source == LineSource.Customer ? "customer" : "technician",

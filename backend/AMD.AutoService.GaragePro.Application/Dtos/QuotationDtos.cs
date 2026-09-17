@@ -33,6 +33,7 @@ public sealed record QuotationLineDto(
     Guid Id,
     int Sequence,
     string CatalogCode,
+    bool IsAdHoc,           // true เมื่อ CatalogCode ว่าง — รายการนอกแคตตาล็อก (docs/07-quotation-adhoc-line.md)
     string Name,
     string Type,
     string Source,
@@ -155,7 +156,13 @@ public sealed record UpsertLineRequest(
     PromotionKind Promotion,
     LineSource Source,
     long? AssignedTechnicianId,
-    string? Note);
+    string? Note,
+    // ---- ใช้เฉพาะรายการนอกแคตตาล็อก (CatalogCode ว่าง) — docs/07-quotation-adhoc-line.md ----
+    string? Name = null,
+    LineType? Type = null,
+    string? Unit = null,
+    decimal? UnitCost = null,
+    decimal? StandardHours = null);
 
 public sealed record ReviseQuotationRequest(string RevisionReason);
 

@@ -20,6 +20,8 @@ public sealed record JobDto(
     string? VehicleVin,
     DateTime CreatedAt,
     DateTime? PromiseAt,
+    DateTime? AppointmentAt,
+    DateTime? ActualArrivalAt,
     int JobTypeId,
     string? JobTypeName,
     string Status,
@@ -36,13 +38,32 @@ public sealed record JobSearchQuery(
     int? JobTypeId,
     JobStatus? Status);
 
+/// <summary>ช่วงเวลาที่ต้องการดูปฏิทินนัดหมาย — กรองด้วย AppointmentAt (ไม่ว่าง) ไม่ใช่ JobTypeId
+/// (JobTypeId ถูกเปลี่ยนเป็น "ปิดจ๊อบ" เองตอนถึงสถานะจบ — ดู JobService.TransitionAsync)</summary>
+public sealed record JobAppointmentQuery(
+    string ShardKey,
+    int BranchId,
+    DateTime FromUtc,
+    DateTime ToUtc,
+    string? Keyword,
+    JobStatus? Status,
+    int Take);
+
+public sealed record JobCalendarDto(IReadOnlyList<JobDto> Items, bool Truncated, int Limit);
+
 public sealed record CreateJobRequest(
     long CustomerId,
     long VehicleId,
     int JobTypeId,
     string? SenderName,
     string? SenderPhoneNumber,
-    string? Detail);
+    string? Detail,
+    DateTimeOffset? AppointmentAt = null);
+
+public sealed record UpdateJobAppointmentRequest(DateTimeOffset AppointmentAt);
+
+/// <summary>แปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่ (JobTypeId=9) พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง</summary>
+public sealed record ConvertToInShopRequest(DateTimeOffset ActualArrivalAt);
 
 public sealed record CreatedJobDto(Guid JobId, string JobNo);
 
@@ -69,6 +90,8 @@ public static class JobMapper
         VehicleVin: job.VehicleVin,
         CreatedAt: job.CreatedAt,
         PromiseAt: job.PromiseAt,
+        AppointmentAt: job.AppointmentAt,
+        ActualArrivalAt: job.ActualArrivalAt,
         JobTypeId: job.JobTypeId,
         JobTypeName: job.JobTypeName,
         Status: JobStateMachine.ToToken(job.Status),
