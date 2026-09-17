@@ -1,12 +1,15 @@
 import { apiRequest } from './client'
 import type {
+  ConvertToInShopInput,
   CreateJobInput,
   CreatedJob,
   Job,
+  JobCalendarResult,
   JobStatusOption,
   JobStatusToken,
   JobTransitionResult,
   TransitionJobInput,
+  UpdateJobAppointmentInput,
 } from './types'
 
 export type JobsCursor = { beforeCreatedAt: string; beforeJobId: string }
@@ -55,4 +58,27 @@ export function transitionJob(jobId: string, input: TransitionJobInput) {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+export function updateJobAppointment(jobId: string, input: UpdateJobAppointmentInput) {
+  return apiRequest<Job>(`/api/v1/jobs/${jobId}/appointment`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+/// แปลงงานนัดหมายเป็นรถในอู่พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง — ไม่ผูกกับวันนัดหมายที่ตั้งไว้
+export function convertJobToInShop(jobId: string, input: ConvertToInShopInput) {
+  return apiRequest<Job>(`/api/v1/jobs/${jobId}/convert-to-in-shop`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+/// มุมมองปฏิทินนัดหมาย — คนละ contract กับ searchJobs (ไม่ใช่ keyset cursor, คืนทุกแถวในช่วง [from, to))
+export function getJobCalendar(args: { from: string; to: string; query?: string; status?: JobStatusToken }) {
+  const params = new URLSearchParams({ from: args.from, to: args.to })
+  if (args.query?.trim()) params.set('q', args.query.trim())
+  if (args.status) params.set('status', args.status)
+  return apiRequest<JobCalendarResult>(`/api/v1/jobs/calendar?${params}`)
 }

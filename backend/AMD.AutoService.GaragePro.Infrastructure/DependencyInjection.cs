@@ -6,6 +6,7 @@ using AMD.AutoService.GaragePro.Application.Jobs;
 using AMD.AutoService.GaragePro.Application.Pos;
 using AMD.AutoService.GaragePro.Application.Qc;
 using AMD.AutoService.GaragePro.Application.Quotations;
+using AMD.AutoService.GaragePro.Application.QuotationTemplates;
 using AMD.AutoService.GaragePro.Application.Reports;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
@@ -55,6 +56,8 @@ public static class DependencyInjection
         services.AddScoped<IMasterDataRepository, MasterDataRepository>();
         services.AddScoped<ISupplierService, SupplierService>();
         services.AddScoped<IWarehouseService, WarehouseService>();
+        services.AddScoped<IQuotationTemplateRepository, QuotationTemplateRepository>();
+        services.AddScoped<IQuotationTemplateService, QuotationTemplateService>();
         services.AddScoped<ICatalogCategoryService, CatalogCategoryService>();
         services.AddScoped<IPurchasingRepository, PurchasingRepository>();
         services.AddScoped<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingService>();

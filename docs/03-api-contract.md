@@ -51,7 +51,10 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | GET | `/jobs/by-qr/{code}` | `/scan`(M) |
 | GET | `/jobs/{id}` | `/jobs/:id`(W) — full aggregate สำหรับ 8 แท็บ |
 | GET | `/jobs/{id}/timeline` | แท็บกิจกรรม — ActivityEvent + source |
-| POST | `/jobs` | `/jobs`(W) modal เปิดจ๊อบ — เลือกประเภทได้ (`pjTypeId` 9=รถในอู่/10=รถนัดหมาย, whitelist ที่ API) + สถานะยัง fix เป็น `รอตรวจสอบ` (dropdown สถานะที่ผูกกับ `PJTypeStatus` ยังไม่ทำ — รอตรวจ schema จริงจาก legacy DB); transaction ลง `Customer`/`Car`/`CarCustomer`/`PJCarPickUp`; intake mobile ในอนาคตต้องเพิ่ม idempotency |
+| POST | `/jobs` | `/jobs`(W) modal เปิดจ๊อบ — เลือกประเภทได้ (`pjTypeId` 9=รถในอู่/10=รถนัดหมาย, whitelist ที่ API) + สถานะยัง fix เป็น `รอตรวจสอบ` (dropdown สถานะที่ผูกกับ `PJTypeStatus` ยังไม่ทำ — รอตรวจ schema จริงจาก legacy DB); transaction ลง `Customer`/`Car`/`CarCustomer`/`PJCarPickUp`; intake mobile ในอนาคตต้องเพิ่ม idempotency **[เพิ่ม 2026-09-16] ของจริงที่ implement: `POST /api/v1/jobs` รับ `appointmentAt` เพิ่ม — บังคับเมื่อ `jobTypeId=10` ห้ามส่งเมื่อ 9** |
+| PUT | `/api/v1/jobs/{id}/appointment` | **[เพิ่ม 2026-09-16]** เลื่อน/แก้วันเวลานัดหมาย — เฉพาะ `jobTypeId=10` และยังไม่ถึงสถานะจบ · เขียน `ActivityEvent` `job.appointment.changed` เสมอ |
+| GET | `/api/v1/jobs/calendar?from=&to=&q=&status=` | **[เพิ่ม 2026-09-16]** มุมมองปฏิทินนัดหมายของหน้า `/jobs`(W) — คืนทุกจ๊อบที่มี `appointmentAt` ในช่วง (ไม่ใช่ keyset cursor แบบ `/jobs/search`) ช่วงสูงสุด 92 วัน คืน `{ items, truncated, limit }` |
+| PUT | `/api/v1/jobs/{id}/convert-to-in-shop` | **[เพิ่ม 2026-09-17]** แปลงงานนัดหมาย (`jobTypeId=10`) เป็นรถในอู่ (`jobTypeId=9`) พร้อม `{ actualArrivalAt }` — ไม่ผูกกับวันนัดที่ตั้งไว้ (มาก่อน/หลังนัดก็แปลงได้) `AppointmentAt` เดิมไม่ถูกล้าง เขียน `ActivityEvent` `job.converted_to_in_shop` |
 | POST | `/jobs/{id}/cancel` | **ต้องมี** reason + approvedBy · แจ้งอะไหล่ที่สั่งไปแล้ว |
 | GET | `/jobs/counts` | `/home`(M) 5 ตัวเลข · `/dashboard`(W) 9 KPI |
 | GET | `/jobs/board` | กระดานโรงซ่อม 7 คอลัมน์ |
@@ -90,8 +93,10 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | GET | `/jobs/{id}/findings` | ดึงผลตรวจ → เสนอเป็น line (แยก cust/tech + `add[]` catalog codes) |
 | POST | `/jobs/{id}/quotations` | สร้าง draft (หรือ revision ถ้ามีอยู่แล้ว) |
 | GET | `/quotations/{id}` | + version history |
-| PUT | `/quotations/{id}/lines/{lineId}` | qty/price/discount/promo/tech/note |
-| POST | `/quotations/{id}/lines` · DELETE | |
+| PUT | `/quotations/{id}/lines/{lineId}` | qty/price/discount/promo/tech/note (+ name/unit/unitCost/standardHours ถ้าเป็น ad-hoc) |
+| POST | `/quotations/{id}/lines` · DELETE | `catalogCode` ว่าง = รายการนอกแคตตาล็อก (ad-hoc) — ต้องส่ง `name`+`type`+`unitPrice` แทน (2026-09-15, [docs/07-quotation-adhoc-line.md](07-quotation-adhoc-line.md)) |
+| POST | `/api/v1/quotations/{id}/lines/from-template` | **[เพิ่ม 2026-09-16]** `{ templateId, source? }` เพิ่มหลายบรรทัดจากเทมเพลตในครั้งเดียว — [docs/08-quotation-template.md](08-quotation-template.md) |
+| GET/POST | `/api/v1/quotation-templates` · GET/PUT `/{id}` · PATCH `/{id}/status` | **[เพิ่ม 2026-09-16]** ข้อมูลหลักเทมเพลตใบเสนอราคา — อ่านเปิดทุก role, เขียนเฉพาะผู้จัดการ |
 | POST | `/quotations/{id}/lock` · `/unlock` | **[UI]** ขอสิทธิ์แก้คนเดียว |
 | GET | `/quotations/{id}/warnings` | ของไม่พอ / ซ้ำ / margin ต่ำ / หมดอายุ |
 | POST | `/quotations/{id}/send` | ✅ validate ทุก line มี price+tech, ไม่ซ้ำ → `waitapprove` |

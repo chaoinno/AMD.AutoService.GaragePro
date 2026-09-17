@@ -47,6 +47,12 @@ public sealed class QuotationsController(IQuotationService service) : Controller
     public async Task<IActionResult> RemoveLine(Guid id, Guid lineId, CancellationToken ct) =>
         Render(await service.RemoveLineAsync(id, lineId, ct));
 
+    /// <summary>เพิ่มหลายบรรทัดจากเทมเพลตในครั้งเดียว — docs/08-quotation-template.md</summary>
+    [HttpPost("{id:guid}/lines/from-template")]
+    public async Task<IActionResult> ApplyTemplate(
+        Guid id, [FromBody] ApplyTemplateRequest request, CancellationToken ct) =>
+        Render(await service.ApplyTemplateAsync(id, request, ct));
+
     /// <summary>ตรวจก่อนส่ง — คืนทั้งข้อที่ต้องแก้และคำเตือน</summary>
     [HttpGet("{id:guid}/validate")]
     public async Task<IActionResult> Validate(Guid id, CancellationToken ct) =>
@@ -82,10 +88,12 @@ public sealed class QuotationsController(IQuotationService service) : Controller
         var status = result.Error!.Code switch
         {
             "QUOTE_NOT_FOUND" or "JOB_NOT_FOUND" or "QUOTE_LINE_NOT_FOUND" or "CATALOG_ITEM_NOT_FOUND"
+                or "QUOTE_TEMPLATE_NOT_FOUND"
                 => StatusCodes.Status404NotFound,
             "QUOTE_OTHER_SCOPE" or "JOB_OTHER_BRANCH"
                 => StatusCodes.Status403Forbidden,
             "QUOTE_LOCKED_BY_OTHER" or "QUOTE_ALREADY_EXISTS" or "QUOTE_ALREADY_SUPERSEDED"
+                or "QUOTE_TEMPLATE_DUPLICATE_LINE"
                 => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status422UnprocessableEntity
         };

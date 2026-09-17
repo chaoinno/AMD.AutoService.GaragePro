@@ -1,0 +1,5 @@
+.template-table-scroll { overflow-x: auto; margin: 16px 0; }
+.template-lines input[type=number] { min-width: 90px; max-width: 130px; }
+.template-lines td:first-child { min-width: 40px; }
+.template-price-cell { display: grid; gap: 4px; }
+.template-price-cell label { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }

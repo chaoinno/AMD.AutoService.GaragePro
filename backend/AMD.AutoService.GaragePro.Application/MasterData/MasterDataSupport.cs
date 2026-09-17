@@ -46,6 +46,7 @@ internal static class MasterDataSupport
         "UX_svc_CatalogCategory_Code" => "CATEGORY_CODE_DUPLICATE",
         "UX_svc_CatalogItemSupplier_Preferred" => "SUPPLIER_PREFERRED_DUPLICATE",
         "UX_svc_CatalogItemSupplier_Item_Supplier" => "SUPPLIER_LINK_DUPLICATE",
+        "UX_svc_QuotationTemplate_Code" => "QUOTE_TEMPLATE_CODE_DUPLICATE",
         _ => fallback
     };
 }

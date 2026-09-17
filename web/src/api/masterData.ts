@@ -5,6 +5,8 @@ import type {
   CatalogItemSupplier,
   CatalogItemSupplierInput,
   PagedResult,
+  QuotationTemplate,
+  QuotationTemplateInput,
   Supplier,
   SupplierInput,
   Warehouse,
@@ -40,6 +42,13 @@ export const getCatalogCategory = (id: string) => apiRequest<CatalogCategory>(`/
 export const createCatalogCategory = (input: CatalogCategoryInput) => apiRequest<CatalogCategory>('/api/v1/catalog-categories', { method: 'POST', body: JSON.stringify(input) })
 export const updateCatalogCategory = (id: string, input: CatalogCategoryInput) => apiRequest<CatalogCategory>(`/api/v1/catalog-categories/${id}`, { method: 'PUT', body: JSON.stringify(input) })
 export const setCatalogCategoryStatus = (id: string, isActive: boolean) => apiRequest<boolean>(`/api/v1/catalog-categories/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) })
+
+export const getQuotationTemplates = (filters: { keyword?: string; includeInactive?: boolean } = {}) =>
+  apiRequest<QuotationTemplate[]>(`/api/v1/quotation-templates${queryString({ q: filters.keyword, includeInactive: filters.includeInactive })}`)
+export const getQuotationTemplate = (id: string) => apiRequest<QuotationTemplate>(`/api/v1/quotation-templates/${id}`)
+export const createQuotationTemplate = (input: QuotationTemplateInput) => apiRequest<QuotationTemplate>('/api/v1/quotation-templates', { method: 'POST', body: JSON.stringify(input) })
+export const updateQuotationTemplate = (id: string, input: QuotationTemplateInput) => apiRequest<QuotationTemplate>(`/api/v1/quotation-templates/${id}`, { method: 'PUT', body: JSON.stringify(input) })
+export const setQuotationTemplateStatus = (id: string, isActive: boolean) => apiRequest<boolean>(`/api/v1/quotation-templates/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive }) })
 
 export const getCatalogItemSuppliers = (catalogItemId: string) =>
   apiRequest<CatalogItemSupplier[]>(`/api/v1/catalog/manage/${catalogItemId}/suppliers`)

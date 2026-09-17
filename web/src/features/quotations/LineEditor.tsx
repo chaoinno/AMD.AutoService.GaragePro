@@ -1,7 +1,8 @@
-import { LoaderCircle, Plus, Trash2, UserRound, Wrench, type LucideIcon } from 'lucide-react'
+import { LoaderCircle, Plus, Tag, Trash2, UserRound, Wrench, type LucideIcon } from 'lucide-react'
 import type { QuotationLine, Technician } from '../../api/types'
 import { Money } from '../../components/Money'
 import { MoneyInput } from '../../components/MoneyInput'
+import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -17,6 +18,9 @@ type LinePatch = Partial<
     | 'promotion'
     | 'assignedTechnicianId'
     | 'note'
+    | 'name'
+    | 'unit'
+    | 'unitCost'
   >
 >
 
@@ -24,6 +28,7 @@ type LineEditorProps = {
   lines: QuotationLine[]
   technicians: Technician[]
   readOnly: boolean
+  canSeeCost: boolean
   deletingLineId: string | null
   onPatch: (lineId: string, patch: LinePatch) => void
   onRequestDelete: (line: QuotationLine) => void
@@ -40,6 +45,7 @@ export function LineEditor({
   lines,
   technicians,
   readOnly,
+  canSeeCost,
   deletingLineId,
   onPatch,
   onRequestDelete,
@@ -72,6 +78,7 @@ export function LineEditor({
         lines={customerLines}
         technicians={technicians}
         readOnly={readOnly}
+        canSeeCost={canSeeCost}
         deletingLineId={deletingLineId}
         onPatch={onPatch}
         onRequestDelete={onRequestDelete}
@@ -83,6 +90,7 @@ export function LineEditor({
         lines={technicianLines}
         technicians={technicians}
         readOnly={readOnly}
+        canSeeCost={canSeeCost}
         deletingLineId={deletingLineId}
         onPatch={onPatch}
         onRequestDelete={onRequestDelete}
@@ -105,6 +113,7 @@ function LineGroup({
   lines,
   technicians,
   readOnly,
+  canSeeCost,
   deletingLineId,
   onPatch,
   onRequestDelete,
@@ -131,7 +140,14 @@ function LineGroup({
                 <span className="line-editor__name">
                   <strong>{line.name}</strong>
                   <small>
-                    {line.catalogCode} · {line.type === 'part' ? 'อะไหล่' : 'ค่าแรง'} · {line.unit}
+                    {line.isAdHoc ? (
+                      <Badge variant="warning" className="adhoc-badge">
+                        <Tag aria-hidden="true" /> นอกแคตตาล็อก
+                      </Badge>
+                    ) : (
+                      line.catalogCode
+                    )}
+                    {' · '}{line.type === 'part' ? 'อะไหล่' : 'ค่าแรง'} · {line.unit}
                   </small>
                 </span>
                 <span className="line-editor__net">
@@ -153,6 +169,17 @@ function LineGroup({
               </header>
 
               <div className="line-editor__grid">
+                {line.isAdHoc ? (
+                  <Label className="field field--compact field--wide">
+                    <span>ชื่อรายการ (นอกแคตตาล็อก)</span>
+                    <Input
+                      value={line.name}
+                      maxLength={300}
+                      disabled={readOnly}
+                      onChange={(event) => onPatch(line.id, { name: event.target.value })}
+                    />
+                  </Label>
+                ) : null}
                 <Label className="field field--compact">
                   <span>จำนวน</span>
                   <Input
@@ -172,6 +199,27 @@ function LineGroup({
                     onValueChange={(value) => onPatch(line.id, { unitPrice: value })}
                   />
                 </Label>
+                {line.isAdHoc ? (
+                  <Label className="field field--compact">
+                    <span>หน่วย</span>
+                    <Input
+                      value={line.unit}
+                      maxLength={40}
+                      disabled={readOnly}
+                      onChange={(event) => onPatch(line.id, { unit: event.target.value })}
+                    />
+                  </Label>
+                ) : null}
+                {line.isAdHoc && canSeeCost ? (
+                  <Label className="field field--compact">
+                    <span>ต้นทุน/หน่วย</span>
+                    <MoneyInput
+                      value={line.unitCost ?? 0}
+                      disabled={readOnly}
+                      onValueChange={(value) => onPatch(line.id, { unitCost: value })}
+                    />
+                  </Label>
+                ) : null}
                 <Label className="field field--compact">
                   <span>ส่วนลด %</span>
                   <Input

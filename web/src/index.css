@@ -1080,6 +1080,20 @@ img {
   font-weight: 600;
 }
 
+.job-detail-type,
+.job-detail-appointment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.job-detail-type .ui-button,
+.job-detail-appointment .ui-button {
+  font-size: 13px;
+  font-weight: 500;
+}
+
 .job-detail-empty {
   display: flex;
   flex-direction: column;
@@ -1643,6 +1657,13 @@ img {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.job-card-panel-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @media (max-width: 1023px) {
@@ -2634,6 +2655,21 @@ img {
   color: #0b6d5e;
 }
 
+.adhoc-badge {
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  vertical-align: middle;
+}
+
+.adhoc-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
 .catalog-card h4 {
   margin-top: 8px;
   font-size: 14px;
@@ -2716,6 +2752,39 @@ img {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 10px;
+}
+
+.catalog-adhoc-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 12px 10px;
+}
+
+.catalog-adhoc-toggle .ui-button {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.catalog-adhoc-form {
+  display: grid;
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--blue-50);
+}
+
+.catalog-adhoc-type-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.catalog-adhoc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .panel-heading--line {

@@ -7,7 +7,7 @@ import { isApiError } from '../../api/client'
 import { updateVehicleImage } from '../../api/customerVehicles'
 import { getHandover, saveHandoverItem, submitHandover, type HandoverItem } from '../../api/handover'
 import { getJobIntakeChecklist } from '../../api/intake'
-import { getJob, transitionJob } from '../../api/jobs'
+import { convertJobToInShop, getJob, transitionJob, updateJobAppointment } from '../../api/jobs'
 import { AttachmentImage } from '../../components/AttachmentImage'
 import {
   getPaymentSummary,
@@ -22,13 +22,14 @@ import {
 import { getJobWithdrawals, type WithdrawalSummary } from '../../api/purchasing'
 import { getQcChecklist, saveQcChecklistItem, saveQcTestDrive, type QcChecklistItem } from '../../api/qc'
 import {
+  applyQuotationTemplate,
   createQuotation,
   decideQuotationLine,
   getQuotation,
   getQuotations,
   signQuotation,
 } from '../../api/quotations'
-import type { JobStatusToken, Job, QuotationSummary } from '../../api/types'
+import type { JobStatusToken, Job, QuotationSummary, UpsertLineSource } from '../../api/types'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { JobStatusChip } from '../../components/JobStatusChip'
 import { Money } from '../../components/Money'
@@ -43,7 +44,7 @@ import { Select } from '../../components/ui/select'
 import { Separator } from '../../components/ui/separator'
 import { SignaturePad, type SignaturePadHandle } from '../../components/ui/signature-pad'
 import { Textarea } from '../../components/ui/textarea'
-import { formatDateTime } from '../../lib/format'
+import { formatDateTime, isoToLocalInput, localInputToIso, nowLocalInputValue } from '../../lib/format'
 import { useSession } from '../../lib/session'
 import { Field, InlineError } from '../master-data/MasterDataCommon'
 import { StockWithdrawalDocumentModal } from '../purchasing/StockWithdrawalDocumentModal'
@@ -54,6 +55,7 @@ import { HandoverDocumentModal } from './HandoverDocumentModal'
 import { PaymentReceiptModal } from './PaymentReceiptModal'
 import { QuotationDocumentModal } from '../quotations/QuotationDocumentModal'
 import { QuotationEditorModal } from '../quotations/QuotationEditorModal'
+import { QuotationTemplatePickerModal } from '../quotations/QuotationTemplatePickerModal'
 
 type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
 
@@ -254,6 +256,8 @@ function NotYetAvailableStage({ reason }: { reason: string }) {
 function IntakeStage({ job }: { job: Job }) {
   const queryClient = useQueryClient()
   const vehicleImageInputRef = useRef<HTMLInputElement>(null)
+  const [reschedulingAppointment, setReschedulingAppointment] = useState(false)
+  const [convertingToInShop, setConvertingToInShop] = useState(false)
 
   const attachmentsQuery = useQuery({
     queryKey: ['job-attachments', job.jobId],
@@ -307,13 +311,60 @@ function IntakeStage({ job }: { job: Job }) {
                 <div><dt>ยี่ห้อ / รุ่น</dt><dd>{job.vehicleModel || 'ไม่ระบุรุ่น'}</dd></div>
                 <div><dt>ทะเบียนรถ</dt><dd>{job.vehicleRegistration || 'ไม่ระบุทะเบียน'}</dd></div>
                 <div><dt>เลขตัวถัง</dt><dd>{job.vehicleVin || 'ไม่ระบุ'}</dd></div>
-                <div><dt>ประเภทงาน</dt><dd>{job.jobTypeName || 'ไม่ระบุ'}</dd></div>
+                <div>
+                  <dt>ประเภทงาน</dt>
+                  <dd className="job-detail-type">
+                    <span className="job-type-chip">{job.jobTypeName || 'ไม่ระบุ'}</span>
+                    {job.jobTypeId === 10 ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConvertingToInShop(true)}
+                        title="รถมาถึงอู่แล้ว — เปลี่ยนประเภทงานเป็นรถในอู่พร้อมบันทึกวันเวลาที่เข้าจริง"
+                      >
+                        รถเข้าอู่แล้ว → เปลี่ยนเป็นรถในอู่
+                      </Button>
+                    ) : null}
+                  </dd>
+                </div>
                 <div><dt>วันที่สร้างจ๊อบ</dt><dd>{formatDateTime(job.createdAt)}</dd></div>
                 <div><dt>วันที่นัดรับรถ</dt><dd>{job.promiseAt ? formatDateTime(job.promiseAt) : 'ไม่ระบุ'}</dd></div>
+                {job.jobTypeId === 10 || job.appointmentAt ? (
+                  <div>
+                    <dt>วันเวลานัดหมายเข้ารับบริการ</dt>
+                    <dd className="job-detail-appointment">
+                      <span>{job.appointmentAt ? formatDateTime(job.appointmentAt) : 'ไม่ระบุ'}</span>
+                      {job.jobTypeId === 10 ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={job.status === 'completed' || job.status === 'cancelled'}
+                          title={
+                            job.status === 'completed' || job.status === 'cancelled'
+                              ? 'จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดหมายไม่ได้'
+                              : undefined
+                          }
+                          onClick={() => setReschedulingAppointment(true)}
+                        >
+                          แก้ไข/เลื่อนนัด
+                        </Button>
+                      ) : null}
+                    </dd>
+                  </div>
+                ) : null}
+                {job.actualArrivalAt ? (
+                  <div><dt>วันเวลาที่รถเข้าอู่จริง</dt><dd>{formatDateTime(job.actualArrivalAt)}</dd></div>
+                ) : null}
               </dl>
             </div>
           </CardContent>
         </Card>
+        {reschedulingAppointment ? (
+          <RescheduleAppointmentModal job={job} onClose={() => setReschedulingAppointment(false)} />
+        ) : null}
+        {convertingToInShop ? (
+          <ConvertToInShopModal job={job} onClose={() => setConvertingToInShop(false)} />
+        ) : null}
 
         <Card>
           <CardHeader><CardTitle>รูปถ่าย/เอกสารแนบของงานนี้</CardTitle></CardHeader>
@@ -348,6 +399,96 @@ function IntakeStage({ job }: { job: Job }) {
         </Card>
       </div>
     </div>
+  )
+}
+
+function RescheduleAppointmentModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [value, setValue] = useState(() => isoToLocalInput(job.appointmentAt))
+
+  const mutation = useMutation({
+    mutationFn: () => updateJobAppointment(job.jobId, { appointmentAt: localInputToIso(value) }),
+    onSuccess: () => {
+      toast.success('บันทึกวันเวลานัดหมายใหม่แล้ว')
+      void queryClient.invalidateQueries({ queryKey: ['job-detail', job.jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-calendar'] })
+      onClose()
+    },
+  })
+
+  return (
+    <ConfirmModal
+      open
+      title="แก้ไข/เลื่อนวันเวลานัดหมาย"
+      description="ระบบจะบันทึกประวัติการเปลี่ยนแปลงไว้ในไทม์ไลน์ของจ๊อบนี้"
+      onClose={onClose}
+      size="small"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
+          <Button disabled={!value || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'กำลังบันทึก…' : 'บันทึก'}
+          </Button>
+        </>
+      }
+    >
+      {mutation.isError ? <InlineError error={mutation.error} /> : null}
+      <Field label="วันเวลาที่ลูกค้าจะนำรถเข้า *">
+        <Input
+          type="datetime-local"
+          step={900}
+          min={nowLocalInputValue()}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Field>
+    </ConfirmModal>
+  )
+}
+
+function ConvertToInShopModal({ job, onClose }: { job: Job; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [value, setValue] = useState(() => nowLocalInputValue())
+
+  const mutation = useMutation({
+    mutationFn: () => convertJobToInShop(job.jobId, { actualArrivalAt: localInputToIso(value) }),
+    onSuccess: () => {
+      toast.success('เปลี่ยนประเภทงานเป็นรถในอู่แล้ว')
+      void queryClient.invalidateQueries({ queryKey: ['job-detail', job.jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
+      void queryClient.invalidateQueries({ queryKey: ['jobs-calendar'] })
+      onClose()
+    },
+  })
+
+  return (
+    <ConfirmModal
+      open
+      title="เปลี่ยนเป็นรถในอู่"
+      description="ใช้เมื่อรถมาถึงอู่จริง — ไม่ต้องตรงกับวันเวลานัดหมายที่ตั้งไว้ (มาก่อน/หลังนัดก็เปลี่ยนได้)"
+      onClose={onClose}
+      size="small"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
+          <Button disabled={!value || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? 'กำลังบันทึก…' : 'ยืนยันเปลี่ยนเป็นรถในอู่'}
+          </Button>
+        </>
+      }
+    >
+      {mutation.isError ? <InlineError error={mutation.error} /> : null}
+      <Field label="วันเวลาที่รถเข้าอู่จริง *">
+        <Input
+          type="datetime-local"
+          step={900}
+          max={nowLocalInputValue()}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Field>
+    </ConfirmModal>
   )
 }
 
@@ -458,6 +599,53 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
   const canCreateAdditionalQuotation =
     !latestQuotation || latestQuotation.status === 'rejected' || latestQuotation.status === 'superseded'
 
+  // ---- เพิ่มรายการด้วยเทมเพลต (docs/08-quotation-template.md) — ถ้ามีใบร่างอยู่แล้วใช้ใบนั้น
+  // ไม่มีก็สร้างใบใหม่ก่อนแล้วค่อยเพิ่มรายการต่อ (ปุ่มกดได้ทุกเงื่อนไขเดียวกับปุ่ม "+ สร้างใบเสนอราคา") ----
+  const draftQuotation = query.data?.find((q) => q.status === 'draft')
+  const canUseTemplateButton = Boolean(draftQuotation) || canCreateAdditionalQuotation
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false)
+  const [templateTargetId, setTemplateTargetId] = useState<string | null>(null)
+
+  const createForTemplateMutation = useMutation({
+    mutationFn: createQuotation,
+    onSuccess: (quotation) => {
+      setTemplateTargetId(quotation.id)
+      setShowTemplatePicker(true)
+      toast.success(`สร้างใบเสนอราคา ${quotation.code} แล้ว — เลือกเทมเพลตที่ต้องการเพิ่มรายการ`)
+      void queryClient.invalidateQueries({ queryKey: ['job-quotations', job.jobId] })
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.messageTh : 'สร้างใบเสนอราคาไม่สำเร็จ')
+    },
+  })
+
+  const applyTemplateFromJobCardMutation = useMutation({
+    mutationFn: (input: { templateId: string; source: UpsertLineSource | null }) =>
+      applyQuotationTemplate(templateTargetId!, { templateId: input.templateId, source: input.source ?? undefined }),
+    onSuccess: (quotation) => {
+      toast.success('เพิ่มรายการจากเทมเพลตแล้ว')
+      setShowTemplatePicker(false)
+      setEditingQuotationId(quotation.id)
+      void queryClient.invalidateQueries({ queryKey: ['job-quotations', job.jobId] })
+    },
+    onError: (error) => {
+      toast.error(isApiError(error) ? error.messageTh : 'เพิ่มรายการจากเทมเพลตไม่สำเร็จ')
+      // สร้างใบร่างไว้แล้ว (ถ้าเป็นเส้นทางสร้างใหม่) แต่ apply ล้มเหลว — ไม่ปล่อยให้หายเงียบๆ บอกให้เปิดใบนั้นต่อเอง
+      if (!draftQuotation && templateTargetId) {
+        toast.message('สร้างใบเสนอราคาให้แล้วแต่ยังไม่ได้เพิ่มรายการ — เปิดใบนั้นจากรายการด้านล่างเพื่อเพิ่มเอง')
+      }
+    },
+  })
+
+  const openTemplatePicker = () => {
+    if (draftQuotation) {
+      setTemplateTargetId(draftQuotation.id)
+      setShowTemplatePicker(true)
+    } else {
+      createForTemplateMutation.mutate({ jobId: job.jobId })
+    }
+  }
+
   // [BIZ] Approved→InProgress คำนวณ guard จริงได้ (JobService.ComputeGuardAsync: isComputable=true —
   // เช็คว่ามีบรรทัดที่ลูกค้าอนุมัติแล้วจริง) จึงไม่ต้องส่ง reason และไม่ใช่ manual override เหมือน transition อื่น
   // ปุ่มนี้แค่ส่งงานต่อไปที่ขั้น "เบิกสินค้า/ดำเนินการซ่อม" (stage ถัดไป) เท่านั้น — ไม่ข้ามไปเสร็จงานทั้งหมด
@@ -480,18 +668,33 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
     <Card>
       <CardHeader className="job-card-panel-header">
         <CardTitle>ใบเสนอราคา &amp; รายการซ่อม</CardTitle>
-        <Button
-          size="sm"
-          onClick={() => createMutation.mutate({ jobId: job.jobId })}
-          disabled={createMutation.isPending || !canCreateAdditionalQuotation}
-          title={
-            canCreateAdditionalQuotation
-              ? undefined
-              : `ใบเสนอราคาล่าสุด (${latestQuotation?.statusLabelTh ?? ''}) ยังไม่ถูกปฏิเสธหรือถูกแทนที่ — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" แทน`
-          }
-        >
-          {createMutation.isPending ? 'กำลังสร้าง…' : '+ สร้างใบเสนอราคา'}
-        </Button>
+        <div className="job-card-panel-header__actions">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={openTemplatePicker}
+            disabled={!canUseTemplateButton || createForTemplateMutation.isPending}
+            title={
+              canUseTemplateButton
+                ? undefined
+                : `ใบเสนอราคาล่าสุด (${latestQuotation?.statusLabelTh ?? ''}) ส่งให้ลูกค้าแล้ว — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" ก่อน จึงจะเพิ่มรายการด้วยเทมเพลตได้`
+            }
+          >
+            {createForTemplateMutation.isPending ? 'กำลังสร้างใบร่าง…' : 'เพิ่มรายการด้วยเทมเพลต'}
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => createMutation.mutate({ jobId: job.jobId })}
+            disabled={createMutation.isPending || !canCreateAdditionalQuotation}
+            title={
+              canCreateAdditionalQuotation
+                ? undefined
+                : `ใบเสนอราคาล่าสุด (${latestQuotation?.statusLabelTh ?? ''}) ยังไม่ถูกปฏิเสธหรือถูกแทนที่ — เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข" แทน`
+            }
+          >
+            {createMutation.isPending ? 'กำลังสร้าง…' : '+ สร้างใบเสนอราคา'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {!canCreateAdditionalQuotation && query.data?.length ? (
@@ -573,6 +776,13 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
       <QuotationDocumentModal
         quotationId={viewingDocumentId}
         onClose={() => setViewingDocumentId(null)}
+      />
+      <QuotationTemplatePickerModal
+        open={showTemplatePicker}
+        onClose={() => { setShowTemplatePicker(false); applyTemplateFromJobCardMutation.reset() }}
+        applying={applyTemplateFromJobCardMutation.isPending}
+        applyError={applyTemplateFromJobCardMutation.error}
+        onApply={(input) => applyTemplateFromJobCardMutation.mutate(input)}
       />
     </Card>
   )
@@ -799,7 +1009,7 @@ function QcStage({ job }: { job: Job }) {
                 <tbody>
                   {checklist.items.map(item => (
                     <tr key={item.id}>
-                      <td>{item.catalogCode}</td>
+                      <td>{item.catalogCode || '—'}</td>
                       <td>{item.name}</td>
                       <td>{item.type === 'labor' ? 'ค่าแรง' : 'อะไหล่'}</td>
                       <td>

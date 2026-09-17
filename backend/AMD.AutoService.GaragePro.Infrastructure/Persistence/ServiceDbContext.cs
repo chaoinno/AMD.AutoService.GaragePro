@@ -35,6 +35,30 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<CatalogItemSupplier> CatalogItemSuppliers => Set<CatalogItemSupplier>();
     public DbSet<JobChatMessage> JobChatMessages => Set<JobChatMessage>();
     public DbSet<JobChatMention> JobChatMentions => Set<JobChatMention>();
+    public DbSet<QuotationTemplate> QuotationTemplates => Set<QuotationTemplate>();
+    public DbSet<QuotationTemplateLine> QuotationTemplateLines => Set<QuotationTemplateLine>();
+
+    /// <summary>
+    /// [RISK — พบ 2026-09-16] เดิมไม่มีการระบุ DateTimeKind ที่จุดไหนเลย (ไม่มี converter ที่นี่ ไม่มีใน
+    /// JSON options) — EF อ่าน datetime2 กลับมาเป็น Kind=Unspecified เสมอ ทำให้ JSON ส่งออกไม่มี 'Z' ต่อท้าย
+    /// แล้ว `new Date(...)` ฝั่งเว็บตีความเป็นเวลาท้องถิ่นแทนที่จะเป็น UTC (คลาดเคลื่อน +7 ชม. ในไทย)
+    /// ทุกค่าที่เก็บในระบบนี้เป็น UTC จริงเสมอ (ดู `JobService.Now`/`QuotationService.Now` ที่ใช้
+    /// `clock.GetUtcNow().UtcDateTime`) — ระบุ Kind ให้ตรงความจริงทั้งขาเข้า/ขาออกที่นี่ที่เดียว
+    /// แทนที่จะแก้ทีละจุดตอน map เป็น DTO
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+        configurationBuilder.Properties<DateTime?>().HaveConversion<UtcNullableDateTimeConverter>();
+    }
+
+    private sealed class UtcDateTimeConverter()
+        : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime, DateTime>(
+            v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+
+    private sealed class UtcNullableDateTimeConverter()
+        : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTime?, DateTime?>(
+            v => v, v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -67,6 +91,9 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.HasIndex(x => new { x.LegacyShardKey, x.BranchId, x.VehicleId, x.Status });
             e.HasIndex(x => new { x.LegacyShardKey, x.BranchId, x.Status });
             e.HasIndex(x => x.JobNo);
+            // ปฏิทินนัดหมาย: กรองด้วยช่วง AppointmentAt ต่อสาขา (filtered index — แถวส่วนใหญ่เป็น NULL)
+            e.HasIndex(x => new { x.LegacyShardKey, x.BranchId, x.AppointmentAt })
+             .HasFilter("[AppointmentAt] IS NOT NULL");
         });
 
         b.Entity<JobNumberCounter>(e =>

@@ -233,6 +233,7 @@ export type QuotationLine = {
   id: string
   sequence: number
   catalogCode: string
+  isAdHoc: boolean
   name: string
   type: 'part' | 'labor'
   source: LineSource
@@ -337,7 +338,75 @@ export type UpsertLine = {
   source: UpsertLineSource
   assignedTechnicianId?: number
   note?: string
+  // ---- ใช้เฉพาะรายการนอกแคตตาล็อก (catalogCode ว่าง) — docs/07-quotation-adhoc-line.md ----
+  name?: string
+  type?: 'part' | 'labor'
+  unit?: string
+  unitCost?: number
+  standardHours?: number
 }
+
+// ---- เทมเพลตใบเสนอราคา — docs/08-quotation-template.md ----
+export type QuotationTemplateLine = {
+  id: string
+  sequence: number
+  catalogCode: string
+  isAdHoc: boolean
+  name: string
+  type: 'part' | 'labor'
+  unit: string | null
+  quantity: number
+  unitPrice: number | null
+  unitCost: number | null
+  standardHours: number | null
+  discountPercent: number
+  promotion: Promotion
+  source: UpsertLineSource
+  note: string | null
+  // ---- สถานะของรหัสแคตตาล็อก ณ ตอนนี้ (อ่านสด มีเฉพาะตอนดูรายละเอียดเทมเพลต) ----
+  catalogResolved: boolean | null
+  catalogActive: boolean | null
+  catalogPrice: number | null
+  catalogName: string | null
+}
+
+export type QuotationTemplate = {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  isActive: boolean
+  lineCount: number
+  partCount: number
+  laborCount: number
+  lines: QuotationTemplateLine[]
+  createdDate: string
+  lastUpdated: string
+}
+
+export type QuotationTemplateLineInput = {
+  catalogCode: string
+  name?: string
+  type?: 'part' | 'labor'
+  unit?: string
+  quantity: number
+  unitPrice?: number
+  unitCost?: number
+  standardHours?: number
+  discountPercent: number
+  promotion: Promotion
+  source: UpsertLineSource
+  note?: string
+}
+
+export type QuotationTemplateInput = {
+  code: string
+  name: string
+  description?: string
+  lines: QuotationTemplateLineInput[]
+}
+
+export type ApplyTemplateInput = { templateId: string; source?: UpsertLineSource }
 
 export type JobStatusToken =
   | 'waitinspect'
@@ -366,6 +435,8 @@ export type Job = {
   vehicleVin: string | null
   createdAt: string
   promiseAt: string | null
+  appointmentAt: string | null
+  actualArrivalAt: string | null
   jobTypeId: number
   jobTypeName: string | null
   status: JobStatusToken
@@ -375,6 +446,9 @@ export type Job = {
 
 export type TransitionJobInput = { toStatus: JobStatusToken | string; reason?: string }
 export type JobTransitionResult = { status: JobStatusToken; statusLabel: string }
+export type UpdateJobAppointmentInput = { appointmentAt: string }
+export type ConvertToInShopInput = { actualArrivalAt: string }
+export type JobCalendarResult = { items: Job[]; truncated: boolean; limit: number }
 
 export type JobStatusOption = { token: string; label: string }
 
@@ -483,6 +557,7 @@ export type CreateJobInput = {
   senderName?: string
   senderPhoneNumber?: string
   detail?: string
+  appointmentAt?: string
 }
 
 export type CreatedJob = { jobId: string; jobNo: string }

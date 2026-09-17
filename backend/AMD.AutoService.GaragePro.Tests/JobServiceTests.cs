@@ -70,6 +70,273 @@ public sealed class JobServiceTests
     }
 
     [Fact]
+    public async Task CreateAsync_fails_when_appointment_missing_for_appointment_type()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 10, null, null, null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+        result.Error!.Field.Should().Be("appointmentAt");
+    }
+
+    [Fact]
+    public async Task CreateAsync_fails_when_appointment_sent_for_in_shop_type()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 9, null, null, null, DateTimeOffset.UtcNow.AddDays(1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+        result.Error!.Field.Should().Be("appointmentAt");
+    }
+
+    [Fact]
+    public async Task CreateAsync_fails_when_appointment_is_out_of_allowed_range()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var tooFarAhead = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, DateTimeOffset.UtcNow.AddYears(3)));
+        var tooFarBehind = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, DateTimeOffset.UtcNow.AddDays(-5)));
+
+        tooFarAhead.Success.Should().BeFalse();
+        tooFarAhead.Error!.Code.Should().Be("JOB_VALIDATION");
+        tooFarBehind.Success.Should().BeFalse();
+        tooFarBehind.Error!.Code.Should().Be("JOB_VALIDATION");
+    }
+
+    [Fact]
+    public async Task CreateAsync_fails_when_appointment_is_even_slightly_in_the_past()
+    {
+        // [BIZ] ยืนยันกับผู้ใช้ 2026-09-17 — วันนัดหมายห้ามน้อยกว่าวันเวลาปัจจุบัน (เกิน tolerance กันเวลาคลาดสั้นๆ)
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, DateTimeOffset.UtcNow.AddHours(-1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+        result.Error!.Field.Should().Be("appointmentAt");
+    }
+
+    [Fact]
+    public async Task CreateAsync_accepts_an_appointment_at_the_current_moment()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, DateTimeOffset.UtcNow));
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task CreateAsync_stores_appointment_and_mentions_it_in_the_job_opened_event()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+        var appointment = DateTimeOffset.UtcNow.AddDays(2);
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 10, null, null, null, appointment));
+
+        result.Success.Should().BeTrue();
+        var job = jobs.Saved.Single();
+        job.AppointmentAt.Should().BeCloseTo(appointment.UtcDateTime, TimeSpan.FromSeconds(1));
+        jobs.Events.Should().ContainSingle(e => e.EventType == "job.opened" && e.DescriptionTh.Contains("นัดหมาย"));
+    }
+
+    [Fact]
+    public async Task UpdateAppointmentAsync_writes_an_event_with_from_and_to_payload()
+    {
+        var jobs = new FakeJobRepository();
+        var oldAppointment = DateTime.UtcNow.AddDays(1);
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = oldAppointment
+        });
+        var service = CreateService(jobs);
+        var newAppointment = DateTimeOffset.UtcNow.AddDays(5);
+
+        var result = await service.UpdateAppointmentAsync(TestJobId, new UpdateJobAppointmentRequest(newAppointment));
+
+        result.Success.Should().BeTrue();
+        result.Data!.AppointmentAt.Should().BeCloseTo(newAppointment.UtcDateTime, TimeSpan.FromSeconds(1));
+        jobs.Events.Should().ContainSingle(e =>
+            e.EventType == "job.appointment.changed" && e.PayloadJson != null && e.PayloadJson.Contains("from"));
+    }
+
+    [Fact]
+    public async Task UpdateAppointmentAsync_fails_for_a_job_that_already_reached_a_terminal_status()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 11,
+            JobNo = "JB1", Status = JobStatus.Completed, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdateAppointmentAsync(
+            TestJobId, new UpdateJobAppointmentRequest(DateTimeOffset.UtcNow.AddDays(2)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_APPOINTMENT_LOCKED");
+    }
+
+    [Fact]
+    public async Task UpdateAppointmentAsync_fails_for_a_job_of_another_branch()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 999, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdateAppointmentAsync(
+            TestJobId, new UpdateJobAppointmentRequest(DateTimeOffset.UtcNow.AddDays(2)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_changes_job_type_and_records_arrival_and_writes_event()
+    {
+        var jobs = new FakeJobRepository();
+        var appointment = DateTime.UtcNow.AddDays(-1); // นัดไว้เมื่อวาน แต่รถเพิ่งมาวันนี้ — แปลงได้ไม่ผูกกับวันนัด
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10, JobTypeName = "รถนัดหมาย",
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = appointment
+        });
+        var service = CreateService(jobs);
+        var arrival = DateTimeOffset.UtcNow;
+
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(arrival));
+
+        result.Success.Should().BeTrue();
+        result.Data!.JobTypeId.Should().Be(9);
+        result.Data!.JobTypeName.Should().Be("รถในอู่");
+        result.Data!.ActualArrivalAt.Should().BeCloseTo(arrival.UtcDateTime, TimeSpan.FromSeconds(1));
+        // AppointmentAt เดิมไม่ถูกล้าง — เก็บไว้เป็นประวัติว่าเดิมนัดวันไหน
+        result.Data!.AppointmentAt.Should().BeCloseTo(appointment, TimeSpan.FromSeconds(1));
+        jobs.Events.Should().ContainSingle(e => e.EventType == "job.converted_to_in_shop");
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_fails_when_job_is_not_an_appointment_type()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9,
+            JobNo = "JB1", Status = JobStatus.WaitInspect
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(DateTimeOffset.UtcNow));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_TYPE_CONVERSION_NOT_ALLOWED");
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_fails_when_actual_arrival_is_in_the_future()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.ConvertToInShopAsync(
+            TestJobId, new ConvertToInShopRequest(DateTimeOffset.UtcNow.AddHours(1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+        result.Error!.Field.Should().Be("actualArrivalAt");
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_fails_for_a_job_of_another_branch()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 999, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(DateTimeOffset.UtcNow));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task GetCalendarAsync_rejects_a_window_longer_than_the_allowed_range()
+    {
+        var service = CreateService(new FakeJobRepository());
+        var from = DateTimeOffset.UtcNow;
+
+        var result = await service.GetCalendarAsync(from, from.AddDays(200), null, null);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_CALENDAR_RANGE");
+    }
+
+    [Fact]
+    public async Task GetCalendarAsync_returns_only_jobs_with_an_appointment_in_range_sorted_ascending()
+    {
+        var jobs = new FakeJobRepository();
+        var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        jobs.Seed(new Job
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-LATE", Status = JobStatus.WaitInspect,
+            AppointmentAt = from.AddDays(20)
+        });
+        jobs.Seed(new Job
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-EARLY", Status = JobStatus.WaitInspect,
+            AppointmentAt = from.AddDays(5)
+        });
+        jobs.Seed(new Job // ไม่มีวันนัด — ต้องไม่ติดมาด้วย
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-NONE", Status = JobStatus.WaitInspect,
+            AppointmentAt = null
+        });
+        jobs.Seed(new Job // อยู่นอกช่วง — ต้องไม่ติดมาด้วย
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-OUTSIDE", Status = JobStatus.WaitInspect,
+            AppointmentAt = to.AddDays(5)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.GetCalendarAsync(from, to, null, null);
+
+        result.Success.Should().BeTrue();
+        result.Data!.Items.Select(i => i.JobNo).Should().Equal("JB-EARLY", "JB-LATE");
+        result.Data!.Truncated.Should().BeFalse();
+    }
+
+    [Fact]
     public async Task CountOpenAsync_counts_only_open_jobs_of_the_current_branch_and_type()
     {
         var jobs = new FakeJobRepository();
@@ -643,6 +910,22 @@ public sealed class JobServiceTests
         public Task<IReadOnlyList<Job>> SearchAsync(JobSearchQuery query, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Job>>(_jobs
                 .Where(j => j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId)
+                .ToList());
+
+        public Task<IReadOnlyList<Job>> GetAppointmentsAsync(
+            JobAppointmentQuery query, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Job>>(_jobs
+                .Where(j => j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId
+                    && j.AppointmentAt is not null
+                    && j.AppointmentAt >= query.FromUtc && j.AppointmentAt < query.ToUtc
+                    && (query.Status is null || j.Status == query.Status)
+                    && (string.IsNullOrWhiteSpace(query.Keyword)
+                        || j.JobNo.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)
+                        || j.VehicleRegistration.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)
+                        || j.CustomerName.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(j => j.AppointmentAt)
+                .ThenBy(j => j.Id)
+                .Take(query.Take)
                 .ToList());
 
         public Task<int> CountOpenAsync(

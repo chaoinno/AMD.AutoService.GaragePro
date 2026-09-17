@@ -62,7 +62,7 @@ type EditableLinePatch = Partial<
 >
 
 function toUpsertLine(line: QuotationLine): UpsertLine {
-  return {
+  const base: UpsertLine = {
     catalogCode: line.catalogCode,
     quantity: line.quantity,
     unitPrice: line.unitPrice,
@@ -72,6 +72,19 @@ function toUpsertLine(line: QuotationLine): UpsertLine {
     assignedTechnicianId: line.assignedTechnicianId ?? undefined,
     note: line.note || undefined,
   }
+  // [BIZ] รายการนอกแคตตาล็อกต้องแนบชื่อ/หน่วย/ต้นทุนไปทุกครั้งที่ PUT — ไม่งั้นแก้แค่ "จำนวน" ก็ลบชื่อทิ้ง
+  // เพราะ backend เก็บ Name/Unit/UnitCost ไว้ที่บรรทัดเอง (ไม่มีแคตตาล็อกให้ snapshot กลับมา) docs/07-quotation-adhoc-line.md
+  if (line.isAdHoc) {
+    return {
+      ...base,
+      name: line.name,
+      type: line.type,
+      unit: line.unit,
+      unitCost: line.unitCost ?? undefined,
+      standardHours: line.standardHours ?? undefined,
+    }
+  }
+  return base
 }
 
 function getCatalogCode(item: CatalogItem) {
@@ -202,6 +215,16 @@ export function QuotationEditorModal({
     onSuccess: (quotation) => {
       applyServerQuotation(quotation)
       toast.success('เพิ่มรายการในใบเสนอราคาแล้ว')
+    },
+    onError: setSaveError,
+  })
+
+  // [BIZ] รายการนอกแคตตาล็อก (catalogCode ว่าง) — docs/07-quotation-adhoc-line.md
+  const addAdHocMutation = useMutation({
+    mutationFn: (payload: UpsertLine) => addQuotationLine(id, payload),
+    onSuccess: (quotation) => {
+      applyServerQuotation(quotation)
+      toast.success('เพิ่มรายการนอกแคตตาล็อกแล้ว')
     },
     onError: setSaveError,
   })
@@ -412,11 +435,16 @@ export function QuotationEditorModal({
             readOnly={readOnly}
             adding={addMutation.isPending}
             onAdd={(item, source) => addMutation.mutate({ item, source })}
+            onAddAdHoc={(payload) => addAdHocMutation.mutate(payload)}
+            addingAdHoc={addAdHocMutation.isPending}
+            quotationId={id}
+            onApplied={applyServerQuotation}
           />
           <LineEditor
             lines={quotation.lines}
             technicians={techniciansQuery.data ?? []}
             readOnly={readOnly}
+            canSeeCost={Boolean(activeSession?.user.canSeeCost)}
             deletingLineId={deleteMutation.isPending ? lineToDelete?.id ?? null : null}
             onPatch={patchLine}
             onRequestDelete={setLineToDelete}

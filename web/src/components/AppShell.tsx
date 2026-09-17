@@ -21,6 +21,7 @@ import {
   ClipboardList,
   ShoppingCart,
   Boxes,
+  FileStack,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
@@ -73,6 +74,7 @@ const navGroups = [
       { to: '/suppliers', icon: Truck, label: 'ซัพพลายเออร์' },
       { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
       { to: '/catalog-categories', icon: FolderTree, label: 'หมวดหมู่สินค้า' },
+      { to: '/quotation-templates', icon: FileStack, label: 'เทมเพลตใบเสนอราคา' },
     ],
   },
 ]
