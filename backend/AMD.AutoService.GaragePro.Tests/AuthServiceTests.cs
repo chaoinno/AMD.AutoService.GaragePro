@@ -73,11 +73,47 @@ public sealed class AuthServiceTests
         result.Data.ShiftId.Should().BeNull();
     }
 
+    /// <summary>
+    /// docs/09 §6 — ปิดกะแล้วคาบที่ช่างลืมกดหยุดต้องถูกปิดตาม และต้องปิดของ "เจ้าของกะ" ไม่ใช่ของคนกด
+    /// เพราะ RoleMapper.CanCloseShift บล็อกช่างไม่ให้ปิดกะตัวเอง คนกดจึงเป็นคนละคนเสมอ
+    /// </summary>
+    [Fact]
+    public async Task CloseShiftAsync_closes_the_work_interval_of_the_session_owner_not_the_person_pressing()
+    {
+        var session = new ShiftSession
+        {
+            LegacyShardKey = "db2",
+            LegacyBranchId = 105,
+            LegacyUserId = 99,
+            LegacyStaffId = 4242,
+            ShiftName = "กะเช้า",
+            BranchName = "สาขาทดสอบ"
+        };
+        var workHook = new FakeWorkIntervalHook();
+        var service = CreateService(
+            new StubLegacyUserReader(null, []), new CapturingTokenIssuer(),
+            // ผู้จัดการเป็นคนกดปิดกะให้ช่าง — ช่างปิดกะตัวเองไม่ได้ (RoleMapper.CanCloseShift)
+            currentUser: new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager),
+            workHook: workHook, session: session);
+
+        var result = await service.CloseShiftAsync(session.Id);
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        var closed = workHook.ClosedTechnicians.Should().ContainSingle().Subject;
+        closed.StaffId.Should().Be(4242);
+        closed.BranchId.Should().Be(105);
+        closed.Reason.Should().Be(WorkEndReason.ShiftClosed);
+        closed.AutoCapped.Should().BeFalse();
+    }
+
     private static AuthService CreateService(
         ILegacyUserReader users,
         ITokenIssuer tokens,
-        ICurrentUser? currentUser = null) =>
-        new(users, new StubAuthRepository(), new StubQuotationRepository(), tokens,
+        ICurrentUser? currentUser = null,
+        FakeWorkIntervalHook? workHook = null,
+        ShiftSession? session = null) =>
+        new(users, new StubAuthRepository(session), new StubQuotationRepository(), tokens,
+            workHook ?? new FakeWorkIntervalHook(),
             currentUser ?? new StubCurrentUser(), TimeProvider.System);
 
     private static LegacyUserDto ActiveUser(int? branchId) => new(
@@ -127,11 +163,12 @@ public sealed class AuthServiceTests
             ("shift-token", DateTime.UtcNow.AddHours(12));
     }
 
-    private sealed class StubCurrentUser(long userId = 0, int branchId = 0) : ICurrentUser
+    private sealed class StubCurrentUser(
+        long userId = 0, int branchId = 0, UserRole role = UserRole.FrontDesk) : ICurrentUser
     {
         public long UserId => userId;
         public string UserName => "";
-        public UserRole Role => UserRole.FrontDesk;
+        public UserRole Role => role;
         public string ShardKey => "db2";
         public int BranchId => branchId;
         public EventSource Source => EventSource.Web;
@@ -139,13 +176,13 @@ public sealed class AuthServiceTests
         public Guid? SessionId => null;
     }
 
-    private sealed class StubAuthRepository : IAuthRepository
+    private sealed class StubAuthRepository(ShiftSession? session = null) : IAuthRepository
     {
         public Task<IReadOnlyList<Shift>> GetShiftsAsync(string shardKey, int branchId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Shift>>([]);
         public Task<Shift?> GetShiftAsync(Guid shiftId, CancellationToken ct = default) => Task.FromResult<Shift?>(null);
         public Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default) => Task.CompletedTask;
-        public Task<ShiftSession?> GetSessionAsync(Guid sessionId, CancellationToken ct = default) => Task.FromResult<ShiftSession?>(null);
+        public Task<ShiftSession?> GetSessionAsync(Guid sessionId, CancellationToken ct = default) => Task.FromResult(session);
         public Task AddSessionAsync(ShiftSession session, CancellationToken ct = default) => Task.CompletedTask;
         public Task CloseOpenSessionsAsync(string shardKey, long userId, DateTime closedAt, CancellationToken ct = default) => Task.CompletedTask;
         public Task<UserRoleOverride?> GetRoleOverrideAsync(string shardKey, long userId, CancellationToken ct = default) =>

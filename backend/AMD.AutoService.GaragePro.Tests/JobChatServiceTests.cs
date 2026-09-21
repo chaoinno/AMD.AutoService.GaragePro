@@ -167,7 +167,62 @@ public sealed class JobChatServiceTests
         message.IsDeleted.Should().BeTrue();
     }
 
+    /// <summary>
+    /// จุด "มีข้อความใหม่" บนการ์ดจ๊อบเทียบด้วย id ของข้อความล่าสุด — ถ้าไม่นับข้อความที่ถูกลบด้วย
+    /// จุดแดงจะค้างตลอดกาลเมื่อข้อความล่าสุดถูกลบ เพราะ id ที่ client เก็บไว้ (ตัวที่ถูกลบ) จะไม่มีวันตรง
+    /// กับตัวที่ server คืนมา · หน้าแชทเองก็ markSeen ด้วยข้อความล่าสุดรวมที่ถูกลบ
+    /// </summary>
+    [Fact]
+    public async Task GetLatestPerJobAsync_returns_the_newest_message_even_when_it_was_deleted()
+    {
+        var service = CreateService(out var chats, out _);
+        var older = NewMessage(TestJobId, new DateTime(2026, 9, 21, 10, 0, 0, DateTimeKind.Utc));
+        var newestDeleted = NewMessage(TestJobId, new DateTime(2026, 9, 21, 11, 0, 0, DateTimeKind.Utc));
+        newestDeleted.IsDeleted = true;
+        chats.Seed(older);
+        chats.Seed(newestDeleted);
+
+        var result = await service.GetLatestPerJobAsync([TestJobId]);
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        result.Data.Should().ContainSingle().Which.MessageId.Should().Be(newestDeleted.Id);
+    }
+
+    [Fact]
+    public async Task GetLatestPerJobAsync_skips_jobs_without_any_message()
+    {
+        var service = CreateService(out _, out _);
+
+        var result = await service.GetLatestPerJobAsync([TestJobId, Guid.NewGuid()]);
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        result.Data.Should().BeEmpty();
+    }
+
+    /// เพดานกันคนยิงขอทีเดียวเป็นพันจ๊อบ — endpoint นี้มีไว้แทน N คิวรี ไม่ใช่ดัมป์ทั้งสาขา
+    [Fact]
+    public async Task GetLatestPerJobAsync_refuses_an_oversized_batch()
+    {
+        var service = CreateService(out _, out _);
+
+        var result = await service.GetLatestPerJobAsync(
+            Enumerable.Range(0, 101).Select(_ => Guid.NewGuid()).ToList());
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("CHAT_VALIDATION");
+    }
+
     // ---------- helpers ----------
+
+    private static JobChatMessage NewMessage(Guid jobId, DateTime createdAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        JobId = jobId,
+        Body = "ข้อความทดสอบ",
+        CreatedAt = createdAt,
+        CreatedByUserId = 7,
+        CreatedByUserName = "ธุรการ ทดสอบ",
+    };
 
     private static JobChatService CreateService(
         out FakeJobChatRepository chats, out FakeAttachmentRepository attachments,
@@ -282,6 +337,15 @@ public sealed class JobChatServiceTests
             return Task.FromResult<IReadOnlyList<JobChatMessage>>(
                 q.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).Take(take).ToList());
         }
+
+        public Task<IReadOnlyList<JobChatLatest>> GetLatestPerJobAsync(
+            string shardKey, int branchId, IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<JobChatLatest>>(_items
+                .Where(m => jobIds.Contains(m.JobId))
+                .GroupBy(m => m.JobId)
+                .Select(g => g.OrderByDescending(m => m.CreatedAt).ThenByDescending(m => m.Id).First())
+                .Select(m => new JobChatLatest(m.JobId, m.Id, m.CreatedAt))
+                .ToList());
 
         public Task<JobChatMessage?> GetByIdAsync(Guid messageId, CancellationToken ct = default) =>
             Task.FromResult(_items.SingleOrDefault(m => m.Id == messageId));

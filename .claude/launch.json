@@ -2,6 +2,17 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "api",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": [
+        "run",
+        "--project",
+        "backend/AMD.AutoService.GaragePro.API"
+      ],
+      "port": 5080,
+      "url": "http://localhost:5080"
+    },
+    {
       "name": "web",
       "runtimeExecutable": "node",
       "runtimeArgs": [

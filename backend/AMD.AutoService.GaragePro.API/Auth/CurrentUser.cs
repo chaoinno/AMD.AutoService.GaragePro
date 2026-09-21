@@ -42,6 +42,10 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
     public Guid? SessionId =>
         Guid.TryParse(Principal?.FindFirstValue(GarageClaims.SessionId), out var v) ? v : null;
 
+    /// <summary>[BIZ] Staff.Id ไม่ใช่ User.Id — null ได้เมื่อ token ถูกออกก่อนมี claim นี้ (≤12 ชม.)</summary>
+    public long? StaffId =>
+        long.TryParse(Principal?.FindFirstValue(GarageClaims.StaffId), out var v) ? v : null;
+
     public bool IsAdministrator =>
         bool.TryParse(Principal?.FindFirstValue(GarageClaims.IsAdministrator), out var value) && value;
 

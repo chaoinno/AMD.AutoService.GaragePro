@@ -731,6 +731,67 @@ public sealed class JobServiceTests
         jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
     }
 
+    /// <summary>
+    /// [BIZ] 2026-09-17 — คนที่เพิ่งให้ลูกค้าเซ็นรับรถตรงหน้ารถคือคนที่ควรกดปิดงานต่อได้เลย
+    /// ไม่ใช่ต้องเดินกลับไปให้แคชเชียร์กดแทน · เงินถูกตรวจครบแล้วผ่าน guard ก่อนถึงบรรทัดนี้
+    /// </summary>
+    [Theory]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.Lead)]
+    [InlineData(UserRole.FrontDesk)]
+    public async Task TransitionAsync_lets_whoever_handed_the_car_back_close_the_job(UserRole role)
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 1000, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 1070m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0003", TotalAmount = 1070m };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(handover),
+            role: role, source: EventSource.Mobile);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Completed);
+    }
+
+    /// <summary>บทบาทใหม่ที่เพิ่งเปิดสิทธิ์ยังข้าม guard ไม่ได้ — ยังไม่เซ็นรับรถก็ปิดงานไม่ได้เหมือนเดิม</summary>
+    [Fact]
+    public async Task TransitionAsync_still_rejects_a_technician_closing_before_the_car_is_handed_over()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+
+        var quotation = new Quotation { JobId = TestJobId, Code = "QT-7042-01" };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 1000, ApprovalStatus = LineApprovalStatus.Approved
+        });
+
+        var payments = new List<Payment> { new() { JobId = TestJobId, Amount = 1070m } };
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0004", TotalAmount = 1070m };
+
+        var service = CreateService(jobs, quotations: new FakeQuotationRepository(quotation),
+            posRepo: new FakePosRepository(payments, receipt), handoverRepo: new FakeHandoverRepository(null),
+            role: UserRole.Technician, source: EventSource.Mobile);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("completed", "ลูกค้ารีบ"));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
     [Fact]
     public async Task TransitionAsync_still_rejects_closing_from_mobile_when_the_car_has_not_been_handed_over()
     {
@@ -757,6 +818,70 @@ public sealed class JobServiceTests
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
         jobs.Saved.Single().Status.Should().Be(JobStatus.Ready);
+    }
+
+    /// <summary>
+    /// docs/09 §6 — จ๊อบเปลี่ยนสถานะแล้วคาบเวลาที่ช่างเปิดค้างต้องปิดตาม ในคำขอเดียวกัน
+    /// Qc→Ready อยู่ในรายการด้วยแม้เอกสารไม่ได้ระบุ ไม่งั้นคาบที่เปิดตอนกลับมาแก้งานจะค้างตลอดไป
+    /// </summary>
+    [Theory]
+    [InlineData(JobStatus.InProgress, "waitparts", WorkEndReason.WaitParts)]
+    [InlineData(JobStatus.InProgress, "qc", WorkEndReason.SentToQc)]
+    public async Task TransitionAsync_closes_open_work_intervals_of_the_job(
+        JobStatus from, string toStatus, WorkEndReason expected)
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(from));
+        var workHook = new FakeWorkIntervalHook();
+        var service = CreateService(jobs, role: UserRole.Technician, source: EventSource.Mobile, workHook: workHook);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest(toStatus, "สรุปงานที่ทำเสร็จแล้ว"));
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        workHook.ClosedJobs.Should().ContainSingle().Which.Should().Be((TestJobId, expected));
+    }
+
+    /// <summary>
+    /// Qc→Ready แยกออกมาเพราะ guard QcPassed คำนวณได้จริง จึงต้องมีเช็คลิสต์ที่ผ่านครบ ส่ง reason แทนไม่ได้
+    /// เส้นทางนี้ไม่อยู่ในตาราง §6 ของเอกสาร แต่ต้องปิดคาบ ไม่งั้นคาบที่เปิดตอนกลับมาแก้งานค้างตลอดไป
+    /// </summary>
+    [Fact]
+    public async Task TransitionAsync_closes_work_intervals_when_qc_finally_passes()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Qc));
+
+        var checklist = new QcChecklist
+        {
+            JobId = TestJobId, TestDriveKm = 5, TestDriveNote = "ขับปกติดี", TestDriveRecordedAt = DateTime.UtcNow
+        };
+        checklist.Items.Add(new QcChecklistItem
+        {
+            QcChecklistId = checklist.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า", Result = QcItemResult.Pass
+        });
+
+        var workHook = new FakeWorkIntervalHook();
+        var service = CreateService(jobs, qcChecklists: new FakeQcChecklistRepository(checklist),
+            role: UserRole.Office, source: EventSource.Web, workHook: workHook);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("ready", null));
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        workHook.ClosedJobs.Should().ContainSingle().Which.Should().Be((TestJobId, WorkEndReason.SentToQc));
+    }
+
+    [Fact]
+    public async Task TransitionAsync_leaves_work_intervals_open_when_the_job_is_still_being_repaired()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.WaitParts));
+        var workHook = new FakeWorkIntervalHook();
+        var service = CreateService(jobs, role: UserRole.Office, source: EventSource.Web, workHook: workHook);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("inprogress", "อะไหล่มาแล้ว"));
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        workHook.ClosedJobs.Should().BeEmpty();
     }
 
     [Fact]
@@ -872,11 +997,13 @@ public sealed class JobServiceTests
         CustomerDetailDto? customer = null,
         VehicleDetailDto? vehicle = null,
         UserRole role = UserRole.Manager,
-        EventSource source = EventSource.Web) =>
+        EventSource source = EventSource.Web,
+        FakeWorkIntervalHook? workHook = null) =>
         new(jobs, quotations ?? new FakeQuotationRepository(null), qcChecklists ?? new FakeQcChecklistRepository(null),
             posRepo ?? new FakePosRepository(), handoverRepo ?? new FakeHandoverRepository(null),
             new FakeJobNumberGenerator(), new FakeCustomerVehicleService(customer, vehicle),
-            new FakeLegacyReader(), new StubCurrentUser(role, source), TimeProvider.System);
+            new FakeLegacyReader(), workHook ?? new FakeWorkIntervalHook(),
+            new StubCurrentUser(role, source), TimeProvider.System);
 
     private sealed class StubCurrentUser(UserRole role, EventSource source) : ICurrentUser
     {

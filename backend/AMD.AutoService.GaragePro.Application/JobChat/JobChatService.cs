@@ -26,6 +26,9 @@ public sealed record JobChatMessageDto(
 
 public sealed record JobChatPageDto(IReadOnlyList<JobChatMessageDto> Messages, bool HasMore);
 
+/// <summary>ข้อความล่าสุดของจ๊อบหนึ่ง — client เทียบ MessageId กับ id ที่อ่านถึงแล้วในเครื่องเอง</summary>
+public sealed record JobChatLatestDto(Guid JobId, Guid MessageId, DateTime CreatedAt);
+
 /// <summary>ระบุได้แค่ทิศทางเดียวต่อคำขอ — ไม่ส่งเลยคือหน้าล่าสุด</summary>
 public sealed record JobChatPageQuery(
     DateTime? BeforeAt = null, Guid? BeforeId = null,
@@ -48,6 +51,10 @@ public interface IJobChatService
 
     Task<Result<JobChatMessageDto>> DeleteAsync(
         Guid jobId, Guid messageId, CancellationToken ct = default);
+
+    /// <summary>ข้อความล่าสุดของหลายจ๊อบในคำขอเดียว — ใช้แสดงจุด "มีข้อความใหม่" บนการ์ดในคิวงาน</summary>
+    Task<Result<IReadOnlyList<JobChatLatestDto>>> GetLatestPerJobAsync(
+        IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -64,6 +71,9 @@ public sealed class JobChatService(
     TimeProvider clock) : IJobChatService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    /// เพดานจำนวนจ๊อบต่อคำขอ — คิวงานโหลดทีละ 25 การ์ด เผื่อไว้พอสำหรับเลื่อนสะสมหลายหน้า
+    private const int MaxLatestJobIds = 100;
 
     public async Task<Result<JobChatPageDto>> GetPageAsync(
         Guid jobId, JobChatPageQuery query, CancellationToken ct = default)
@@ -194,6 +204,25 @@ public sealed class JobChatService(
         await chats.SaveChangesAsync(ct);
 
         return Result<JobChatMessageDto>.Ok(ToDto(message, new Dictionary<Guid, List<JobChatAttachmentDto>>()));
+    }
+
+    /// <summary>
+    /// [BIZ] ไม่ตรวจสิทธิ์ทีละจ๊อบเหมือน endpoint อื่นของแชท เพราะจะกลายเป็น N คิวรีซึ่งเป็นสิ่งที่
+    /// endpoint นี้ตั้งใจกำจัด — สโคป shard/สาขาถูกบังคับในคิวรีแทน จ๊อบนอกสาขาจึงหายไปเงียบๆ
+    /// (ไม่ใช่ 403) ซึ่งปลอดภัยกว่าเพราะไม่บอกใบ้ว่าจ๊อบนั้นมีอยู่จริงหรือไม่
+    /// </summary>
+    public async Task<Result<IReadOnlyList<JobChatLatestDto>>> GetLatestPerJobAsync(
+        IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default)
+    {
+        if (jobIds.Count > MaxLatestJobIds)
+            return Result<IReadOnlyList<JobChatLatestDto>>.Fail(
+                "CHAT_VALIDATION",
+                $"ขอข้อความล่าสุดได้ครั้งละไม่เกิน {MaxLatestJobIds} งาน", nameof(jobIds));
+
+        var latest = await chats.GetLatestPerJobAsync(user.ShardKey, user.BranchId, jobIds, ct);
+
+        return Result<IReadOnlyList<JobChatLatestDto>>.Ok(
+            latest.Select(x => new JobChatLatestDto(x.JobId, x.MessageId, x.CreatedAt)).ToList());
     }
 
     private async Task<Result<bool>> ValidateJobScopeAsync(Guid jobId, CancellationToken ct)

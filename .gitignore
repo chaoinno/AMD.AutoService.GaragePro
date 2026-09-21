@@ -26,3 +26,6 @@ appsettings.*.local.json
 # ผลพลอยได้จากเครื่องมือ dev — ไม่เข้า repo
 /.playwright-mcp/
 /artifacts/
+
+# macOS
+.DS_Store

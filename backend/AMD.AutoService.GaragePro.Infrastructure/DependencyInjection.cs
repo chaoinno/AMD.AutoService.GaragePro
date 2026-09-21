@@ -69,6 +69,13 @@ public static class DependencyInjection
         services.AddScoped<IIntakeChecklistService, IntakeChecklistService>();
         services.AddScoped<IQcChecklistRepository, QcChecklistRepository>();
         services.AddScoped<IQcChecklistService, QcChecklistService>();
+        services.AddScoped<IWorkIntervalRepository, WorkIntervalRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Work.IWorkIntervalHook,
+            AMD.AutoService.GaragePro.Application.Work.WorkIntervalHook>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Work.IWorkTimeService,
+            AMD.AutoService.GaragePro.Application.Work.WorkTimeService>();
+        services.AddSingleton(configuration.GetSection("Work").Get<AMD.AutoService.GaragePro.Application.Work.WorkTimeOptions>()
+            ?? new AMD.AutoService.GaragePro.Application.Work.WorkTimeOptions());
         services.AddScoped<IPosRepository, PosRepository>();
         services.AddScoped<IReceiptNumberGenerator, ReceiptNumberGenerator>();
         services.AddScoped<IPosService, PosService>();

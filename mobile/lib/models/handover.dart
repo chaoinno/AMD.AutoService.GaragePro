@@ -42,6 +42,8 @@ class Handover {
     this.signatureImagePath,
     this.submittedAt,
     this.submittedByUserName,
+    required this.receiptIssued,
+    this.receiptDocumentNo,
     required this.items,
   });
 
@@ -51,6 +53,12 @@ class Handover {
   final String? signatureImagePath;
   final DateTime? submittedAt;
   final String? submittedByUserName;
+
+  /// [BIZ] ต้องออกใบเสร็จก่อนถึงจะให้ลูกค้าเซ็นรับรถได้ (`HANDOVER_RECEIPT_REQUIRED`)
+  /// server ส่งมาที่นี่เพราะ /payments เปิดเฉพาะ Cashier/Office/Manager — ช่างเรียกเองจะโดน 403
+  final bool receiptIssued;
+  final String? receiptDocumentNo;
+
   final List<HandoverChecklistItem> items;
 
   int get pendingCount => items.where((i) => i.isPending).length;
@@ -65,6 +73,8 @@ class Handover {
             ? null
             : DateTime.tryParse(j['submittedAt'] as String)?.toLocal(),
         submittedByUserName: j['submittedByUserName'] as String?,
+        receiptIssued: j['receiptIssued'] as bool? ?? false,
+        receiptDocumentNo: j['receiptDocumentNo'] as String?,
         items: ((j['items'] as List<dynamic>?) ?? const [])
             .map((e) => HandoverChecklistItem.fromJson(e as Map<String, dynamic>))
             .toList(),

@@ -31,6 +31,7 @@ import {
 } from '../../api/quotations'
 import type { JobStatusToken, Job, QuotationSummary, UpsertLineSource } from '../../api/types'
 import { ConfirmModal } from '../../components/ConfirmModal'
+import { advanceJobToWaitApprove } from './advanceJobStatus'
 import { JobStatusChip } from '../../components/JobStatusChip'
 import { Money } from '../../components/Money'
 import { StateBlock } from '../../components/StateBlock'
@@ -524,37 +525,38 @@ function QuoteStage({ job, checklistDone }: { job: Job; checklistDone: boolean }
   // (mirror ของ JobStateMachine.WaitApprove→Approved [ASSUME] ที่เปิด Office/Manager/Web ชั่วคราวเช่นกัน)
   const CUSTOMER_APPROVAL_REASON =
     'ยืนยันแทนลูกค้าจากเว็บ — หน้าอนุมัติของลูกค้าบนมือถือยังไม่พร้อมใช้งาน (อยู่ระหว่างพัฒนา)'
-  // [ASSUME] เช่นเดียวกับด้านบน — ตรวจเช็ค 31 รายการของช่างบนมือถือยังไม่มี ใช้ checklist 20 รายการบนเว็บที่
-  // ส่งไปแล้ว (checklistDone) แทนหลักฐานผ่านตรวจ ต้องมี reason เสมอเพราะ guard นี้เป็น manual override ล้วน
-  const INSPECTION_BYPASS_REASON =
-    'ยืนยันแทนขั้นตรวจสอบจากเว็บ — ใช้ checklist สภาพรถ 20 รายการที่ส่งแล้วแทนตรวจเช็ค 31 รายการของช่างบนมือถือ (อยู่ระหว่างพัฒนา)'
   const role = session?.user.role.toLowerCase() ?? ''
   const canConfirmCustomerApproval = ['office', 'manager'].includes(role)
-  const pendingQuotation = query.data?.find((q) => q.status === 'sent' || q.status === 'partial')
+  // [BIZ] รวมใบที่ "อนุมัติครบ" ด้วย — ถ้าลูกค้าเซ็นจากมือถือแล้วแต่จ๊อบขยับตามไม่ได้ (เจอจริง
+  // 2026-09-21: จ๊อบค้างที่ waitquote ทั้งที่ใบเสนอราคา approved+เซ็นแล้ว) ใบจะไม่ใช่ sent/partial
+  // อีกต่อไป ปุ่มกู้สถานการณ์จึงหายไปพร้อมกัน และจ๊อบค้างถาวรจนกว่าจะมีคนยิง API เอง
+  const pendingQuotation = query.data?.find(
+    (q) => q.status === 'sent' || q.status === 'partial' || q.status === 'approved',
+  )
   const canBypassInspection = job.status !== 'waitinspect' || checklistDone
 
   const confirmCustomerApprovalMutation = useMutation({
     mutationFn: async (summary: QuotationSummary) => {
       // job อาจยังค้างที่ waitinspect/waitquote ได้ (ยังไม่เคยผ่าน transition จริงจากช่าง/ตอนส่งใบเสนอราคา
       // ก่อนแก้จุดนี้) — เผื่อไว้เพื่อให้จ๊อบเก่าที่ค้างอยู่กดยืนยันต่อได้โดยไม่ต้องออกใบใหม่หรือย้อนไปแก้ที่ต้นทาง
-      if (job.status === 'waitinspect') {
-        await transitionJob(job.jobId, { toStatus: 'waitquote', reason: INSPECTION_BYPASS_REASON })
-      }
-      if (job.status === 'waitinspect' || job.status === 'waitquote') {
-        await transitionJob(job.jobId, { toStatus: 'waitapprove' })
-      }
+      await advanceJobToWaitApprove(job.jobId, job.status)
+
       const full = await getQuotation(summary.id)
       const pendingLines = full.lines.filter((l) => l.approvalStatus === 'pending')
       for (const line of pendingLines) {
         await decideQuotationLine(full.id, line.id, { decision: 'Approved', rejectReason: null })
       }
-      await signQuotation(full.id, {
-        signatureImagePath: 'web-manual-confirmation',
-        consentText: 'ยืนยันแทนลูกค้าโดยพนักงานหน้าเว็บ (ชั่วคราว — รอหน้าอนุมัติของลูกค้าบนมือถือ)',
-        deviceInfo: `เว็บ · ${session?.user.displayName ?? 'ไม่ระบุผู้ใช้'}`,
-        witnessEmployeeId: session?.user.staffId ?? session?.user.userId ?? 0,
-        witnessEmployeeName: session?.user.displayName ?? 'ไม่ระบุชื่อ',
-      })
+
+      // ลูกค้าอาจเซ็นจากมือถือไปแล้วและติดแค่สถานะจ๊อบ — เซ็นซ้ำจะถูกปฏิเสธและทำให้กู้จ๊อบไม่ได้เลย
+      if (full.approval === null) {
+        await signQuotation(full.id, {
+          signatureImagePath: 'web-manual-confirmation',
+          consentText: 'ยืนยันแทนลูกค้าโดยพนักงานหน้าเว็บ (ชั่วคราว — รอหน้าอนุมัติของลูกค้าบนมือถือ)',
+          deviceInfo: `เว็บ · ${session?.user.displayName ?? 'ไม่ระบุผู้ใช้'}`,
+          witnessEmployeeId: session?.user.staffId ?? session?.user.userId ?? 0,
+          witnessEmployeeName: session?.user.displayName ?? 'ไม่ระบุชื่อ',
+        })
+      }
       await transitionJob(job.jobId, { toStatus: 'approved', reason: CUSTOMER_APPROVAL_REASON })
     },
     onSuccess: () => {
@@ -1244,6 +1246,16 @@ function PaymentStage({ job }: { job: Job }) {
 
   const allItemsDecided = Boolean(handover?.items.length) && handover!.items.every((i) => i.updatedAt)
 
+  // [BIZ] จ่ายเงิน → ออกใบเสร็จ → ค่อยเซ็นรับรถ (HandoverService.SubmitAsync) — มิเรอร์ลำดับเดียวกับ server
+  // ใบเสร็จมาก่อนเพราะเป็นเงื่อนไขที่ต้องรอฝั่งเก็บเงิน ต่างจากอีกสองข้อที่แก้ได้เองตรงหน้าจอนี้
+  const handoverBlockedReason = !handover?.receiptIssued
+    ? 'ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อนจึงจะยืนยันส่งมอบรถได้'
+    : !allItemsDecided
+      ? 'ตรวจของในรถให้ครบทุกรายการก่อน'
+      : !hasSignature
+        ? 'กรุณาเซ็นยืนยันการส่งมอบก่อน'
+        : null
+
   // ---- ปิดงาน ----
   // [BIZ] Ready→Completed คำนวณ guard จริงจาก PosService/HandoverService (JobService.ComputeGuardAsync) —
   // ไม่ต้องส่ง reason อีกต่อไป (เหมือน Qc→Ready) มิเรอร์เงื่อนไข 3 ข้อฝั่ง client เพื่ออธิบายเหตุผลปุ่ม disabled เท่านั้น
@@ -1511,6 +1523,10 @@ function PaymentStage({ job }: { job: Job }) {
 
                 {!handover.isLocked ? (
                   <>
+                    {/* [UI] ปุ่มที่ปิดใช้งานต้องบอกเหตุผลเสมอ — ไม่พึ่ง title ที่ต้องเอาเมาส์ไปชี้ก่อน */}
+                    {handoverBlockedReason ? (
+                      <p className="section-help">{handoverBlockedReason}</p>
+                    ) : null}
                     <Field label="ลายเซ็นยืนยันส่งมอบ" wide>
                       <SignaturePad handleRef={(h) => { signatureHandleRef.current = h }} onChange={setHasSignature} />
                     </Field>
@@ -1524,8 +1540,8 @@ function PaymentStage({ job }: { job: Job }) {
                       </Button>
                       <Button
                         onClick={() => submitHandoverMutation.mutate()}
-                        disabled={!allItemsDecided || !hasSignature || submitHandoverMutation.isPending}
-                        title={!allItemsDecided ? 'ตรวจของในรถให้ครบทุกรายการก่อน' : !hasSignature ? 'กรุณาเซ็นยืนยันการส่งมอบก่อน' : undefined}
+                        disabled={!!handoverBlockedReason || submitHandoverMutation.isPending}
+                        title={handoverBlockedReason ?? undefined}
                       >
                         {submitHandoverMutation.isPending ? 'กำลังยืนยัน…' : 'ยืนยันส่งมอบรถ'}
                       </Button>

@@ -92,3 +92,19 @@ export function getPendingAge(summary: {
   const days = Math.max(0, Math.floor((Date.now() - created) / 86_400_000))
   return days === 0 ? 'วันนี้' : `${days} วัน`
 }
+
+/**
+ * ระยะเวลาทำงานแบบอ่านง่าย — `2 ชม. 30 นาที` · null (คาบที่ยังไม่ปิด) → `กำลังจับเวลา`
+ *
+ * ต้องให้ผลสอดคล้องกับ `stopwatchHms`/`hoursLabel` ของแอป Flutter
+ * (`mobile/lib/core/format.dart`) — ที่นั่นเป็นนาฬิกาเดินจึงใช้ HH:MM:SS ส่วนที่นี่เป็นสรุปย้อนหลัง
+ */
+export function formatWorkDuration(seconds: number | null | undefined): string {
+  if (seconds == null) return 'กำลังจับเวลา'
+  if (seconds < 60) return 'ไม่ถึง 1 นาที'
+
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours === 0) return `${minutes} นาที`
+  return minutes === 0 ? `${hours} ชม.` : `${hours} ชม. ${minutes} นาที`
+}

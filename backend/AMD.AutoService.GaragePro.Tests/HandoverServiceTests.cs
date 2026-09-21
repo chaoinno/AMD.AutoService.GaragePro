@@ -105,6 +105,36 @@ public sealed class HandoverServiceTests
         return record;
     }
 
+    /// <summary>
+    /// [BIZ] กฎจริงของร้าน: ลูกค้าจ่ายเงิน → ออกใบเสร็จ → ค่อยส่งมอบรถ
+    /// เดิมสามเงื่อนไขนี้ถูกตรวจพร้อมกัน "ตอนปิดงาน" เท่านั้น จึงเซ็นรับรถก่อนจ่ายเงินได้จริง
+    /// </summary>
+    [Fact]
+    public async Task SubmitAsync_refuses_to_hand_the_car_over_before_the_receipt_is_issued()
+    {
+        var repo = new FakeHandoverRepository();
+        DecideEveryItem(SeedRecord(repo));
+        var service = CreateService(repo, receiptIssued: false);
+
+        var result = await service.SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("HANDOVER_RECEIPT_REQUIRED");
+    }
+
+    [Fact]
+    public async Task GetOrCreateAsync_reports_whether_the_receipt_is_issued_so_the_app_can_explain_the_disabled_button()
+    {
+        var withoutReceipt = await CreateService(new FakeHandoverRepository(), receiptIssued: false)
+            .GetOrCreateAsync(TestJobId);
+        withoutReceipt.Data!.ReceiptIssued.Should().BeFalse();
+        withoutReceipt.Data.ReceiptDocumentNo.Should().BeNull();
+
+        var withReceipt = await CreateService(new FakeHandoverRepository()).GetOrCreateAsync(TestJobId);
+        withReceipt.Data!.ReceiptIssued.Should().BeTrue();
+        withReceipt.Data.ReceiptDocumentNo.Should().Be("RC-26-0001");
+    }
+
     [Fact]
     public async Task GetOrCreateAsync_is_open_to_front_desk_because_handing_the_car_back_is_their_job()
     {
@@ -114,20 +144,68 @@ public sealed class HandoverServiceTests
         result.Success.Should().BeTrue();
     }
 
+    /// <summary>
+    /// ช่าง/หัวหน้าช่างคือคนที่เข็นรถออกมายืนอยู่กับลูกค้าตอนเซ็นรับ — เปิดสิทธิ์ให้แล้ว (2026-09-17)
+    /// สิ่งที่กันการส่งมอบก่อนเวลาคือใบเสร็จ ไม่ใช่รายชื่อ role (ดูเทสต์ใบเสร็จด้านบน)
+    /// </summary>
     [Theory]
     [InlineData(UserRole.Technician)]
     [InlineData(UserRole.Lead)]
-    public async Task GetOrCreateAsync_still_rejects_roles_that_never_hand_the_car_back(UserRole role)
+    public async Task Workshop_roles_may_hand_the_car_back_once_the_receipt_exists(UserRole role)
     {
-        var result = await CreateService(new FakeHandoverRepository(), role).GetOrCreateAsync(TestJobId);
+        var repo = new FakeHandoverRepository();
+        DecideEveryItem(SeedRecord(repo));
+        var service = CreateService(repo, role);
 
-        result.Success.Should().BeFalse();
-        result.Error!.Code.Should().Be("HANDOVER_FORBIDDEN");
+        (await service.GetOrCreateAsync(TestJobId)).Success.Should().BeTrue();
+
+        var submitted = await service.SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+        submitted.Success.Should().BeTrue();
+        submitted.Data!.IsLocked.Should().BeTrue();
     }
 
+    private static void DecideEveryItem(HandoverRecord record)
+    {
+        foreach (var item in record.Items)
+        {
+            item.IsReturned = true;
+            item.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    private static readonly Receipt IssuedReceipt = new()
+    {
+        JobId = TestJobId, DocumentNo = "RC-26-0001", TotalAmount = 1_000m, IssuedByName = "แคชเชียร์ทดสอบ"
+    };
+
     private static HandoverService CreateService(
-        FakeHandoverRepository repo, UserRole role = UserRole.Cashier) =>
-        new(repo, new FakeJobRepository(), new StubCurrentUser(role), TimeProvider.System);
+        FakeHandoverRepository repo,
+        UserRole role = UserRole.Cashier,
+        bool receiptIssued = true) =>
+        new(repo, new FakeJobRepository(), new FakePosRepository(receiptIssued ? IssuedReceipt : null),
+            new StubCurrentUser(role), TimeProvider.System);
+
+    /// <summary>ออกใบเสร็จแล้วหรือยัง — เป็นเงื่อนไขเดียวที่ HandoverService อ่านจากฝั่ง POS</summary>
+    private sealed class FakePosRepository(Receipt? receipt) : IPosRepository
+    {
+        public Task<Receipt?> GetReceiptByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(receipt);
+
+        public Task<IReadOnlyList<Payment>> GetPaymentsByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Payment?> GetPaymentByRequestIdAsync(Guid requestId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task<Payment?> GetPaymentAsync(Guid jobId, Guid paymentId, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task AddPaymentAsync(Payment payment, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task RemovePaymentAsync(Payment payment, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task AddReceiptAsync(Receipt r, CancellationToken ct = default) =>
+            throw new NotImplementedException();
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+    }
 
     private sealed class StubCurrentUser(UserRole role = UserRole.Cashier) : ICurrentUser
     {

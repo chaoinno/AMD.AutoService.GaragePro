@@ -2066,6 +2066,106 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_Warehouse", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.WorkInterval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ClosedPreviousIntervalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("CreatedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("EditReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("EditedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("EditedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("EndReason")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("EndedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsAutoCapped")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRework")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid?>("RepairTaskId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ShiftSessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TechnicianName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("TechnicianStaffId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("VoidedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("VoidedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("JobId", "StartedAt");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "TechnicianStaffId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_WorkInterval_OneOpenPerTech")
+                        .HasFilter("[EndedAt] IS NULL");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "TechnicianStaffId", "StartedAt");
+
+                    b.ToTable("svc_WorkInterval", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkInterval_Range", "[EndedAt] IS NULL OR [EndedAt] >= [StartedAt]");
+                        });
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.ActivityEvent", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Job", "Job")
@@ -2366,6 +2466,15 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", null)
                         .WithMany()
                         .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.WorkInterval", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

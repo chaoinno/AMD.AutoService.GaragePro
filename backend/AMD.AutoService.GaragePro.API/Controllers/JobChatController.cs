@@ -18,6 +18,15 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 public sealed class JobChatController(IJobChatService service) : ControllerBase
 {
     /// <summary>
+    /// ข้อความล่าสุดของหลายจ๊อบในคำขอเดียว — ใช้แสดงจุด "มีข้อความใหม่" บนการ์ดจ๊อบในคิวงาน
+    /// โดยไม่ต้องยิงทีละคัน · เส้นทางเต็มเพราะ controller นี้ผูกกับ {jobId} อยู่
+    /// จ๊อบที่ยังไม่มีข้อความหรืออยู่นอกสาขาจะไม่อยู่ในผลลัพธ์
+    /// </summary>
+    [HttpGet("/api/v1/jobs/chat/latest")]
+    public async Task<IActionResult> GetLatestPerJob([FromQuery] Guid[] jobIds, CancellationToken ct) =>
+        Render(await service.GetLatestPerJobAsync(jobIds ?? [], ct));
+
+    /// <summary>
     /// ไม่ส่ง cursor เลย = หน้าล่าสุด · beforeAt/beforeId = โหลดข้อความเก่ากว่า (เลื่อนขึ้น)
     /// afterAt/afterId = ข้อความใหม่กว่า (poll ต่อ) — ส่งได้แค่ทิศทางเดียวต่อครั้ง
     /// </summary>

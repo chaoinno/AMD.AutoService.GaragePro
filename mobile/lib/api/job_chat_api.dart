@@ -25,6 +25,19 @@ class JobChatApi {
     return JobChatPage.fromJson(data);
   }
 
+  /// ข้อความล่าสุดของหลายจ๊อบในคำขอเดียว — ใช้แสดงจุด "มีข้อความใหม่" บนการ์ดในคิวงาน
+  /// โดยไม่ต้องยิงทีละคัน · จ๊อบที่ยังไม่มีข้อความจะไม่อยู่ในผลลัพธ์
+  /// คืนเป็น map jobId → id ของข้อความล่าสุด ให้ผู้เรียกเทียบกับ ChatSeenStore เอง
+  Future<Map<String, String>> latestPerJob(List<String> jobIds) async {
+    if (jobIds.isEmpty) return const {};
+
+    final data = await _c.get<List<dynamic>>('/jobs/chat/latest', query: {'jobIds': jobIds});
+    return {
+      for (final e in data.cast<Map<String, dynamic>>())
+        e['jobId'] as String: e['messageId'] as String,
+    };
+  }
+
   /// รูปต้องอัปโหลดผ่าน /attachments (kind=chat) ให้เสร็จก่อน แล้วส่ง id เข้ามาที่นี่
   Future<JobChatMessage> send(
     String jobId, {

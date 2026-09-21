@@ -44,6 +44,28 @@ public sealed class JobChatRepository(ServiceDbContext db) : IJobChatRepository
             .ToListAsync(ct);
     }
 
+    /// <summary>
+    /// "ข้อความที่ไม่มีข้อความอื่นของจ๊อบเดียวกันใหม่กว่า" = ข้อความล่าสุด — เขียนแบบนี้เพื่อให้ได้
+    /// ทั้ง Id และเวลาในคิวรีเดียว (GroupBy + First แบบมี OrderBy แปลเป็น SQL ไม่ได้ทุกกรณี)
+    /// tie-break ด้วย Id ชุดเดียวกับ GetPageAsync เพื่อให้ "ล่าสุด" หมายถึงตัวเดียวกันเสมอ
+    /// </summary>
+    public async Task<IReadOnlyList<JobChatLatest>> GetLatestPerJobAsync(
+        string shardKey, int branchId, IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default)
+    {
+        if (jobIds.Count == 0) return [];
+
+        return await db.JobChatMessages
+            .AsNoTracking()
+            .Where(m => jobIds.Contains(m.JobId)
+                && db.Jobs.Any(j => j.Id == m.JobId
+                    && j.LegacyShardKey == shardKey && j.BranchId == branchId)
+                && !db.JobChatMessages.Any(o => o.JobId == m.JobId
+                    && (o.CreatedAt > m.CreatedAt
+                        || (o.CreatedAt == m.CreatedAt && o.Id.CompareTo(m.Id) > 0))))
+            .Select(m => new JobChatLatest(m.JobId, m.Id, m.CreatedAt))
+            .ToListAsync(ct);
+    }
+
     public Task<JobChatMessage?> GetByIdAsync(Guid messageId, CancellationToken ct = default) =>
         db.JobChatMessages
           .Include(m => m.Mentions)

@@ -36,15 +36,25 @@ void main() {
     expect(t.allowedFromMobile, isTrue);
     expect(t.needsReason, isFalse);
     expect(t.allowsRole(AppRole.cashier), isTrue);
-    expect(t.allowsRole(AppRole.technician), isFalse);
   });
 
-  test('บทบาทที่ไม่มีสิทธิ์ต้องได้เหตุผลที่บอกว่าใครทำได้', () {
+  // [BIZ] 2026-09-17 — คนที่เพิ่งให้ลูกค้าเซ็นรับรถตรงหน้ารถกดปิดงานต่อได้เลย
+  // ต้องตรงกับ JobStateMachine.cs (Ready→Completed) เป๊ะ ไม่งั้นแอปจะซ่อนปุ่มที่ server ยอมให้กด
+  test('ทุกบทบาทปฏิบัติการปิดงานได้ รวมช่างและหัวหน้าช่าง', () {
     final t = JobTransitions.from('ready').firstWhere((t) => t.to == 'completed');
-    final reason = JobTransitions.disabledReason(t, AppRole.technician);
+
+    for (final role in AppRole.values.where((r) => r != AppRole.unknown)) {
+      expect(t.allowsRole(role), isTrue, reason: 'ปิดงานควรเปิดให้ ${role.token}');
+    }
+    expect(t.allowsRole(AppRole.unknown), isFalse);
+  });
+
+  test('บทบาทที่ระบบไม่รู้จักต้องได้เหตุผลที่บอกทางแก้ ไม่ใช่รายชื่อ role ยาวเหยียด', () {
+    final t = JobTransitions.from('ready').firstWhere((t) => t.to == 'completed');
+    final reason = JobTransitions.disabledReason(t, AppRole.unknown);
 
     expect(reason, isNotNull);
-    expect(reason, contains('แคชเชียร์'));
+    expect(reason, contains('เข้าใหม่'));
   });
 
   test('สถานะปลายทางไม่มีการกระทำต่อ', () {
@@ -61,10 +71,16 @@ void main() {
       expect(AppRole.technician.canTakePayment, isFalse);
     });
 
-    test('ส่งมอบรถรวมพนักงานหน้าร้านด้วย (HandoverService หลังเปิดสิทธิ์)', () {
-      expect(AppRole.frontDesk.canHandOverVehicle, isTrue);
-      expect(AppRole.technician.canHandOverVehicle, isFalse);
-      expect(AppRole.lead.canHandOverVehicle, isFalse);
+    // ด่านที่กันการส่งมอบก่อนเวลาคือ "ต้องออกใบเสร็จก่อน" (HANDOVER_RECEIPT_REQUIRED)
+    // ไม่ใช่บทบาทของคนกด — ช่างที่เข็นรถออกมาให้ลูกค้าเซ็นได้ แต่ยังรับเงินเองไม่ได้
+    test('ส่งมอบรถ/ปิดงานเปิดให้ทุกบทบาทปฏิบัติการ แต่รับเงินยังจำกัดเหมือนเดิม', () {
+      for (final role in AppRole.values.where((r) => r != AppRole.unknown)) {
+        expect(role.canHandOverVehicle, isTrue, reason: '${role.token} ควรส่งมอบรถได้');
+        expect(role.canCloseJob, isTrue, reason: '${role.token} ควรปิดงานได้');
+      }
+      expect(AppRole.unknown.canHandOverVehicle, isFalse);
+      expect(AppRole.technician.canTakePayment, isFalse);
+      expect(AppRole.lead.canTakePayment, isFalse);
     });
 
     test('รายงานเฉพาะผู้จัดการและธุรการ (ReportsService)', () {

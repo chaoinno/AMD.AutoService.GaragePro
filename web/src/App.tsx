@@ -21,6 +21,7 @@ import { DashboardReportPage } from './features/reports/DashboardReportPage'
 import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
 import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
 import { StockReportPage } from './features/reports/StockReportPage'
+import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
           <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
+          <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

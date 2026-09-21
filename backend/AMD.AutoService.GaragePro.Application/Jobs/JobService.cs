@@ -3,6 +3,7 @@ using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Customers;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Work;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -59,6 +60,7 @@ public sealed class JobService(
     IJobNumberGenerator jobNumbers,
     ICustomerVehicleService customerVehicles,
     ILegacyReader legacy,
+    IWorkIntervalHook workHook,
     ICurrentUser user,
     TimeProvider clock) : IJobService
 {
@@ -340,6 +342,24 @@ public sealed class JobService(
             job.JobTypeId = ClosedTypeId;
             job.JobTypeName = ClosedTypeName;
         }
+
+        // [BIZ] จ๊อบเปลี่ยนสถานะแล้วคาบเวลาที่ช่างเปิดค้างไว้ต้องปิดตามทันที (docs/09 §6) —
+        // ไม่ SaveChanges ที่นี่ เพราะ hook แชร์ DbContext เดียวกันและจะถูก commit พร้อมบรรทัดล่างสุด
+        // เป็น transaction เดียวกันจริง (เปลี่ยนสถานะสำเร็จแต่คาบไม่ปิด จะเกิดขึ้นไม่ได้)
+        //
+        // Qc→Ready อยู่ในรายการนี้ด้วยแม้ docs/09 §6 จะไม่ได้ระบุไว้ — ไม่งั้นคาบที่ช่างเปิดตอนกลับมา
+        // แก้งานในสถานะ qc จะค้างเปิดตลอดไปเมื่อ QC ผ่าน แล้วกลายเป็น autoCapped ทุกครั้ง
+        // = ชั่วโมงแก้งาน (เมตริกคุณภาพหลัก) ถูกตัดทิ้งอย่างเป็นระบบ
+        var closeReason = to.Value switch
+        {
+            JobStatus.WaitParts => WorkEndReason.WaitParts,
+            JobStatus.Qc => WorkEndReason.SentToQc,
+            JobStatus.Ready => WorkEndReason.SentToQc,
+            _ when JobStateMachine.IsTerminal(to.Value) => WorkEndReason.JobClosed,
+            _ => (WorkEndReason?)null
+        };
+        if (closeReason is not null)
+            await workHook.CloseOpenForJobAsync(job.Id, closeReason.Value, ct);
 
         var description = isFullyComputed
             ? $"เปลี่ยนสถานะจาก {JobStateMachine.Describe(from)} เป็น {JobStateMachine.Describe(to.Value)}"

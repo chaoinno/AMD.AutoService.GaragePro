@@ -76,13 +76,21 @@ public static class JobStateMachine
             [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.QcPassed),
 
-        // เปิดให้ทำจากมือถือได้ด้วย — ส่งมอบรถเป็นหน้าที่ของหน้าร้านที่ยืนอยู่กับลูกค้าข้างรถ
+        // เปิดให้ทำจากมือถือได้ด้วย — ส่งมอบรถเป็นหน้าที่ของคนที่ยืนอยู่กับลูกค้าข้างรถ
         // (docs/01-workflow.md §9 ระบุหน้าส่งมอบบนมือถือเป็น [GAP·สูง] ที่ต้องปิด)
+        //
+        // [BIZ] ทุกบทบาทปฏิบัติการปิดงานได้ รวมหน้าร้าน/ช่าง/หัวหน้าช่าง (ยืนยันกับเจ้าของระบบ 2026-09-17):
+        // เมื่อจ่ายครบ + ออกใบเสร็จ + ลูกค้าเซ็นรับรถครบแล้ว การ "ปิดงาน" เป็นการพลิกสถานะล้วนๆ ไม่เหลือ
+        // การตัดสินใจเรื่องเงินให้ทำอีก — คนที่กดคือคนที่เพิ่งให้ลูกค้าเซ็นตรงหน้ารถ ไม่ใช่คนหลังเคาน์เตอร์
+        // เดิมเหลือแค่ Cashier/Office/Manager ทำให้หน้าร้านที่ส่งมอบได้อยู่แล้วกลับปิดงานของตัวเองไม่ได้
+        //
         // ไม่ใช่การผ่อนการตรวจสอบ: guard ทั้ง 3 ตัวนี้ isComputable = true ใน JobService.ComputeGuardAsync
         // จึงคำนวณจาก Payment/Receipt/HandoverRecord จริงเสมอ และ manual-override ด้วย reason ไม่ได้
+        // (ช่างยังรับเงิน/ออกใบเสร็จเองไม่ได้ — PosService ยังจำกัด Cashier/Office/Manager ตาม §4)
         new(JobStatus.Ready, JobStatus.Completed,
             "ยอดคงเหลือเป็น 0 หรือบันทึกลูกหนี้ที่อนุมัติแล้ว + ออกเอกสาร + ส่งมอบรถ",
-            [UserRole.Cashier, UserRole.Office, UserRole.Manager],
+            [UserRole.FrontDesk, UserRole.Technician, UserRole.Office,
+             UserRole.Cashier, UserRole.Manager, UserRole.Lead],
             [EventSource.Mobile, EventSource.Web],
             JobGuard.BalanceSettled | JobGuard.DocumentIssued | JobGuard.VehicleHandedOver)
     ];

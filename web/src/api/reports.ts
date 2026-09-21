@@ -66,3 +66,51 @@ export const getSalesMarginReport = (fromDate?: string, toDate?: string) => {
 }
 
 export const getStockReport = () => apiRequest<StockReport>('/api/v1/reports/stock')
+
+/// ช่วงเวลาทำงานของช่างหนึ่งช่วง — มิเรอร์ `WorkIntervalDto` ฝั่ง backend
+export type WorkIntervalRow = {
+  id: string
+  jobId: string
+  jobNo: string
+  vehicleRegistration: string
+  technicianStaffId: number
+  technicianName: string
+  /** `work` หรือ `pause` */
+  kind: string
+  startedAt: string
+  endedAt: string | null
+  endReason: string | null
+  /** null = ยังจับเวลาอยู่ */
+  durationSeconds: number | null
+  isRework: boolean
+  /** ระบบตัดให้เองเพราะลืมกดหยุด — ไม่เข้าการคำนวณจนกว่าจะมีคนยืนยันเวลาจริง */
+  isAutoCapped: boolean
+  isVoided: boolean
+  editedAt: string | null
+  editReason: string | null
+  voidReason: string | null
+}
+
+export const getWorkIntervals = (fromDate?: string, toDate?: string, onlyNeedsReview = false) => {
+  const params = new URLSearchParams()
+  if (fromDate) params.set('fromDate', fromDate)
+  if (toDate) params.set('toDate', toDate)
+  if (onlyNeedsReview) params.set('onlyNeedsReview', 'true')
+  const qs = params.toString()
+  return apiRequest<WorkIntervalRow[]>(`/api/v1/work/intervals${qs ? `?${qs}` : ''}`)
+}
+
+export const updateWorkInterval = (
+  id: string,
+  input: { startedAt: string; endedAt: string; reason: string },
+) =>
+  apiRequest<WorkIntervalRow>(`/api/v1/work/intervals/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+
+export const voidWorkInterval = (id: string, reason: string) =>
+  apiRequest<WorkIntervalRow>(`/api/v1/work/intervals/${id}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reason }),
+  })

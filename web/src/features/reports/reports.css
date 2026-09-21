@@ -26,3 +26,9 @@
 
 .report-section-title { display: flex; align-items: center; gap: 8px; margin: 24px 0 10px; font-size: 14px; font-weight: 600; color: var(--navy-900); }
 .report-cost-hidden { color: #94a3b8; font-style: italic; }
+
+/* หน้าเวลาทำงานของช่าง — สีเทาสำหรับแถวที่ข้อมูลยังเชื่อไม่ได้
+   [UI] ห้ามใช้แดง/เขียวตัดสินที่นี่ เพราะเป็นข้อมูลของคน ไม่ใช่สถานะของจ๊อบ */
+.report-lowsample { color: #64748b; font-size: 14px; }
+.report-filter-check { display: flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.report-row-actions { display: flex; gap: 4px; }

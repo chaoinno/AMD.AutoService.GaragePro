@@ -14,7 +14,23 @@ public interface IJobChatRepository
 
     Task<JobChatMessage?> GetByIdAsync(Guid messageId, CancellationToken ct = default);
 
+    /// <summary>
+    /// ข้อความล่าสุดของแต่ละจ๊อบในชุดที่ขอ — ใช้แสดงจุด "มีข้อความใหม่" บนการ์ดจ๊อบในคิวงาน
+    /// โดยยิงครั้งเดียวแทนที่จะยิงทีละคัน · จ๊อบที่ยังไม่มีข้อความเลยจะไม่อยู่ในผลลัพธ์
+    ///
+    /// สโคปด้วย shard/สาขาในคิวรีเลย (จ๊อบนอกสาขาหลุดออกไปเอง) เพราะถ้าตรวจทีละจ๊อบแบบ
+    /// ValidateJobScopeAsync จะกลายเป็น N คิวรีซึ่งเป็นสิ่งที่ endpoint นี้ตั้งใจกำจัด
+    ///
+    /// <b>นับข้อความที่ถูกลบด้วย</b> — ต้องตรงกับที่หน้าแชทใช้ตอน markSeen (มันเก็บ id ของข้อความ
+    /// ล่าสุดรวมที่ถูกลบ) ไม่งั้นถ้าข้อความล่าสุดถูกลบ จุดแดงจะค้างตลอดกาลเพราะ id ไม่มีวันตรงกัน
+    /// </summary>
+    Task<IReadOnlyList<JobChatLatest>> GetLatestPerJobAsync(
+        string shardKey, int branchId, IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default);
+
     Task AddAsync(JobChatMessage message, CancellationToken ct = default);
     Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default);
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
+
+/// <summary>ข้อความล่าสุดของจ๊อบหนึ่ง — พอสำหรับให้ client เทียบกับ id ที่อ่านถึงแล้วในเครื่อง</summary>
+public sealed record JobChatLatest(Guid JobId, Guid MessageId, DateTime CreatedAt);

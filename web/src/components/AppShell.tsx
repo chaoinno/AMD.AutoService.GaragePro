@@ -1,27 +1,28 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   BarChart3,
+  Boxes,
   Building2,
   CarFront,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
   CircleHelp,
+  ClipboardList,
   Clock3,
+  FileStack,
+  FolderTree,
   LogOut,
   Package,
   Search,
-  TrendingUp,
-  Users,
-  Wrench,
-  UserCog,
-  Truck,
-  Warehouse,
-  FolderTree,
-  ClipboardList,
   ShoppingCart,
-  Boxes,
-  FileStack,
+  Timer,
+  TrendingUp,
+  Truck,
+  UserCog,
+  Users,
+  Warehouse,
+  Wrench,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
@@ -62,6 +63,9 @@ const navGroups = [
       { to: '/reports/cycle-time', icon: Clock3, label: 'รอบเวลาทำงาน (SLA)' },
       { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
       { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
+      // ยังไม่ใช่รายงานประเมินประสิทธิภาพ — เป็นข้อมูลดิบให้หัวหน้าช่าง/ผู้จัดการตรวจและแก้คาบที่ผิด
+      // ระหว่างช่วงเก็บข้อมูล (บทบาทอื่นกดแล้วได้ 403 พร้อมเหตุผลจาก QueryState ตามคอนเวนชันของเมนู)
+      { to: '/reports/work-intervals', icon: Timer, label: 'เวลาทำงานของช่าง' },
     ],
   },
   {

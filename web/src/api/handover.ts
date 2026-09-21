@@ -8,6 +8,9 @@ export type Handover = {
   signatureImagePath: string | null
   submittedAt: string | null
   submittedByUserName: string | null
+  /** [BIZ] ต้องออกใบเสร็จก่อนจึงจะยืนยันส่งมอบได้ (HANDOVER_RECEIPT_REQUIRED) */
+  receiptIssued: boolean
+  receiptDocumentNo: string | null
   items: HandoverItem[]
 }
 

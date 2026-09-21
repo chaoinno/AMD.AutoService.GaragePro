@@ -36,6 +36,12 @@ public static class GarageClaims
 
     /// <summary>true เมื่อยังไม่ได้เลือกสาขา/กะ — endpoint งานทั้งหมดต้องปฏิเสธ</summary>
     public const string PreSession = "pre_session";
+
+    /// <summary>
+    /// legacy Staff.Id — คนละค่ากับ sub (User.Id) · ต้องอยู่ใน token เพราะการอ้างถึง "ช่าง" ทุกที่ใช้ Staff.Id
+    /// (QuotationLine.AssignedTechnicianId) และการไป lookup legacy ทุกคำขอจะไปเพิ่ม lock convoy ของ Garage DB
+    /// </summary>
+    public const string StaffId = "staff";
 }
 
 public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider clock) : ITokenIssuer
@@ -74,17 +80,27 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
         return (Write(claims, expiresAt), expiresAt);
     }
 
-    private List<Claim> BaseClaims(AuthUserDto user) =>
-    [
-        new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-        new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-        new(ClaimTypes.Name, user.UserName),
-        new(ClaimTypes.Role, user.Role),
-        new(GarageClaims.IsAdministrator, user.IsAdministrator.ToString().ToLowerInvariant()),
-        // ชื่อภาษาไทยอยู่ใน claim ได้ (JWT เป็น UTF-8) ต่างจาก HTTP header ที่รับแต่ ASCII
-        new(GarageClaims.DisplayName, user.DisplayName),
-        new(GarageClaims.ShardKey, user.ShardKey)
-    ];
+    private List<Claim> BaseClaims(AuthUserDto user)
+    {
+        List<Claim> claims =
+        [
+            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new(ClaimTypes.Name, user.UserName),
+            new(ClaimTypes.Role, user.Role),
+            new(GarageClaims.IsAdministrator, user.IsAdministrator.ToString().ToLowerInvariant()),
+            // ชื่อภาษาไทยอยู่ใน claim ได้ (JWT เป็น UTF-8) ต่างจาก HTTP header ที่รับแต่ ASCII
+            new(GarageClaims.DisplayName, user.DisplayName),
+            new(GarageClaims.ShardKey, user.ShardKey)
+        ];
+
+        // ในทางปฏิบัติมีค่าเสมอ เพราะ AuthService.LoginAsync ปฏิเสธบัญชีที่ StaffId เป็น null
+        // ไปแล้วด้วย AUTH_NOT_STAFF — เช็คไว้เพื่อไม่ให้ claim ว่างหลุดเข้า token ถ้ากฎนั้นเปลี่ยน
+        if (user.StaffId is long staffId)
+            claims.Add(new Claim(GarageClaims.StaffId, staffId.ToString()));
+
+        return claims;
+    }
 
     private string Write(IEnumerable<Claim> claims, DateTime expiresAt)
     {

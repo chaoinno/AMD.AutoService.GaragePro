@@ -3,6 +3,7 @@ using System.Text;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Work;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -23,6 +24,7 @@ public sealed class AuthService(
     IAuthRepository repository,
     IQuotationRepository quotations,
     ITokenIssuer tokens,
+    IWorkIntervalHook workHook,
     ICurrentUser currentUser,
     TimeProvider clock) : IAuthService
 {
@@ -189,6 +191,16 @@ public sealed class AuthService(
 
         session.ClosedAt = Now;
         session.ClosedByUserId = currentUser.UserId;
+
+        // [BIZ] ปิดกะแล้วคาบเวลาที่ค้างของช่างคนนั้นต้องปิดตาม (docs/09 §6)
+        // ต้องใช้ session.LegacyStaffId ไม่ใช่ currentUser เพราะ RoleMapper.CanCloseShift บล็อกช่าง
+        // ไม่ให้ปิดกะตัวเอง — คนกดกับเจ้าของคาบเป็นคนละคนเสมอ
+        // (เปิดกะใหม่ไม่ต้อง hook เพราะคาบที่ค้างข้ามกะถูกตัดด้วย auto-cap ตอนช่างกดเริ่มงาน
+        //  หรือตอนแอปเรียก /work/current ซึ่งเกิดก่อนเสมอ — ดู WorkTimeService.ComputeCapAsync)
+        if (session.LegacyStaffId is long staffId)
+            await workHook.CloseOpenForTechnicianAsync(
+                session.LegacyShardKey, session.LegacyBranchId, staffId,
+                WorkEndReason.ShiftClosed, Now, autoCapped: false, currentUser.UserId, ct);
 
         await quotations.AddEventAsync(new ActivityEvent
         {

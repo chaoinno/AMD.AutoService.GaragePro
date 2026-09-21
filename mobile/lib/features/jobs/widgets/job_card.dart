@@ -8,10 +8,18 @@ import '../../../widgets/common.dart';
 /// การ์ดจ๊อบในรายการ — [UI] เกินกำหนดใช้แถบซ้าย 5px + ข้อความบอกว่าเกินมานานเท่าไร
 /// (ห้ามสื่อความหมายด้วยสีอย่างเดียว)
 class JobCard extends StatelessWidget {
-  const JobCard({super.key, required this.job, required this.onTap});
+  const JobCard({
+    super.key,
+    required this.job,
+    required this.onTap,
+    this.hasUnreadChat = false,
+  });
 
   final Job job;
   final VoidCallback onTap;
+
+  /// มีข้อความในแชทที่ยังไม่ได้อ่านบนเครื่องนี้ — ช่างจะได้รู้ว่าคันไหนมีเรื่องคุยก่อนเปิดเข้าไป
+  final bool hasUnreadChat;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +87,23 @@ class JobCard extends StatelessWidget {
                                 style: const TextStyle(fontSize: 14, color: T.muted, height: 1.6)),
                           ],
                         ),
+                        if (hasUnreadChat) ...[
+                          const SizedBox(height: T.s8),
+                          Row(
+                            children: [
+                              const Icon(Icons.forum, size: 16, color: T.blue600),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'มีข้อความใหม่ในแชท',
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    color: T.blue600,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.6),
+                              ),
+                            ],
+                          ),
+                        ],
                         if (job.isOverdue && job.promiseAt != null) ...[
                           const SizedBox(height: T.s8),
                           Row(

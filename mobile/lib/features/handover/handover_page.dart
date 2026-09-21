@@ -60,8 +60,8 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
         body: StateBlock(
           icon: Icons.lock_outline,
           title: 'บทบาทนี้ส่งมอบรถไม่ได้',
-          body: 'เฉพาะพนักงานหน้าร้าน แคชเชียร์ ธุรการ หรือผู้จัดการเท่านั้น '
-              'บทบาทปัจจุบันคือ${role.labelTh}',
+          body: 'ระบบไม่รู้จักบทบาทของบัญชีนี้ (${role.labelTh}) '
+              'กรุณาออกจากระบบแล้วเข้าใหม่ หรือแจ้งผู้ดูแลระบบให้ตรวจสอบข้อมูลพนักงาน',
           tone: StateTone.warn,
         ),
       );
@@ -99,6 +99,25 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
                     ? 'บันทึกการส่งมอบเรียบร้อย'
                     : '${fullDateTime(handover.submittedAt!)} · ${handover.submittedByUserName ?? ''}',
                 tone: StateTone.neutral,
+              ),
+            ),
+          // [BIZ] จ่ายเงิน → ออกใบเสร็จ → ค่อยเซ็นรับรถ · บอกไว้ตั้งแต่บนสุดเพื่อไม่ให้ติ๊กครบ 5 ข้อ
+          // แล้วค่อยมารู้ตอนกดยืนยันว่าแคชเชียร์ยังเก็บเงินไม่เสร็จ
+          if (!handover.isLocked)
+            Padding(
+              padding: const EdgeInsets.only(bottom: T.s12),
+              child: InfoBanner(
+                icon: handover.receiptIssued
+                    ? Icons.receipt_long_outlined
+                    : Icons.hourglass_empty_outlined,
+                title: handover.receiptIssued
+                    ? 'ออกใบเสร็จแล้ว — ส่งมอบรถได้'
+                    : 'ยังออกใบเสร็จไม่ได้ — ยังส่งมอบรถไม่ได้',
+                body: handover.receiptIssued
+                    ? 'เลขที่ ${handover.receiptDocumentNo ?? '-'}'
+                    : 'ลูกค้าต้องชำระเงินให้ครบและแคชเชียร์ออกใบเสร็จก่อน '
+                        'จึงจะให้ลูกค้าเซ็นรับรถได้ (ติ๊กของในรถล่วงหน้าได้เลย)',
+                tone: handover.receiptIssued ? StateTone.neutral : StateTone.warn,
               ),
             ),
           const Text('ของในรถที่ต้องคืนลูกค้า',
@@ -249,12 +268,15 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
   Widget? _actionBar(Handover handover) {
     if (handover.isLocked) return null;
 
-    // เหตุผลที่กดไม่ได้ต้องตรงกับที่ HandoverService ตรวจจริง
-    final reason = !handover.allDecided
-        ? 'ยังตรวจของในรถไม่ครบ เหลืออีก ${handover.pendingCount} รายการ'
-        : _signature.isEmpty
-            ? 'ยังไม่มีลายเซ็นลูกค้า'
-            : null;
+    // เหตุผลที่กดไม่ได้ต้องตรงกับที่ HandoverService ตรวจจริง และเรียงตามลำดับเดียวกับ SubmitAsync
+    // ใบเสร็จมาก่อนเพราะเป็นเงื่อนไขที่คนถือแอปแก้เองไม่ได้ (ต้องรอแคชเชียร์) ต่างจากอีกสองข้อ
+    final reason = !handover.receiptIssued
+        ? 'ยังไม่ได้ออกใบเสร็จ — ต้องรับชำระเงินให้ครบก่อนจึงจะส่งมอบรถได้'
+        : !handover.allDecided
+            ? 'ยังตรวจของในรถไม่ครบ เหลืออีก ${handover.pendingCount} รายการ'
+            : _signature.isEmpty
+                ? 'ยังไม่มีลายเซ็นลูกค้า'
+                : null;
 
     return StickyActionBar(
       label: 'ยืนยันส่งมอบรถ',
@@ -360,10 +382,54 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
       ref
         ..invalidate(handoverProvider(widget.jobId))
         ..invalidate(jobDetailProvider(widget.jobId));
+
+      // เซ็นเสร็จแล้วเงื่อนไขปิดงานครบพอดีทั้งสามข้อ (ชำระครบ + ใบเสร็จ + เซ็นรับรถ) — ให้จบตรงนี้เลย
+      // ไม่ต้องเดินกลับไปหาแคชเชียร์ · ถามก่อนเสมอ ไม่ปิดงานให้เองเงียบๆ
+      if (mounted) await _offerToCloseJob();
     } on ApiException catch (e) {
       if (mounted) _toast(e);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _offerToCloseJob() async {
+    final role = AppRole.parse(ref.read(sessionProvider)?.user.role);
+    if (!role.canCloseJob) return;
+
+    final close = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ส่งมอบรถเรียบร้อย'),
+        content: const Text(
+          'ชำระเงิน ออกใบเสร็จ และลูกค้าเซ็นรับรถครบแล้ว — ปิดงานเลยไหม',
+          style: TextStyle(fontSize: 15, height: 1.7),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ไว้ทีหลัง')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('ปิดงานเลย')),
+        ],
+      ),
+    );
+    if (close != true || !mounted) return;
+
+    try {
+      await ref.read(jobsApiProvider).transition(widget.jobId, 'completed');
+      ref.invalidate(jobDetailProvider(widget.jobId));
+      // สถานะเปลี่ยนแล้ว คิวงานต้องตรงกัน
+      await ref.read(jobListProvider.notifier).load();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('ปิดงานเรียบร้อย — เสร็จสมบูรณ์',
+              style: TextStyle(fontSize: 15, height: 1.6)),
+          backgroundColor: T.navy900,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } on ApiException catch (e) {
+      // ส่งมอบสำเร็จไปแล้ว ปิดงานไม่สำเร็จไม่ได้ย้อนอะไรกลับ — บอกตรงๆ ว่ายังต้องปิดงานอีกที
+      if (mounted) _toast(e);
     }
   }
 

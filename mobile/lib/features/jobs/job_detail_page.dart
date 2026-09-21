@@ -3,16 +3,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
+import '../../app/navigation.dart';
 import '../../app/routes.dart';
 import '../../core/format.dart';
 import '../../core/job_transitions.dart';
+import '../../core/request_id.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
+import '../../core/work_actions.dart';
 import '../../models/attachment.dart';
 import '../../models/job.dart';
+import '../../models/work_interval.dart';
 import '../../widgets/common.dart';
 import '../attachments/photo_upload.dart';
 import '../attachments/widgets/auth_image.dart';
+import 'chat/data/chat_unread_provider.dart';
+import '../work/data/work_providers.dart';
 import 'data/jobs_providers.dart';
 import 'widgets/job_stage_strip.dart';
 
@@ -35,13 +41,20 @@ class JobDetailPage extends ConsumerStatefulWidget {
 class _JobDetailPageState extends ConsumerState<JobDetailPage> {
   bool _busy = false;
 
+  /// สร้างครั้งเดียวต่อคำขอ แล้วใช้ค่าเดิมเมื่อกดลองใหม่ — ถ้าเน็ตหลุดหลัง server ทำงานไปแล้ว
+  /// การยิงด้วย id เดิมจะได้ผลลัพธ์เดิมกลับมา ไม่ใช่เปิดคาบซ้อน (ต้นแบบ payment_page.dart)
+  String? _pendingWorkRequestId;
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(jobDetailProvider(widget.jobId));
     final role = AppRole.parse(ref.watch(sessionProvider)?.user.role);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('รายละเอียดงาน')),
+      appBar: AppBar(
+        title: const Text('รายละเอียดงาน'),
+        actions: [_ChatAction(jobId: widget.jobId)],
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => StateBlock.fromError(
@@ -65,8 +78,6 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
               _quotations(job),
               const SizedBox(height: T.s12),
               _photos(job),
-              const SizedBox(height: T.s12),
-              _chatEntry(job),
               const SizedBox(height: T.s12),
               _notYetOnMobile(),
             ],
@@ -302,20 +313,6 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
     );
   }
 
-  Widget _chatEntry(Job job) => _card(
-        title: 'แชทของงานนี้',
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          minTileHeight: T.touchMin,
-          leading: const Icon(Icons.forum_outlined, color: T.blue600),
-          title: const Text('เปิดแชท', style: TextStyle(fontSize: 16, height: 1.5)),
-          subtitle: const Text('คุยกับทีม แนบรูป และเรียกชื่อเพื่อนร่วมงานด้วย @',
-              style: TextStyle(fontSize: 14, color: T.muted, height: 1.6)),
-          trailing: const Icon(Icons.chevron_right, color: T.faint),
-          onTap: () => context.push(Routes.jobChat(job.jobId)),
-        ),
-      );
-
   Widget _notYetOnMobile() => const Padding(
         padding: EdgeInsets.symmetric(horizontal: T.s16),
         child: InfoBanner(
@@ -329,21 +326,147 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
 
   // ---------------------------------------------------------------- actions
 
+  /// ประกอบปุ่มจากสองแหล่ง: transition ของสถานะจ๊อบ (เดิม) กับการจับเวลา (ใหม่)
+  ///
+  /// [BIZ] ตอนจ๊อบอยู่ `approved` ปุ่ม transition เดิมคือ "เริ่มงานซ่อม" ซึ่งทำสิ่งเดียวกับ work/start
+  /// แต่ไม่เปิดคาบเวลา — ต้อง **แทนที่** ไม่ใช่วางคู่กัน ไม่งั้นช่างกดตัวเก่าแล้วจ๊อบเข้า inprogress
+  /// โดยไม่มีคาบเปิด เวลาหายทั้งก้อนโดยไม่มีอะไรฟ้อง (WorkActions.hidesTransition)
   Widget? _actionBar(Job job, AppRole role) {
-    final next = JobTransitions.primaryFor(job.status, role);
-    if (next == null) {
-      return null;
+    final work = ref.watch(currentWorkProvider);
+    final plan = WorkActions.planFor(job.status, role, _focusFor(job, work));
+    final isRework = WorkActions.isReworkStatus(job.status);
+
+    var next = JobTransitions.primaryFor(job.status, role);
+    if (next != null && WorkActions.hidesTransition(job.status, next.to, role)) next = null;
+
+    final busy = _busy || work.isMutating;
+
+    if (plan.primary != null) {
+      final action = plan.primary!;
+      // [UI] ปุ่มรองต้องกดได้จริงเท่านั้น — StickyActionBar ไม่มีที่บอกเหตุผลให้ปุ่มรอง
+      // (disabledReason ของมันอธิบายปุ่มหลัก) ถ้าโชว์ปุ่มที่กดไม่ได้จะกลายเป็นปุ่มตายที่ไม่บอกอะไรเลย
+      final runnableNext =
+          next != null && !busy && JobTransitions.disabledReason(next, role) == null ? next : null;
+      return StickyActionBar(
+        label: WorkActions.labelTh(action, isRework: isRework),
+        onPressed: busy ? null : () => _runWorkAction(job, action),
+        secondaryLabel: runnableNext?.labelTh,
+        onSecondary: runnableNext == null ? null : () => _runTransition(job, runnableNext),
+      );
     }
 
-    final reason = JobTransitions.disabledReason(next, role);
+    final reason = next == null ? null : JobTransitions.disabledReason(next, role);
 
+    // [UI] ปุ่มใหญ่ต้องเป็นสิ่งที่กดได้จริงเสมอ — จ๊อบที่รออะไหล่มี transition เดียวที่เป็นงานของเว็บ
+    // ถ้าปล่อยตามเดิม ช่างจะเห็นปุ่มน้ำเงินใหญ่ที่กดไม่ได้ ส่วน "พักงาน" ซึ่งเป็นสิ่งเดียวที่เขาทำได้
+    // กลายเป็นปุ่มขอบบางเล็กๆ ข้างๆ · เหตุผลที่ transition ทำไม่ได้ย้ายไปอยู่ใน hint แทน ไม่ได้หายไป
+    if (plan.secondary != null && (next == null || reason != null)) {
+      final action = plan.secondary!;
+      return StickyActionBar(
+        label: WorkActions.labelTh(action, isRework: isRework),
+        onPressed: busy ? null : () => _runWorkAction(job, action),
+        hint: next == null ? null : '${next.labelTh}: $reason',
+      );
+    }
+
+    if (next == null) return null;
+
+    // แยกตัวแปร final ออกมาเพราะ closure ด้านล่างอ้างถึง — Dart promote ตัวแปรที่ reassign ได้ไม่ได้
+    final transition = next;
     return StickyActionBar(
-      label: next.labelTh,
+      label: transition.labelTh,
       disabledReason: reason,
-      hint: reason == null && next.needsReason ? 'ต้องระบุเหตุผลก่อนยืนยัน' : null,
-      onPressed: _busy || reason != null ? null : () => _runTransition(job, next),
+      hint: reason == null && transition.needsReason ? 'ต้องระบุเหตุผลก่อนยืนยัน' : null,
+      onPressed: busy || reason != null ? null : () => _runTransition(job, transition),
+      secondaryLabel:
+          plan.secondary == null ? null : WorkActions.labelTh(plan.secondary!, isRework: isRework),
+      onSecondary:
+          plan.secondary == null || busy ? null : () => _runWorkAction(job, plan.secondary!),
     );
   }
+
+  WorkFocus _focusFor(Job job, CurrentWorkState work) {
+    final open = work.current;
+    if (open == null) return WorkFocus.idle;
+    if (open.jobId != job.jobId) return WorkFocus.otherJob;
+    return open.isPaused ? WorkFocus.pausedThis : WorkFocus.workingThis;
+  }
+
+  Future<void> _runWorkAction(Job job, WorkAction action) async {
+    // เวลาที่โชว์ใน dialog ต้องแช่แข็ง ณ วินาทีที่เปิด ไม่ใช่เดินต่อระหว่างที่ช่างกำลังอ่าน
+    if (action == WorkAction.start) {
+      final other = ref.read(currentWorkProvider);
+      if (other.current != null && other.current!.jobId != job.jobId) {
+        final confirmed = await _confirmSwitchJob(
+            other.current!.vehicleRegistration, other.clock?.elapsed ?? Duration.zero);
+        if (confirmed != true || !mounted) return;
+      }
+    }
+
+    final requestId = _pendingWorkRequestId ??= newRequestId();
+    final api = ref.read(workApiProvider);
+    final controller = ref.read(currentWorkProvider.notifier);
+
+    controller.setMutating(true);
+    final sentAt = DateTime.now();
+    try {
+      switch (action) {
+        case WorkAction.start:
+          final result = await api.start(job.jobId, requestId: requestId);
+          controller.applyStart(result, sentAt);
+          _announceClosedPrevious(result);
+          // สถานะจ๊อบอาจถูกดันเป็น inprogress ให้เองที่ server
+          ref.invalidate(jobDetailProvider(job.jobId));
+          await ref.read(jobListProvider.notifier).load();
+        case WorkAction.resume:
+          final result = await api.resume(job.jobId, requestId: requestId);
+          controller.applyStart(result, sentAt);
+        case WorkAction.pause:
+          await api.pause(job.jobId, requestId: requestId);
+          await controller.refresh();
+        case WorkAction.stop:
+          await api.stop(job.jobId, requestId: requestId);
+          controller.applyClosed();
+      }
+      _pendingWorkRequestId = null;
+    } on ApiException catch (e) {
+      // ไม่ล้าง _pendingWorkRequestId — NETWORK_ERROR แปลว่าไม่รู้ว่า server ทำไปแล้วหรือยัง
+      // การลองใหม่ต้องใช้ id เดิมเสมอ ไม่งั้นอาจได้คาบซ้อน
+      if (mounted) _showBlocked(e);
+    } finally {
+      if (mounted) controller.setMutating(false);
+    }
+  }
+
+  void _announceClosedPrevious(StartWorkResult result) {
+    final previous = result.closedPrevious;
+    if (previous == null || previous.jobId == result.current.jobId) return;
+
+    final spent = previous.durationSeconds == null
+        ? null
+        : stopwatchHms(Duration(seconds: previous.durationSeconds!));
+    showAppMessage(spent == null
+        ? 'หยุดเวลา ${previous.vehicleRegistration} แล้ว'
+        : 'หยุดเวลา ${previous.vehicleRegistration} ที่ $spent แล้ว');
+  }
+
+  Future<bool?> _confirmSwitchJob(String registration, Duration elapsed) => showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('เปลี่ยนไปทำคันใหม่'),
+          content: Text(
+            'กำลังจับเวลา $registration อยู่ ${stopwatchHms(elapsed)}\n'
+            'เริ่มคันใหม่จะหยุดเวลาคันเดิมทันที',
+            style: const TextStyle(fontSize: 15, height: 1.7),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ยกเลิก')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('หยุดคันเดิมแล้วเริ่มคันใหม่')),
+          ],
+        ),
+      );
 
   Future<void> _runTransition(Job job, JobTransition transition) async {
     String? reason;
@@ -357,6 +480,9 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
     try {
       await ref.read(jobsApiProvider).transition(job.jobId, transition.to, reason: reason);
       ref.invalidate(jobDetailProvider(job.jobId));
+      // server ปิดคาบเวลาให้เองเมื่อจ๊อบไปรออะไหล่/ส่ง QC/ปิดงาน (docs/09 §6) — ถ้าไม่ซิงก์
+      // แถบจับเวลาจะเดินเลขต่อบนคาบที่ตายไปแล้ว
+      await ref.read(currentWorkProvider.notifier).refresh();
       // สถานะเปลี่ยนแล้ว รายการในคิวต้องตรงกัน
       await ref.read(jobListProvider.notifier).load();
 
@@ -530,4 +656,72 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
           ],
         ),
       );
+}
+
+/// ทางเข้าแชทของจ๊อบ — อยู่บน AppBar เพราะการ์ดเดิมอยู่ล่างสุดของหน้า ต้องปัดสองครั้งกว่าจะถึง
+/// ขณะที่ AppBar ว่างเปล่า · ล่างจอใส่ไม่ได้เพราะมี StickyActionBar กับแถบจับเวลาซ้อนกันอยู่แล้ว
+///
+/// จุดแดงบอกว่ามีข้อความที่ยังไม่ได้อ่าน — โหลดตอนเปิดหน้าและตอนกลับจาก background เท่านั้น
+/// (ไม่ poll ต่อเนื่อง เพื่อไม่ให้เปลืองเน็ต/แบตของเครื่องช่างที่เปิดหน้านี้ค้างไว้ทั้งวัน)
+class _ChatAction extends ConsumerStatefulWidget {
+  const _ChatAction({required this.jobId});
+
+  final String jobId;
+
+  @override
+  ConsumerState<_ChatAction> createState() => _ChatActionState();
+}
+
+class _ChatActionState extends ConsumerState<_ChatAction> {
+  AppLifecycleListener? _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.invalidate(jobChatUnreadProvider(widget.jobId)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // ระหว่างโหลดหรือโหลดไม่ผ่านให้ถือว่า "ไม่มีข้อความใหม่" — จุดแดงหลอกแย่กว่าจุดแดงที่มาช้า
+    final unread = ref.watch(jobChatUnreadProvider(widget.jobId)).value ?? false;
+
+    return IconButton(
+      tooltip: unread ? 'แชทของงานนี้ · มีข้อความใหม่' : 'แชทของงานนี้',
+      onPressed: () async {
+        await context.push(Routes.jobChat(widget.jobId));
+        // หน้าแชทบันทึก last-seen ให้แล้วตอนอ่าน — ต้องคำนวณใหม่ ไม่งั้นจุดแดงค้างทั้งที่อ่านไปแล้ว
+        if (mounted) ref.invalidate(jobChatUnreadProvider(widget.jobId));
+      },
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.forum_outlined),
+          if (unread)
+            Positioned(
+              top: -1,
+              right: -1,
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: T.red600,
+                  shape: BoxShape.circle,
+                  // ขอบสีเดียวกับ AppBar ให้จุดอ่านออกแม้ทับเส้นไอคอน
+                  border: Border.all(color: T.navy900, width: 1.5),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

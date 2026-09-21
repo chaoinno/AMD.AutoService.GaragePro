@@ -74,20 +74,25 @@ abstract final class JobTransitions {
       allowedFromMobile: true, needsReason: true,
       reasonHintTh: 'ยังไม่มีรายการซ่อมรายบรรทัดในระบบ — สรุปงานที่ทำเสร็จเพื่อบันทึกไว้',
     ),
-    JobTransition(
-      from: 'qc', to: 'inprogress', labelTh: 'ตีกลับให้ช่างแก้ไข',
-      roles: {AppRole.technician, AppRole.manager},
-      allowedFromMobile: true, needsReason: true,
-      reasonHintTh: 'ระบุปัญหาที่พบและความสำคัญ (สูง/ปานกลาง/ต่ำ)',
-    ),
+    // [BIZ] ไม่มี qc→inprogress ที่นี่โดยตั้งใจ — ระบบไม่มี process ตีกลับ (คำขอผู้ใช้ 2026-09-09:
+    // "QC ต้องกดผ่านเท่านั้น ไม่มีไม่ผ่าน") แต่แอปเคยมีปุ่มนี้อยู่และเป็นปุ่มหลักของสถานะ qc เสียด้วย
+    // ตรวจ ActivityEvent จริงแล้วไม่เคยมีใครกดสักครั้ง (0 จาก 34 การเปลี่ยนสถานะ) จึงลบออก 2026-09-21
+    // ช่างที่ต้องกลับไปแก้งานให้กด "เริ่มงานแก้ไข (จับเวลา)" แทน — จ๊อบอยู่ qc เหมือนเดิม
+    // แต่ชั่วโมงที่ใช้แก้ถูกบันทึกเป็น rework (docs/09-technician-time-tracking.md §5.5)
+    // transition นี้ยังอยู่ใน JobStateMachine.cs ฝั่ง backend แต่ไม่มีใครเรียกแล้ว
     JobTransition(
       from: 'qc', to: 'ready', labelTh: 'ผ่าน QC · พร้อมส่งมอบ',
       roles: {AppRole.technician, AppRole.office, AppRole.manager},
       allowedFromMobile: true, needsReason: false,
     ),
+    // [BIZ] 2026-09-17 เปิดให้ทุกบทบาทปฏิบัติการปิดงาน — คนที่เพิ่งให้ลูกค้าเซ็นรับรถกดต่อได้เลย
+    // เงินถูกตรวจครบด้วย guard ที่ server ก่อนเสมอ (ชำระครบ + ใบเสร็จ + เซ็นรับรถ) กดข้ามไม่ได้
     JobTransition(
       from: 'ready', to: 'completed', labelTh: 'ปิดงาน (เสร็จสมบูรณ์)',
-      roles: {AppRole.cashier, AppRole.office, AppRole.manager},
+      roles: {
+        AppRole.frontDesk, AppRole.technician, AppRole.office,
+        AppRole.cashier, AppRole.manager, AppRole.lead,
+      },
       allowedFromMobile: true, needsReason: false,
     ),
   ];
@@ -109,6 +114,10 @@ abstract final class JobTransitions {
   static String? disabledReason(JobTransition t, AppRole role) {
     if (!t.allowedFromMobile) return 'ต้องทำรายการนี้จากเว็บสำนักงาน';
     if (!t.allowsRole(role)) {
+      // บอกทางแก้แทนการไล่ชื่อ role ทั้งหมด — รายการที่เปิดเกือบทุกบทบาทจะได้ข้อความยาวจนอ่านไม่รู้เรื่อง
+      if (role == AppRole.unknown) {
+        return 'ระบบไม่รู้จักบทบาทของบัญชีนี้ — ออกจากระบบแล้วเข้าใหม่ หรือแจ้งผู้ดูแลระบบ';
+      }
       final who = t.roles.map((r) => r.labelTh).join(' หรือ ');
       return 'บทบาทนี้ไม่มีสิทธิ์ทำรายการนี้ — ต้องเป็น$who';
     }
