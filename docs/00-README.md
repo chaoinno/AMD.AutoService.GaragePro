@@ -5,6 +5,7 @@
 
 | ไฟล์ | เนื้อหา | ใช้เมื่อ |
 |---|---|---|
+| **[10-handover.md](10-handover.md)** | **สถานะระบบล่าสุด · สิ่งที่ยังไม่ตัดสินใจ · งานถัดไป · กับดักที่เจ็บมาแล้ว** | **เริ่มที่นี่ถ้าเพิ่งเข้ามา** |
 | [01-workflow.md](01-workflow.md) | State machine 10 สถานะ + 12 transition · happy path 13 ขั้น · sub-flow 10 โมดูล · roles/permissions · business rules · screen inventory 33 หน้า · design tokens · gaps · **9 open questions** | เข้าใจว่าระบบทำอะไร · เขียน guard · เขียน acceptance test |
 | [02-domain-model.md](02-domain-model.md) | Aggregate map · enums ทุกตัว · entity + field ที่ prototype ใช้จริง · **15 invariant ที่ต้อง enforce ที่ API** | ออกแบบ schema · เขียน validator |
 | [03-api-contract.md](03-api-contract.md) | Endpoint map ทุกหน้าจอ 15 หมวด · SignalR event · sync contract · cross-cutting | เขียน OpenAPI spec · แบ่งงาน client |

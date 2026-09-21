@@ -20,6 +20,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 
 | ไฟล์ | เมื่อไหร่ |
 |---|---|
+| **[docs/10-handover.md](docs/10-handover.md)** | **สรุปสั้น: อยู่ตรงไหน · ค้างอะไร · ทำอะไรต่อ — อ่านก่อนไฟล์อื่นทั้งหมด** |
 | [docs/01-workflow.md](docs/01-workflow.md) | state machine 10 สถานะ · 12 transition · business rules · **9 open questions** |
 | [docs/02-domain-model.md](docs/02-domain-model.md) | entity + **15 invariant ที่ต้อง enforce ที่ API** |
 | [docs/03-api-contract.md](docs/03-api-contract.md) | endpoint map ทุกหน้าจอ |
