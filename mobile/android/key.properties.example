@@ -1,0 +1,6 @@
+# Copy to key.properties (ignored by Git). Never commit passwords or the keystore.
+# KEYSTORE_FILE is relative to android/app.
+KEYSTORE_FILE=key/key.jks
+KEYSTORE_PASSWORD=replace-with-store-password
+KEY_ALIAS=replace-with-key-alias
+KEY_PASSWORD=replace-with-key-password

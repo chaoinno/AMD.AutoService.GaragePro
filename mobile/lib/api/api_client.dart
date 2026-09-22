@@ -25,7 +25,9 @@ class ApiException implements Exception {
 /// ค่าเริ่มต้นสำหรับ dev — Android emulator ใช้ 10.0.2.2 แทน localhost
 const defaultBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:5080',
+  defaultValue: 'https://gpservice-api.garage-pro.net'
+  //'http://localhost:5080
+,
 );
 
 /// เส้นทางที่ห้ามเด้งออกจากระบบเมื่อได้ 401/403 — ผู้ใช้อยู่หน้า login/เลือกกะอยู่แล้ว
