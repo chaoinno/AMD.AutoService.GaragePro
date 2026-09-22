@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,7 +8,7 @@ import '../../app/routes.dart';
 import '../../widgets/common.dart';
 
 /// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User)
-/// รหัสพนักงานเป็นตัวเลข เช่น 22061050001
+/// username ไม่ได้จำกัดว่าต้องเป็นตัวเลขเสมอไป (เว็บก็รับข้อความทั่วไปแบบนี้อยู่แล้วใน LoginPage.tsx)
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -88,12 +87,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         TextField(
                           controller: _userNameController,
                           enabled: !_submitting,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                          keyboardType: TextInputType.text,
                           textInputAction: TextInputAction.next,
                           onSubmitted: (_) => _passwordFocus.requestFocus(),
                           autofillHints: const [AutofillHints.username],
-                          decoration: _decoration('เช่น 22061050001', Icons.badge_outlined),
+                          decoration: _decoration('กรอกรหัสพนักงาน', Icons.badge_outlined),
                           style: const TextStyle(fontSize: 17, height: 1.5),
                         ),
                         const SizedBox(height: T.s16),

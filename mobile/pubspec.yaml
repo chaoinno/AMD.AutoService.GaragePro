@@ -52,6 +52,19 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# App icon — สร้างจากตราหกเหลี่ยม GaragePro (assets/icon/app_icon.png ที่มีพื้นหลังเทาเต็มขอบ
+# สำหรับ iOS/Android legacy launcher icon) รันด้วย `dart run flutter_launcher_icons` แล้ว commit
+# ไฟล์ที่ถูก generate ไว้ใน ios/Runner/Assets.xcassets และ android/app/src/main/res
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#6D6E71"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

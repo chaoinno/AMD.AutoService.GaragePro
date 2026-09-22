@@ -17,6 +17,12 @@ class GarageProApp extends ConsumerWidget {
         scaffoldMessengerKey: scaffoldMessengerKey,
         routerConfig: ref.watch(routerProvider),
         // แถบจับเวลาต้องอยู่เหนือ Navigator ทั้งหมด ไม่ใช่ใน AppShell — ดูเหตุผลที่ WorkFocusHost
-        builder: (_, child) => WorkFocusHost(child: child ?? const SizedBox.shrink()),
+        // GestureDetector ครอบไว้นอกสุดเพื่อให้แตะที่ว่างตรงไหนก็เก็บคีย์บอร์ดได้ทุกหน้า —
+        // translucent ไม่กันแตะปุ่ม/ช่องกรอกข้างใน (แตะ TextField จะโฟกัสกลับเองตามปกติ)
+        builder: (_, child) => GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: WorkFocusHost(child: child ?? const SizedBox.shrink()),
+        ),
       );
 }
