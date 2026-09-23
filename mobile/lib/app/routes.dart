@@ -1,7 +1,6 @@
 /// path ทั้งหมดของแอป — อ้างอิงจากที่นี่เท่านั้น ห้ามพิมพ์ string ซ้ำในหน้าอื่น
 abstract final class Routes {
   static const login = '/auth/login';
-  static const shift = '/auth/shift';
 
   static const home = '/home';
   static const jobs = '/jobs';

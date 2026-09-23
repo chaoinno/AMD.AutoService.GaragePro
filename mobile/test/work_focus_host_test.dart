@@ -121,7 +121,6 @@ class _FakeSession extends SessionNotifier {
   Session? build() => role == null
       ? null
       : Session(
-        sessionId: 's1',
         accessToken: 't',
         expiresAt: DateTime.now().add(const Duration(hours: 1)),
         user: AuthUser(
@@ -136,8 +135,5 @@ class _FakeSession extends SessionNotifier {
         ),
         branchId: 227,
         branchName: 'Service Center Demo',
-        shiftId: 'sh1',
-        shiftName: 'กะเช้า',
-        openedAt: DateTime.now(),
       );
 }

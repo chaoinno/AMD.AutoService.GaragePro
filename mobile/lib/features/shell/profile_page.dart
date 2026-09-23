@@ -49,7 +49,7 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-/// โปรไฟล์ · สาขาและกะปัจจุบัน · ปิดกะ · ออกจากระบบ
+/// โปรไฟล์ · สาขาปัจจุบัน · ออกจากระบบ
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
@@ -58,8 +58,6 @@ class ProfilePage extends ConsumerStatefulWidget {
 }
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
-  bool _busy = false;
-
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
@@ -84,55 +82,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           _identityCard(user, role),
           const SizedBox(height: T.s24),
 
-          _sectionLabel('กะที่เปิดอยู่'),
+          _sectionLabel('ที่ทำงาน'),
           const SizedBox(height: T.s8),
           _card([
             _row(Icons.storefront_outlined, 'สาขา', session.branchName),
-            _row(Icons.schedule, 'กะ', session.shiftName),
             if (user.positionName != null)
               _row(Icons.work_outline, 'ตำแหน่ง', user.positionName!),
           ]),
           const SizedBox(height: T.s24),
-
-          _sectionLabel('จบการทำงาน'),
-          const SizedBox(height: T.s8),
-          if (!user.canCloseShift) ...[
-            const InfoBanner(
-              icon: Icons.info_outline,
-              title: 'บทบาทนี้ปิดกะเองไม่ได้',
-              // [BIZ] ช่างและหัวหน้าช่างไม่มีสิทธิ์ปิดกะ (RoleMapper.CanCloseShift)
-              body: 'ให้หัวหน้าร้านหรือผู้จัดการเป็นผู้ปิดกะให้ — ออกจากระบบได้ตามปกติ กะจะยังเปิดค้างไว้',
-              tone: StateTone.neutral,
-            ),
-            const SizedBox(height: T.s12),
-          ] else ...[
-            SizedBox(
-              height: T.ctaHeight,
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : _closeShift,
-                icon: const Icon(Icons.task_alt, size: 20),
-                label: const Text('ปิดกะและออกจากระบบ',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: T.navy700,
-                  side: const BorderSide(color: T.borderStrong),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(T.rCard)),
-                ),
-              ),
-            ),
-            const SizedBox(height: T.s8),
-          ],
 
           // เดิมเป็น TextButton สีเทาลอยๆ ที่ดูไม่ออกว่ากดได้ และคำว่า "ออกจากระบบอย่างเดียว" กำกวม
           // — ทำให้เป็นปุ่มเต็มความกว้างที่บอกชัดว่าต่างจากปุ่มปิดกะตรงไหน
           SizedBox(
             height: T.touchMin,
             child: TextButton.icon(
-              onPressed: _busy ? null : () => ref.read(sessionProvider.notifier).clear(),
+              onPressed: () => ref.read(sessionProvider.notifier).clear(),
               icon: const Icon(Icons.logout, size: 19),
-              label: Text(
-                user.canCloseShift ? 'ออกจากระบบโดยไม่ปิดกะ' : 'ออกจากระบบ',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              label: const Text(
+                'ออกจากระบบ',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               style: TextButton.styleFrom(
                 foregroundColor: T.red600,
@@ -233,29 +201,4 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   static Widget _row(IconData icon, String label, String value) =>
       _InfoRow(icon: icon, label: label, value: value);
 
-  // ---------------------------------------------------------------- การกระทำ
-
-  Future<void> _closeShift() async {
-    final session = ref.read(sessionProvider);
-    if (session == null) return;
-
-    setState(() => _busy = true);
-    try {
-      await ref.read(authApiProvider).closeShift(session.sessionId);
-      await ref.read(sessionProvider.notifier).clear();
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            e.traceId == null ? e.messageTh : '${e.messageTh}\nรหัสอ้างอิง ${e.traceId}',
-            style: const TextStyle(fontSize: 15, height: 1.6),
-          ),
-          backgroundColor: T.navy900,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
 }

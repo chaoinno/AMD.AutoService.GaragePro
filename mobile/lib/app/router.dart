@@ -6,7 +6,6 @@ import '../api/client.dart';
 import '../core/roles.dart';
 import '../features/approval/approval_page.dart';
 import '../features/approval/queue_page.dart';
-import '../features/auth/branch_shift_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/handover/handover_page.dart';
 import '../features/intake/create_job_page.dart';
@@ -29,7 +28,6 @@ final routerProvider = Provider<GoRouter>((ref) {
   // GoRouter ไม่ได้อยู่ใน widget tree จึง watch provider เองไม่ได้ — ใช้ Listenable สะกิดให้ redirect ใหม่
   final refresh = ValueNotifier(0);
   ref.listen(sessionProvider, (_, _) => refresh.value++);
-  ref.listen(pendingLoginProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -38,30 +36,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: Routes.home,
     redirect: (context, state) {
       final session = ref.read(sessionProvider);
-      final pending = ref.read(pendingLoginProvider);
       final location = state.matchedLocation;
       final inAuth = location.startsWith('/auth');
 
-      if (session == null) {
-        // เพิ่ง login แต่ยังไม่ได้เลือกสาขา/กะ — ให้อยู่หน้าเลือกกะต่อ
-        if (pending != null) return location == Routes.shift ? null : Routes.shift;
-        return inAuth && location == Routes.login ? null : Routes.login;
-      }
+      if (session == null) return location == Routes.login ? null : Routes.login;
 
       if (inAuth) return landingFor(session.user.role);
       return null;
     },
     routes: [
       GoRoute(path: Routes.login, builder: (_, _) => const LoginPage()),
-      GoRoute(
-        path: Routes.shift,
-        builder: (context, state) {
-          final pending = ProviderScope.containerOf(context).read(pendingLoginProvider);
-          // ผู้ใช้กด back หรือเปิดแอปใหม่มาที่ path นี้โดยไม่มีผลล็อกอินค้างอยู่
-          if (pending == null) return const LoginPage();
-          return BranchShiftPage(login: pending);
-        },
-      ),
       StatefulShellRoute.indexedStack(
         builder: (_, _, shell) => AppShell(navigationShell: shell),
         branches: [

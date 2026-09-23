@@ -31,7 +31,7 @@ class QueuePage extends ConsumerWidget {
             const Text('รออนุมัติจากลูกค้า',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, height: 1.4)),
             if (session != null)
-              Text('${session.branchName} · ${session.shiftName}',
+              Text(session.branchName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: T.faint, height: 1.5)),
@@ -46,7 +46,7 @@ class QueuePage extends ConsumerWidget {
           IconButton(
             onPressed: () => _openProfile(context, ref),
             icon: const Icon(Icons.account_circle_outlined),
-            tooltip: 'โปรไฟล์และกะ',
+            tooltip: 'โปรไฟล์',
           ),
         ],
       ),
@@ -108,41 +108,7 @@ class QueuePage extends ConsumerWidget {
                   style: const TextStyle(fontSize: 14, color: T.muted, height: 1.65)),
               const SizedBox(height: T.s16),
               _infoRow(Icons.store_outlined, 'สาขา', session.branchName),
-              _infoRow(Icons.schedule, 'กะ', session.shiftName),
               const SizedBox(height: T.s16),
-
-              // [BIZ] ช่างไม่มีสิทธิ์ปิดกะ — ซ่อนปุ่มไปเลย ไม่ใช่ปิดใช้งาน
-              if (session.user.canCloseShift)
-                SizedBox(
-                  height: T.touchMin,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      await _closeShift(context, ref);
-                    },
-                    icon: const Icon(Icons.logout, size: 19),
-                    label: const Text('ปิดกะและออกจากระบบ',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: T.red600,
-                      side: const BorderSide(color: Color(0xFFF0C2C2)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(T.rInput)),
-                    ),
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.all(T.s12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(T.rInput),
-                  ),
-                  child: const Text(
-                    'บทบาทนี้ไม่มีสิทธิ์ปิดกะ — ให้หัวหน้ากะหรือผู้จัดการเป็นผู้ปิด',
-                    style: TextStyle(fontSize: 13, color: T.muted, height: 1.7),
-                  ),
-                ),
 
               const SizedBox(height: T.s8),
               SizedBox(
@@ -152,7 +118,7 @@ class QueuePage extends ConsumerWidget {
                     Navigator.pop(ctx);
                     await ref.read(sessionProvider.notifier).clear();
                   },
-                  child: const Text('ออกจากระบบอย่างเดียว',
+                  child: const Text('ออกจากระบบ',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: T.muted)),
                 ),
               ),
@@ -161,24 +127,6 @@ class QueuePage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _closeShift(BuildContext context, WidgetRef ref) async {
-    final session = ref.read(sessionProvider);
-    if (session == null) return;
-
-    try {
-      await ref.read(authApiProvider).closeShift(session.sessionId);
-      await ref.read(sessionProvider.notifier).clear();
-    } on ApiException catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(e.messageTh, style: const TextStyle(fontSize: 15, height: 1.6)),
-          backgroundColor: T.navy900,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    }
   }
 
   static Widget _infoRow(IconData icon, String label, String value) => Padding(

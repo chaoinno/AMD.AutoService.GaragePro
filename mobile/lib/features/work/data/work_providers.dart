@@ -87,7 +87,7 @@ class CurrentWorkController extends Notifier<CurrentWorkState> {
       final capped = result.autoCappedPrevious;
       if (capped != null) {
         showAppMessage('ระบบปิดเวลาที่ค้างไว้ของ ${capped.vehicleRegistration} ให้แล้ว '
-            'เพราะเลยเวลาสิ้นกะ — แจ้งหัวหน้าช่างถ้าเวลาไม่ตรง');
+            'เพราะเปิดค้างนานเกินกำหนด — แจ้งหัวหน้าช่างถ้าเวลาไม่ตรง');
       }
     } catch (e) {
       // มีคาบเปิดอยู่แล้วโหลดใหม่ไม่ผ่าน = ไม่ทิ้งแถบทิ้งไป แค่บอกว่าเวลาอาจไม่ตรง

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../core/tokens.dart';
-import '../../app/routes.dart';
 import '../../widgets/common.dart';
 
 /// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User)
@@ -201,13 +199,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     try {
       final result = await ref.read(authApiProvider).login(userName, password);
-      // token ขั้นแรกต้องเข้า provider ก่อนเปิดหน้าเลือกสาขา/กะ
-      // เพราะ ApiClient อ่าน token จากที่นี่ตอนยังไม่มีเซสชันเต็ม
-      ref.read(pendingLoginProvider.notifier).set(result);
-      if (!mounted) return;
-
-      // router จะ redirect ไป /auth/shift เองเมื่อเห็นว่ามีผลล็อกอินค้างอยู่
-      context.go(Routes.shift);
+      // [BIZ] ไม่มีขั้นเลือกสาขา/กะแล้ว — token จาก /auth/login ผูกสาขาของพนักงานมาให้เลย
+      // router เห็นเซสชันแล้วจะพาไปหน้าแรกตามบทบาทเอง (landingFor)
+      await ref.read(sessionProvider.notifier).save(result.toSession());
     } on ApiException catch (e) {
       if (mounted) {
         setState(() {

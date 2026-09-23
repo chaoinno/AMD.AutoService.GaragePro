@@ -31,19 +31,6 @@ final sharedPrefsProvider = Provider<SharedPreferences>(
 /// เซสชันปัจจุบัน — null = ยังไม่ได้เข้าสู่ระบบ
 final sessionProvider = NotifierProvider<SessionNotifier, Session?>(SessionNotifier.new);
 
-/// ผลล็อกอินที่ยังเลือกสาขา/กะไม่เสร็จ — token ตัวนี้ใช้เรียก /auth/branches และ /auth/shift-sessions ได้
-/// เก็บใน provider ไม่ใช่ GoRouterState.extra เพราะ extra หายเมื่อ restart process แล้ว route จะพัง
-final pendingLoginProvider = NotifierProvider<PendingLoginNotifier, LoginResult?>(
-  PendingLoginNotifier.new,
-);
-
-class PendingLoginNotifier extends Notifier<LoginResult?> {
-  @override
-  LoginResult? build() => null;
-
-  void set(LoginResult? value) => state = value;
-}
-
 class SessionNotifier extends Notifier<Session?> {
   static const _key = 'garagepro.session';
 
@@ -75,8 +62,7 @@ class SessionNotifier extends Notifier<Session?> {
 /// client เดียวของทั้งแอป — ไม่สร้าง Dio ใหม่ทุกครั้งที่เซสชันเปลี่ยน เพราะอ่าน token ตอนยิงคำขอ
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient(
-    readToken: () =>
-        ref.read(sessionProvider)?.accessToken ?? ref.read(pendingLoginProvider)?.accessToken,
+    readToken: () => ref.read(sessionProvider)?.accessToken,
     onAuthFailure: (error) => _handleAuthFailure(ref, error),
   );
 });
@@ -87,12 +73,11 @@ void _handleAuthFailure(Ref ref, ApiException error) {
   // ถ้าไม่ pop ก่อน ผู้ใช้จะเห็นหน้าเซ็นค้างทับหน้า login
   rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
 
-  ref.read(pendingLoginProvider.notifier).set(null);
   ref.read(sessionProvider.notifier).clear();
 
   showAppMessage(
     error.requiresShift
-        ? 'โทเคนนี้ยังไม่ผูกกับสาขา — เข้าสู่ระบบใหม่แล้วเลือกสาขาและกะอีกครั้ง'
+        ? 'โทเคนนี้ยังไม่ผูกกับสาขา — กรุณาเข้าสู่ระบบใหม่'
         : 'เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่',
     traceId: error.traceId,
     isError: true,

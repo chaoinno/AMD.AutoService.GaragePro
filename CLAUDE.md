@@ -377,12 +377,14 @@ API/             controller บางๆ — logic อยู่ที่ Applica
 
 ### Auth flow
 ```
-Web:    POST /auth/login → token ใช้งานได้ทันที (มี branch จาก Staff.BranchId ใน claim)
-Mobile: POST /auth/login → เลือกสาขา/กะต่อผ่าน /auth/branches/{id}/shifts
-        POST /auth/shift-sessions → token ที่มี branch/shift/session ใน claim
+Web + Mobile: POST /auth/login → token ใช้งานได้ทันที (มี branch จาก Staff.BranchId ใน claim)
 ```
-`[RequireShiftSession]` ยังใช้ตรวจว่ามี branch context ก่อนเรียก endpoint งาน;
-Web ไม่ต้องมี ShiftSession ส่วน Mobile compatibility ยังเปิด/ปิดกะได้ตามเดิม
+**[เปลี่ยน 2026-09-23] มือถือไม่มีขั้นเลือกสาขา/กะแล้ว** (คำขอผู้ใช้) — login แล้วเข้าระบบทันทีเหมือนเว็บ
+ลบ `BranchShiftPage`/`pendingLoginProvider`/route `/auth/shift` และปุ่ม "ปิดกะ" ในแอปออก
+`Session` (mobile) เหลือแค่ token/user/branch · endpoint `/auth/branches/{id}/shifts` และ `/auth/shift-sessions`
+**ยังอยู่ที่ backend ไม่ได้ลบ** แต่ไม่มี client เรียกแล้ว · `[RequireShiftSession]` ยังตรวจแค่ว่ามี branch claim
+· ผลต่อการจับเวลาช่าง: คาบใหม่จากมือถือมี `ShiftSessionId = null` ⇒ auto-cap ใช้ `MaxOpenIntervalHours`
+`[ASSUME] 12` ชม. แทน `Shift.EndTime` และไม่มี hook ปิดคาบตอนปิดกะอีก (lazy cap 3 จุดยังทำงานตามเดิม)
 
 ### Envelope
 ```jsonc

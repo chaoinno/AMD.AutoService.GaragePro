@@ -41,7 +41,7 @@ class HomePage extends ConsumerWidget {
           children: [
             const Text('หน้าหลัก', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             Text(
-              '${session?.branchName ?? '-'} · ${session?.shiftName ?? '-'}',
+              session?.branchName ?? '-',
               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, height: 1.5),
             ),
           ],

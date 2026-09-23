@@ -1,4 +1,4 @@
-/// Model ของการเข้าสู่ระบบและรอบกะ
+/// Model ของการเข้าสู่ระบบ
 library;
 
 class AuthUser {
@@ -58,131 +58,74 @@ class AuthUser {
       };
 }
 
-class BranchOption {
-  BranchOption({
-    required this.branchId,
-    required this.name,
-    required this.pendingQuotationCount,
-    required this.waitingApprovalCount,
-    this.address,
-    this.phone,
-  });
-
-  final int branchId;
-  final String name;
-  final int pendingQuotationCount;
-  final int waitingApprovalCount;
-  final String? address;
-  final String? phone;
-
-  factory BranchOption.fromJson(Map<String, dynamic> j) => BranchOption(
-        branchId: j['branchId'] as int,
-        name: j['name'] as String,
-        pendingQuotationCount: j['pendingQuotationCount'] as int? ?? 0,
-        waitingApprovalCount: j['waitingApprovalCount'] as int? ?? 0,
-        address: j['address'] as String?,
-        phone: j['phone'] as String?,
-      );
-}
-
-class ShiftOption {
-  ShiftOption({
-    required this.shiftId,
-    required this.name,
-    required this.startTime,
-    required this.endTime,
-    required this.isCurrent,
-    this.supervisorName,
-  });
-
-  final String shiftId;
-  final String name;
-  final String startTime;
-  final String endTime;
-  final bool isCurrent;
-  final String? supervisorName;
-
-  factory ShiftOption.fromJson(Map<String, dynamic> j) => ShiftOption(
-        shiftId: j['shiftId'] as String,
-        name: j['name'] as String,
-        startTime: j['startTime'] as String,
-        endTime: j['endTime'] as String,
-        isCurrent: j['isCurrent'] as bool? ?? false,
-        supervisorName: j['supervisorName'] as String?,
-      );
-}
-
-/// ผลการ login — token ขั้นแรกยังเรียก API งานไม่ได้ ต้องเลือกสาขา/กะก่อน
+/// ผลการ login — [BIZ] token ผูกสาขาตาม `Staff.BranchId` แล้ว ใช้เรียก API งานได้ทันที
+/// ไม่มีขั้นเลือกสาขา/กะอีกต่อไป (ยกเลิกตามคำขอผู้ใช้ 2026-09-23 — ใช้ flow เดียวกับเว็บ)
 class LoginResult {
   LoginResult({
     required this.accessToken,
     required this.expiresAt,
     required this.user,
-    required this.branches,
-  });
-
-  final String accessToken;
-  final DateTime expiresAt;
-  final AuthUser user;
-  final List<BranchOption> branches;
-
-  factory LoginResult.fromJson(Map<String, dynamic> j) => LoginResult(
-        accessToken: j['accessToken'] as String,
-        expiresAt: DateTime.parse(j['expiresAt'] as String),
-        user: AuthUser.fromJson(j['user'] as Map<String, dynamic>),
-        branches: ((j['branches'] as List?) ?? const [])
-            .map((e) => BranchOption.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
-}
-
-/// เซสชันที่ใช้งานได้จริง — token ผูกสาขาและกะแล้ว
-class Session {
-  Session({
-    required this.sessionId,
-    required this.accessToken,
-    required this.expiresAt,
-    required this.user,
     required this.branchId,
     required this.branchName,
-    required this.shiftId,
-    required this.shiftName,
-    required this.openedAt,
   });
 
-  final String sessionId;
   final String accessToken;
   final DateTime expiresAt;
   final AuthUser user;
   final int branchId;
   final String branchName;
-  final String shiftId;
-  final String shiftName;
-  final DateTime openedAt;
 
-  bool get isExpired => DateTime.now().toUtc().isAfter(expiresAt);
-
-  factory Session.fromJson(Map<String, dynamic> j) => Session(
-        sessionId: j['sessionId'] as String,
+  factory LoginResult.fromJson(Map<String, dynamic> j) => LoginResult(
         accessToken: j['accessToken'] as String,
         expiresAt: DateTime.parse(j['expiresAt'] as String),
         user: AuthUser.fromJson(j['user'] as Map<String, dynamic>),
         branchId: j['branchId'] as int,
         branchName: j['branchName'] as String,
-        shiftId: j['shiftId'] as String,
-        shiftName: j['shiftName'] as String,
-        openedAt: DateTime.parse(j['openedAt'] as String),
+      );
+
+  Session toSession() => Session(
+        accessToken: accessToken,
+        expiresAt: expiresAt,
+        user: user,
+        branchId: branchId,
+        branchName: branchName,
+      );
+}
+
+/// เซสชันที่ใช้งานได้จริง — token ผูกสาขาแล้ว
+///
+/// เซสชันที่บันทึกไว้จากแอปรุ่นก่อน (มี sessionId/shiftId/shiftName) ยังอ่านได้ — key ที่เกินถูกข้าม
+/// และ token แบบเปิดกะเดิมยังมี branch claim จึงใช้ต่อได้จนหมดอายุ
+class Session {
+  Session({
+    required this.accessToken,
+    required this.expiresAt,
+    required this.user,
+    required this.branchId,
+    required this.branchName,
+  });
+
+  final String accessToken;
+  final DateTime expiresAt;
+  final AuthUser user;
+  final int branchId;
+  final String branchName;
+
+  bool get isExpired => DateTime.now().toUtc().isAfter(expiresAt);
+
+  factory Session.fromJson(Map<String, dynamic> j) => Session(
+        accessToken: j['accessToken'] as String,
+        expiresAt: DateTime.parse(j['expiresAt'] as String),
+        user: AuthUser.fromJson(j['user'] as Map<String, dynamic>),
+        branchId: j['branchId'] as int,
+        branchName: j['branchName'] as String,
       );
 
   Map<String, dynamic> toJson() => {
-        'sessionId': sessionId,
         'accessToken': accessToken,
         'expiresAt': expiresAt.toIso8601String(),
         'user': user.toJson(),
         'branchId': branchId,
         'branchName': branchName,
-        'shiftId': shiftId,
-        'shiftName': shiftName,
-        'openedAt': openedAt.toIso8601String(),
       };
 }
