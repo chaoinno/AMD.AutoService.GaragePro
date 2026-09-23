@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactElement, type ReactNode } from 'react'
 import { Monitor, RefreshCw, TriangleAlert } from 'lucide-react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
@@ -25,6 +25,16 @@ import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { useSession } from './lib/session'
 
 export default function App() {
+  const { pathname } = useLocation()
+  // [UI] หน้า landing/เข้าสู่ระบบเป็นหน้าสาธารณะที่ต้องเปิดบนมือถือได้ (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard
+  // ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
+  if (pathname === '/login') {
+    return (
+      <AppErrorBoundary>
+        <LoginRoute />
+      </AppErrorBoundary>
+    )
+  }
   return (
     <AppErrorBoundary>
       <div className="desktop-guard" role="alert">
@@ -37,7 +47,6 @@ export default function App() {
       <div className="desktop-app">
         <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<LoginRoute />} />
           <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />

@@ -1,159 +1,208 @@
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
-import { CircleAlert, Eye, EyeOff, LoaderCircle, LockKeyhole, ShieldCheck, UserRound } from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router'
-import { z } from 'zod'
-import { login } from '../../api/auth'
-import { isApiError } from '../../api/client'
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
-import { Button } from '../../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
-import { Label } from '../../components/ui/label'
-import { clearStoredSession, saveSession } from '../../lib/session'
+import {
+  BarChart3,
+  CalendarClock,
+  ClipboardCheck,
+  Eye,
+  FileText,
+  Gauge,
+  Menu,
+  ShieldCheck,
+  Smartphone,
+  Users,
+  Wrench,
+  X,
+} from 'lucide-react'
+import { useEffect, useState, type MouseEvent } from 'react'
+import { ContactSection } from './ContactSection'
+import { LoginCard } from './LoginCard'
+import './landing.css'
 
-const loginSchema = z.object({
-  userName: z.string().trim().min(1, 'กรุณากรอกรหัสพนักงาน'),
-  password: z.string().min(1, 'กรุณากรอกรหัสผ่าน'),
-})
+const NAV_ITEMS = [
+  { id: 'login', label: 'เข้าสู่ระบบ' },
+  { id: 'about', label: 'เกี่ยวกับเรา' },
+  { id: 'contact', label: 'ติดต่อ' },
+] as const
 
-type LoginForm = z.infer<typeof loginSchema>
+type SectionId = (typeof NAV_ITEMS)[number]['id']
+
+const FEATURES = [
+  { icon: ClipboardCheck, title: 'รับรถ + เช็คสภาพ', body: 'เปิดจ๊อบ ถ่ายรูป เช็คลิสต์สภาพรถขณะรับ และพิมพ์ใบรับรถพร้อมช่องเซ็น' },
+  { icon: FileText, title: 'ใบเสนอราคาแบบมีฉบับ', body: 'แก้ไขเป็นฉบับใหม่ได้โดยไม่ทับของเดิม ลูกค้าอนุมัติรายบรรทัดพร้อมลายเซ็น' },
+  { icon: Wrench, title: 'ติดตามงานซ่อม', body: 'สถานะจ๊อบตั้งแต่รับรถจนส่งมอบ เบิกอะไหล่แบบ FIFO และตรวจ QC ก่อนส่งมอบ' },
+  { icon: CalendarClock, title: 'ปฏิทินนัดหมาย', body: 'เห็นรถนัดหมายรายวัน/รายเดือน และแปลงเป็นรถในอู่ได้ทันทีเมื่อรถเข้า' },
+  { icon: Smartphone, title: 'แอปมือถือสำหรับหน้างาน', body: 'ช่างจับเวลาทำงาน แชทในจ๊อบ และส่งมอบรถให้ลูกค้าเซ็นรับได้ที่ข้างรถ' },
+  { icon: BarChart3, title: 'รายงานผู้บริหาร', body: 'แดชบอร์ดวันนี้ รอบเวลาทำงาน ยอดขาย-ต้นทุน-กำไร และอายุสต็อก' },
+] as const
+
+const VALUES = [
+  { icon: Eye, title: 'Visibility', body: 'เห็นสถานะทุกคันแบบเรียลไทม์ ไม่ต้องเดินถามหน้างาน' },
+  { icon: Users, title: 'Performance', body: 'ทุกฝ่ายทำงานบนข้อมูลชุดเดียวกัน ส่งต่องานได้ไม่ตกหล่น' },
+  { icon: Gauge, title: 'Growth Intelligence', body: 'เปลี่ยนข้อมูลหน้างานเป็นตัวเลขต้นทุนและประสิทธิภาพที่ตัดสินใจได้' },
+] as const
 
 export function LoginPage() {
-  const navigate = useNavigate()
-  const [showPassword, setShowPassword] = useState(false)
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema) })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [active, setActive] = useState<SectionId>('login')
 
   useEffect(() => {
-    document.title = 'เข้าสู่ระบบ | แพลตฟอร์มสำหรับจัดการงานอู่บริการซ่อมบำรุงรถยนต์ GaragePro'
+    document.title = 'GaragePro Auto Services | แพลตฟอร์มจัดการงานอู่บริการซ่อมบำรุงรถยนต์'
   }, [])
 
-  const mutation = useMutation({
-    mutationFn: ({ userName, password }: LoginForm) => {
-      clearStoredSession()
-      return login(userName.trim(), password)
-    },
-    onSuccess: (result) => {
-      saveSession(result)
-      navigate('/jobs', { replace: true })
-    },
-  })
+  // [UI] ไฮไลต์เมนูตาม section ที่อยู่ในจอ — ใช้ IntersectionObserver แทนการฟัง scroll ทุกเฟรม
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
+        if (visible) setActive(visible.target.id as SectionId)
+      },
+      { rootMargin: '-40% 0px -50% 0px', threshold: [0, 0.25, 0.5] },
+    )
+    NAV_ITEMS.forEach(({ id }) => {
+      const el = document.getElementById(id)
+      if (el) observer.observe(el)
+    })
+    return () => observer.disconnect()
+  }, [])
+
+  // ใช้ scrollIntoView แทน hash navigation เพื่อไม่ให้ URL เปลี่ยนเป็น /login#about
+  // (router จะมองว่าเป็นคนละ location และปุ่ม back ของเบราว์เซอร์จะกระโดดไปมาใน section)
+  function goTo(event: MouseEvent, id: SectionId) {
+    event.preventDefault()
+    setMenuOpen(false)
+    // จอแคบ (< 1024px) การ์ดเข้าสู่ระบบถูกดันลงไปใต้ข้อความ hero — เลื่อนไปที่การ์ดโดยตรงไม่ใช่หัว section
+    const target =
+      id === 'login' && window.matchMedia('(max-width: 1023px)').matches
+        ? document.getElementById('login-card')
+        : document.getElementById(id)
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (id === 'login') {
+      // ผู้ใช้ที่กด "เข้าสู่ระบบ" ต้องการพิมพ์รหัสต่อทันที — preventScroll กันไม่ให้โฟกัสกระตุกการเลื่อนแบบ smooth
+      window.setTimeout(() => document.getElementById('userName')?.focus({ preventScroll: true }), 350)
+    }
+  }
 
   return (
-    <main className="auth-page auth-page--login">
-      <div className="auth-page__ambient auth-page__ambient--one" />
-      <div className="auth-page__ambient auth-page__ambient--two" />
-      <section className="login-intro" aria-label="ข้อมูลระบบ">
-        <div className="auth-brand">
-          <img className="auth-brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
-          <span>
-            <strong>GaragePro</strong>
-            <small>Auto Services</small>
-          </span>
+    <div className="landing">
+      <header className="landing-nav">
+        <div className="landing-container landing-nav__inner">
+          <a className="auth-brand" href="#login" onClick={(e) => goTo(e, 'login')}>
+            <img className="auth-brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
+            <span>
+              <strong>GaragePro</strong>
+              <small>Auto Services</small>
+            </span>
+          </a>
+          <button
+            type="button"
+            className="landing-nav__toggle"
+            aria-label={menuOpen ? 'ปิดเมนู' : 'เปิดเมนู'}
+            aria-expanded={menuOpen}
+            aria-controls="landing-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          </button>
+          <nav id="landing-menu" className="landing-nav__menu" data-open={menuOpen} aria-label="เมนูหลัก">
+            {NAV_ITEMS.map((item) => (
+              <a
+                key={item.id}
+                href={`#${item.id}`}
+                className={item.id === 'login' ? 'landing-nav__link landing-nav__link--cta' : 'landing-nav__link'}
+                aria-current={active === item.id ? 'true' : undefined}
+                onClick={(e) => goTo(e, item.id)}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
         </div>
-        <div className="login-intro__copy">
-          <span className="login-intro__eyebrow">
-            <ShieldCheck aria-hidden="true" /> ระบบภายในสำหรับพนักงาน
-          </span>
-          <h1>จัดการงานอู่บริการซ่อมบำรุงรถยนต์<br />ได้ในแพลตฟอร์มเดียว</h1>
-          <p>เข้าสู่ระบบด้วยบัญชีพนักงาน เพื่อเริ่มจัดการงานของอู่คุณ</p>
-        </div>
-      </section>
+      </header>
 
-      <Card className="login-card">
-        <CardHeader>
-          <div className="login-card__icon" aria-hidden="true">
-            <LockKeyhole />
+      <main>
+        <section id="login" className="landing-hero" aria-labelledby="landing-hero-title">
+          <div className="auth-page__ambient auth-page__ambient--one" />
+          <div className="auth-page__ambient auth-page__ambient--two" />
+          <div className="landing-container landing-hero__inner">
+            <div className="landing-hero__copy">
+              <span className="login-intro__eyebrow">
+                <ShieldCheck aria-hidden="true" /> ระบบปฏิบัติการงานบริการสำหรับอู่ซ่อมรถ
+              </span>
+              <h1 id="landing-hero-title">
+                จัดการงานอู่บริการซ่อมบำรุงรถยนต์
+                <br />
+                ได้ในแพลตฟอร์มเดียว
+              </h1>
+              <p>
+                ตั้งแต่รับรถ เสนอราคา ซ่อม ตรวจ QC ชำระเงิน จนส่งมอบรถ — ทุกฝ่ายเห็นข้อมูลชุดเดียวกัน
+                ทั้งบนเว็บและแอปมือถือ
+              </p>
+              <div className="landing-hero__actions">
+                <a className="landing-btn landing-btn--primary" href="#contact" onClick={(e) => goTo(e, 'contact')}>
+                  ขอ Demo
+                </a>
+                <a className="landing-btn landing-btn--ghost" href="#about" onClick={(e) => goTo(e, 'about')}>
+                  รู้จัก GaragePro
+                </a>
+              </div>
+              <p className="landing-hero__staff-note">พนักงานอู่: เข้าสู่ระบบด้วยรหัสพนักงานและรหัสผ่านเดิมของ GaragePro</p>
+            </div>
+            <LoginCard />
           </div>
-          <CardTitle>เข้าสู่ระบบ</CardTitle>
-          <CardDescription>ใช้รหัสพนักงานและรหัสผ่าน</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="auth-form" onSubmit={handleSubmit((values) => mutation.mutate(values))}>
-            <div className="form-field">
-              <Label htmlFor="userName">รหัสพนักงาน</Label>
-              <div className="input-with-icon">
-                <UserRound aria-hidden="true" />
-                <Input
-                  id="userName"
-                  autoComplete="username"
-                  placeholder="กรอกรหัสพนักงาน"
-                  aria-invalid={Boolean(errors.userName)}
-                  {...register('userName')}
-                />
-              </div>
-              {errors.userName ? <p className="field-error">{errors.userName.message}</p> : null}
+        </section>
+
+        <section className="landing-section landing-section--light" aria-labelledby="landing-features-title">
+          <div className="landing-container">
+            <p className="landing-eyebrow">สิ่งที่ระบบทำได้</p>
+            <h2 id="landing-features-title" className="landing-h2">ครอบคลุมงานบริการทุกขั้นตอน</h2>
+            <ul className="landing-feature-grid">
+              {FEATURES.map(({ icon: Icon, title, body }) => (
+                <li key={title} className="landing-feature">
+                  <span className="landing-feature__icon" aria-hidden="true"><Icon /></span>
+                  <h3>{title}</h3>
+                  <p>{body}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section id="about" className="landing-section" aria-labelledby="landing-about-title">
+          <div className="landing-container landing-about">
+            <div>
+              <p className="landing-eyebrow">เกี่ยวกับเรา</p>
+              <h2 id="landing-about-title" className="landing-h2">Armadillo Tech Co., Ltd.</h2>
+              <p className="landing-lead">
+                ผู้พัฒนา GaragePro — ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ
+                และเปลี่ยนทุกข้อมูลหน้างานให้เป็นแรงขับเคลื่อนการเติบโต
+              </p>
+              <p className="landing-body">
+                GaragePro Auto Services ต่อยอดจากระบบ GaragePro ที่อู่ซ่อมสีและตัวถังใช้งานอยู่ มาสู่งานบริการ
+                ซ่อมบำรุงรถยนต์ โดยใช้ข้อมูลลูกค้าและรถชุดเดิม ไม่ต้องย้ายข้อมูลใหม่
+              </p>
             </div>
+            <ul className="landing-values">
+              {VALUES.map(({ icon: Icon, title, body }) => (
+                <li key={title}>
+                  <span className="landing-feature__icon" aria-hidden="true"><Icon /></span>
+                  <div>
+                    <h3>{title}</h3>
+                    <p>{body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
-            <div className="form-field">
-              <Label htmlFor="password">รหัสผ่าน</Label>
-              <div className="input-with-icon input-with-action">
-                <LockKeyhole aria-hidden="true" />
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="กรอกรหัสผ่าน"
-                  aria-invalid={Boolean(errors.password)}
-                  {...register('password')}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="input-action"
-                  aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
-                  onClick={() => setShowPassword((visible) => !visible)}
-                >
-                  {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
-                </Button>
-              </div>
-              {errors.password ? <p className="field-error">{errors.password.message}</p> : null}
-            </div>
+        <ContactSection />
+      </main>
 
-            {mutation.isError ? (
-              <Alert variant="destructive">
-                <CircleAlert aria-hidden="true" />
-                <div>
-                  <AlertTitle>
-                    {isApiError(mutation.error)
-                      ? mutation.error.messageTh
-                      : 'เข้าสู่ระบบไม่สำเร็จ'}
-                  </AlertTitle>
-                  <AlertDescription>
-                    <p>ตรวจสอบข้อมูลแล้วลองเข้าสู่ระบบอีกครั้ง</p>
-                    <p className="trace-id">
-                      รหัสติดตาม (traceId):{' '}
-                      {isApiError(mutation.error) ? mutation.error.traceId : 'ไม่พบรหัสติดตาม'}
-                    </p>
-                  </AlertDescription>
-                </div>
-              </Alert>
-            ) : null}
-
-            <Button className="auth-submit" size="lg" type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? (
-                <>
-                  <LoaderCircle className="spin" aria-hidden="true" /> กำลังเข้าสู่ระบบ
-                </>
-              ) : (
-                <>
-                  <LockKeyhole aria-hidden="true" /> เข้าสู่ระบบ
-                </>
-              )}
-            </Button>
-          </form>
-          <p className="login-card__notice">
-            ระบบนี้เป็นระบบภายในของอู่ การใช้งานทั้งหมดจะถูกบันทึกในประวัติกิจกรรม
-          </p>
-        </CardContent>
-      </Card>
-    </main>
+      <footer className="landing-footer">
+        <div className="landing-container landing-footer__inner">
+          <p>ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ และเปลี่ยนทุกข้อมูลหน้างานให้เป็นแรงขับเคลื่อนการเติบโต</p>
+          <p>© {new Date().getFullYear()} GaragePro by Armadillo Tech Co., Ltd.</p>
+        </div>
+      </footer>
+    </div>
   )
 }

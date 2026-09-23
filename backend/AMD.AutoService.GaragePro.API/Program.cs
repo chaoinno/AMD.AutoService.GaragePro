@@ -1,12 +1,15 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using AMD.AutoService.GaragePro.API;
 using AMD.AutoService.GaragePro.API.Auth;
+using AMD.AutoService.GaragePro.API.Controllers;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Infrastructure;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -118,7 +121,51 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
+// [SECURITY] API อยู่หลัง Nginx เสมอ (container bind 127.0.0.1 เท่านั้น) — ใช้ X-Forwarded-For ตัวขวาสุด
+// ที่ Nginx เติมเอง (ForwardLimit = 1) เป็น IP จริงของผู้ใช้ ไม่งั้นทุกคำขอจะเป็น IP ของ docker gateway
+// แล้ว rate limit ต่อ IP กลายเป็นเพดานรวมของทั้งโลก · ค่าที่ client ปลอมมาจะอยู่ทางซ้ายและถูกข้าม
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.ForwardLimit = 1;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
+
+// [SECURITY] ฟอร์มติดต่อเป็น anonymous — ต่อ IP 5 ครั้ง/10 นาที + เพดานรวม 60 ครั้ง/ชั่วโมง
+// กันคนยิงสแปมเข้ากลุ่ม LINE และกันโควตา push message ของ LINE OA หมด
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy(PublicContactController.RateLimitPolicy, context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        context.Request.Path.StartsWithSegments("/api/v1/public")
+            ? RateLimitPartition.GetFixedWindowLimiter("public-global",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromHours(1), QueueLimit = 0 })
+            : RateLimitPartition.GetNoLimiter("authenticated"));
+    o.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            data = (object?)null,
+            error = new
+            {
+                code = "RATE_LIMITED",
+                messageTh = "ส่งข้อมูลถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อทาง LINE @garagepro / โทร 090-996-6446"
+            },
+            traceId = context.HttpContext.TraceIdentifier
+        }, ct);
+    };
+});
+
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 // สร้าง schema + seed แคตตาล็อกตัวอย่างในโหมด Development เท่านั้น
 if (app.Environment.IsDevelopment())
@@ -146,6 +193,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 // Catalog edits can race with a receipt/issue; return a retryable conflict instead of an unhandled 500.
 app.Use(async (context, next) =>
 {

@@ -1318,6 +1318,35 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   ความสูงแบบมีเงื่อนไข 108/142 เพราะ `PreferredSize` ไม่ยืดตามลูก · ข้อความ empty state บอกชื่อตัวกรองที่ค้างแทน
   คำว่า "ตัวกรองที่เลือก" ลอยๆ · ทดสอบจริงบน simulator แล้ว: ตั้งตัวกรองจากหน้าหลัก → เห็นแถบ → กด "ล้าง" → งานขึ้นครบ 7 รายการ
 
+- ✅ **[เพิ่ม 2026-09-23] หน้า `/login` เป็น landing page นำเสนอผลิตภัณฑ์** (คำขอผู้ใช้) — navbar 3 เมนู:
+  "เข้าสู่ระบบ" (เลื่อนไปการ์ด login บนสุด + โฟกัสช่องรหัสพนักงาน) · "เกี่ยวกับเรา" (Armadillo Tech Co., Ltd.) ·
+  "ติดต่อ" (ฟอร์มขอ Demo คัดฟิลด์/ช่องทางติดต่อจาก `https://gp.ipongs.com/#contact`)
+  · ไฟล์: `web/src/features/auth/LoginPage.tsx` (layout) · `LoginCard.tsx` (ตรรกะ login เดิมย้ายมาไม่เปลี่ยน) ·
+  `ContactSection.tsx` · `landing.css` · **`App.tsx` แสดง `/login` นอก `desktop-guard`** — หน้าเดียวที่รองรับจอ < 1024px
+  (ผู้สนใจเปิดจากมือถือ) ระบบหลังล็อกอินยังเป็น desktop เท่านั้นตามเดิม
+  · **[อัปเดต 2026-09-23] ฟอร์มติดต่อส่งเข้ากลุ่ม LINE จริงแล้ว** (ตัดตัวเลือกแพ็กเกจออกตามคำขอ) —
+  `POST /api/v1/public/contact-requests` (`PublicContactController` → `ContactRequestService` →
+  `IContactNotifier`/`LineContactNotifier` = LINE Messaging API `POST /v2/bot/message/push` ไปที่ groupId)
+  **endpoint สาธารณะตัวเดียวของระบบที่ไม่ต้องล็อกอิน** ไม่บันทึกลงฐานข้อมูล (ส่งต่ออย่างเดียว)
+  · config: `LineMessaging:ChannelAccessToken` + `LineMessaging:ContactGroupId` (**user-secrets / env file เท่านั้น**
+  เพิ่มใน `deploy/production/env.example` และ `scripts/bootstrap-production-secrets.sh` แล้ว — สคริปต์เขียนทับ env file
+  ทั้งไฟล์ ถ้าไม่ใส่ key ไว้ใน user-secrets ของ Mac รันซ้ำแล้วค่าที่เพิ่มด้วยมือบน server จะหาย) · **ยังไม่ได้ตั้งค่าจริง**
+  ไม่ตั้ง → ฟอร์มตอบ `CONTACT_UNAVAILABLE` (503) พร้อมบอกให้ติดต่อ LINE/โทรแทน
+  · กันซ้ำ: client สร้าง `requestId` ใหม่ทุกครั้งที่แก้ฟอร์ม ส่งเป็น `X-Line-Retry-Key` — กดลองใหม่หลังเน็ตหลุดไม่ได้
+  ข้อความซ้ำ (LINE ตอบ 409 = เคยส่งแล้ว นับเป็นสำเร็จ)
+  · [SECURITY] rate limit ASP.NET Core ในตัว: ต่อ IP 5 ครั้ง/10 นาที + เพดานรวม `/api/v1/public` 60 ครั้ง/ชม. (`RATE_LIMITED`
+  429) · **เพิ่ม `UseForwardedHeaders` (ForwardLimit=1) ทั้งแอป** เพื่อให้ได้ IP จริงจาก Nginx — ปลอดภัยเพราะ container
+  bind 127.0.0.1 เข้าได้ทาง Nginx เท่านั้น ถ้าเปิดพอร์ต API ตรงสู่ภายนอกเมื่อไหร่ต้องตั้ง KnownProxies ก่อน · honeypot
+  `website` (บอทได้ "สำเร็จ" หลอก) · ช่องบรรทัดเดียวตัดขึ้นบรรทัดใหม่กันปลอมบรรทัดในข้อความกลุ่ม · ไม่ log ข้อความ/เบอร์โทร/token
+  · **บทเรียน: `JsonContent.Create` ส่งแบบ chunked ไม่มี Content-Length** mock ตัดการเชื่อมต่อทิ้ง → ใช้ `StringContent`
+  · ทดสอบแล้ว: `dotnet test` 272 ผ่าน / skip 5 (เพิ่ม `ContactRequestServiceTests.cs` 11) · API จริง + mock LINE:
+  รูปแบบ request/Bearer/retry key ถูก, ส่งซ้ำ id เดิม → 409 → สำเร็จ, validation/honeypot/429 ทำงาน · UI กับ API ที่ไม่ตั้งค่า
+  แสดง error + traceId ถูก · **ยังไม่เคยยิงเข้า LINE จริง** (ยังไม่มี token/groupId)
+  · เนื้อหา "เกี่ยวกับเรา" ใช้เฉพาะข้อมูลที่มีในต้นแบบ (ชื่อบริษัท + tagline + 3 คุณค่า) — ยังไม่มีประวัติบริษัท/ที่อยู่/ชื่อไทยที่ยืนยันแล้ว
+  · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ 1440px และ 375px: เมนูเลื่อนถูก section + ไฮไลต์เมนูตามตำแหน่ง,
+  เมนูแฮมเบอร์เกอร์บนมือถือ, ไม่มี horizontal scroll, validation ช่องบังคับกันส่ง, ส่งแล้วได้ข้อความสรุปถูกต้อง, ไม่มี console error
+  · ยังไม่ได้ทดสอบ login จริงผ่านหน้าใหม่ (ไม่ได้รัน API ในรอบนี้ — ตรรกะ login ไม่ได้แก้)
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
