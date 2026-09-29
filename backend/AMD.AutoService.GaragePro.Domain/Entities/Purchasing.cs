@@ -113,6 +113,8 @@ public class StockMovement
     /// <summary>ผู้เบิก (เช่น ช่างที่ขอเบิกของ) — คนละคนกับ PerformedByName ที่เป็นผู้ทำรายการ/ผู้จ่ายในระบบ</summary>
     public long? RequesterStaffId { get; set; }
     public string? RequesterName { get; set; }
+    /// <summary>รายการขายหน้าร้านที่ตัดล็อตนี้ — null สำหรับ movement ประเภทอื่น</summary>
+    public Guid? SaleId { get; set; }
 }
 
 public class PurchaseNumberCounter

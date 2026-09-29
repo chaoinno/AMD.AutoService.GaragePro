@@ -18,21 +18,7 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     {
         try
         {
-            return await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
-            {
-                // Retry must re-read document, lots and counters rather than reuse mutated tracked objects.
-                db.ChangeTracker.Clear();
-                await using var tx = await db.Database.BeginTransactionAsync(ct);
-                var resource = $"garagepro:purchasing:{user.ShardKey}:{user.BranchId}";
-                await db.Database.ExecuteSqlInterpolatedAsync($@"
-                    DECLARE @result int;
-                    EXEC @result = sys.sp_getapplock @Resource={resource}, @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=10000;
-                    IF @result < 0 THROW 51001, 'Purchasing lock timeout', 1;", ct);
-                var result = await action();
-                await db.SaveChangesAsync(ct);
-                await tx.CommitAsync(ct);
-                return result;
-            });
+            return await new BranchStockTransaction(db, user).ExecuteAsync(action, ct);
         }
         catch (DbUpdateConcurrencyException)
         { throw new PurchasingException("PURCHASING_CONFLICT", "ข้อมูลถูกแก้ไขพร้อมกัน กรุณาโหลดใหม่แล้วลองอีกครั้ง"); }

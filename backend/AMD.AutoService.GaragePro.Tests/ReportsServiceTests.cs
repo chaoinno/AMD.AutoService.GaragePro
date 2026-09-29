@@ -176,6 +176,124 @@ public sealed class ReportsServiceTests
         result.Data.OldestLots.First().CatalogCode.Should().Be("P-1");
     }
 
+    // ---------- ขายหน้าร้าน ----------
+
+    private static readonly DateOnly Day1 = new(2026, 9, 1);
+
+    /// <summary>เวลาไทย (UTC+7) → UTC ที่เก็บในฐานข้อมูล</summary>
+    private static DateTime ThaiTime(int day, int hour) =>
+        DateTime.SpecifyKind(new DateTime(2026, 9, day, hour, 0, 0).AddHours(-7), DateTimeKind.Utc);
+
+    private static Sale RetailSale(int day, int hour, decimal total, decimal cost, SaleStatus status = SaleStatus.Completed,
+        string seller = "แคชเชียร์ ก", params (string Code, int Qty, decimal Net, decimal Cost)[] lines)
+    {
+        var sale = new Sale
+        {
+            Status = status, CompletedAt = ThaiTime(day, hour), CompletedByName = seller, TotalAmount = total,
+            NetAmount = Math.Round(total / 1.07m, 2), VatAmount = total - Math.Round(total / 1.07m, 2), CostTotal = cost,
+            ReceiptNo = $"SL-26-{day:D2}{hour:D2}",
+        };
+        if (status == SaleStatus.Voided) { sale.VoidedAt = sale.CompletedAt!.Value.AddHours(1); sale.VoidReason = "ลูกค้าคืนสินค้า"; }
+        foreach (var (code, qty, net, lineCost) in lines)
+            sale.Lines.Add(new SaleLine { CatalogItemId = CatalogId(code), Code = code, Name = $"สินค้า {code}", Unit = "ชิ้น", Quantity = qty, NetAmount = net, CostAmount = lineCost });
+        sale.Payments.Add(new SalePayment { Method = PaymentMethod.Cash, Amount = total });
+        return sale;
+    }
+
+    private static Guid CatalogId(string code) => new(System.Security.Cryptography.MD5.HashData(System.Text.Encoding.UTF8.GetBytes(code)));
+
+    [Theory]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Technician)]
+    public async Task GetRetailSalesAsync_rejects_roles_outside_manager_or_office(UserRole role)
+    {
+        var result = await CreateService(new FakeReportsRepository(), role).GetRetailSalesAsync(Day1, Day1);
+
+        result.Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+    }
+
+    [Fact]
+    public async Task GetRetailSalesAsync_excludes_voided_bills_from_totals_but_lists_them_separately()
+    {
+        var repo = new FakeReportsRepository
+        {
+            Sales =
+            [
+                RetailSale(1, 10, 107m, 60m, lines: ("A", 2, 100m, 60m)),
+                RetailSale(1, 11, 214m, 90m, lines: ("B", 1, 200m, 90m)),
+                RetailSale(2, 9, 535m, 300m, SaleStatus.Voided, lines: ("A", 5, 500m, 300m)),
+            ],
+        };
+
+        var report = (await CreateService(repo, UserRole.Manager).GetRetailSalesAsync(Day1, Day1.AddDays(2))).Data!;
+
+        report.BillCount.Should().Be(2);
+        report.TotalAmount.Should().Be(321m);
+        report.ItemQuantity.Should().Be(3);
+        report.CostAmount.Should().Be(150m);
+        report.MarginAmount.Should().Be(report.NetAmount - 150m);
+        report.VoidedCount.Should().Be(1);
+        report.VoidedAmount.Should().Be(535m);
+        report.VoidedSales.Single().VoidReason.Should().Be("ลูกค้าคืนสินค้า");
+        report.TopProducts.Select(x => x.Code).Should().Equal("B", "A");
+        report.TopProducts.Single(x => x.Code == "A").Quantity.Should().Be(2, "จำนวนของบิลที่ยกเลิกไม่นับ");
+    }
+
+    [Fact]
+    public async Task GetRetailSalesAsync_groups_by_thai_calendar_day_and_fills_days_without_sales()
+    {
+        // 01:00 เวลาไทยวันที่ 2 = 18:00 UTC วันที่ 1 — ต้องนับเป็นวันที่ 2 ตามปฏิทินไทย
+        var repo = new FakeReportsRepository { Sales = [RetailSale(2, 1, 100m, 0m), RetailSale(4, 23, 50m, 0m)] };
+
+        var report = (await CreateService(repo, UserRole.Office).GetRetailSalesAsync(Day1, Day1.AddDays(3))).Data!;
+
+        report.Daily.Select(x => x.Date.Day).Should().Equal(1, 2, 3, 4);
+        report.Daily.Select(x => x.TotalAmount).Should().Equal(0m, 100m, 0m, 50m);
+    }
+
+    [Fact]
+    public async Task GetRetailSalesAsync_strips_cost_and_margin_for_office_but_keeps_revenue()
+    {
+        var repo = new FakeReportsRepository { Sales = [RetailSale(1, 10, 107m, 60m, lines: ("A", 1, 100m, 60m))] };
+
+        var report = (await CreateService(repo, UserRole.Office).GetRetailSalesAsync(Day1, Day1)).Data!;
+
+        report.TotalAmount.Should().Be(107m);
+        report.CostAmount.Should().BeNull();
+        report.MarginAmount.Should().BeNull();
+        report.MarginPercent.Should().BeNull();
+        report.TopProducts.Single().CostAmount.Should().BeNull();
+        report.TopProducts.Single().MarginAmount.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetRetailSalesAsync_rejects_inverted_or_too_long_ranges()
+    {
+        var service = CreateService(new FakeReportsRepository(), UserRole.Manager);
+
+        (await service.GetRetailSalesAsync(Day1.AddDays(1), Day1)).Error!.Code.Should().Be("REPORTS_VALIDATION");
+        (await service.GetRetailSalesAsync(Day1, Day1.AddDays(ReportsService.RetailReportMaxDays))).Error!.Code.Should().Be("REPORTS_VALIDATION");
+    }
+
+    [Fact]
+    public async Task GetDashboardAsync_reports_todays_retail_sales_without_voided_bills()
+    {
+        var today = DateTime.UtcNow.AddHours(7).Date;
+        Sale At(decimal total, SaleStatus status) => new()
+        {
+            Status = status, TotalAmount = total, CompletedAt = DateTime.SpecifyKind(today.AddHours(-7).AddMinutes(1), DateTimeKind.Utc),
+            Lines = [new SaleLine { Quantity = 2 }],
+        };
+        var repo = new FakeReportsRepository { Sales = [At(100m, SaleStatus.Completed), At(999m, SaleStatus.Voided)], RetailDraftCount = 3 };
+
+        var retail = (await CreateService(repo, UserRole.Manager).GetDashboardAsync()).Data!.RetailToday!;
+
+        retail.BillCount.Should().Be(1);
+        retail.TotalAmount.Should().Be(100m);
+        retail.ItemQuantity.Should().Be(2);
+        retail.DraftCount.Should().Be(3);
+    }
+
     private static ReportsService CreateService(IReportsRepository repo, UserRole role) =>
         new(repo, new StubCurrentUser(role), TimeProvider.System);
 
@@ -199,6 +317,8 @@ public sealed class ReportsServiceTests
         public List<StockLot> StockLots { get; set; } = [];
         public List<CatalogItem> CatalogItems { get; set; } = [];
         public List<Warehouse> Warehouses { get; set; } = [];
+        public List<Sale> Sales { get; set; } = [];
+        public int RetailDraftCount { get; set; }
         public decimal CollectedAmount { get; set; }
         public int ReceiptsIssuedCount { get; set; }
 
@@ -225,5 +345,12 @@ public sealed class ReportsServiceTests
 
         public Task<IReadOnlyList<Warehouse>> GetWarehousesAsync(string shardKey, int branchId, CancellationToken ct) =>
             Task.FromResult<IReadOnlyList<Warehouse>>(Warehouses);
+
+        // กรองช่วงเวลาเหมือน repository จริง — เทสต์ขอบวันตามเวลาไทยจึงมีความหมาย
+        public Task<IReadOnlyList<Sale>> GetRetailSalesCompletedInRangeAsync(string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Sale>>(Sales.Where(x => x.CompletedAt >= fromUtc && x.CompletedAt < toUtc).ToList());
+
+        public Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct) =>
+            Task.FromResult(RetailDraftCount);
     }
 }

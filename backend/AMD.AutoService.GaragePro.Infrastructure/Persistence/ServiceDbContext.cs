@@ -38,6 +38,11 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<QuotationTemplate> QuotationTemplates => Set<QuotationTemplate>();
     public DbSet<QuotationTemplateLine> QuotationTemplateLines => Set<QuotationTemplateLine>();
     public DbSet<WorkInterval> WorkIntervals => Set<WorkInterval>();
+    public DbSet<Sale> Sales => Set<Sale>();
+    public DbSet<SaleLine> SaleLines => Set<SaleLine>();
+    public DbSet<SalePayment> SalePayments => Set<SalePayment>();
+    public DbSet<SaleReceiptNumberCounter> SaleReceiptNumberCounters => Set<SaleReceiptNumberCounter>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
 
     /// <summary>
     /// [RISK — พบ 2026-09-16] เดิมไม่มีการระบุ DateTimeKind ที่จุดไหนเลย (ไม่มี converter ที่นี่ ไม่มีใน

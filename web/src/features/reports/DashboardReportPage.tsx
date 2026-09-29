@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { AlarmClockOff, BadgeCheck, ClipboardCheck, LayoutDashboard, ReceiptText, Wallet } from 'lucide-react'
+import { AlarmClockOff, BadgeCheck, ClipboardCheck, FileEdit, LayoutDashboard, Package, ReceiptText, ShoppingCart, Wallet } from 'lucide-react'
+import { Link } from 'react-router'
+import type { RetailSalesToday } from '../../api/reports'
+import { buttonVariants } from '../../components/ui/button'
 import { getDashboardReport } from '../../api/reports'
 import { AppShell } from '../../components/AppShell'
 import { Money } from '../../components/Money'
@@ -30,9 +33,11 @@ export function DashboardReportPage() {
               <StatTile icon={AlarmClockOff} label="จ๊อบเกินนัด" value={query.data.overdueCount} tone={query.data.overdueCount > 0 ? 'danger' : 'default'} hint="เลยเวลานัดรับรถแล้วยังไม่เสร็จ" />
               <StatTile icon={ClipboardCheck} label="รอ QC" value={query.data.waitingQcCount} tone="warning" hint="งานซ่อมเสร็จ รอตรวจสอบคุณภาพ" />
               <StatTile icon={BadgeCheck} label="รอชำระเงิน/ส่งมอบ" value={query.data.waitingPaymentCount} tone="warning" hint="ผ่าน QC แล้ว รอปิดงาน" />
-              <StatTile icon={Wallet} label="ยอดรับชำระวันนี้" value={<Money value={query.data.collectedToday} />} hint="รวมทุกช่องทางชำระเงิน" />
+              <StatTile icon={Wallet} label="ยอดรับชำระวันนี้" value={<Money value={query.data.collectedToday} />} hint="รวมงานซ่อม + ขายหน้าร้าน ทุกช่องทาง" />
               <StatTile icon={ReceiptText} label="ใบเสร็จออกวันนี้" value={query.data.receiptsIssuedToday} />
             </div>
+
+            {query.data.retailToday ? <RetailTodayWidget retail={query.data.retailToday} /> : null}
 
             <h3 className="report-section-title">จ๊อบแยกตามสถานะ</h3>
             <Card className="report-bar-group">
@@ -61,5 +66,26 @@ export function DashboardReportPage() {
         ) : null}
       </QueryState>
     </AppShell>
+  )
+}
+
+/// widget ขายหน้าร้านวันนี้ — นับเฉพาะบิลที่ชำระแล้ว (บิลที่ยกเลิกไม่นับ) ตามวันปฏิทินไทย
+function RetailTodayWidget({ retail }: { retail: RetailSalesToday }) {
+  return (
+    <Card className="dashboard-widget">
+      <div className="dashboard-widget__head">
+        <h3><ShoppingCart aria-hidden="true" /> ขายหน้าร้านวันนี้</h3>
+        <div className="dashboard-widget__links">
+          <Link className={buttonVariants({ variant: 'outline', size: 'sm' })} to="/sales">เปิดหน้าขาย</Link>
+          <Link className={buttonVariants({ variant: 'outline', size: 'sm' })} to="/reports/retail-sales">ดูรายงาน</Link>
+        </div>
+      </div>
+      <div className="stat-tile-grid">
+        <StatTile icon={Wallet} label="ยอดขายหน้าร้าน" value={<Money value={retail.totalAmount} />} hint="รวม VAT · ไม่รวมบิลที่ยกเลิก" />
+        <StatTile icon={ReceiptText} label="บิลที่ชำระแล้ว" value={retail.billCount} hint={retail.billCount > 0 ? `เฉลี่ย ${(retail.totalAmount / retail.billCount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท/บิล` : 'ยังไม่มีบิลวันนี้'} />
+        <StatTile icon={Package} label="จำนวนสินค้าที่ขาย" value={retail.itemQuantity} hint="ชิ้น/หน่วย รวมทุกบิล" />
+        <StatTile icon={FileEdit} label="บิลร่างค้าง" value={retail.draftCount} tone={retail.draftCount > 0 ? 'warning' : 'default'} hint={retail.draftCount > 0 ? 'ยังไม่ชำระเงิน — ตรวจที่หน้าขาย' : 'ไม่มีบิลค้าง'} />
+      </div>
+    </Card>
   )
 }

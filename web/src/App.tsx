@@ -21,7 +21,10 @@ import { DashboardReportPage } from './features/reports/DashboardReportPage'
 import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
 import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
 import { StockReportPage } from './features/reports/StockReportPage'
+import { RetailSalesReportPage } from './features/reports/RetailSalesReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
+import { SalesPage } from './features/sales/SalesPage'
+import { PromotionPage } from './features/master-data/PromotionPage'
 import { useSession } from './lib/session'
 
 export default function App() {
@@ -60,10 +63,14 @@ export default function App() {
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
+          <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
+          <Route path="/sales/:id" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
+          <Route path="/promotions" element={<ProtectedRoute><PromotionPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Navigate to="/reports/dashboard" replace /></ProtectedRoute>} />
           <Route path="/reports/dashboard" element={<ProtectedRoute><DashboardReportPage /></ProtectedRoute>} />
           <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
           <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
+          <Route path="/reports/retail-sales" element={<ProtectedRoute><RetailSalesReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />

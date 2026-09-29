@@ -563,6 +563,7 @@ export type CreateJobInput = {
 export type CreatedJob = { jobId: string; jobNo: string }
 
 export type CatalogItem = {
+  id?: string
   catalogCode?: string
   code: string
   name: string

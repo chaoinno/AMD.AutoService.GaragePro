@@ -32,3 +32,49 @@
 .report-lowsample { color: #64748b; font-size: 14px; }
 .report-filter-check { display: flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
 .report-row-actions { display: flex; gap: 4px; }
+
+/* ---------- รายงานขายหน้าร้าน (RetailSalesReportPage / RetailDailyChart) ---------- */
+.report-presets { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef2f7; }
+.report-presets button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.report-presets button.is-active { background: white; color: var(--navy-900); box-shadow: 0 1px 3px rgb(15 36 64 / 14%); }
+.report-presets button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.report-two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.report-two-col .report-section-title { margin-top: 24px; }
+.report-two-col > section { min-width: 0; }
+.report-two-col .report-bar { grid-template-columns: 150px minmax(0, 1fr) 110px; }
+.report-table-note { padding: 10px 14px 0; }
+.report-link { color: var(--blue-600); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 600; }
+.report-chart-card { padding: 16px 20px 14px; }
+
+.retail-chart__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.retail-chart__caption { color: var(--muted); font-size: 13px; }
+.retail-chart__caption .money { color: var(--navy-900); font-weight: 600; }
+.retail-chart__toggle { padding: 4px 10px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--navy-700); font: inherit; font-size: 13px; cursor: pointer; }
+.retail-chart__toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.retail-chart__plot { position: relative; display: flex; height: 200px; align-items: stretch; padding-top: 22px; border-bottom: 1px solid #cbd5e1; }
+.retail-chart__grid--mid { position: absolute; right: 0; left: 0; top: calc(22px + (100% - 22px) / 2); border-top: 1px dashed #e3e8ef; pointer-events: none; }
+/* ปุ่มทั้งช่องเป็น hit target (ใหญ่กว่าแท่ง) · แท่งกว้างไม่เกิน 24px เว้นอากาศที่เหลือในช่อง */
+.retail-chart__col { position: relative; display: flex; min-width: 0; flex: 1; align-items: flex-end; justify-content: center; padding: 0 1px; border: 0; background: transparent; cursor: default; }
+.retail-chart__col:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; border-radius: 4px; }
+.retail-chart__col.is-active { background: rgb(27 107 227 / 6%); }
+.retail-chart__bar { display: block; width: 100%; max-width: 24px; border-radius: 4px 4px 0 0; background: var(--blue-600); }
+.retail-chart__col.is-active .retail-chart__bar { background: #1552b3; }
+.retail-chart__peak { position: absolute; left: 50%; margin-bottom: 4px; color: var(--navy-900); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; font-weight: 600; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
+.retail-chart__tooltip { position: absolute; top: 0; z-index: 2; display: grid; gap: 1px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: white; box-shadow: 0 6px 18px rgb(15 36 64 / 14%); font-size: 12px; transform: translateX(-50%); white-space: nowrap; pointer-events: none; }
+.retail-chart__tooltip strong .money { color: var(--navy-900); font-size: 14px; }
+.retail-chart__tooltip span { color: var(--muted); }
+.retail-chart__axis { display: flex; margin-top: 4px; }
+.retail-chart__axis span { min-width: 0; flex: 1; overflow: visible; color: var(--muted); font-size: 11px; text-align: center; white-space: nowrap; }
+.retail-chart__table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.retail-chart__table th, .retail-chart__table td { padding: 6px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+.retail-chart__table th.report-num, .retail-chart__table td.report-num { text-align: right; }
+.retail-chart__table tr.is-empty td { color: var(--faint); }
+
+/* widget ขายหน้าร้านบนแดชบอร์ด */
+.dashboard-widget { padding: 16px 18px; }
+.dashboard-widget__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.dashboard-widget__head h3 { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.dashboard-widget__head h3 svg { width: 17px; height: 17px; color: var(--blue-600); }
+.dashboard-widget__links { display: flex; gap: 8px; }
+.dashboard-widget .stat-tile-grid { margin-bottom: 0; }
+.dashboard-widget .stat-tile { box-shadow: none; background: #f8fafc; }

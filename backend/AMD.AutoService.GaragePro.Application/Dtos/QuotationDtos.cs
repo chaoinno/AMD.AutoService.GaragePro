@@ -25,7 +25,7 @@ public sealed record CatalogItemDto(
     int Reserved,
     int OnOrder,
     int Available,
-    string? EtaNote);
+    string? EtaNote, Guid Id = default);
 
 // ---------- ใบเสนอราคา ----------
 

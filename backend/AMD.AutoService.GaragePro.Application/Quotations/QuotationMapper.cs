@@ -135,7 +135,8 @@ public static class QuotationMapper
         Reserved: c.Reserved,
         OnOrder: c.OnOrder,
         Available: c.Available,
-        EtaNote: c.EtaNote);
+        EtaNote: c.EtaNote,
+        Id: c.Id);
 
     public static QuotationValidationDto ToDto(QuotationValidationResult r) => new(
         r.IsValid,

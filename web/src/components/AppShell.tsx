@@ -28,6 +28,8 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
+import { countDraftSales } from '../api/sales'
+import { canUseRetailSale } from '../features/sales/saleFormat'
 import { clearStoredSession, useSession } from '../lib/session'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
@@ -54,6 +56,7 @@ const navGroups = [
       { to: '/purchasing/pr', icon: ClipboardList, label: 'ใบขอซื้อ (PR)', purchaseKind: 'PR' as PurchaseKind },
       { to: '/purchasing/po', icon: ShoppingCart, label: 'ใบสั่งซื้อ (PO)', purchaseKind: 'PO' as PurchaseKind },
       { to: '/inventory', icon: Boxes, label: 'สต็อก FIFO' },
+      { to: '/sales', icon: ShoppingCart, label: 'ขายสินค้า (POS)', saleDrafts: true },
     ],
   },
   {
@@ -62,6 +65,7 @@ const navGroups = [
       { to: '/reports/dashboard', icon: BarChart3, label: 'แดชบอร์ดวันนี้' },
       { to: '/reports/cycle-time', icon: Clock3, label: 'รอบเวลาทำงาน (SLA)' },
       { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
+      { to: '/reports/retail-sales', icon: ShoppingCart, label: 'ขายหน้าร้าน' },
       { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
       // ยังไม่ใช่รายงานประเมินประสิทธิภาพ — เป็นข้อมูลดิบให้หัวหน้าช่าง/ผู้จัดการตรวจและแก้คาบที่ผิด
       // ระหว่างช่วงเก็บข้อมูล (บทบาทอื่นกดแล้วได้ 403 พร้อมเหตุผลจาก QueryState ตามคอนเวนชันของเมนู)
@@ -79,6 +83,7 @@ const navGroups = [
       { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
       { to: '/catalog-categories', icon: FolderTree, label: 'หมวดหมู่สินค้า' },
       { to: '/quotation-templates', icon: FileStack, label: 'เทมเพลตใบเสนอราคา' },
+      { to: '/promotions', icon: TrendingUp, label: 'โปรโมชัน' },
     ],
   },
 ]
@@ -121,6 +126,14 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     staleTime: 30_000,
   })
 
+  // บิลขายหน้าร้านที่ร่างค้างไว้ — key เดียวกับที่หน้า /sales invalidate หลังสร้าง/ยกเลิก/ชำระเงิน
+  const saleDraftCount = useQuery({
+    queryKey: ['sale-draft-count'],
+    queryFn: countDraftSales,
+    enabled: canUseRetailSale(session?.user.role),
+    staleTime: 30_000,
+  })
+
   const logout = () => {
     queryClient.clear()
     clearStoredSession()
@@ -149,11 +162,14 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   ? prCount.data?.totalItems
                   : item.purchaseKind === 'PO' ? poCount.data
                   : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
+                  : 'saleDrafts' in item && item.saleDrafts ? saleDraftCount.data || undefined
                   : undefined
                 const countTitle = 'jobsInShop' in item && item.jobsInShop
                   ? `จ๊อบรถในอู่ที่ยังไม่ปิดงาน ${count} รายการ`
                   : item.purchaseKind === 'PO'
                   ? `ใบสั่งซื้อที่ยังไม่รับครบ ${count} รายการ`
+                  : 'saleDrafts' in item && item.saleDrafts
+                  ? `บิลขายร่างที่ยังไม่ชำระเงิน ${count} บิล`
                   : `เอกสารทั้งหมด ${count} รายการ`
                 return (
                   <NavLink
