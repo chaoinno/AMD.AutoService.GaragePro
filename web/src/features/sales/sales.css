@@ -201,6 +201,37 @@
 .sale-receipt-document__payments li { display: flex; justify-content: space-between; gap: 12px; max-width: 260px; }
 .sale-receipt-watermark { position: absolute; top: 38%; left: 50%; z-index: 1; padding: 6px 28px; border: 6px solid rgb(192 38 38 / 35%); border-radius: 12px; color: rgb(192 38 38 / 35%); font-size: 64px; font-weight: 800; pointer-events: none; transform: translate(-50%, -50%) rotate(-18deg); white-space: nowrap; }
 
+/* ใบเสร็จกระดาษม้วน (เครื่องพิมพ์ความร้อน) — ขาวดำล้วน หัวพิมพ์ไม่มีสีเทา จึงไม่ใช้สีรองในเนื้อใบเสร็จ */
+.sale-receipt-format { display: grid; gap: 6px; }
+.sale-receipt-format > span { font-size: 13px; font-weight: 700; }
+.sale-receipt-format .ui-tabs__list { width: 100%; }
+.sale-receipt-format .ui-tabs__trigger { flex: 1 1 0; padding: 6px 4px; white-space: nowrap; }
+.sale-receipt-format p { margin: 0; font-size: 12px; }
+.sale-thermal-preview { display: flex; justify-content: center; padding: 24px 16px; border: 1px solid var(--border); border-radius: 12px; background: #e2e8f0; }
+.sale-thermal { box-sizing: border-box; flex: 0 0 auto; padding: 4mm 4mm 6mm; background: white; box-shadow: 0 2px 10px rgb(15 23 42 / 18%); color: #000; font-size: 12px; line-height: 1.35; }
+.sale-thermal--roll58 { padding: 3mm 5mm 6mm; font-size: 10.5px; }
+.sale-thermal * { color: #000; }
+.sale-thermal hr { margin: 2mm 0; border: 0; border-top: 1px dashed #000; }
+.sale-thermal__head { display: grid; gap: 1px; margin-bottom: 2mm; text-align: center; }
+.sale-thermal__brand { font-size: 1.5em; font-weight: 800; }
+.sale-thermal__title { margin-top: 1mm; font-size: 1.15em; }
+.sale-thermal__voided { margin-top: 1mm; padding: 1mm 0; border: 2px solid #000; font-size: 1.15em; }
+.sale-thermal__meta { display: grid; gap: 1px; margin: 0; }
+.sale-thermal__meta div { display: flex; gap: 2mm; }
+.sale-thermal__meta dt { flex: 0 0 auto; min-width: 5.2em; }
+.sale-thermal__meta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.sale-thermal__lines { display: grid; gap: 1.5mm; margin: 0; padding: 0; list-style: none; }
+.sale-thermal__name { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.sale-thermal__row { display: flex; align-items: baseline; justify-content: space-between; gap: 2mm; }
+.sale-thermal__row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.sale-thermal__row--sub { padding-left: 3mm; }
+.sale-thermal__money { flex: 0 0 auto; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sale-thermal__totals { display: grid; gap: 1px; }
+.sale-thermal__grand { margin-top: 1mm; font-size: 1.3em; font-weight: 800; }
+.sale-thermal__note { margin: 2mm 0 0; overflow-wrap: anywhere; }
+.sale-thermal__foot { display: grid; gap: 1px; margin-top: 3mm; text-align: center; }
+.sale-thermal__foot small { font-size: 0.85em; }
+
 @media (max-width: 1360px) {
   .sale-editor-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; gap: 12px; }
   .sale-line__fields { grid-template-columns: 128px 84px minmax(0, 1fr); }
@@ -210,4 +241,10 @@
   .sale-detail-grid { display: block; }
   .sale-detail-document { overflow: visible; }
   .sale-receipt-watermark { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  /* กระดาษม้วน: @page margin 0 มาจาก SaleThermalReceipt — ต้องล้าง padding ของ layout ด้วย ไม่งั้นใบเสร็จเยื้องขวาหลุดขอบกระดาษ */
+  body:has(.sale-thermal) .app-shell__body,
+  body:has(.sale-thermal) .app-main { margin: 0 !important; padding: 0 !important; }
+  .sale-thermal-preview { display: block; padding: 0; border: 0; border-radius: 0; background: none; }
+  .sale-thermal { box-shadow: none; }
 }

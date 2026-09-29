@@ -8,10 +8,12 @@ import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { Money } from '../../components/Money'
 import { Button } from '../../components/ui/button'
+import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Textarea } from '../../components/ui/textarea'
 import { formatDateTime } from '../../lib/format'
 import { useSession } from '../../lib/session'
 import { SaleReceiptDocument } from './SaleReceiptDocument'
+import { RECEIPT_FORMAT_OPTIONS, SaleThermalReceipt, type ReceiptFormat } from './SaleThermalReceipt'
 import { ErrorAlert, SaleStatusChip, normalizedRole, paymentMethodLabel } from './saleFormat'
 import { useApplySale } from './useSale'
 
@@ -22,6 +24,8 @@ export function SaleDetail({ sale }: { sale: Sale }) {
   const isManager = normalizedRole(session?.user.role) === 'manager'
   const canSeeCost = Boolean(session?.user.canSeeCost)
   const [voidOpen, setVoidOpen] = useState(false)
+  const [format, setFormat] = useState<ReceiptFormat>(readReceiptFormat)
+  const chooseFormat = (next: ReceiptFormat) => { setFormat(next); writeReceiptFormat(next) }
   // เงินทอนส่งมาจาก modal ชำระเงินผ่าน navigation state — แสดงครั้งเดียวหลังปิดการขาย ไม่เก็บลงฐานข้อมูล
   const change = (location.state as { change?: number } | null)?.change ?? 0
 
@@ -66,7 +70,11 @@ export function SaleDetail({ sale }: { sale: Sale }) {
 
       <div className="sale-detail-grid">
         <div className="sale-detail-document">
-          {sale.receiptNo ? (
+          {sale.receiptNo && format !== 'a4' ? (
+            <div className="sale-thermal-preview">
+              <SaleThermalReceipt sale={sale} branchName={session?.branchName ?? ''} format={format} change={change} />
+            </div>
+          ) : sale.receiptNo ? (
             <SaleReceiptDocument sale={sale} branchName={session?.branchName ?? ''} />
           ) : (
             <div className="line-empty">
@@ -78,9 +86,23 @@ export function SaleDetail({ sale }: { sale: Sale }) {
 
         <aside className="sale-panel sale-detail-aside print-hidden">
           <div className="sale-detail-actions">
+            <div className="sale-receipt-format">
+              <span id="sale-receipt-format-label">รูปแบบใบเสร็จ</span>
+              <Tabs value={format} onValueChange={(value) => chooseFormat(value as ReceiptFormat)}>
+                <TabsList aria-labelledby="sale-receipt-format-label">
+                  {RECEIPT_FORMAT_OPTIONS.map((option) => (
+                    <TabsTrigger key={option.value} value={option.value}>{option.label}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+              {format !== 'a4' ? (
+                <p className="sale-muted">เลือกเครื่องพิมพ์ใบเสร็จในหน้าต่างพิมพ์ · ตั้งขอบกระดาษ "ไม่มี" และสเกล 100%</p>
+              ) : null}
+            </div>
             <Button size="lg" disabled={!sale.receiptNo} onClick={() => window.print()}>
-              <Printer aria-hidden="true" /> พิมพ์ใบเสร็จ
+              <Printer aria-hidden="true" /> พิมพ์ใบเสร็จ{format === 'a4' ? ' A4' : ' กระดาษม้วน'}
             </Button>
+            {!sale.receiptNo ? <p className="disabled-reason"><CircleAlert aria-hidden="true" /> บิลร่างที่ยกเลิกไม่มีใบเสร็จให้พิมพ์</p> : null}
             <Button variant="outline" onClick={() => navigate('/sales')}>
               <Plus aria-hidden="true" /> ไปหน้าขายใหม่
             </Button>
@@ -131,6 +153,19 @@ export function SaleDetail({ sale }: { sale: Sale }) {
       <VoidSaleModal open={voidOpen} sale={sale} onClose={() => setVoidOpen(false)} />
     </AppShell>
   )
+}
+
+/// [UI] รูปแบบที่เลือกจำไว้ต่อเครื่อง — เคาน์เตอร์ที่ต่อเครื่องพิมพ์ม้วนจะไม่ต้องสลับทุกบิล
+/// storage อาจใช้ไม่ได้ (private window) — ตกไปใช้ A4 ตามเดิม ไม่ทำให้หน้าพัง
+const RECEIPT_FORMAT_KEY = 'garagepro.sales.receipt-format'
+function readReceiptFormat(): ReceiptFormat {
+  try {
+    const stored = localStorage.getItem(RECEIPT_FORMAT_KEY)
+    return RECEIPT_FORMAT_OPTIONS.some((option) => option.value === stored) ? stored as ReceiptFormat : 'a4'
+  } catch { return 'a4' }
+}
+function writeReceiptFormat(format: ReceiptFormat) {
+  try { localStorage.setItem(RECEIPT_FORMAT_KEY, format) } catch { /* ignore */ }
 }
 
 function VoidSaleModal({ open, sale, onClose }: { open: boolean; sale: Sale; onClose: () => void }) {
