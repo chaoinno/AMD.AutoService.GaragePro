@@ -81,6 +81,70 @@ public class PurchasingServiceTests
     }
 
     [Fact]
+    public async Task Job_withdrawal_plan_lists_only_signed_approved_parts_minus_what_was_already_withdrawn()
+    {
+        var f = new Fixture(); f.Item.OnHand = 10;
+        Assert.True((await f.Service.OpeningAsync(new(f.Item.Id, f.Warehouse.Id, 10, 10, 0, "ยอดยกมา"), default)).Success);
+        var job = f.AddJob();
+        f.AddQuotation(job, signed: true,
+            Line("A", LineType.Part, 1.5m, LineApprovalStatus.Approved),   // ปัด 1.5 → 2
+            Line("A", LineType.Part, 1, LineApprovalStatus.Approved),      // รหัสเดียวกันรวมเป็นแถวเดียว
+            Line("B", LineType.Part, 4, LineApprovalStatus.Rejected),
+            Line("L1", LineType.Labor, 1, LineApprovalStatus.Approved),
+            Line("", LineType.Part, 1, LineApprovalStatus.Approved),       // รายการนอกแคตตาล็อก
+            Line("ZZ", LineType.Part, 1, LineApprovalStatus.Approved));    // ไม่มีในแคตตาล็อก
+        f.AddQuotation(job, signed: false, Line("A", LineType.Part, 5, LineApprovalStatus.Approved));
+
+        var plan = (await f.Service.WithdrawalPlanAsync(job.Id, default)).Data!;
+        var line = Assert.Single(plan.Lines);
+        Assert.Equal((f.Item.Id, 3, 0, 3), (line.CatalogItemId, line.ApprovedQuantity, line.WithdrawnQuantity, line.RemainingQuantity));
+        Assert.Equal(1, plan.AdHocCount);
+        Assert.Single(plan.UnavailableItems, x => x.StartsWith("ZZ"));
+
+        Assert.True((await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 3)), default)).Success);
+        line = Assert.Single((await f.Service.WithdrawalPlanAsync(job.Id, default)).Data!.Lines);
+        Assert.Equal((3, 0), (line.WithdrawnQuantity, line.RemainingQuantity));
+        Assert.Equal("WITHDRAWAL_NOTHING_TO_WITHDRAW",
+            (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 1)), default)).Error?.Code);
+    }
+
+    [Fact]
+    public async Task Job_withdrawal_rejects_unapproved_items_and_excess_but_allows_partial_withdrawals()
+    {
+        var f = new Fixture(); f.Item.OnHand = 10;
+        var other = new CatalogItem { Code = "B", Name = "อะไหล่ B", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105, OnHand = 10 };
+        var extra = new CatalogItem { Code = "X", Name = "ไม่ได้อนุมัติ", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105, OnHand = 10 };
+        f.Repo.Add(other); f.Repo.Add(extra);
+        foreach (var item in new[] { f.Item, other, extra })
+            Assert.True((await f.Service.OpeningAsync(new(item.Id, f.Warehouse.Id, 10, 10, 0, "ยอดยกมา"), default)).Success);
+        var job = f.AddJob();
+        f.AddQuotation(job, signed: true, Line("A", LineType.Part, 3, LineApprovalStatus.Approved), Line("B", LineType.Part, 1, LineApprovalStatus.Approved));
+
+        Assert.Equal("WITHDRAWAL_NOT_APPROVED",
+            (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 1), (extra.Id, 1)), default)).Error?.Code);
+        Assert.Equal("WITHDRAWAL_EXCEEDS_APPROVED",
+            (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 4)), default)).Error?.Code);
+        Assert.Empty(f.Repo.All<StockMovement>().Where(x => x.JobId == job.Id));
+
+        // บางส่วน: A 1 จาก 3 และยังไม่เบิก B — ยอดที่เหลือเบิกต่อในใบถัดไป
+        Assert.True((await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 1)), default)).Success);
+        var plan = (await f.Service.WithdrawalPlanAsync(job.Id, default)).Data!;
+        Assert.Equal(2, plan.Lines.Single(x => x.CatalogItemId == f.Item.Id).RemainingQuantity);
+        Assert.Equal(1, plan.Lines.Single(x => x.CatalogItemId == other.Id).RemainingQuantity);
+        Assert.Equal("WITHDRAWAL_EXCEEDS_APPROVED",
+            (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 3)), default)).Error?.Code);
+        Assert.True((await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 2), (other.Id, 1)), default)).Success);
+        Assert.Equal("WITHDRAWAL_NOTHING_TO_WITHDRAW",
+            (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (other.Id, 1)), default)).Error?.Code);
+
+        // ใบเบิกที่ไม่ผูก job (เบิกใช้ทั่วไปจากหน้าสต็อก) ยังเลือกสินค้าเองได้ตามเดิม
+        Assert.True((await f.Service.WithdrawAsync(new(Guid.NewGuid(), f.Warehouse.Id, null, f.Requester.Id, "เบิกทั่วไป", [new(extra.Id, 1)]), default)).Success);
+    }
+
+    private static QuotationLine Line(string code, LineType type, decimal quantity, LineApprovalStatus status) =>
+        new() { CatalogCode = code, Name = code == "" ? "ของซื้อนอก" : $"รายการ {code}", Type = type, Quantity = quantity, ApprovalStatus = status };
+
+    [Fact]
     public async Task Invalid_later_receipt_line_rolls_back_entire_operation()
     {
         var f = new Fixture(); var second = new CatalogItem { Code = "B", Name = "B", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
@@ -204,6 +268,15 @@ public class PurchasingServiceTests
             Repo = new(User); Repo.Add(Item); Repo.Add(Warehouse); Repo.Add(Supplier);
             Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]));
         }
+        public Job AddJob() { var job = new Job { JobNo = "JB-TEST", LegacyShardKey = "db2", BranchId = 105 }; Repo.Add(job); return job; }
+        public void AddQuotation(Job job, bool signed, params QuotationLine[] lines) => Repo.Quotations.Add(new Quotation
+        {
+            JobId = job.Id, Version = Repo.Quotations.Count + 1, Lines = [.. lines],
+            Status = signed ? QuotationStatus.Approved : QuotationStatus.Sent,
+            Approval = signed ? new QuotationApproval { SignedAt = DateTime.UtcNow } : null,
+        });
+        public StockWithdrawalInput JobWithdrawal(Job job, params (Guid ItemId, int Quantity)[] lines) =>
+            new(Guid.NewGuid(), Warehouse.Id, job.Id, Requester.Id, "เบิกให้งาน", lines.Select(x => new StockWithdrawalLineInput(x.ItemId, x.Quantity)).ToList());
         public PurchaseInput Input(int qty = 3, decimal cost = 20) => new(Warehouse.Id, Supplier.Id, null, "ทดสอบ", null, [new(Item.Id, qty, cost)]);
         public Task<PurchaseDto> SentPo(int qty = 3, decimal cost = 20) => SentPo(Input(qty, cost));
         public async Task<PurchaseDto> SentPo(PurchaseInput input)
@@ -250,6 +323,10 @@ public class PurchasingServiceTests
         public Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? id, Guid? op, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => (!id.HasValue || x.CatalogItemId == id) && (!op.HasValue || x.OperationId == op) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => x.JobId == jobId && x.Type == "issue" && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<Job?> JobAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Job>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.BranchId)));
+        // Kept outside `data` so the JSON rollback snapshot never walks quotation → line → quotation cycles.
+        public List<Quotation> Quotations { get; } = [];
+        public Task<IReadOnlyList<Quotation>> JobQuotationsAsync(Guid jobId, CancellationToken ct) => Task.FromResult<IReadOnlyList<Quotation>>(Quotations.Where(q => q.JobId == jobId && q.Status != QuotationStatus.Superseded).ToList());
+        public Task<IReadOnlyList<CatalogItem>> ItemsByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken ct) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => codes.Contains(x.Code) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<GoodsReceipt>>(All<GoodsReceipt>().Where(x => x.PurchaseOrderId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<GoodsReceipt?> ReceiptAsync(Guid id, CancellationToken ct) => Task.FromResult(All<GoodsReceipt>().SingleOrDefault(x => x.RequestId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct) => Task.FromResult($"{kind}-{Guid.NewGuid():N}");

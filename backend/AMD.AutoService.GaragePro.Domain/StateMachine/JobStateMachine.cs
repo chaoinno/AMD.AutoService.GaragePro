@@ -27,8 +27,8 @@ public static class JobStateMachine
             [UserRole.Office, UserRole.Manager], [EventSource.Web],
             JobGuard.QuotationValid),
 
-        // [ASSUME] เปิดให้ Office/Manager ยืนยันแทนลูกค้าเองจากเว็บได้ชั่วคราว — หน้าอนุมัติของลูกค้าบนมือถือ
-        // (docs/01-workflow.md §3.4) ยังไม่มี ตัด Web/Office/Manager ออกทันทีที่มือถือทำ flow นี้ได้จริง
+        // [BIZ] เว็บดำเนินการแทนลูกค้าได้ (คำขอผู้ใช้ 2026-10-02 — ลูกค้าเซ็นที่เคาน์เตอร์หรือแจ้งทางโทรศัพท์/LINE)
+        // คู่กับหน้าอนุมัติบนมือถือ (docs/01-workflow.md §3.4) ไม่ใช่ทางชั่วคราวอีกต่อไป — web/.../CustomerApprovalModal.tsx
         // Guard ยังคงคำนวณจากข้อมูลจริงเสมอ (JobService.ComputeGuardAsync: isComputable=true) — ต้องมี
         // การตัดสินใจครบทุกบรรทัดและ QuotationApproval จริงก่อน ไม่มีทาง manual-override ผ่าน reason ได้
         new(JobStatus.WaitApprove, JobStatus.Approved,

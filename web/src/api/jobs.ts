@@ -4,12 +4,15 @@ import type {
   CreateJobInput,
   CreatedJob,
   Job,
+  JobCalendarDateField,
   JobCalendarResult,
+  JobScheduleChange,
   JobStatusOption,
   JobStatusToken,
   JobTransitionResult,
   TransitionJobInput,
   UpdateJobAppointmentInput,
+  UpdateJobPromiseInput,
 } from './types'
 
 export type JobsCursor = { beforeCreatedAt: string; beforeJobId: string }
@@ -67,6 +70,19 @@ export function updateJobAppointment(jobId: string, input: UpdateJobAppointmentI
   })
 }
 
+/// ตั้ง/เลื่อนวันเวลานัดส่งมอบรถ — server บันทึกประวัติ (ActivityEvent job.promise.changed) ทุกครั้งที่ค่าเปลี่ยน
+export function updateJobPromise(jobId: string, input: UpdateJobPromiseInput) {
+  return apiRequest<Job>(`/api/v1/jobs/${jobId}/promise`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+/// ประวัติการเปลี่ยนวันนัดเข้า/วันนัดส่งมอบ (ใหม่สุดก่อน)
+export function getJobScheduleHistory(jobId: string) {
+  return apiRequest<JobScheduleChange[]>(`/api/v1/jobs/${jobId}/schedule-history`)
+}
+
 /// แปลงงานนัดหมายเป็นรถในอู่พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง — ไม่ผูกกับวันนัดหมายที่ตั้งไว้
 export function convertJobToInShop(jobId: string, input: ConvertToInShopInput) {
   return apiRequest<Job>(`/api/v1/jobs/${jobId}/convert-to-in-shop`, {
@@ -76,8 +92,15 @@ export function convertJobToInShop(jobId: string, input: ConvertToInShopInput) {
 }
 
 /// มุมมองปฏิทินนัดหมาย — คนละ contract กับ searchJobs (ไม่ใช่ keyset cursor, คืนทุกแถวในช่วง [from, to))
-export function getJobCalendar(args: { from: string; to: string; query?: string; status?: JobStatusToken }) {
+export function getJobCalendar(args: {
+  from: string
+  to: string
+  query?: string
+  status?: JobStatusToken
+  dateField?: JobCalendarDateField
+}) {
   const params = new URLSearchParams({ from: args.from, to: args.to })
+  if (args.dateField) params.set('dateField', args.dateField)
   if (args.query?.trim()) params.set('q', args.query.trim())
   if (args.status) params.set('status', args.status)
   return apiRequest<JobCalendarResult>(`/api/v1/jobs/calendar?${params}`)

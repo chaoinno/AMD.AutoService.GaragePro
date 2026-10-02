@@ -137,12 +137,18 @@ class JobCounts {
 }
 
 class CreatedJob {
-  const CreatedJob(this.jobId, this.jobNo);
+  const CreatedJob(this.jobId, this.jobNo, {this.existingOpenJobNo});
   final String jobId;
   final String jobNo;
 
-  static CreatedJob fromJson(Map<String, dynamic> j) =>
-      CreatedJob(j['jobId'] as String, j['jobNo'] as String? ?? '');
+  /// จ๊อบที่ยังไม่ปิดของรถคันเดียวกันที่มีอยู่ก่อน — เปิดซ้อนได้ แต่ให้เตือนผู้เปิด
+  final String? existingOpenJobNo;
+
+  static CreatedJob fromJson(Map<String, dynamic> j) => CreatedJob(
+        j['jobId'] as String,
+        j['jobNo'] as String? ?? '',
+        existingOpenJobNo: j['existingOpenJobNo'] as String?,
+      );
 }
 
 class JobStatusOption {

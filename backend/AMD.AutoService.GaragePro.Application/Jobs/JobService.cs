@@ -35,15 +35,23 @@ public interface IJobService
     Task<Result<JobDto>> UpdateAppointmentAsync(
         Guid jobId, UpdateJobAppointmentRequest request, CancellationToken ct = default);
 
+    /// <summary>ตั้ง/เลื่อนวันเวลานัดส่งมอบรถ (PromiseAt) — ทุกประเภทงาน แต่ล็อกเมื่อถึงสถานะจบ</summary>
+    Task<Result<JobDto>> UpdatePromiseAsync(
+        Guid jobId, UpdateJobPromiseRequest request, CancellationToken ct = default);
+
+    /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/วันนัดส่งมอบของจ๊อบ (ใหม่สุดก่อน)</summary>
+    Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
+        Guid jobId, CancellationToken ct = default);
+
     /// <summary>แปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่ (JobTypeId=9) พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง —
     /// ใช้เมื่อลูกค้านำรถเข้าจริงตามนัด (หรือมาก่อน/หลังนัดก็ได้ ไม่ผูกกับวันนัดหมายที่ตั้งไว้)</summary>
     Task<Result<JobDto>> ConvertToInShopAsync(
         Guid jobId, ConvertToInShopRequest request, CancellationToken ct = default);
 
-    /// <summary>งานนัดหมายในช่วงเวลาที่กำหนด (มุมมองปฏิทิน) — กรองด้วย AppointmentAt ไม่ว่าง</summary>
+    /// <summary>มุมมองปฏิทิน — dateField "appointment" (ค่าเริ่มต้น, วันนัดเข้า) หรือ "promise" (วันนัดส่งมอบ)</summary>
     Task<Result<JobCalendarDto>> GetCalendarAsync(
         DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken,
-        CancellationToken ct = default);
+        string? dateField = null, CancellationToken ct = default);
 }
 
 /// <summary>
@@ -79,6 +87,10 @@ public sealed class JobService(
     // [ASSUME] เพดานมุมมองปฏิทิน — กันดึงข้อมูลเกินจำเป็นเวลากรองช่วงกว้าง
     private const int CalendarMaxRangeDays = 92;
     private const int CalendarRowLimit = 500;
+    private const int ScheduleHistoryLimit = 50;
+
+    private const string AppointmentChangedEvent = "job.appointment.changed";
+    private const string PromiseChangedEvent = "job.promise.changed";
 
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -107,6 +119,44 @@ public sealed class JobService(
 
         return Result<DateTime?>.Ok(utc);
     }
+
+    /// <summary>[BIZ] วันนัดส่งมอบใช้กติกาเวลาเดียวกับวันนัดเข้า (ห้ามเป็นอดีต · ไม่เกิน 2 ปี) — ส่งมาหรือไม่ก็ได้
+    /// ทุกประเภทงาน · ลำดับเทียบกับวันนัดเข้าตรวจแยกที่ ValidateScheduleOrder</summary>
+    private Result<DateTime?> ValidatePromise(DateTimeOffset? promiseAt)
+    {
+        if (promiseAt is null)
+            return Result<DateTime?>.Ok(null);
+
+        var utc = promiseAt.Value.UtcDateTime;
+        if (utc < Now.AddMinutes(-AppointmentPastToleranceMinutes))
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "วันเวลานัดส่งมอบต้องไม่น้อยกว่าวันเวลาปัจจุบัน", "promiseAt");
+        if (utc > Now.AddYears(AppointmentMaxYearsAhead))
+            return Result<DateTime?>.Fail(
+                "JOB_VALIDATION", "วันเวลานัดส่งมอบต้องไม่เกิน 2 ปีข้างหน้า", "promiseAt");
+
+        return Result<DateTime?>.Ok(utc);
+    }
+
+    /// <summary>[BIZ] ยืนยันกับผู้ใช้ 2026-10-02: วันนัดส่งมอบต้องไม่ก่อนวันนัดเข้า (เท่ากันได้) — บังคับทั้งตอนเปิดจ๊อบ,
+    /// ตั้ง/เลื่อนวันส่งมอบ และเลื่อนวันนัดเข้า (ลากวันนัดเข้าเลยวันส่งมอบในปฏิทินถูกปฏิเสธด้วย)
+    /// arrivalUtc คือ "วันที่รถเข้า" ที่ใช้เทียบ — ดู EffectiveArrival · null = ไม่มีวันเข้าให้เทียบ (รถในอู่ที่ไม่เคยนัด)</summary>
+    private static Result<bool> ValidateScheduleOrder(DateTime? arrivalUtc, DateTime? promiseUtc, string field)
+    {
+        if (arrivalUtc is null || promiseUtc is null || promiseUtc >= arrivalUtc)
+            return Result<bool>.Ok(true);
+
+        var message = field == "promiseAt"
+            ? $"วันเวลานัดส่งมอบต้องไม่ก่อนวันเวลาที่รถเข้า ({FormatLocal(arrivalUtc.Value)} น.)"
+            : $"วันเวลานัดเข้าต้องไม่เลยวันเวลานัดส่งมอบ ({FormatLocal(promiseUtc.Value)} น.) — เลื่อนวันส่งมอบก่อน";
+        return Result<bool>.Fail("JOB_VALIDATION", message, field);
+    }
+
+    /// <summary>วันที่รถเข้าที่ใช้เทียบกับวันส่งมอบ — ถ้าแปลงเป็นรถในอู่แล้วใช้วันที่เข้าจริง (ActualArrivalAt) เพราะ
+    /// AppointmentAt ที่เก็บไว้เป็นประวัติอาจไม่ตรงความจริงแล้ว (รถมาก่อนนัดได้ ดูกฎข้อ 17) ไม่งั้นใช้วันนัดเข้า</summary>
+    private static DateTime? EffectiveArrival(Job job) => job.ActualArrivalAt ?? job.AppointmentAt;
+
+    private static string FormatLocal(DateTime utc) => $"{utc.AddHours(7):dd/MM/yyyy HH:mm}";
 
     public async Task<Result<JobDto>> GetAsync(Guid jobId, CancellationToken ct = default)
     {
@@ -140,8 +190,23 @@ public sealed class JobService(
     /// <summary>มุมมองปฏิทินนัดหมาย — คืนงานทุกงานที่มี AppointmentAt อยู่ในช่วง [from, to) เรียงจากนัดใกล้ที่สุด
     /// (ไม่ใช่ keyset cursor แบบ SearchAsync เพราะปฏิทินต้องการทุกแถวในเดือนนั้น ไม่ใช่หน้าแบ่งหน้า)</summary>
     public async Task<Result<JobCalendarDto>> GetCalendarAsync(
-        DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken, CancellationToken ct = default)
+        DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken,
+        string? dateField = null, CancellationToken ct = default)
     {
+        JobCalendarDateField field;
+        switch (dateField?.Trim().ToLowerInvariant())
+        {
+            case null or "" or "appointment":
+                field = JobCalendarDateField.Appointment;
+                break;
+            case "promise":
+                field = JobCalendarDateField.Promise;
+                break;
+            default:
+                return Result<JobCalendarDto>.Fail(
+                    "JOB_VALIDATION", $"ไม่รู้จักตัวกรองวันที่ '{dateField}' — ใช้ appointment หรือ promise", nameof(dateField));
+        }
+
         JobStatus? status = null;
         if (!string.IsNullOrWhiteSpace(statusToken))
         {
@@ -159,7 +224,7 @@ public sealed class JobService(
                 "ช่วงวันที่ของปฏิทินต้องไม่เกิน 3 เดือนและวันสิ้นสุดต้องอยู่หลังวันเริ่มต้น");
 
         var appointmentQuery = new JobAppointmentQuery(
-            user.ShardKey, user.BranchId, fromUtc, toUtc, keyword, status, CalendarRowLimit + 1);
+            user.ShardKey, user.BranchId, fromUtc, toUtc, keyword, status, CalendarRowLimit + 1, field);
         var rows = await jobs.GetAppointmentsAsync(appointmentQuery, ct);
         var truncated = rows.Count > CalendarRowLimit;
         var items = (truncated ? rows.Take(CalendarRowLimit) : rows).Select(j => JobMapper.ToDto(j, Now)).ToList();
@@ -215,6 +280,15 @@ public sealed class JobService(
             return Result<CreatedJobDto>.Fail(appointmentResult.Error!);
         var appointmentAt = appointmentResult.Data;
 
+        var promiseResult = ValidatePromise(request.PromiseAt);
+        if (!promiseResult.Success)
+            return Result<CreatedJobDto>.Fail(promiseResult.Error!);
+        var promiseAt = promiseResult.Data;
+
+        var orderResult = ValidateScheduleOrder(appointmentAt, promiseAt, "promiseAt");
+        if (!orderResult.Success)
+            return Result<CreatedJobDto>.Fail(orderResult.Error!);
+
         var customerResult = await customerVehicles.GetCustomerAsync(request.CustomerId, ct);
         if (!customerResult.Success)
             return Result<CreatedJobDto>.Fail("CUSTOMER_NOT_FOUND", "ไม่พบข้อมูลลูกค้าที่เลือก", nameof(request.CustomerId));
@@ -225,10 +299,10 @@ public sealed class JobService(
             return Result<CreatedJobDto>.Fail("VEHICLE_NOT_FOUND", "ไม่พบข้อมูลรถที่เลือก", nameof(request.VehicleId));
         var vehicle = vehicleResult.Data!;
 
+        // [BIZ] เปิดจ๊อบซ้อนบนรถที่ยังมีงานค้างได้ (ยกเลิก JOB_DUPLICATE_OPEN 2026-10-02 ตามคำขอผู้ใช้ —
+        // เช่น รถเข้ามาซ่อมเรื่องใหม่ระหว่างที่งานเดิมยังรออะไหล่/รอปิด) ยังค้นงานค้างไว้เพื่อบอกผู้เปิด
+        // และทิ้งร่องรอยใน ActivityEvent ไม่ได้บล็อก
         var openJob = await jobs.GetOpenByVehicleAsync(user.ShardKey, user.BranchId, request.VehicleId, ct);
-        if (openJob is not null)
-            return Result<CreatedJobDto>.Fail(
-                "JOB_DUPLICATE_OPEN", "รถยนต์คันนี้มีงานที่ยังไม่เสร็จอยู่แล้ว กรุณาตรวจสอบอีกครั้ง");
 
         var jobNo = await jobNumbers.NextAsync(user.ShardKey, user.BranchId, Now.AddHours(7), ct);
         var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);
@@ -254,6 +328,7 @@ public sealed class JobService(
             SenderPhoneNumber = string.IsNullOrWhiteSpace(request.SenderPhoneNumber) ? null : request.SenderPhoneNumber.Trim(),
             Detail = string.IsNullOrWhiteSpace(request.Detail) ? null : request.Detail.Trim(),
             AppointmentAt = appointmentAt,
+            PromiseAt = promiseAt,
             CreatedByUserId = user.UserId,
             CreatedByUserName = user.UserName,
             CreatedAt = Now,
@@ -267,9 +342,10 @@ public sealed class JobService(
             EntityId = job.Id,
             EntityType = nameof(Job),
             EventType = "job.opened",
-            DescriptionTh = appointmentAt is null
-                ? $"เปิดจ๊อบ {jobNo}"
-                : $"เปิดจ๊อบ {jobNo} · นัดหมาย {appointmentAt.Value.AddHours(7):dd/MM/yyyy HH:mm} น.",
+            DescriptionTh = $"เปิดจ๊อบ {jobNo}" +
+                (appointmentAt is null ? "" : $" · นัดหมาย {FormatLocal(appointmentAt.Value)} น.") +
+                (promiseAt is null ? "" : $" · นัดส่งมอบ {FormatLocal(promiseAt.Value)} น.") +
+                (openJob is null ? "" : $" · รถคันนี้ยังมีงานค้าง {openJob.JobNo}"),
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
@@ -277,7 +353,7 @@ public sealed class JobService(
         }, ct);
         await jobs.SaveChangesAsync(ct);
 
-        return Result<CreatedJobDto>.Ok(new CreatedJobDto(job.Id, job.JobNo));
+        return Result<CreatedJobDto>.Ok(new CreatedJobDto(job.Id, job.JobNo, openJob?.JobNo));
     }
 
     public async Task<Result<JobTransitionResultDto>> TransitionAsync(
@@ -413,6 +489,10 @@ public sealed class JobService(
         if (!appointmentResult.Success)
             return Result<JobDto>.Fail(appointmentResult.Error!);
 
+        var orderResult = ValidateScheduleOrder(appointmentResult.Data, job.PromiseAt, "appointmentAt");
+        if (!orderResult.Success)
+            return Result<JobDto>.Fail(orderResult.Error!);
+
         var oldAppointment = job.AppointmentAt;
         job.AppointmentAt = appointmentResult.Data;
 
@@ -426,7 +506,7 @@ public sealed class JobService(
             JobId = job.Id,
             EntityId = job.Id,
             EntityType = nameof(Job),
-            EventType = "job.appointment.changed",
+            EventType = AppointmentChangedEvent,
             DescriptionTh = descriptionTh,
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
@@ -442,6 +522,108 @@ public sealed class JobService(
         await jobs.SaveChangesAsync(ct);
 
         return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+    }
+
+    /// <summary>[BIZ] เพิ่ม 2026-10-02 ตามคำขอผู้ใช้ — ตั้ง/เลื่อนวันนัดส่งมอบรถ ไม่ใช่ state transition จึงไม่ผ่าน
+    /// JobStateMachine · เปลี่ยนได้ทุกประเภทงาน (ต่างจากวันนัดเข้าที่จำกัดเฉพาะรถนัดหมาย) แต่ล็อกเมื่อถึงสถานะจบ
+    /// เขียน ActivityEvent job.promise.changed ทุกครั้งที่ค่าเปลี่ยนจริง (ส่งค่าเดิมซ้ำไม่บันทึกซ้ำ)
+    /// [RISK] สิทธิ์สืบทอดช่องโหว่ RBAC เดิมของ JobsController ([RequireShiftSession] เท่านั้น)</summary>
+    public async Task<Result<JobDto>> UpdatePromiseAsync(
+        Guid jobId, UpdateJobPromiseRequest request, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (JobStateMachine.IsTerminal(job.Status))
+            return Result<JobDto>.Fail("JOB_PROMISE_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดส่งมอบไม่ได้");
+
+        var promiseResult = ValidatePromise(request.PromiseAt);
+        if (!promiseResult.Success)
+            return Result<JobDto>.Fail(promiseResult.Error!);
+
+        var oldPromise = job.PromiseAt;
+        var newPromise = promiseResult.Data!.Value;
+
+        var orderResult = ValidateScheduleOrder(EffectiveArrival(job), newPromise, "promiseAt");
+        if (!orderResult.Success)
+            return Result<JobDto>.Fail(orderResult.Error!);
+        if (oldPromise == newPromise)
+            return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+
+        job.PromiseAt = newPromise;
+
+        var descriptionTh = oldPromise is null
+            ? $"ตั้งวันเวลานัดส่งมอบเป็น {FormatLocal(newPromise)} น."
+            : $"เปลี่ยนวันเวลานัดส่งมอบจาก {FormatLocal(oldPromise.Value)} เป็น {FormatLocal(newPromise)} น.";
+
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = PromiseChangedEvent,
+            DescriptionTh = descriptionTh,
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now,
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                from = oldPromise?.ToString("O"),
+                to = newPromise.ToString("O")
+            })
+        }, ct);
+
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+    }
+
+    /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/นัดส่งมอบ — อ่านจาก ActivityEvent ที่ UpdateAppointmentAsync/
+    /// UpdatePromiseAsync เขียนไว้ (from/to อยู่ใน PayloadJson ไม่ต้อง parse ข้อความไทย)</summary>
+    public async Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
+        Guid jobId, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<IReadOnlyList<JobScheduleChangeDto>>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        var events = await jobs.GetEventsAsync(
+            job.Id, [AppointmentChangedEvent, PromiseChangedEvent], ScheduleHistoryLimit, ct);
+
+        var items = events.Select(e =>
+        {
+            var (from, to) = ParseSchedulePayload(e.PayloadJson);
+            return new JobScheduleChangeDto(
+                e.Id,
+                e.EventType == PromiseChangedEvent ? "promise" : "appointment",
+                from, to, e.DescriptionTh, e.PerformedByName, e.Source.ToString().ToLowerInvariant(), e.OccurredAt);
+        }).ToList();
+
+        return Result<IReadOnlyList<JobScheduleChangeDto>>.Ok(items);
+    }
+
+    private static (DateTime? From, DateTime? To) ParseSchedulePayload(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson))
+            return (null, null);
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            return (ReadUtc(doc.RootElement, "from"), ReadUtc(doc.RootElement, "to"));
+        }
+        catch (JsonException)
+        {
+            // payload เสียไม่ควรทำให้ทั้งประวัติโหลดไม่ได้ — ยังมี DescriptionTh ให้อ่านแทน
+            return (null, null);
+        }
+
+        static DateTime? ReadUtc(JsonElement root, string name) =>
+            root.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.String &&
+            DateTime.TryParse(el.GetString(), null, System.Globalization.DateTimeStyles.RoundtripKind, out var v)
+                ? DateTime.SpecifyKind(v, DateTimeKind.Utc)
+                : null;
     }
 
     /// <summary>[BIZ] เพิ่ม 2026-09-17 ตามคำขอผู้ใช้ — แปลงงานนัดหมายเป็นรถในอู่เมื่อรถมาถึงจริง (ไม่ผูกกับ
@@ -518,11 +700,11 @@ public sealed class JobService(
             // (docs/01-workflow.md §3.9/§11 — ตัดขอบเขต split payment/reconciliation/มือถือออกแล้ว)
             var completionGuard = JobGuard.None;
 
-            var quotationForBalance = await quotations.GetLatestForJobAsync(job.Id, ct);
-            if (quotationForBalance is not null)
+            // [BIZ] ยอดรวมทุกใบเสนอราคา (บิลแยก ใบเสร็จรวม) — ต้องตรงกับ PosService.BuildSummaryAsync
+            var activeForBalance = await quotations.GetActiveForJobAsync(job.Id, ct);
+            if (activeForBalance.Count > 0)
             {
-                QuotationCalculator.ApplyQuotationTotals(quotationForBalance);
-                var approved = QuotationCalculator.CalculateApprovedTotals(quotationForBalance, job.VatIncluded);
+                var approved = JobQuotations.CombinedApprovedTotals(activeForBalance, job.VatIncluded);
                 var paid = (await posRepo.GetPaymentsByJobAsync(job.Id, ct)).Sum(p => p.Amount);
                 if (Math.Round(approved.GrandTotal - paid, 2, MidpointRounding.AwayFromZero) <= 0m)
                     completionGuard |= JobGuard.BalanceSettled;
@@ -546,7 +728,10 @@ public sealed class JobService(
             if (checklist is null || checklist.Items.Count == 0)
                 return (JobGuard.None, true);
 
-            var allPassed = checklist.Items.All(i => i.Result == QcItemResult.Pass);
+            // ลูกค้าอนุมัติใบที่สองหลังเปิดหน้า QC — บรรทัดใหม่ต้องเข้าเช็คลิสต์ก่อน (QcChecklistService เติมให้ตอนเปิดหน้า)
+            var uncovered = JobQuotations.NotCoveredByQc(
+                checklist.Items, await quotations.GetActiveForJobAsync(job.Id, ct));
+            var allPassed = uncovered.Count == 0 && checklist.Items.All(i => i.Result == QcItemResult.Pass);
             var testDriveRecorded = checklist.TestDriveRecordedAt.HasValue
                 && checklist.TestDriveKm.HasValue
                 && !string.IsNullOrWhiteSpace(checklist.TestDriveNote);
@@ -554,26 +739,33 @@ public sealed class JobService(
             return (allPassed && testDriveRecorded ? JobGuard.QcPassed : JobGuard.None, true);
         }
 
-        var quotation = await quotations.GetLatestForJobAsync(job.Id, ct);
-        if (quotation is null)
+        // [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ (บิลแยก) — ตัดสินจากทุกใบที่ยังไม่ถูกแทนที่ ไม่ใช่ "ใบล่าสุด" ใบเดียว
+        // (ใบล่าสุดอาจเป็นใบร่างที่เพิ่งสร้างเพิ่ม ซึ่งจะทำให้จ๊อบที่อนุมัติไปแล้วเดินต่อไม่ได้)
+        var active = await quotations.GetActiveForJobAsync(job.Id, ct);
+        if (active.Count == 0)
             return (JobGuard.None, true);
 
         if (to == JobStatus.WaitApprove)
         {
-            QuotationCalculator.ApplyQuotationTotals(quotation);
-            var validation = QuotationValidator.ValidateForSend(quotation, user.Role);
-            return (validation.IsValid ? JobGuard.QuotationValid : JobGuard.None, true);
+            // มีอย่างน้อยหนึ่งใบที่ผ่านเกณฑ์ส่งลูกค้า (เกณฑ์เดียวกับ SendAsync — เดิมตรวจเฉพาะใบล่าสุดโดยไม่ดูสถานะ)
+            var anyValid = active.Any(q =>
+                {
+                    QuotationCalculator.ApplyQuotationTotals(q);
+                    return QuotationValidator.ValidateForSend(q, user.Role).IsValid;
+                });
+            return (anyValid ? JobGuard.QuotationValid : JobGuard.None, true);
         }
 
-        var hasApprovedLine = quotation.Lines.Any(l => l.ApprovalStatus == LineApprovalStatus.Approved);
+        var hasApprovedLine = JobQuotations.ApprovedLines(active).Count > 0;
 
         if (to == JobStatus.InProgress)
             return (hasApprovedLine ? JobGuard.HasApprovedLines : JobGuard.None, true);
 
-        // to == JobStatus.Approved
+        // to == JobStatus.Approved — อย่างน้อยหนึ่งใบที่ลูกค้าตัดสินใจครบและเซ็นแล้ว ใบที่ยังรอลูกค้าไม่ต้องรอ
+        // (เริ่มซ่อมรายการที่อนุมัติแล้วได้ ใบที่เหลือเซ็นทีหลังได้จนกว่าจะออกใบเสร็จ)
         var guard = JobGuard.None;
-        var hasPendingLine = quotation.Lines.Any(l => l.ApprovalStatus == LineApprovalStatus.Pending);
-        if (!hasPendingLine && quotation.Lines.Count > 0 && quotation.Approval is not null)
+        if (active.Any(q => q.Approval is not null && q.Lines.Count > 0
+                            && q.Lines.All(l => l.ApprovalStatus != LineApprovalStatus.Pending)))
             guard |= JobGuard.AllLinesDecidedAndSigned;
         if (hasApprovedLine)
             guard |= JobGuard.HasApprovedLines;

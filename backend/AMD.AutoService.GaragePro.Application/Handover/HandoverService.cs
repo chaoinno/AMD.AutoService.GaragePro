@@ -86,7 +86,7 @@ public sealed class HandoverService(
 
         if (!request.IsReturned && string.IsNullOrWhiteSpace(request.Note))
             return Result<HandoverChecklistItemDto>.Fail(
-                "HANDOVER_NOTE_REQUIRED", "กรุณาระบุเหตุผลเมื่อของชิ้นนี้ไม่ได้คืน", nameof(request.Note));
+                "HANDOVER_NOTE_REQUIRED", "กรุณาระบุรายละเอียดเมื่อของชิ้นนี้สูญหาย", nameof(request.Note));
 
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)

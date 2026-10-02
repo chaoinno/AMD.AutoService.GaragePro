@@ -71,6 +71,7 @@ class PaymentSummary {
     required this.vatLocked,
     required this.payments,
     this.receipt,
+    this.awaitingCustomerQuotationCodes = const [],
   });
 
   final String jobId;
@@ -88,6 +89,10 @@ class PaymentSummary {
   final List<Payment> payments;
   final PaymentReceipt? receipt;
 
+  /// ใบเสนอราคาที่ส่งแล้วแต่ลูกค้ายังไม่จบ — มีอยู่ = ออกใบเสร็จรวมไม่ได้ (POS_QUOTATION_AWAITING_CUSTOMER)
+  /// [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ (บิลแยก) แต่ใบเสร็จรวมใบเดียว
+  final List<String> awaitingCustomerQuotationCodes;
+
   static PaymentSummary fromJson(Map<String, dynamic> j) => PaymentSummary(
         jobId: j['jobId'] as String,
         netAmount: (j['netAmount'] as num?)?.toDouble() ?? 0,
@@ -104,6 +109,8 @@ class PaymentSummary {
         receipt: j['receipt'] == null
             ? null
             : PaymentReceipt.fromJson(j['receipt'] as Map<String, dynamic>),
+        awaitingCustomerQuotationCodes:
+            ((j['awaitingCustomerQuotationCodes'] as List<dynamic>?) ?? const []).cast<String>(),
       );
 }
 

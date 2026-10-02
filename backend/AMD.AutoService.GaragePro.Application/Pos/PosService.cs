@@ -27,8 +27,8 @@ public interface IPosService
 }
 
 /// <summary>
-/// ชำระเงิน/ออกใบเสร็จ — MVP: บันทึกยอดเดียวต่อครั้ง ไม่มี split/EDC/QR gateway จริง ไม่มีใบกำกับภาษี/reprint/void
-/// (docs/01-workflow.md §3.9 ตัดขอบเขตแล้ว) ยอดคงเหลือคำนวณตรงจาก ApprovedTotals ของใบเสนอราคาล่าสุด — ข้าม
+/// ชำระเงิน/ออกใบเสร็จ — MVP: บันทึกยอดเดียวต่อครั้ง ไม่มี split/EDC/QR gateway จริง ไม่มี reprint/void (ใบกำกับภาษีอยู่ที่ TaxInvoiceService)
+/// (docs/01-workflow.md §3.9 ตัดขอบเขตแล้ว) ยอดคงเหลือคำนวณตรงจาก ApprovedTotals รวมของทุกใบเสนอราคาที่ยังไม่ถูกแทนที่ (JobQuotations) — ข้าม
 /// ขั้น reconciliation [BIZ] RequestId+RequestHash กันบันทึกซ้ำ (invariant #8), เฉพาะ Cashier/Office/Manager
 /// เท่านั้นที่ใช้โมดูลนี้ได้ (ตรงกับ role ที่อนุญาต transition Ready→Completed ใน JobStateMachine อยู่แล้ว)
 /// </summary>
@@ -204,6 +204,13 @@ public sealed class PosService(
             return Result<PaymentReceiptDto>.Fail(
                 "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา — ไม่สามารถออกใบเสร็จได้");
 
+        // [BIZ] ใบเสร็จรวมออกได้ครั้งเดียว — ใบเสนอราคาที่ยังรอลูกค้าต้องจบก่อน ไม่งั้นยอดของใบนั้นจะไม่ถูกเก็บเงินเลย
+        if (summary.AwaitingCustomerQuotationCodes.Count > 0)
+            return Result<PaymentReceiptDto>.Fail(
+                "POS_QUOTATION_AWAITING_CUSTOMER",
+                $"ใบเสนอราคา {string.Join(", ", summary.AwaitingCustomerQuotationCodes)} ยังรอลูกค้าตัดสินใจ/เซ็นยืนยัน " +
+                "— ให้ลูกค้าอนุมัติหรือไม่อนุมัติให้เรียบร้อยก่อนออกใบเสร็จ");
+
         if (!summary.BalanceSettled)
             return Result<PaymentReceiptDto>.Fail(
                 "POS_BALANCE_NOT_SETTLED", "ยอดคงเหลือยังไม่เป็นศูนย์ — บันทึกชำระเงินให้ครบก่อนออกใบเสร็จ");
@@ -242,11 +249,12 @@ public sealed class PosService(
 
     private async Task<PaymentSummaryDto?> BuildSummaryAsync(Job job, CancellationToken ct)
     {
-        var quotation = await quotations.GetLatestForJobAsync(job.Id, ct);
-        if (quotation is null) return null;
+        // [BIZ] บิลแยกเฉพาะใบเสนอราคา ใบเสร็จรวม — ยอดที่ต้องชำระ = ผลรวมยอดอนุมัติของทุกใบที่ยังไม่ถูกแทนที่
+        var active = await quotations.GetActiveForJobAsync(job.Id, ct);
+        if (active.Count == 0) return null;
 
-        QuotationCalculator.ApplyQuotationTotals(quotation);
-        var approved = QuotationCalculator.CalculateApprovedTotals(quotation, job.VatIncluded);
+        var approved = JobQuotations.CombinedApprovedTotals(active, job.VatIncluded);
+        var awaiting = JobQuotations.AwaitingCustomer(active).Select(q => q.Code).ToList();
 
         var payments = await repo.GetPaymentsByJobAsync(job.Id, ct);
         var paid = payments.Sum(p => p.Amount);
@@ -264,21 +272,11 @@ public sealed class PosService(
             VatIncluded: job.VatIncluded,
             VatLocked: payments.Count > 0 || receipt is not null,
             payments.Select(PosMapper.ToDto).ToList(),
-            receipt is null ? null : PosMapper.ToDto(receipt));
+            receipt is null ? null : PosMapper.ToDto(receipt),
+            QuotationCodes: active.Where(q => q.Status != QuotationStatus.Draft).Select(q => q.Code).ToList(),
+            AwaitingCustomerQuotationCodes: awaiting);
     }
 
-    private async Task<Result<Job>> ValidateAsync(Guid jobId, CancellationToken ct)
-    {
-        if (user.Role is not (UserRole.Cashier or UserRole.Office or UserRole.Manager))
-            return Result<Job>.Fail("POS_FORBIDDEN", "เฉพาะแคชเชียร์ ธุรการ หรือผู้จัดการเท่านั้นที่ใช้หน้านี้ได้");
-
-        var job = await jobs.GetAsync(jobId, ct);
-        if (job is null)
-            return Result<Job>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
-
-        if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
-            return Result<Job>.Fail("JOB_OTHER_BRANCH", "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
-
-        return Result<Job>.Ok(job);
-    }
+    private Task<Result<Job>> ValidateAsync(Guid jobId, CancellationToken ct) =>
+        PosAccess.ValidateAsync(jobs, user, jobId, ct);
 }

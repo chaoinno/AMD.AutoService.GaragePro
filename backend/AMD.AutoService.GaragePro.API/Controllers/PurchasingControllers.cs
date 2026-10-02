@@ -180,13 +180,18 @@ public sealed class StockFIFOController(PurchasingService service) : PurchasingA
     public async Task<IActionResult> Issue(StockIssueInput input, CancellationToken ct) => Render(await service.IssueAsync(input, ct), true);
 
     /// <summary>สร้างใบเบิกสินค้าหลายรายการในเอกสารเดียว ระบุผู้เบิก (พนักงาน) และผูกกับงาน (job) ได้</summary>
-    /// <remarks>ระบุ RequestId (UUID) เดิมเมื่อ retry พร้อมรายการสินค้า 1–100 รายการ เหตุผล และผู้เบิก เบิกได้ไม่เกินยอดพร้อมใช้ต่อสินค้า ออกเลขใบเบิก WD เดียวกันทุกบรรทัด</remarks>
+    /// <remarks>ระบุ RequestId (UUID) เดิมเมื่อ retry พร้อมรายการสินค้า 1–100 รายการ เหตุผล และผู้เบิก เบิกได้ไม่เกินยอดพร้อมใช้ต่อสินค้า ถ้าผูก job ต้องเบิกตามรายการที่ลูกค้าอนุมัติเท่านั้น (ดู /plan) ออกเลขใบเบิก WD เดียวกันทุกบรรทัด</remarks>
     [HttpPost("withdrawals")]
     public async Task<IActionResult> Withdraw(StockWithdrawalInput input, CancellationToken ct) => Render(await service.WithdrawAsync(input, ct), true);
 
     /// <summary>อ่านใบเบิกสินค้าที่สร้างแล้วด้วยเลข operation เพื่อแสดง/พิมพ์ซ้ำ</summary>
     [HttpGet("withdrawals/{operationId:guid}")]
     public async Task<IActionResult> WithdrawalDetail(Guid operationId, CancellationToken ct) => Render(await service.WithdrawalDetailAsync(operationId, ct));
+
+    /// <summary>สินค้าที่ใบเบิกของ job นี้ต้องเบิก — รายการที่ลูกค้าอนุมัติแล้วหักส่วนที่เบิกไปแล้ว</summary>
+    /// <remarks>ใบเบิกที่ผูก job ต้องส่งรายการและจำนวนตรงกับ <c>lines[].remainingQuantity</c> ที่มากกว่า 0 ทุกรายการพอดี</remarks>
+    [HttpGet("withdrawals/by-job/{jobId:guid}/plan")]
+    public async Task<IActionResult> WithdrawalPlan(Guid jobId, CancellationToken ct) => Render(await service.WithdrawalPlanAsync(jobId, ct));
 
     /// <summary>รายการใบเบิกสินค้าที่ผูกกับ job นี้ ล่าสุดก่อน</summary>
     [HttpGet("withdrawals/by-job/{jobId:guid}")]

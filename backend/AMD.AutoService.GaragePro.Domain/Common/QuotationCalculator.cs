@@ -58,7 +58,8 @@ public static class QuotationCalculator
 
         quotation.VatAmount = Round(quotation.NetAmount * quotation.VatRate);
         quotation.TotalAmount = Round(quotation.NetAmount + quotation.VatAmount);
-        quotation.GrandTotal = Math.Max(0m, Round(quotation.TotalAmount - quotation.DepositAmount));
+        // [BIZ] ตัดเรื่องค่ามัดจำออกแล้ว (2026-10-02) — ไม่หัก DepositAmount อีก GrandTotal = TotalAmount
+        quotation.GrandTotal = quotation.TotalAmount;
     }
 
     /// <summary>
@@ -84,7 +85,7 @@ public static class QuotationCalculator
             NetAmount: net,
             VatAmount: vat,
             TotalAmount: total,
-            GrandTotal: Math.Max(0m, Round(total - quotation.DepositAmount)));
+            GrandTotal: total);
     }
 
     public static decimal MarginPercent(Quotation quotation) =>

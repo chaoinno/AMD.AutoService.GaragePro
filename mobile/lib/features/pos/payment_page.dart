@@ -68,7 +68,13 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             ? null
             : StickyActionBar(
                 label: summary.balanceSettled ? 'ออกใบเสร็จ' : 'บันทึกรับชำระ',
-                onPressed: _busy
+                // [UI] ปุ่มที่กดไม่ได้ต้องบอกเหตุผล — server ปฏิเสธซ้ำด้วย POS_QUOTATION_AWAITING_CUSTOMER
+                disabledReason: summary.balanceSettled && summary.awaitingCustomerQuotationCodes.isNotEmpty
+                    ? 'ใบเสนอราคา ${summary.awaitingCustomerQuotationCodes.join(', ')} ยังรอลูกค้าตัดสินใจ — '
+                        'ให้จบก่อนออกใบเสร็จรวม'
+                    : null,
+                onPressed: _busy ||
+                        (summary.balanceSettled && summary.awaitingCustomerQuotationCodes.isNotEmpty)
                     ? null
                     : summary.balanceSettled
                         ? _issueReceipt

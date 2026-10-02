@@ -33,7 +33,11 @@ public sealed record PaymentSummaryDto(
     /// <summary>ล็อกแก้ VatIncluded ไม่ได้อีก — เริ่มบันทึกชำระเงินหรือออกใบเสร็จไปแล้ว</summary>
     bool VatLocked,
     IReadOnlyList<PaymentDto> Payments,
-    PaymentReceiptDto? Receipt);
+    PaymentReceiptDto? Receipt,
+    /// <summary>ใบเสนอราคาที่รวมอยู่ในยอดนี้ (ไม่รวมใบร่าง) — จ๊อบมีได้หลายใบ (บิลแยก ใบเสร็จรวม)</summary>
+    IReadOnlyList<string> QuotationCodes,
+    /// <summary>ใบที่ส่งแล้วแต่ลูกค้ายังไม่จบ — มีอยู่ = ออกใบเสร็จไม่ได้ (POS_QUOTATION_AWAITING_CUSTOMER)</summary>
+    IReadOnlyList<string> AwaitingCustomerQuotationCodes);
 
 /// <summary>Method: "cash" | "transfer" | "card" | "qr" — RequestId กันบันทึกซ้ำเมื่อ retry</summary>
 public sealed record RecordPaymentRequest(string Method, decimal Amount, string? Reference, Guid RequestId);

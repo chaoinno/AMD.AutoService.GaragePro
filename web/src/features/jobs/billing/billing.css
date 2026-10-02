@@ -1,0 +1,124 @@
+/* เอกสารการเงินของจ๊อบ (ใบแจ้งยอด/ใบเสร็จ/ใบกำกับภาษี) — ใช้โครง .quotation-document เดิมใน index.css
+   ไฟล์นี้เพิ่มเฉพาะส่วนที่เอกสารใบเสนอราคาไม่มี + แถวเอกสารในขั้นชำระเงิน */
+
+.billing-doc-list {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.billing-doc-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: #f8fafc;
+}
+
+.billing-doc-row--done {
+  border-color: #bde2da;
+  background: #f1faf8;
+}
+
+.billing-doc-row__icon {
+  width: 20px;
+  height: 20px;
+  color: var(--faint);
+}
+
+.billing-doc-row--done .billing-doc-row__icon {
+  color: var(--teal-500);
+}
+
+.billing-doc-row__text {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.billing-doc-row__text strong {
+  font-size: 15px;
+}
+
+.billing-doc-row__text span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.billing-doc-row__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.billing-copy-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.billing-copy-select .ui-select,
+.billing-copy-select select {
+  width: auto;
+  min-width: 170px;
+}
+
+.billing-copy-chip {
+  display: inline-flex;
+  padding: 2px 10px;
+  border: 1.5px solid currentColor;
+  border-radius: var(--radius-chip);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.billing-copy-chip--original {
+  color: var(--navy-900);
+}
+
+.billing-copy-chip--copy {
+  color: var(--red-600);
+}
+
+.billing-document .document-notes strong + p + strong {
+  display: block;
+  margin-top: 8px;
+}
+
+.billing-baht-text {
+  color: var(--navy-900);
+  font-weight: 600;
+}
+
+.billing-payments {
+  margin-top: 12px;
+}
+
+.billing-issue-form {
+  display: grid;
+  gap: 12px;
+}
+
+.billing-issue-form > .form-message {
+  padding: 0;
+  text-align: left;
+}
+
+.billing-issue-footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.billing-issue-footer__reason {
+  margin-right: auto;
+  color: var(--muted);
+  font-size: 14px;
+}

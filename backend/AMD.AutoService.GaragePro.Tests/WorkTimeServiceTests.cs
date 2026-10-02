@@ -488,8 +488,12 @@ public sealed class WorkTimeServiceTests
 
     private sealed class FakeQuotationRepository(Quotation? quotation) : IQuotationRepository
     {
-        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) =>
-            Task.FromResult(quotation);
+        public Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Quotation>>(
+                new[] { quotation }.Concat(Others).Where(q => q is not null && q.Status != QuotationStatus.Superseded)
+                    .Select(q => q!).ToList());
+        /// <summary>ใบเสนอราคาอื่นของจ๊อบเดียวกัน — จำลองจ๊อบที่มีหลายใบ (บิลแยก)</summary>
+        public List<Quotation> Others { get; } = [];
 
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) => throw new NotImplementedException();
@@ -526,9 +530,13 @@ public sealed class WorkTimeServiceTests
             Guid jobId, UpdateJobAppointmentRequest request, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<JobDto>> ConvertToInShopAsync(
             Guid jobId, ConvertToInShopRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<JobDto>> UpdatePromiseAsync(
+            Guid jobId, UpdateJobPromiseRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
+            Guid jobId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<JobCalendarDto>> GetCalendarAsync(
             DateTimeOffset from, DateTimeOffset to, string? keyword, string? statusToken,
-            CancellationToken ct = default) => throw new NotImplementedException();
+            string? dateField = null, CancellationToken ct = default) => throw new NotImplementedException();
     }
 
     private sealed class FakeLegacyUserReader : ILegacyUserReader

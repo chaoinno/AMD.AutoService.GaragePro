@@ -56,7 +56,7 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
             {handover.items.map((item) => (
               <tr key={item.id}>
                 <td>{item.name}</td>
-                <td>{item.updatedAt ? (item.isReturned ? 'คืนแล้ว' : 'ไม่คืน') : 'ยังไม่ตรวจ'}</td>
+                <td>{item.updatedAt ? (item.isReturned ? 'คืนแล้ว/ไม่มี' : 'สูญหาย') : 'ยังไม่ตรวจ'}</td>
                 <td>{item.note || '—'}</td>
               </tr>
             ))}

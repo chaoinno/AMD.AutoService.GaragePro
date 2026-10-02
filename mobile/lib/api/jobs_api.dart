@@ -46,7 +46,7 @@ class JobsApi {
   }
 
   /// เปิดจ๊อบใหม่ — [jobTypeId] รับแค่ 9 (รถในอู่) หรือ 10 (รถนัดหมาย)
-  /// [BIZ] 1 รถ 1 จ๊อบที่เปิดอยู่ต่อสาขา — เปิดซ้ำจะได้ JOB_DUPLICATE_OPEN
+  /// [BIZ] รถที่ยังมีงานค้างเปิดซ้อนได้ — ดู [CreatedJob.existingOpenJobNo]
   Future<CreatedJob> create({
     required int customerId,
     required int vehicleId,

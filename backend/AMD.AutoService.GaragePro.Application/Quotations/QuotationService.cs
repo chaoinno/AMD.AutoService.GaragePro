@@ -32,6 +32,7 @@ public sealed class QuotationService(
     ICatalogRepository catalog,
     IJobRepository jobs,
     IQuotationTemplateRepository templates,
+    IPosRepository pos,
     ILegacyReader legacy,
     ICurrentUser user,
     TimeProvider clock) : IQuotationService
@@ -65,17 +66,21 @@ public sealed class QuotationService(
         if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
             return Result<QuotationDto>.Fail("JOB_OTHER_BRANCH", "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
 
-        // [BIZ] มีใบที่ยังไม่ถูกแทนที่อยู่แล้ว ต้องใช้ "ออกฉบับแก้ไข" ไม่ใช่สร้างใหม่
-        var existing = await repository.GetLatestForJobAsync(request.JobId, ct);
-        if (existing is not null && existing.Status is not (QuotationStatus.Rejected or QuotationStatus.Superseded))
+        // [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ (บิลแยก — คำขอผู้ใช้ 2026-10-02) แต่สร้างใบใหม่ได้เฉพาะเมื่อไม่มีใบร่างค้าง
+        // (ใบก่อนหน้าส่งลูกค้าแล้ว: ส่งแล้ว/อนุมัติ/ปฏิเสธ) — กันใบร่างซ้อนกันหลายใบจนไม่รู้ว่าใบไหนจะส่งจริง
+        // แก้ราคาใบเดิมยังใช้ "ออกฉบับแก้ไข" (version-first) เหมือนเดิม
+        var draft = JobQuotations.OpenDraft(await repository.GetActiveForJobAsync(request.JobId, ct));
+        if (draft is not null)
             return Result<QuotationDto>.Fail(
                 "QUOTE_ALREADY_EXISTS",
-                $"งานนี้มีใบเสนอราคา {existing.Code} อยู่แล้ว — ถ้าต้องการแก้ราคาให้ออกฉบับแก้ไขแทน");
+                $"งานนี้มีใบเสนอราคาฉบับร่าง {draft.Code} อยู่แล้ว — ส่งใบนั้นให้ลูกค้าก่อนจึงจะสร้างใบใหม่ได้");
+
+        if (await ReceiptIssuedError(job.Id, ct) is { } receiptError) return receiptError;
 
         var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);
         var version = await repository.GetNextVersionAsync(request.JobId, ct);
 
-        var quotation = NewQuotation(job, branch, version, request.ValidUntil, request.DepositAmount);
+        var quotation = NewQuotation(job, branch, version, request.ValidUntil);
         QuotationCalculator.ApplyQuotationTotals(quotation);
 
         await repository.AddAsync(quotation, ct);
@@ -362,6 +367,8 @@ public sealed class QuotationService(
             return Result<QuotationDto>.Fail("QUOTE_ALREADY_SUPERSEDED",
                 $"{previous.Code} ถูกแทนที่ไปแล้ว — ให้ออกฉบับแก้ไขจากเวอร์ชันล่าสุดแทน");
 
+        if (await ReceiptIssuedError(previous.JobId, ct) is { } receiptError) return receiptError;
+
         if (string.IsNullOrWhiteSpace(request.RevisionReason))
             return Result<QuotationDto>.Fail("QUOTE_REVISION_NO_REASON",
                 "ต้องระบุเหตุผลที่ออกฉบับแก้ไข", nameof(request.RevisionReason));
@@ -387,7 +394,6 @@ public sealed class QuotationService(
             BranchAddress = previous.BranchAddress,
             BranchTaxId = previous.BranchTaxId,
             BranchPhone = previous.BranchPhone,
-            DepositAmount = previous.DepositAmount,
             VatRate = previous.VatRate,
             SupersedesQuotationId = previous.Id,
             RevisionReason = request.RevisionReason,
@@ -479,6 +485,8 @@ public sealed class QuotationService(
             return Result<QuotationDto>.Fail("QUOTE_NOT_OPEN_FOR_DECISION",
                 $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} — เซ็นยืนยันไม่ได้");
 
+        if (await ReceiptIssuedError(q.JobId, ct) is { } receiptError) return receiptError;
+
         QuotationCalculator.ApplyQuotationTotals(q);
 
         var validation = QuotationValidator.ValidateForSign(q);
@@ -514,8 +522,21 @@ public sealed class QuotationService(
 
     // ---------- helper ----------
 
+    /// <summary>
+    /// [BIZ] ใบเสร็จรวมออกได้ใบเดียวต่อจ๊อบ (Receipt.JobId unique) — หลังออกแล้ว ห้ามสร้าง/ออกฉบับแก้ไข/เซ็นใบเสนอราคา
+    /// เพิ่ม ไม่งั้นยอดที่ลูกค้าอนุมัติเพิ่มจะไม่มีวันถูกเก็บเงิน และยอดในใบเสร็จจะไม่ตรงกับที่อนุมัติจริง
+    /// </summary>
+    private async Task<Result<QuotationDto>?> ReceiptIssuedError(Guid jobId, CancellationToken ct)
+    {
+        var receipt = await pos.GetReceiptByJobAsync(jobId, ct);
+        return receipt is null
+            ? null
+            : Result<QuotationDto>.Fail("QUOTE_RECEIPT_ISSUED",
+                $"งานนี้ออกใบเสร็จ {receipt.DocumentNo} แล้ว — เพิ่มหรือแก้ใบเสนอราคาไม่ได้อีก");
+    }
+
     private Quotation NewQuotation(
-        Job job, LegacyBranchDto? branch, int version, DateTime? validUntil, decimal deposit) => new()
+        Job job, LegacyBranchDto? branch, int version, DateTime? validUntil) => new()
     {
         Code = FormatCode(job.JobNo, version),
         Version = version,
@@ -531,7 +552,6 @@ public sealed class QuotationService(
         BranchAddress = branch?.Address,
         BranchTaxId = branch?.TaxId,
         BranchPhone = branch?.Phone,
-        DepositAmount = deposit,
         ValidUntil = validUntil,
         CreatedByUserId = user.UserId,
         CreatedByUserName = user.UserName,

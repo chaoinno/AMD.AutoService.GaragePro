@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { CarFront, ClipboardList, Plus, Search, UserRound } from 'lucide-react'
+import { CarFront, ClipboardList, Plus, Search, TriangleAlert, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -18,7 +18,7 @@ import {
   getVehicleReferenceData,
   updateVehicleImage,
 } from '../../api/customerVehicles'
-import type { CustomerSummary, CustomerVehicleSummary, Job, JobStatusToken } from '../../api/types'
+import type { CustomerSummary, CustomerVehicleSummary, Job, JobCalendarDateField, JobStatusToken } from '../../api/types'
 import { isApiError } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
@@ -65,6 +65,7 @@ export function JobsPage() {
   const [typeFilter, setTypeFilter] = useState(9)
   const [statusFilter, setStatusFilter] = useState<JobStatusToken | ''>('')
   const [view, setView] = useState<'list' | 'calendar'>('list')
+  const [calendarDateField, setCalendarDateField] = useState<JobCalendarDateField>('appointment')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
@@ -175,6 +176,21 @@ export function JobsPage() {
       cell: ({ row }) => (
         <time className="job-created-at">
           {row.original.appointmentAt ? formatDateTime(row.original.appointmentAt) : '—'}
+        </time>
+      ),
+    },
+    {
+      id: 'promiseAt',
+      accessorFn: (job) => (job.promiseAt ? new Date(job.promiseAt).getTime() : 0),
+      header: 'นัดส่งมอบ',
+      size: 220,
+      sortDescFirst: true,
+      cell: ({ row }) => (
+        <time className={`job-created-at${row.original.isOverdue ? ' job-promise--overdue' : ''}`}>
+          {row.original.promiseAt ? formatDateTime(row.original.promiseAt) : '—'}
+          {row.original.isOverdue ? (
+            <span className="job-promise__overdue-label"><TriangleAlert aria-hidden="true" /> เกินกำหนด</span>
+          ) : null}
         </time>
       ),
     },
@@ -321,7 +337,16 @@ export function JobsPage() {
             </Select>
           </Label>
         ) : (
-          <span className="jobs-filter-note">ปฏิทินแสดงเฉพาะงานนัดหมาย (ประเภท "รถนัดหมาย")</span>
+          <Label className="field jobs-filter">
+            <span className="sr-only">ปฏิทินแสดงตามวันที่</span>
+            <Select
+              value={calendarDateField}
+              onChange={(event) => setCalendarDateField(event.target.value as JobCalendarDateField)}
+            >
+              <option value="appointment">ตามวันที่นัดเข้า</option>
+              <option value="promise">ตามวันที่นัดส่งมอบ</option>
+            </Select>
+          </Label>
         )}
 
         <Label className="field jobs-filter">
@@ -345,6 +370,7 @@ export function JobsPage() {
         <JobsCalendar
           query={searchText}
           status={statusFilter || undefined}
+          dateField={calendarDateField}
           onSelectJob={setSelectedJobId}
         />
       )}
@@ -363,12 +389,31 @@ const jobDetailsSchema = z.object({
   detail: z.string().trim().max(500, 'รายละเอียดต้องไม่เกิน 500 ตัวอักษร').optional(),
   // [BIZ] บังคับเฉพาะงานประเภทรถนัดหมาย (jobTypeId=10) — ตรงกับกฎที่ API บังคับอยู่แล้วใน JobService.ValidateAppointment
   appointmentAt: z.string().optional(),
+  // วันนัดส่งมอบ — ไม่บังคับทุกประเภทงาน (ตั้ง/เลื่อนภายหลังจากการ์ดจ๊อบหรือลากในปฏิทินได้)
+  promiseAt: z.string().optional(),
 }).superRefine((values, ctx) => {
   if (values.jobTypeId === 10 && !values.appointmentAt) {
     ctx.addIssue({
       code: 'custom',
       path: ['appointmentAt'],
       message: 'กรุณาระบุวันเวลาที่ลูกค้าจะนำรถเข้า',
+    })
+  }
+  // [BIZ] ห้ามเป็นอดีต (API บังคับซ้ำ เผื่อ 5 นาทีเท่ากัน) — ตรวจที่นี่แทน validation ของเบราว์เซอร์ (form เป็น noValidate)
+  // เพื่อให้ข้อความเป็นภาษาไทยและอยู่ใต้ช่อง ไม่ใช่ tooltip ภาษาอังกฤษของเบราว์เซอร์
+  const earliest = Date.now() - 5 * 60_000
+  if (values.jobTypeId === 10 && values.appointmentAt && new Date(values.appointmentAt).getTime() < earliest) {
+    ctx.addIssue({ code: 'custom', path: ['appointmentAt'], message: 'วันเวลานัดหมายต้องไม่น้อยกว่าวันเวลาปัจจุบัน' })
+  }
+  if (values.promiseAt && new Date(values.promiseAt).getTime() < earliest) {
+    ctx.addIssue({ code: 'custom', path: ['promiseAt'], message: 'วันเวลานัดส่งมอบต้องไม่น้อยกว่าวันเวลาปัจจุบัน' })
+  }
+  // [BIZ] วันส่งมอบต้องไม่ก่อนวันนัดเข้า (API บังคับซ้ำ) — ค่า datetime-local รูปแบบเดียวกันเทียบเป็นสตริงได้ตรง
+  if (values.jobTypeId === 10 && values.appointmentAt && values.promiseAt && values.promiseAt < values.appointmentAt) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['promiseAt'],
+      message: 'วันเวลานัดส่งมอบต้องไม่ก่อนวันเวลาที่ลูกค้าจะนำรถเข้า',
     })
   }
 })
@@ -439,14 +484,20 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
   const createJobMutation = useMutation({
     mutationFn: createJob,
     onSuccess: (job) => {
-      toast.success(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`)
+      if (job.existingOpenJobNo) {
+        toast.warning(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`, {
+          description: `รถคันนี้ยังมีงานที่ยังไม่เสร็จ (${job.existingOpenJobNo}) — ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ`,
+        })
+      } else {
+        toast.success(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`)
+      }
       void queryClient.invalidateQueries({ queryKey: ['jobs-table'] })
       close()
     },
   })
 
   const jobDetailsDefaults: JobDetailsValues = {
-    jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '', appointmentAt: '',
+    jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '', appointmentAt: '', promiseAt: '',
   }
   const jobForm = useForm<JobDetailsValues>({
     resolver: zodResolver(jobDetailsSchema),
@@ -477,6 +528,7 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
       appointmentAt: values.jobTypeId === 10 && values.appointmentAt
         ? localInputToIso(values.appointmentAt)
         : undefined,
+      promiseAt: values.promiseAt ? localInputToIso(values.promiseAt) : undefined,
     })
   })
 
@@ -504,7 +556,7 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
         </>
       }
     >
-      <form id="create-job-form" className="create-form job-create-form" onSubmit={submitJob}>
+      <form id="create-job-form" className="create-form job-create-form" noValidate onSubmit={submitJob}>
         {createJobMutation.isError ? (
           <div className="form-error-panel" role="alert">
             {isApiError(createJobMutation.error) ? createJobMutation.error.messageTh : 'เปิดจ๊อบไม่สำเร็จ กรุณาลองใหม่'}
@@ -624,9 +676,16 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
             </div>
             {jobForm.watch('jobTypeId') === 10 ? (
               <Field label="วันเวลาที่ลูกค้าจะนำรถเข้า *" error={jobForm.formState.errors.appointmentAt?.message}>
-                <Input type="datetime-local" step={900} min={nowLocalInputValue()} {...jobForm.register('appointmentAt')} />
+                <Input type="datetime-local" min={nowLocalInputValue()} {...jobForm.register('appointmentAt')} />
               </Field>
             ) : null}
+            <Field label="วันเวลานัดส่งมอบรถ (ไม่บังคับ)" error={jobForm.formState.errors.promiseAt?.message}>
+              <Input
+                type="datetime-local"
+                min={(jobForm.watch('jobTypeId') === 10 && jobForm.watch('appointmentAt')) || nowLocalInputValue()}
+                {...jobForm.register('promiseAt')}
+              />
+            </Field>
             <div className="form-grid--two">
               <Field label="ชื่อผู้ส่งรถ"><Input {...jobForm.register('senderName')} /></Field>
               <Field label="เบอร์โทรผู้ส่งรถ" error={jobForm.formState.errors.senderPhoneNumber?.message}>
