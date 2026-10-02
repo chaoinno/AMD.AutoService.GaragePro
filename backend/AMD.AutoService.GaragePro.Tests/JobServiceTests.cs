@@ -5,6 +5,7 @@ using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Application.Jobs;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
+using AMD.AutoService.GaragePro.Domain.StateMachine;
 using FluentAssertions;
 
 namespace AMD.AutoService.GaragePro.Tests;
@@ -38,20 +39,40 @@ public sealed class JobServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_fails_when_vehicle_already_has_an_open_job()
+    public async Task CreateAsync_allows_a_second_job_on_a_vehicle_that_still_has_an_open_job()
     {
         var jobs = new FakeJobRepository();
         jobs.Seed(new Job
         {
             LegacyShardKey = "db2", BranchId = 105, VehicleId = 1, CustomerId = 1,
-            JobNo = "JB2608310105001", Status = JobStatus.InProgress
+            JobNo = "JB2608310105009", Status = JobStatus.InProgress
         });
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
 
         var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
 
-        result.Success.Should().BeFalse();
-        result.Error!.Code.Should().Be("JOB_DUPLICATE_OPEN");
+        result.Success.Should().BeTrue();
+        result.Data!.ExistingOpenJobNo.Should().Be("JB2608310105009");
+        jobs.Saved.Count(j => j.VehicleId == 1 && !JobStateMachine.IsTerminal(j.Status)).Should().Be(2);
+        jobs.Events.Should().ContainSingle(e =>
+            e.EventType == "job.opened" && e.DescriptionTh.Contains("JB2608310105009"));
+    }
+
+    [Fact]
+    public async Task CreateAsync_reports_no_existing_open_job_when_previous_jobs_are_closed()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            LegacyShardKey = "db2", BranchId = 105, VehicleId = 1, CustomerId = 1,
+            JobNo = "JB2608310105009", Status = JobStatus.Completed
+        });
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+
+        result.Success.Should().BeTrue();
+        result.Data!.ExistingOpenJobNo.Should().BeNull();
     }
 
     [Fact]
@@ -337,6 +358,279 @@ public sealed class JobServiceTests
     }
 
     [Fact]
+    public async Task GetCalendarAsync_with_promise_field_returns_jobs_by_delivery_date()
+    {
+        var jobs = new FakeJobRepository();
+        var from = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var to = new DateTime(2026, 10, 1, 0, 0, 0, DateTimeKind.Utc);
+        jobs.Seed(new Job // นัดเข้าอยู่ในช่วงแต่ไม่มีวันส่งมอบ — ต้องไม่ติดมาเมื่อดูตามวันส่งมอบ
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-APPT-ONLY", Status = JobStatus.WaitInspect,
+            AppointmentAt = from.AddDays(3)
+        });
+        jobs.Seed(new Job
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-PROMISE-LATE", Status = JobStatus.InProgress,
+            PromiseAt = from.AddDays(15)
+        });
+        jobs.Seed(new Job
+        {
+            LegacyShardKey = "db2", BranchId = 105, JobNo = "JB-PROMISE-EARLY", Status = JobStatus.InProgress,
+            AppointmentAt = to.AddDays(10), PromiseAt = from.AddDays(2)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.GetCalendarAsync(from, to, null, null, "promise");
+
+        result.Success.Should().BeTrue();
+        result.Data!.Items.Select(i => i.JobNo).Should().Equal("JB-PROMISE-EARLY", "JB-PROMISE-LATE");
+    }
+
+    [Fact]
+    public async Task GetCalendarAsync_rejects_an_unknown_date_field()
+    {
+        var service = CreateService(new FakeJobRepository());
+        var from = DateTimeOffset.UtcNow;
+
+        var result = await service.GetCalendarAsync(from, from.AddDays(7), null, null, "createdAt");
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+    }
+
+    [Fact]
+    public async Task CreateAsync_stores_an_optional_promise_date_and_mentions_it_in_the_opened_event()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+        var promise = DateTimeOffset.UtcNow.AddDays(3);
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: promise));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().PromiseAt.Should().BeCloseTo(promise.UtcDateTime, TimeSpan.FromSeconds(1));
+        jobs.Events.Should().ContainSingle(e => e.EventType == "job.opened" && e.DescriptionTh.Contains("นัดส่งมอบ"));
+    }
+
+    [Fact]
+    public async Task CreateAsync_rejects_a_promise_date_in_the_past()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(
+            new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: DateTimeOffset.UtcNow.AddHours(-1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("promiseAt");
+        jobs.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_sets_the_date_on_any_job_type_and_logs_from_and_to()
+    {
+        var jobs = new FakeJobRepository();
+        var oldPromise = DateTime.UtcNow.AddDays(1);
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9,
+            JobNo = "JB1", Status = JobStatus.InProgress, PromiseAt = oldPromise
+        });
+        var service = CreateService(jobs);
+        var newPromise = DateTimeOffset.UtcNow.AddDays(4);
+
+        var result = await service.UpdatePromiseAsync(TestJobId, new UpdateJobPromiseRequest(newPromise));
+
+        result.Success.Should().BeTrue();
+        result.Data!.PromiseAt.Should().BeCloseTo(newPromise.UtcDateTime, TimeSpan.FromSeconds(1));
+        var evt = jobs.Events.Should().ContainSingle(e => e.EventType == "job.promise.changed").Subject;
+        evt.JobId.Should().Be(TestJobId);
+        evt.DescriptionTh.Should().Contain("เปลี่ยนวันเวลานัดส่งมอบจาก");
+        evt.PayloadJson.Should().Contain(oldPromise.ToString("O"));
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_does_not_log_when_the_date_is_unchanged()
+    {
+        var jobs = new FakeJobRepository();
+        var promise = DateTime.UtcNow.Date.AddDays(3).AddHours(3);
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9,
+            JobNo = "JB1", Status = JobStatus.InProgress, PromiseAt = promise
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdatePromiseAsync(
+            TestJobId, new UpdateJobPromiseRequest(new DateTimeOffset(promise, TimeSpan.Zero)));
+
+        result.Success.Should().BeTrue();
+        jobs.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_fails_for_a_closed_job()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 11,
+            JobNo = "JB1", Status = JobStatus.Completed
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdatePromiseAsync(
+            TestJobId, new UpdateJobPromiseRequest(DateTimeOffset.UtcNow.AddDays(1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_PROMISE_LOCKED");
+        jobs.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_fails_for_a_past_date_or_another_branch()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9,
+            JobNo = "JB1", Status = JobStatus.InProgress
+        });
+        var otherBranchJobId = Guid.NewGuid();
+        jobs.Seed(new Job
+        {
+            Id = otherBranchJobId, LegacyShardKey = "db2", BranchId = 999, JobTypeId = 9,
+            JobNo = "JB2", Status = JobStatus.InProgress
+        });
+        var service = CreateService(jobs);
+
+        var past = await service.UpdatePromiseAsync(
+            TestJobId, new UpdateJobPromiseRequest(DateTimeOffset.UtcNow.AddHours(-2)));
+        var otherBranch = await service.UpdatePromiseAsync(
+            otherBranchJobId, new UpdateJobPromiseRequest(DateTimeOffset.UtcNow.AddDays(1)));
+
+        past.Error!.Field.Should().Be("promiseAt");
+        otherBranch.Error!.Code.Should().Be("JOB_NOT_FOUND");
+        jobs.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateAsync_rejects_a_promise_date_before_the_appointment()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+        var appointment = DateTimeOffset.UtcNow.AddDays(3);
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, appointment, PromiseAt: appointment.AddHours(-1)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("promiseAt");
+        jobs.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task CreateAsync_accepts_a_promise_date_equal_to_the_appointment()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+        var appointment = DateTimeOffset.UtcNow.AddDays(3);
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, appointment, PromiseAt: appointment));
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_rejects_a_date_before_the_appointment()
+    {
+        var jobs = new FakeJobRepository();
+        var appointment = DateTime.UtcNow.AddDays(5);
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = appointment
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdatePromiseAsync(
+            TestJobId, new UpdateJobPromiseRequest(new DateTimeOffset(appointment.AddDays(-1), TimeSpan.Zero)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("promiseAt");
+        jobs.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task UpdatePromiseAsync_compares_against_the_actual_arrival_once_converted_to_in_shop()
+    {
+        // นัดไว้วันที่ +10 แต่รถมาก่อนนัดแล้ว (แปลงเป็นรถในอู่) — ส่งมอบวันที่ +2 ต้องได้ แม้ก่อนวันนัดเดิม
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9,
+            JobNo = "JB1", Status = JobStatus.InProgress,
+            AppointmentAt = DateTime.UtcNow.AddDays(10), ActualArrivalAt = DateTime.UtcNow.AddHours(-1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdatePromiseAsync(
+            TestJobId, new UpdateJobPromiseRequest(DateTimeOffset.UtcNow.AddDays(2)));
+
+        result.Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateAppointmentAsync_rejects_moving_the_appointment_past_the_promise_date()
+    {
+        var jobs = new FakeJobRepository();
+        var promise = DateTime.UtcNow.AddDays(4);
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect,
+            AppointmentAt = DateTime.UtcNow.AddDays(1), PromiseAt = promise
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdateAppointmentAsync(
+            TestJobId, new UpdateJobAppointmentRequest(new DateTimeOffset(promise.AddHours(1), TimeSpan.Zero)));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("appointmentAt");
+        jobs.Saved.Single().AppointmentAt.Should().BeCloseTo(DateTime.UtcNow.AddDays(1), TimeSpan.FromMinutes(1));
+        jobs.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetScheduleHistoryAsync_returns_appointment_and_promise_changes_newest_first()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        (await service.UpdateAppointmentAsync(
+            TestJobId, new UpdateJobAppointmentRequest(DateTimeOffset.UtcNow.AddDays(2)))).Success.Should().BeTrue();
+        jobs.Events[^1].OccurredAt = DateTime.UtcNow.AddMinutes(-10);
+        var promise = DateTimeOffset.UtcNow.AddDays(5);
+        (await service.UpdatePromiseAsync(TestJobId, new UpdateJobPromiseRequest(promise))).Success.Should().BeTrue();
+
+        var result = await service.GetScheduleHistoryAsync(TestJobId);
+
+        result.Success.Should().BeTrue();
+        result.Data!.Select(h => h.Field).Should().Equal("promise", "appointment");
+        result.Data![0].From.Should().BeNull();
+        result.Data![0].To.Should().BeCloseTo(promise.UtcDateTime, TimeSpan.FromSeconds(1));
+        result.Data![0].To!.Value.Kind.Should().Be(DateTimeKind.Utc);
+        result.Data![1].From.Should().NotBeNull();
+    }
+
+    [Fact]
     public async Task CountOpenAsync_counts_only_open_jobs_of_the_current_branch_and_type()
     {
         var jobs = new FakeJobRepository();
@@ -597,6 +891,66 @@ public sealed class JobServiceTests
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+    }
+
+    // ---------- ใบเสนอราคาหลายใบต่อจ๊อบ (บิลแยก ใบเสร็จรวม — 2026-10-02) ----------
+
+    private static Quotation SignedQuotation(string code, int version, decimal unitPrice)
+    {
+        var quotation = new Quotation
+        {
+            JobId = TestJobId, Code = code, Version = version, Status = QuotationStatus.Approved,
+        };
+        quotation.Lines.Add(new QuotationLine
+        {
+            QuotationId = quotation.Id, CatalogCode = $"PRT-{version:D3}", Name = $"อะไหล่ {code}",
+            Type = LineType.Part, Quantity = 1, UnitPrice = unitPrice, ApprovalStatus = LineApprovalStatus.Approved
+        });
+        quotation.Approval = new QuotationApproval { QuotationId = quotation.Id, QuotationVersion = version };
+        return quotation;
+    }
+
+    [Fact]
+    public async Task TransitionAsync_approves_job_from_a_signed_quotation_even_when_a_newer_draft_exists()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.WaitApprove));
+        var quotations = new FakeQuotationRepository(SignedQuotation("QT-01", 1, 900m));
+        quotations.Others.Add(new Quotation { JobId = TestJobId, Code = "QT-02", Version = 2, Status = QuotationStatus.Draft });
+
+        var service = CreateService(jobs, quotations: quotations, role: UserRole.Office, source: EventSource.Web);
+
+        var result = await service.TransitionAsync(TestJobId, new TransitionJobRequest("approved", null));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().Status.Should().Be(JobStatus.Approved);
+    }
+
+    [Fact]
+    public async Task TransitionAsync_requires_the_combined_total_of_every_quotation_to_close_the_job()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(SeedJob(JobStatus.Ready));
+        var quotations = new FakeQuotationRepository(SignedQuotation("QT-01", 1, 900m));
+        quotations.Others.Add(SignedQuotation("QT-02", 2, 100m));
+        var receipt = new Receipt { JobId = TestJobId, DocumentNo = "RC-26-0001" };
+        var handover = new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow };
+
+        // จ่ายแค่ยอดของใบแรก (963) — ยังขาดใบที่สอง 107
+        var underpaid = CreateService(jobs, quotations: quotations,
+            posRepo: new FakePosRepository([new Payment { JobId = TestJobId, Amount = 963m }], receipt),
+            handoverRepo: new FakeHandoverRepository(handover), role: UserRole.Cashier);
+        var rejected = await underpaid.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        rejected.Success.Should().BeFalse();
+        rejected.Error!.Code.Should().Be("JOB_GUARD_NOT_SATISFIED");
+
+        var paidInFull = CreateService(jobs, quotations: quotations,
+            posRepo: new FakePosRepository([new Payment { JobId = TestJobId, Amount = 1070m }], receipt),
+            handoverRepo: new FakeHandoverRepository(handover), role: UserRole.Cashier);
+        var closed = await paidInFull.TransitionAsync(TestJobId, new TransitionJobRequest("completed", null));
+
+        closed.Success.Should().BeTrue();
     }
 
     [Fact]
@@ -1040,19 +1394,30 @@ public sealed class JobServiceTests
                 .ToList());
 
         public Task<IReadOnlyList<Job>> GetAppointmentsAsync(
-            JobAppointmentQuery query, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<Job>>(_jobs
+            JobAppointmentQuery query, CancellationToken ct = default)
+        {
+            DateTime? DateOf(Job j) => query.DateField == JobCalendarDateField.Promise ? j.PromiseAt : j.AppointmentAt;
+            return Task.FromResult<IReadOnlyList<Job>>(_jobs
                 .Where(j => j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId
-                    && j.AppointmentAt is not null
-                    && j.AppointmentAt >= query.FromUtc && j.AppointmentAt < query.ToUtc
+                    && DateOf(j) is not null
+                    && DateOf(j) >= query.FromUtc && DateOf(j) < query.ToUtc
                     && (query.Status is null || j.Status == query.Status)
                     && (string.IsNullOrWhiteSpace(query.Keyword)
                         || j.JobNo.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)
                         || j.VehicleRegistration.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)
                         || j.CustomerName.Contains(query.Keyword, StringComparison.OrdinalIgnoreCase)))
-                .OrderBy(j => j.AppointmentAt)
+                .OrderBy(DateOf)
                 .ThenBy(j => j.Id)
                 .Take(query.Take)
+                .ToList());
+        }
+
+        public Task<IReadOnlyList<ActivityEvent>> GetEventsAsync(
+            Guid jobId, IReadOnlyCollection<string> eventTypes, int take, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<ActivityEvent>>(Events
+                .Where(e => e.JobId == jobId && eventTypes.Contains(e.EventType))
+                .OrderByDescending(e => e.OccurredAt)
+                .Take(take)
                 .ToList());
 
         public Task<int> CountOpenAsync(
@@ -1094,8 +1459,12 @@ public sealed class JobServiceTests
     {
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
-        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) =>
-            Task.FromResult(quotation);
+        public Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Quotation>>(
+                new[] { quotation }.Concat(Others).Where(q => q is not null && q.Status != QuotationStatus.Superseded)
+                    .Select(q => q!).ToList());
+        /// <summary>ใบเสนอราคาอื่นของจ๊อบเดียวกัน — จำลองจ๊อบที่มีหลายใบ (บิลแยก)</summary>
+        public List<Quotation> Others { get; } = [];
         public Task<IReadOnlyList<Quotation>> GetQueueAsync(
             string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Quotation>>(quotation is null ? [] : [quotation]);

@@ -93,7 +93,7 @@ public sealed class QuotationsController(IQuotationService service) : Controller
             "QUOTE_OTHER_SCOPE" or "JOB_OTHER_BRANCH"
                 => StatusCodes.Status403Forbidden,
             "QUOTE_LOCKED_BY_OTHER" or "QUOTE_ALREADY_EXISTS" or "QUOTE_ALREADY_SUPERSEDED"
-                or "QUOTE_TEMPLATE_DUPLICATE_LINE"
+                or "QUOTE_TEMPLATE_DUPLICATE_LINE" or "QUOTE_RECEIPT_ISSUED"
                 => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status422UnprocessableEntity
         };

@@ -87,6 +87,8 @@ public static class DependencyInjection
         services.AddScoped<IPosRepository, PosRepository>();
         services.AddScoped<IReceiptNumberGenerator, ReceiptNumberGenerator>();
         services.AddScoped<IPosService, PosService>();
+        services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
+        services.AddScoped<ITaxInvoiceService, TaxInvoiceService>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ISaleRepository, SaleRepository>();

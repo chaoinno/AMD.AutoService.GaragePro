@@ -4,6 +4,11 @@
 .jobs-view-toggle .ui-tabs__trigger svg { width: 15px; height: 15px; }
 .jobs-filter-note { display: flex; align-items: center; font-size: 12px; color: var(--muted); }
 
+/* ---- คอลัมน์นัดส่งมอบในตารางจ๊อบ ---- */
+.job-promise--overdue { color: var(--red-600); }
+.job-promise__overdue-label { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; font-size: 12px; font-weight: 700; }
+.job-promise__overdue-label svg { width: 13px; height: 13px; }
+
 /* ---- มุมมองปฏิทินนัดหมาย ---- */
 .jobs-calendar { display: grid; gap: 14px; margin-top: 4px; }
 .jobs-calendar__header { display: flex; align-items: center; gap: 12px; }
@@ -32,3 +37,19 @@
 .jobs-calendar__day-detail-list { display: grid; gap: 8px; list-style: none; }
 .jobs-calendar__day-detail-list button { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); cursor: pointer; font: inherit; text-align: left; }
 .jobs-calendar__day-detail-list button:hover { border-color: var(--blue-600); }
+
+/* ---- ลากวางเปลี่ยนวันในปฏิทิน ---- */
+.jobs-calendar__drag-hint { display: flex; align-items: flex-start; gap: 8px; padding: 8px 12px; border-radius: var(--radius-card); background: var(--blue-50); color: var(--navy-900); font-size: 13px; }
+.jobs-calendar__drag-hint svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; color: var(--blue-600); }
+.jobs-calendar__drag-hint--active { background: #fff7e6; outline: 1px dashed var(--amber-500); }
+.jobs-calendar__chip-time { display: inline-flex; align-items: center; gap: 3px; }
+.jobs-calendar__chip-icon { width: 12px; height: 12px; flex: 0 0 auto; opacity: 0.7; }
+.jobs-calendar__chip--draggable { cursor: grab; }
+.jobs-calendar__chip--draggable:active { cursor: grabbing; }
+.jobs-calendar__chip--locked { cursor: pointer; }
+.jobs-calendar__chip--dragging { opacity: 0.45; outline: 2px dashed currentColor; }
+.jobs-calendar__chip--saving { opacity: 0.7; }
+.jobs-calendar__day--drop-target { border-color: var(--blue-600); background: var(--blue-50); box-shadow: inset 0 0 0 2px var(--blue-600); }
+.jobs-calendar__day--drop-disabled { background: repeating-linear-gradient(135deg, #f4f6f9 0 6px, #eceff4 6px 12px); opacity: 0.75; }
+.jobs-calendar__legend-lock { gap: 4px; color: var(--muted); }
+.jobs-calendar__legend-lock svg { width: 12px; height: 12px; }

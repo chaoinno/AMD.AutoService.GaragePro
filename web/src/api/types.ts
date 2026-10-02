@@ -275,7 +275,6 @@ export type QuotationTotals = {
   vatRate: number
   vat: number
   total: number
-  deposit: number
   grandTotal: number
   totalCost: number | null
   marginAmount: number | null
@@ -317,7 +316,8 @@ export type Quotation = {
   branch: Branch
   lines: QuotationLine[]
   totals: QuotationTotals
-  approval: QuotationApproval | null
+  /** ไม่มีในคำตอบเมื่อยังไม่เซ็น — API ไม่ส่งฟิลด์ที่เป็น null (WhenWritingNull) */
+  approval?: QuotationApproval | null
   supersedesQuotationId?: string | null
   supersededByQuotationId?: string | null
   revisionReason: string | null
@@ -447,6 +447,20 @@ export type Job = {
 export type TransitionJobInput = { toStatus: JobStatusToken | string; reason?: string }
 export type JobTransitionResult = { status: JobStatusToken; statusLabel: string }
 export type UpdateJobAppointmentInput = { appointmentAt: string }
+export type UpdateJobPromiseInput = { promiseAt: string }
+/// ปฏิทินวางจ๊อบตามวันไหน — appointment = วันที่นัดเข้า (AppointmentAt) · promise = วันที่นัดส่งมอบ (PromiseAt)
+export type JobCalendarDateField = 'appointment' | 'promise'
+/// ประวัติการเปลี่ยนวันนัด — from เป็น null เมื่อเป็นการตั้งค่าครั้งแรก
+export type JobScheduleChange = {
+  id: number
+  field: JobCalendarDateField
+  from: string | null
+  to: string | null
+  descriptionTh: string
+  performedByName: string
+  source: string
+  occurredAt: string
+}
 export type ConvertToInShopInput = { actualArrivalAt: string }
 export type JobCalendarResult = { items: Job[]; truncated: boolean; limit: number }
 
@@ -558,9 +572,15 @@ export type CreateJobInput = {
   senderPhoneNumber?: string
   detail?: string
   appointmentAt?: string
+  promiseAt?: string
 }
 
-export type CreatedJob = { jobId: string; jobNo: string }
+export type CreatedJob = {
+  jobId: string
+  jobNo: string
+  /** จ๊อบที่ยังไม่ปิดของรถคันเดียวกันที่มีอยู่ก่อน — เปิดซ้อนได้ แต่ให้เตือนผู้เปิด */
+  existingOpenJobNo?: string | null
+}
 
 export type CatalogItem = {
   id?: string
@@ -707,7 +727,6 @@ export type QuotationValidation = {
 export type CreateQuotationInput = {
   jobId: string
   validUntil?: string
-  depositAmount?: number
 }
 
 export type PagedResult<T> = {

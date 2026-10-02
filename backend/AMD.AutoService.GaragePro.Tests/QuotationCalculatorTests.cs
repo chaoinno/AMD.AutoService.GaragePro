@@ -112,14 +112,17 @@ public class QuotationCalculatorTests
     }
 
     [Fact]
-    public void Deposit_is_deducted_and_grand_total_never_negative()
+    public void Legacy_deposit_column_is_no_longer_deducted()
     {
+        // [BIZ] ตัดเรื่องค่ามัดจำออกแล้ว (2026-10-02) — แถวเก่าที่มีค่าค้างต้องไม่ทำให้ยอดลดลง
         var quotation = BuildDemoQuotation();
         quotation.DepositAmount = 20_000m;
 
         QuotationCalculator.ApplyQuotationTotals(quotation);
 
-        quotation.GrandTotal.Should().Be(0m);
+        quotation.GrandTotal.Should().Be(quotation.TotalAmount);
+        QuotationCalculator.CalculateApprovedTotals(quotation).GrandTotal
+            .Should().Be(QuotationCalculator.CalculateApprovedTotals(quotation).TotalAmount);
     }
 
     [Fact]

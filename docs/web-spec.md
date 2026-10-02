@@ -78,7 +78,7 @@ X-Client-Source: web
 ```
 GET    /api/v1/quotations?filter=todo|wait|rev|done   → QuotationSummary[]
 GET    /api/v1/quotations/{id}                        → Quotation
-POST   /api/v1/quotations            body: { jobId, validUntil?, depositAmount? }
+POST   /api/v1/quotations            body: { jobId, validUntil? }   (ตัด depositAmount ออก 2026-10-02)
 POST   /api/v1/quotations/{id}/lines body: UpsertLine
 PUT    /api/v1/quotations/{id}/lines/{lineId}         body: UpsertLine
 DELETE /api/v1/quotations/{id}/lines/{lineId}
@@ -103,7 +103,7 @@ GET    /api/v1/technicians                            → { staffId, name, skill
 
 `line` มี: `id, sequence, catalogCode, name, type("part"|"labor"), source("customer"|"technician"), quantity, unit, unitPrice, unitCost(อาจเป็น null), discountPercent, promotion, promotionLabel, assignedTechnicianId, assignedTechnicianName, note, standardHours, approvalStatus("pending"|"approved"|"rejected"), rejectReason, grossAmount, discountAmount, promotionAmount, netAmount, marginAmount(อาจ null)`
 
-`totals` มี: `gross, lineDiscount, promotion, net, vatRate, vat, total, deposit, grandTotal, totalCost(อาจ null), marginAmount(null ได้), marginPercent(null ได้), partsNet, laborNet, laborHours, approved{approvedCount,rejectedCount,pendingCount,net,vat,total,grandTotal}`
+`totals` มี: `gross, lineDiscount, promotion, net, vatRate, vat, total, grandTotal (= total — ตัดมัดจำออกแล้ว), totalCost(อาจ null), marginAmount(null ได้), marginPercent(null ได้), partsNet, laborNet, laborHours, approved{approvedCount,rejectedCount,pendingCount,net,vat,total,grandTotal}`
 
 > **สำคัญ:** field ที่เป็น `null` แปลว่า role ปัจจุบันไม่มีสิทธิ์เห็น (ต้นทุน/กำไร) — ให้**ซ่อนทั้งบล็อก** ไม่ใช่แสดง 0 หรือ `-`
 
@@ -145,8 +145,6 @@ GET    /api/v1/technicians                            → { staffId, name, skill
   ภาษีมูลค่าเพิ่ม 7%    {vat}
   ═════════════════════════════
   ยอดสุทธิ             {total}     ← เน้นบนพื้นเข้ม navy/900 ตัวขาว
-  หักมัดจำ             −{deposit}
-  คงเหลือชำระ          {grandTotal}
   ```
   ถ้า `totals.totalCost !== null` แสดงบล็อกต้นทุน/กำไรเพิ่ม (ต้นทุน · กำไรขั้นต้น บาท+%) — ถ้า `marginPercent < 15` พื้นเหลืองเตือน
 - **แถบคำเตือน** — เรียก `GET /validate` ทุกครั้งที่ line เปลี่ยน แสดง `errors` (แดง) และ `warnings` (เหลือง) เป็นรายการ

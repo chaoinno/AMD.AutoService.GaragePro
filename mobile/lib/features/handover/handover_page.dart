@@ -147,7 +147,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
               children: [
                 Expanded(
                   child: _choice(
-                    label: 'คืนแล้ว',
+                    label: 'คืนแล้ว/ไม่มี',
                     icon: Icons.check_circle_outline,
                     selected: !item.isPending && item.isReturned,
                     color: const Color(0xFF0B6D5E),
@@ -157,7 +157,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
                 const SizedBox(width: T.s8),
                 Expanded(
                   child: _choice(
-                    label: 'ไม่ได้คืน',
+                    label: 'สูญหาย',
                     icon: Icons.remove_circle_outline,
                     selected: !item.isPending && !item.isReturned,
                     color: const Color(0xFFA8380A),
@@ -289,7 +289,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
   Future<void> _setItem(HandoverChecklistItem item, bool isReturned) async {
     String? note = item.note;
 
-    // [BIZ] ของที่ไม่ได้คืนต้องมีเหตุผลเสมอ (HANDOVER_NOTE_REQUIRED)
+    // [BIZ] ของที่สูญหายต้องมีรายละเอียดเสมอ (HANDOVER_NOTE_REQUIRED)
     if (!isReturned) {
       note = await _askNote(item);
       if (note == null) return;
@@ -323,9 +323,9 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${item.name} — ไม่ได้คืน',
+            Text('${item.name} — สูญหาย',
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.5)),
-            const Text('ต้องระบุเหตุผลเสมอ เพื่อกันข้อพิพาทภายหลัง',
+            const Text('ต้องระบุรายละเอียดเสมอ เพื่อกันข้อพิพาทภายหลัง',
                 style: TextStyle(fontSize: 14, color: T.muted, height: 1.7)),
             const SizedBox(height: T.s12),
             TextField(
@@ -334,7 +334,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
               maxLines: 3,
               style: const TextStyle(fontSize: 16, height: 1.6),
               decoration: InputDecoration(
-                hintText: 'เช่น ลูกค้ารับกุญแจสำรองไปแล้วตั้งแต่วันรับรถ',
+                hintText: 'เช่น หาไม่พบหลังซ่อมเสร็จ แจ้งลูกค้าแล้ว',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(T.rInput)),
               ),
             ),

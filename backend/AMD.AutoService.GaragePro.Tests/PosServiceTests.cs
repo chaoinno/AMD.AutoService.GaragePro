@@ -111,6 +111,70 @@ public sealed class PosServiceTests
         repo.Receipts.Should().ContainSingle();
     }
 
+    // ---------- ใบเสนอราคาหลายใบต่อจ๊อบ: บิลแยกเฉพาะใบเสนอราคา ใบเสร็จรวม (2026-10-02) ----------
+
+    private static Quotation SignedQuotation(string code, decimal unitPrice, int version)
+    {
+        var quotation = ApprovedQuotation(unitPrice);
+        quotation.Code = code;
+        quotation.Version = version;
+        quotation.Status = QuotationStatus.Approved;
+        quotation.Approval = new QuotationApproval { QuotationId = quotation.Id, QuotationVersion = version };
+        return quotation;
+    }
+
+    [Fact]
+    public async Task GetSummaryAsync_sums_approved_totals_of_every_active_quotation()
+    {
+        var superseded = SignedQuotation("QT-0", 5000m, 1);
+        superseded.Status = QuotationStatus.Superseded;
+        var service = CreateService(new FakePosRepository(),
+            quotation: SignedQuotation("QT-1", 900m, 2), others: [SignedQuotation("QT-2", 100m, 3), superseded]);
+
+        var result = await service.GetSummaryAsync(TestJobId);
+
+        result.Success.Should().BeTrue();
+        // (900 + 100) × 1.07 — ใบที่ถูกแทนที่ไม่นับ
+        result.Data!.GrandTotal.Should().Be(1070m);
+        result.Data.QuotationCodes.Should().Equal("QT-1", "QT-2");
+        result.Data.AwaitingCustomerQuotationCodes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task IssueReceiptAsync_rejects_while_another_quotation_still_awaits_the_customer()
+    {
+        var awaiting = ApprovedQuotation(100m);
+        awaiting.Code = "QT-2";
+        awaiting.Version = 2;
+        awaiting.Status = QuotationStatus.Sent;   // อนุมัติบรรทัดแล้วแต่ยังไม่เซ็น — ยังไม่นับเป็นยอดที่ต้องจ่าย
+        var repo = new FakePosRepository(payments: [new Payment { JobId = TestJobId, Amount = 5000m }]);
+        var service = CreateService(repo, quotation: SignedQuotation("QT-1", 900m, 1), others: [awaiting]);
+
+        var result = await service.IssueReceiptAsync(TestJobId);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("POS_QUOTATION_AWAITING_CUSTOMER");
+        result.Error.MessageTh.Should().Contain("QT-2");
+        repo.Receipts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task IssueReceiptAsync_ignores_a_sent_quotation_whose_lines_were_all_rejected()
+    {
+        var rejected = ApprovedQuotation(100m);
+        rejected.Code = "QT-2";
+        rejected.Version = 2;
+        rejected.Status = QuotationStatus.Sent;
+        rejected.Lines.Single().ApprovalStatus = LineApprovalStatus.Rejected;
+        rejected.Lines.Single().RejectReason = "ขอทำครั้งหน้า";
+        var repo = new FakePosRepository(payments: [new Payment { JobId = TestJobId, Amount = 963m }]);
+        var service = CreateService(repo, quotation: SignedQuotation("QT-1", 900m, 1), others: [rejected]);
+
+        var result = await service.IssueReceiptAsync(TestJobId);
+
+        result.Success.Should().BeTrue();
+    }
+
     [Fact]
     public async Task RemovePaymentAsync_requires_a_reason_and_blocks_once_receipted()
     {
@@ -187,9 +251,13 @@ public sealed class PosServiceTests
 
     private static PosService CreateService(
         FakePosRepository repo, Quotation? quotation = null, UserRole role = UserRole.Cashier,
-        FakeJobRepository? jobs = null) =>
-        new(repo, jobs ?? new FakeJobRepository(), new FakeQuotationRepository(quotation),
+        FakeJobRepository? jobs = null, params Quotation[] others)
+    {
+        var quotations = new FakeQuotationRepository(quotation);
+        quotations.Others.AddRange(others);
+        return new(repo, jobs ?? new FakeJobRepository(), quotations,
             new FakeReceiptNumberGenerator(), new StubCurrentUser(role), TimeProvider.System);
+    }
 
     private sealed class StubCurrentUser(UserRole role) : ICurrentUser
     {
@@ -234,7 +302,12 @@ public sealed class PosServiceTests
     {
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
-        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) => Task.FromResult(quotation);
+        public Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Quotation>>(
+                new[] { quotation }.Concat(Others).Where(q => q is not null && q.Status != QuotationStatus.Superseded)
+                    .Select(q => q!).ToList());
+        /// <summary>ใบเสนอราคาอื่นของจ๊อบเดียวกัน — จำลองจ๊อบที่มีหลายใบ (บิลแยก)</summary>
+        public List<Quotation> Others { get; } = [];
         public Task<IReadOnlyList<Quotation>> GetQueueAsync(
             string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Quotation>>(quotation is null ? [] : [quotation]);

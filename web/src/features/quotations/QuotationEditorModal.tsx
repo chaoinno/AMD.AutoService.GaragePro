@@ -10,6 +10,7 @@ import {
   LockKeyhole,
   Send,
   Trash2,
+  UserCheck,
 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -18,6 +19,8 @@ import { isApiError, isForbiddenError } from '../../api/client'
 import { getTechnicians } from '../../api/catalog'
 import { getJob } from '../../api/jobs'
 import { advanceJobToWaitApprove } from '../jobs/advanceJobStatus'
+import { CustomerApprovalModal } from './CustomerApprovalModal'
+import { useActForCustomer } from './useActForCustomer'
 import {
   addQuotationLine,
   deleteQuotationLine,
@@ -128,6 +131,10 @@ export function QuotationEditorModal({
     queryFn: () => getQuotation(id),
     enabled: Boolean(quotationId),
   })
+
+  // ดำเนินการแทนลูกค้า (อนุมัติรายบรรทัด + เซ็น/บันทึกช่องทาง) — อยู่ในหน้าของใบนั้นเอง ไม่ใช่ที่การ์ดจ๊อบ
+  const actForCustomer = useActForCustomer(quotationQuery.data)
+  const [customerApprovalOpen, setCustomerApprovalOpen] = useState(false)
 
   const techniciansQuery = useQuery({
     queryKey: ['technicians'],
@@ -387,6 +394,29 @@ export function QuotationEditorModal({
           </Alert>
         ) : null}
 
+        {actForCustomer.visible ? (
+          <Alert className="readonly-banner readonly-banner--customer-approval" role="status">
+            <UserCheck className="readonly-banner__icon" aria-hidden="true" />
+            <div>
+              <AlertTitle>
+                {quotation.status === 'approved' ? 'ลูกค้ายืนยันแล้ว แต่จ๊อบยังไม่เปลี่ยนสถานะ' : 'รอลูกค้าอนุมัติ'}
+              </AlertTitle>
+              <AlertDescription>
+                {actForCustomer.blockedReason
+                  ?? (quotation.status === 'approved'
+                    ? 'กด "ดำเนินการแทนลูกค้า" เพื่อเปลี่ยนจ๊อบเป็น "อนุมัติแล้ว"'
+                    : 'ลูกค้าอนุมัติบนแอปมือถือได้ หรือบันทึกการตัดสินใจรายรายการ + ลายเซ็นแทนจากที่นี่')}
+              </AlertDescription>
+            </div>
+            <Button
+              disabled={Boolean(actForCustomer.blockedReason)}
+              onClick={() => setCustomerApprovalOpen(true)}
+            >
+              ดำเนินการแทนลูกค้า (อนุมัติ/เซ็น)
+            </Button>
+          </Alert>
+        ) : null}
+
         {statusReadOnly ? (
           <Alert className="readonly-banner" role="status">
             <Info className="readonly-banner__icon" aria-hidden="true" />
@@ -546,6 +576,14 @@ export function QuotationEditorModal({
         >
           <p className="modal-confirm-copy">ยอดรวมและผลตรวจสอบจะคำนวณใหม่หลังลบรายการ</p>
         </ConfirmModal>
+
+        {actForCustomer.job ? (
+          <CustomerApprovalModal
+            quotationId={customerApprovalOpen ? quotation.id : null}
+            job={actForCustomer.job}
+            onClose={() => setCustomerApprovalOpen(false)}
+          />
+        ) : null}
 
         <RevisionModal
           open={revisionOpen}

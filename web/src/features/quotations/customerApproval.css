@@ -1,0 +1,51 @@
+/* ดำเนินการแทนลูกค้า (CustomerApprovalModal) — สีสถานะตรงกับ approval-result ของเอกสารใบเสนอราคา */
+.customer-approval__stack { display: grid; gap: 14px; }
+.customer-approval__banner { display: grid; gap: 4px; padding: 10px 14px; border: 1px solid #b6e3da; border-radius: 10px; background: #f0faf7; }
+.customer-approval__banner strong { display: inline-flex; align-items: center; gap: 6px; }
+.customer-approval__banner strong svg { width: 16px; height: 16px; color: #0b6d5e; }
+.customer-approval__banner p { font-size: 14px; color: var(--muted); }
+.customer-approval__banner--warn { border-color: #f3d9a4; background: #fdf8ec; }
+.customer-approval__banner--error { border-color: #f0c2c2; background: #fdf3f3; }
+.customer-approval__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 15px; }
+.customer-approval__group { display: grid; gap: 8px; }
+.customer-approval__group h3 { display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.customer-approval__group h3 svg { width: 16px; height: 16px; }
+.customer-approval__group--customer h3 svg { color: #8a5a00; }
+.customer-approval__group--technician h3 svg { color: var(--blue-600); }
+.customer-approval__group h3 small { color: var(--muted); font-weight: 400; font-size: 13px; }
+.customer-approval__group ul { list-style: none; display: grid; gap: 8px; }
+.customer-approval__line { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.customer-approval__line--approved { border-color: #b6e3da; }
+.customer-approval__line--rejected { background: #fafbfc; }
+.customer-approval__line-main { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.customer-approval__line-main > div { display: grid; gap: 2px; }
+.customer-approval__line-main small { color: var(--muted); font-size: 14px; }
+.customer-approval__line-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.customer-approval__decide { display: flex; gap: 6px; }
+.customer-approval__badge { display: inline-flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; }
+.customer-approval__badge svg { width: 15px; height: 15px; flex: none; }
+.customer-approval__badge--approved { color: #0b6d5e; }
+.customer-approval__badge--rejected { color: #a31d1d; }
+.customer-approval__badge--pending { color: #8a5a00; }
+.customer-approval__reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--border); }
+.customer-approval__reasons > span { font-size: 14px; color: var(--muted); margin-right: 4px; }
+.customer-approval__total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; background: var(--blue-50); font-size: 15px; }
+.customer-approval__total .money { font-size: 18px; font-weight: 700; }
+.customer-approval__confirm { display: grid; gap: 10px; padding-top: 4px; }
+.customer-approval__confirm h3 { font-size: 15px; }
+.customer-approval__methods { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.customer-approval__method { display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); font: inherit; cursor: pointer; }
+.customer-approval__method svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--muted); }
+.customer-approval__method span { display: grid; gap: 2px; }
+.customer-approval__method small { color: var(--muted); font-size: 13px; }
+.customer-approval__method--active { border-color: var(--blue-600); background: var(--blue-50); }
+.customer-approval__method--active svg { color: var(--blue-600); }
+.customer-approval__signature { display: grid; gap: 8px; justify-items: start; }
+.customer-approval__signature .signature-pad { width: 100%; height: 180px; }
+.customer-approval__consent { font-size: 14px; color: var(--muted); }
+.customer-approval__verbal { display: grid; gap: 10px; }
+.customer-approval__blocked { margin-right: auto; font-size: 14px; color: #8a5a00; }
+
+/* แถบ "รอลูกค้าอนุมัติ" ในหน้ารายละเอียดใบเสนอราคา (QuotationEditorModal) — สีน้ำเงินแยกจากแถบอ่านอย่างเดียว (เหลือง) */
+.readonly-banner--customer-approval { border-color: #b8d0f5; background: var(--blue-50); color: #12407f; }
+.readonly-banner--customer-approval .readonly-banner__icon { background: #cfe0fa; padding: 6px; }

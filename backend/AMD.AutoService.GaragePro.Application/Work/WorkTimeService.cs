@@ -487,11 +487,11 @@ public sealed class WorkTimeService(
     {
         if (job.AssignedTechnicianId is not null) return;
 
-        var quotation = await quotations.GetLatestForJobAsync(job.Id, ct);
-        var owns = quotation?.Lines.Any(l =>
+        var active = await quotations.GetActiveForJobAsync(job.Id, ct);
+        var owns = active.SelectMany(q => q.Lines).Any(l =>
             l.Type == LineType.Labor
             && l.ApprovalStatus == LineApprovalStatus.Approved
-            && l.AssignedTechnicianId == staffId) ?? false;
+            && l.AssignedTechnicianId == staffId);
 
         if (owns) job.AssignedTechnicianId = staffId;
     }

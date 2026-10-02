@@ -1,10 +1,8 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { getCatalogItems } from '../../api/catalog'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, CheckCircle2, Clock, PauseCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { getWarehouses } from '../../api/masterData'
-import { createWithdrawal, pendingCommand, stockCommand, type Withdrawal, type WithdrawalInput } from '../../api/purchasing'
-import { getQuotation, getQuotations } from '../../api/quotations'
+import { createWithdrawal, getJobWithdrawalPlan, pendingCommand, stockCommand, type Withdrawal, type WithdrawalInput, type WithdrawalPlanLine } from '../../api/purchasing'
 import { getStaffs } from '../../api/staffs'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { Button } from '../../components/ui/button'
@@ -17,19 +15,20 @@ import { Field, InlineError } from '../master-data/MasterDataCommon'
 import './purchasing.css'
 
 type StockWithdrawalModalProps = {
-  jobId: string | null
+  jobId: string
   jobNo?: string
   onClose: () => void
   onCreated: (withdrawal: Withdrawal) => void
 }
 
-type Line = { catalogItemId: string; code: string; name: string; unit: string; available: number; quantity: string }
-
-/// สร้างใบเบิกสินค้าหลายรายการในเอกสารเดียว — ใช้ทั้งจากหน้าสต็อกและจากขั้น "เบิกสินค้า" ใน JobCardModal
-/// เมื่อผูก jobId แล้วเลือกจะบันทึกอ้างอิงงานไว้ในทุกบรรทัดของใบเบิก (ดู StockMovement.JobId)
+/// สร้างใบเบิกสินค้าของงาน (ขั้น "เบิกสินค้า" ใน JobCardModal) หลายรายการในเอกสารเดียว
+/// [BIZ] เบิกตามรายการที่ลูกค้าอนุมัติเท่านั้น — เพิ่มสินค้าหรือลบแถวไม่ได้ (คำขอผู้ใช้ 2026-10-02)
+/// เบิกบางส่วนได้: จำนวนต่อรายการ 0..ยอดที่ยังไม่ได้เบิก (0 = ยังไม่เบิกรอบนี้ แถวยังอยู่ เบิกต่อในใบถัดไป)
+/// รายการ/ยอดคงเหลือมาจาก `/withdrawals/by-job/{jobId}/plan` ที่ server คำนวณ (อนุมัติ − เบิกไปแล้ว) และ API ตรวจซ้ำตอนบันทึก
 export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: StockWithdrawalModalProps) {
+  const queryClient = useQueryClient()
   const { session } = useSession()
-  const key = `stock-withdrawal:${session?.user.shardKey}:${session?.branchId}:${jobId ?? 'adhoc'}`
+  const key = `stock-withdrawal:${session?.user.shardKey}:${session?.branchId}:${jobId}`
   const pending = pendingCommand<WithdrawalInput>(key)
 
   const [warehouseId, setWarehouseId] = useState(pending?.warehouseId || '')
@@ -37,68 +36,68 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
   const [requesterLabel, setRequesterLabel] = useState('')
   const [reason, setReason] = useState(pending?.reason || '')
   const [staffQuery, setStaffQuery] = useState('')
-  const [itemQuery, setItemQuery] = useState('')
-  const [lines, setLines] = useState<Line[]>([])
   const [error, setError] = useState('')
+  const [quantities, setQuantities] = useState<Record<string, string>>({})
 
   const warehouses = useQuery({ queryKey: ['warehouses', 'withdrawal-picker'], queryFn: () => getWarehouses() })
   const staffs = useQuery({ queryKey: ['staffs', 'withdrawal-picker', staffQuery], queryFn: () => getStaffs({ keyword: staffQuery, pageSize: 50 }) })
-  const catalog = useQuery({ queryKey: ['catalog', 'withdrawal-picker', itemQuery], queryFn: () => getCatalogItems({ type: 'part', keyword: itemQuery, pageSize: 100 }) })
+  const plan = useQuery({ queryKey: ['job-withdrawal-plan', jobId], queryFn: () => getJobWithdrawalPlan(jobId) })
 
   const save = useMutation({
     mutationFn: (input: WithdrawalInput) => stockCommand(key, input, createWithdrawal),
-    onSuccess: onCreated,
+    onSuccess: (withdrawal) => {
+      void queryClient.invalidateQueries({ queryKey: ['job-withdrawal-plan', jobId] })
+      onCreated(withdrawal)
+    },
   })
   const uncertain = Boolean(pending)
 
-  // เตรียมรายการสินค้า (ไม่รวมค่าแรง) จากใบเสนอราคาที่อนุมัติแล้วของ job นี้ให้อัตโนมัติ — ผู้ใช้แก้จำนวน/ลบได้ก่อนบันทึก
-  const jobQuotations = useQuery({
-    queryKey: ['job-quotations', jobId ?? ''],
-    queryFn: () => getQuotations('', jobId!),
-    enabled: Boolean(jobId) && !uncertain,
-  })
-  const approvedQuotationId = jobQuotations.data?.find(q => q.status === 'approved')?.id ?? null
-  const approvedQuotation = useQuery({
-    queryKey: ['quotation', approvedQuotationId ?? ''],
-    queryFn: () => getQuotation(approvedQuotationId!),
-    enabled: Boolean(approvedQuotationId),
-  })
-  const [prefilling, setPrefilling] = useState(false)
-  const [skippedAdHocCount, setSkippedAdHocCount] = useState(0)
-  const prefilledRef = useRef(false)
+  const planLines = plan.data?.lines ?? []
+  const toWithdraw = planLines.filter(x => x.remainingQuantity > 0)
 
+  // ค่าเริ่มต้น = เบิกเท่าที่ทำได้ทันที (ยอดคงเหลือ แต่ไม่เกินพร้อมใช้) — ตั้งครั้งเดียวต่อรายการ ไม่ทับที่ผู้ใช้แก้แล้ว
   useEffect(() => {
-    if (prefilledRef.current || uncertain || !approvedQuotation.data) return
-    prefilledRef.current = true
-    const approvedPartLines = approvedQuotation.data.lines.filter(l => l.type === 'part' && l.approvalStatus === 'approved')
-    // [BIZ] รายการนอกแคตตาล็อกไม่มี catalogItemId ให้เบิกจากสต็อกได้ — ข้ามอย่างชัดเจนแทนยิงค้นหาแล้วปล่อยให้หายเงียบๆ
-    // เหมือนก่อนหน้านี้ (docs/07-quotation-adhoc-line.md)
-    const partLines = approvedPartLines.filter(l => !l.isAdHoc)
-    setSkippedAdHocCount(approvedPartLines.length - partLines.length)
-    if (!partLines.length) return
-    setPrefilling(true)
-    void (async () => {
-      const resolved: Line[] = []
-      for (const partLine of partLines) {
-        try {
-          const found = await getCatalogItems({ type: 'part', keyword: partLine.catalogCode, pageSize: 5 })
-          const item = found.items.find(x => x.code === partLine.catalogCode)
-          if (item) resolved.push({ catalogItemId: item.id, code: item.code, name: item.name, unit: item.unit, available: item.available, quantity: String(Math.max(1, Math.round(partLine.quantity))) })
-        } catch { /* ข้ามรายการที่ค้นหาไม่สำเร็จ — ผู้ใช้เพิ่มเองได้จากช่องค้นหาด้านล่าง */ }
+    if (!plan.data) return
+    setQuantities(old => {
+      const next = { ...old }
+      for (const line of plan.data.lines) {
+        if (next[line.catalogItemId] === undefined) next[line.catalogItemId] = String(Math.max(0, Math.min(line.remainingQuantity, line.available)))
       }
-      setLines(old => [...old, ...resolved.filter(r => !old.some(o => o.catalogItemId === r.catalogItemId))])
-      setPrefilling(false)
-    })()
-  }, [approvedQuotation.data, uncertain])
+      return next
+    })
+  }, [plan.data])
+
+  const qtyOf = (line: WithdrawalPlanLine) => Number(quantities[line.catalogItemId] ?? 0)
+  const invalid = toWithdraw.filter(x => {
+    const q = qtyOf(x)
+    return !Number.isInteger(q) || q < 0 || q > x.remainingQuantity
+  })
+  const short = toWithdraw.filter(x => qtyOf(x) > x.available)
+  const selected = toWithdraw.filter(x => qtyOf(x) > 0)
+  const unavailableItems = plan.data?.unavailableItems ?? []
+  const adHocCount = plan.data?.adHocCount ?? 0
+
+  // [UI] ปุ่มที่ปิดต้องบอกเหตุผลเสมอ — คำขอที่ยังไม่ทราบผลส่งซ้ำได้เสมอ (server replay ด้วย RequestId เดิม ไม่เบิกซ้ำ)
+  const blockedReason = uncertain ? null
+    : plan.isPending ? 'กำลังโหลดรายการที่อนุมัติ…'
+      : plan.isError ? 'โหลดรายการที่อนุมัติไม่สำเร็จ — กด "ลองใหม่" ก่อน'
+        : !toWithdraw.length
+          ? planLines.length
+            ? 'เบิกครบทุกรายการที่ลูกค้าอนุมัติแล้ว ไม่มีอะไรเหลือให้เบิก'
+            : 'งานนี้ไม่มีสินค้า (อะไหล่) ที่ลูกค้าอนุมัติและเซ็นแล้ว จึงยังสร้างใบเบิกไม่ได้'
+          : invalid.length
+            ? `จำนวนเบิกของ ${invalid.map(x => x.code).join(', ')} ต้องเป็นจำนวนเต็ม 0 ถึงยอดที่ยังไม่ได้เบิก`
+            : short.length
+              ? `ยอดพร้อมใช้ไม่พอสำหรับ ${short.map(x => x.code).join(', ')} — ลดจำนวนลงเพื่อเบิกเท่าที่มีก่อน ส่วนที่เหลือเบิกต่อในใบถัดไปได้`
+              : !selected.length
+                ? 'กรุณาระบุจำนวนเบิกอย่างน้อย 1 รายการ'
+                : null
 
   const submit = () => {
+    if (blockedReason) return
     if (!warehouseId) { setError('กรุณาเลือกคลังที่เบิก'); return }
     if (!requesterStaffId) { setError('กรุณาเลือกผู้เบิก'); return }
     if (!reason.trim()) { setError('กรุณาระบุเหตุผลการเบิก'); return }
-    if (!lines.length) { setError('กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ'); return }
-    if (lines.some(x => !x.quantity || !Number.isInteger(Number(x.quantity)) || Number(x.quantity) <= 0)) {
-      setError('กรุณาระบุจำนวนเบิกเป็นจำนวนเต็มบวก'); return
-    }
     setError('')
     const payload = pending || {
       requestId: crypto.randomUUID(),
@@ -106,7 +105,7 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
       jobId,
       requesterStaffId: Number(requesterStaffId),
       reason: reason.trim(),
-      lines: lines.map(x => ({ catalogItemId: x.catalogItemId, quantity: Number(x.quantity) })),
+      lines: selected.map(x => ({ catalogItemId: x.catalogItemId, quantity: qtyOf(x) })),
     }
     save.mutate(payload)
   }
@@ -115,12 +114,12 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
     <ConfirmModal
       open
       title={jobNo ? `สร้างใบเบิกสินค้า · งาน ${jobNo}` : 'สร้างใบเบิกสินค้า'}
-      description="เบิกได้หลายรายการในใบเดียว ระบบตัดล็อต FIFO เก่าก่อนให้อัตโนมัติ"
+      description="เบิกตามรายการที่ลูกค้าอนุมัติเท่านั้น เพิ่มสินค้าอื่นไม่ได้ · เบิกบางส่วนได้ ส่วนที่เหลือเบิกต่อในใบถัดไป · ระบบตัดล็อต FIFO เก่าก่อนให้อัตโนมัติ"
       size="xlarge"
       onClose={() => { if (!save.isPending) onClose() }}
       footer={<>
         <Button variant="ghost" disabled={save.isPending} onClick={onClose}>ยกเลิก</Button>
-        <Button form="stock-withdrawal-form" type="submit" disabled={save.isPending}>
+        <Button form="stock-withdrawal-form" type="submit" disabled={save.isPending || Boolean(blockedReason)}>
           {save.isPending ? 'กำลังบันทึก…' : uncertain ? 'ตรวจสอบ / ส่งคำขอเดิมซ้ำ' : 'สร้างใบเบิก'}
         </Button>
       </>}
@@ -152,79 +151,94 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
               {staffs.isError && <InlineError error={staffs.error} />}
             </Field>
             <Field label="เหตุผลการเบิก *" wide>
-              <Textarea required maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder={jobNo ? `เช่น เบิกอะไหล่ให้งาน ${jobNo}` : 'เช่น เบิกใช้งานซ่อมทั่วไป'} />
+              <Textarea required maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} placeholder={jobNo ? `เช่น เบิกอะไหล่ให้งาน ${jobNo}` : 'เช่น เบิกอะไหล่ให้งานซ่อม'} />
             </Field>
           </div>
+        </fieldset>
 
-          {prefilling && <p role="status" className="section-help">กำลังดึงรายการสินค้าจากใบเสนอราคาที่อนุมัติแล้วให้อัตโนมัติ…</p>}
-          {skippedAdHocCount > 0 && (
-            <p role="status" className="section-help">
-              มี {skippedAdHocCount} รายการนอกแคตตาล็อกในใบเสนอราคานี้ — เป็นของซื้อนอกที่ไม่มีในคลัง จึงไม่ดึงมาเป็นรายการเบิกให้อัตโนมัติ
-              (เบิกได้ปกติถ้ามีสินค้าที่ใกล้เคียงในคลังจริง ค้นหาเพิ่มเองได้ด้านล่าง)
-            </p>
-          )}
+        <p className="section-help">
+          รายการด้านล่างมาจากบรรทัดอะไหล่ที่ลูกค้าอนุมัติในใบเสนอราคาที่เซ็นแล้วทุกใบของงานนี้ หักจำนวนที่เบิกไปแล้วในใบเบิกก่อนหน้า
+          — ใส่ 0 ถ้ายังไม่เบิกรายการนั้นรอบนี้ · ถ้าต้องใช้สินค้าเพิ่ม ให้ออกใบเสนอราคาใหม่หรือฉบับแก้ไขแล้วให้ลูกค้าอนุมัติก่อน
+        </p>
+        {adHocCount > 0 && (
+          <p role="status" className="section-help">
+            มี {adHocCount} รายการนอกแคตตาล็อกที่ลูกค้าอนุมัติ — เป็นของซื้อนอกที่ไม่มีในคลัง จึงไม่อยู่ในใบเบิก
+          </p>
+        )}
+        {unavailableItems.length > 0 && (
+          <p role="status" className="section-help">
+            ไม่อยู่ในใบเบิกเพราะไม่พบในแคตตาล็อกหรือยังไม่ได้ตั้งยอด FIFO: {unavailableItems.join(', ')}
+          </p>
+        )}
 
-          <section className="purchase-picker">
-            <Field label="ค้นหาสินค้าเพื่อเพิ่มรายการ">
-              <Combobox
-                ariaLabel="ค้นหาและเพิ่มสินค้าในใบเบิก"
-                placeholder="พิมพ์รหัสหรือชื่อสินค้า"
-                query={itemQuery}
-                onQueryChange={setItemQuery}
-                loading={catalog.isFetching}
-                loadingLabel="กำลังค้นหาสินค้า…"
-                emptyLabel="ไม่พบสินค้าที่ค้นหา (สูงสุด 100 ผลค้นหา)"
-                options={(catalog.data?.items ?? [])
-                  .filter(x => !lines.some(l => l.catalogItemId === x.id))
-                  .map(x => ({ value: x.id, label: `${x.code} · ${x.name}`, description: `พร้อมใช้ ${x.available} ${x.unit}` }))}
-                onSelect={option => {
-                  const item = catalog.data?.items.find(x => x.id === option.value)
-                  if (item) setLines(old => [...old, { catalogItemId: item.id, code: item.code, name: item.name, unit: item.unit, available: item.available, quantity: '1' }])
-                }}
-              />
-            </Field>
-            {catalog.isError && <InlineError error={catalog.error} />}
-          </section>
-
+        {plan.isPending ? (
+          <p role="status" className="section-help">กำลังโหลดรายการที่ลูกค้าอนุมัติ…</p>
+        ) : plan.isError ? (
+          <div>
+            <InlineError error={plan.error} />
+            <Button variant="outline" size="sm" onClick={() => void plan.refetch()}>ลองใหม่</Button>
+          </div>
+        ) : !planLines.length ? (
+          <p className="purchase-empty">ไม่มีสินค้า (อะไหล่) ที่ลูกค้าอนุมัติและเซ็นแล้วในงานนี้</p>
+        ) : (
           <div className="purchase-table-scroll">
             <table className="master-table purchase-lines">
-              <thead><tr><th>สินค้า</th><th>พร้อมใช้</th><th>จำนวนเบิก</th><th /></tr></thead>
+              <thead><tr><th>สินค้า</th><th>อนุมัติ</th><th>เบิกแล้ว</th><th>คงเหลือ</th><th>เบิกครั้งนี้</th><th>พร้อมใช้</th><th>สถานะ</th></tr></thead>
               <tbody>
-                {lines.map((line, i) => (
+                {planLines.map(line => (
                   <tr key={line.catalogItemId}>
                     <td><strong>{line.name}</strong><small className="purchase-sub">{line.code} · {line.unit}</small></td>
+                    <td>{line.approvedQuantity}</td>
+                    <td>{line.withdrawnQuantity}</td>
+                    <td>{line.remainingQuantity}</td>
+                    <td>
+                      {line.remainingQuantity > 0 ? (
+                        <Input
+                          aria-label={`จำนวนเบิก ${line.name} (สูงสุด ${line.remainingQuantity})`}
+                          type="number"
+                          min="0"
+                          max={line.remainingQuantity}
+                          step="1"
+                          disabled={save.isPending || uncertain}
+                          value={quantities[line.catalogItemId] ?? ''}
+                          onChange={e => setQuantities(old => ({ ...old, [line.catalogItemId]: e.target.value }))}
+                        />
+                      ) : '—'}
+                    </td>
                     <td>{line.available}</td>
-                    <td>
-                      <Input
-                        aria-label={`จำนวนเบิก ${line.name}`}
-                        required
-                        type="number"
-                        min="1"
-                        max={Math.max(1, line.available)}
-                        step="1"
-                        value={line.quantity}
-                        onChange={e => setLines(old => old.map((x, n) => n === i ? { ...x, quantity: e.target.value } : x))}
-                      />
-                    </td>
-                    <td>
-                      <Button variant="ghost" size="icon" aria-label={`ลบ ${line.name}`} onClick={() => setLines(old => old.filter((_, n) => n !== i))}>
-                        <Trash2 />
-                      </Button>
-                    </td>
+                    <td><LineStatus line={line} quantity={qtyOf(line)} /></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {Boolean(lines.length) && (
-            <p className="purchase-total">
-              จำนวนรวม <strong>{lines.reduce((sum, x) => sum + (Number(x.quantity) || 0), 0)}</strong> ชิ้น จาก {lines.length} รายการ
-            </p>
-          )}
-          {error && <p role="alert" className="field-error">{error}</p>}
-          {save.isError && <InlineError error={save.error} />}
-        </fieldset>
+        )}
+        {Boolean(selected.length) && (
+          <p className="purchase-total">
+            จำนวนรวม <strong>{selected.reduce((sum, x) => sum + qtyOf(x), 0)}</strong> ชิ้น จาก {selected.length} รายการ
+          </p>
+        )}
+        {blockedReason && !plan.isPending && <p role="status" className="field-error">{blockedReason}</p>}
+        {error && <p role="alert" className="field-error">{error}</p>}
+        {save.isError && <InlineError error={save.error} />}
       </form>
     </ConfirmModal>
   )
+}
+
+/// [UI] สถานะต่อบรรทัด สี + ไอคอน + ข้อความ
+function LineStatus({ line, quantity }: { line: WithdrawalPlanLine; quantity: number }) {
+  if (line.remainingQuantity === 0) {
+    return <span className="purchase-status purchase-status--complete"><CheckCircle2 size={14} aria-hidden="true" /> เบิกครบแล้ว</span>
+  }
+  if (quantity > line.available) {
+    return <span className="purchase-status purchase-status--cancelled"><AlertTriangle size={14} aria-hidden="true" /> พร้อมใช้ไม่พอ</span>
+  }
+  if (quantity <= 0) {
+    return <span className="purchase-status"><PauseCircle size={14} aria-hidden="true" /> ยังไม่เบิกรอบนี้</span>
+  }
+  if (quantity < line.remainingQuantity) {
+    return <span className="purchase-status purchase-status--partial"><Clock size={14} aria-hidden="true" /> เบิกบางส่วน (ค้าง {line.remainingQuantity - quantity})</span>
+  }
+  return <span className="purchase-status purchase-status--sent"><Clock size={14} aria-hidden="true" /> เบิกครบในใบนี้</span>
 }

@@ -44,6 +44,8 @@ public class Quotation
     public decimal VatRate { get; set; } = 0.07m;
     public decimal VatAmount { get; set; }
     public decimal TotalAmount { get; set; }
+    /// <summary>[เลิกใช้ 2026-10-02] ตัดเรื่องค่ามัดจำออก — ไม่มีที่เขียน/อ่านค่านี้แล้ว คงคอลัมน์ไว้เพื่อไม่ต้อง migration
+    /// ถ้าจะกลับมาทำ มัดจำควรเป็นการรับเงินของจ๊อบ (docs/02-domain-model.md `Deposit`) ไม่ใช่ฟิลด์ของใบเสนอราคา</summary>
     public decimal DepositAmount { get; set; }
     public decimal GrandTotal { get; set; }
     public decimal TotalCost { get; set; }

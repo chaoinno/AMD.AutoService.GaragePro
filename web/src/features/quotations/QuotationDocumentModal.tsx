@@ -21,6 +21,7 @@ import { readSession } from '../../lib/session'
 import { formatDate, formatDateTime, formatNumber } from '../../lib/format'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
+import { VERBAL_APPROVAL_SIGNATURE_PATH } from './customerApproval'
 
 function getSignatureUrl(path: string) {
   return `${API_BASE_URL}/api/v1/attachments/file?path=${encodeURIComponent(path)}`
@@ -339,9 +340,11 @@ function InfoRow({ label, value, strong = false }: { label: string; value: strin
 function SignatureImage({ path, customerName }: { path: string; customerName: string }) {
   const [objectUrl, setObjectUrl] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
+  // ไม่ใช่ไฟล์จริง — พนักงานบันทึกแทนเมื่อลูกค้าแจ้งอนุมัติทางโทรศัพท์/ข้อความ (รายละเอียดอยู่ในข้อความยินยอม)
+  const isVerbal = path === VERBAL_APPROVAL_SIGNATURE_PATH
 
   useEffect(() => {
-    if (!path) return
+    if (!path || isVerbal) return
 
     let revoked = false
     let created: string | null = null
@@ -367,8 +370,9 @@ function SignatureImage({ path, customerName }: { path: string; customerName: st
       revoked = true
       if (created) URL.revokeObjectURL(created)
     }
-  }, [path])
+  }, [path, isVerbal])
 
+  if (isVerbal) return <span>ไม่มีลายเซ็น — พนักงานบันทึกการอนุมัติแทนลูกค้า</span>
   if (!path) return <span>ไม่มีรูปลายเซ็น</span>
   if (failed) return <span>ไม่สามารถโหลดรูปลายเซ็นได้</span>
   if (!objectUrl) return <span>กำลังโหลดลายเซ็น…</span>

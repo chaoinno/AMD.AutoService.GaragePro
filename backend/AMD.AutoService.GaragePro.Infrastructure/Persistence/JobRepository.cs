@@ -60,9 +60,10 @@ public sealed class JobRepository(ServiceDbContext db) : IJobRepository
     public async Task<IReadOnlyList<Job>> GetAppointmentsAsync(
         JobAppointmentQuery query, CancellationToken ct = default)
     {
-        var q = db.Jobs.Where(j =>
-            j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId &&
-            j.AppointmentAt != null && j.AppointmentAt >= query.FromUtc && j.AppointmentAt < query.ToUtc);
+        var q = db.Jobs.Where(j => j.LegacyShardKey == query.ShardKey && j.BranchId == query.BranchId);
+        q = query.DateField == JobCalendarDateField.Promise
+            ? q.Where(j => j.PromiseAt != null && j.PromiseAt >= query.FromUtc && j.PromiseAt < query.ToUtc)
+            : q.Where(j => j.AppointmentAt != null && j.AppointmentAt >= query.FromUtc && j.AppointmentAt < query.ToUtc);
 
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {
@@ -77,12 +78,25 @@ public sealed class JobRepository(ServiceDbContext db) : IJobRepository
         if (query.Status is not null)
             q = q.Where(j => j.Status == query.Status);
 
-        return await q
-            .OrderBy(j => j.AppointmentAt)
+        var ordered = query.DateField == JobCalendarDateField.Promise
+            ? q.OrderBy(j => j.PromiseAt)
+            : q.OrderBy(j => j.AppointmentAt);
+
+        return await ordered
             .ThenBy(j => j.Id)
             .Take(query.Take)
             .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<ActivityEvent>> GetEventsAsync(
+        Guid jobId, IReadOnlyCollection<string> eventTypes, int take, CancellationToken ct = default) =>
+        await db.ActivityEvents
+            .AsNoTracking()
+            .Where(e => e.JobId == jobId && eventTypes.Contains(e.EventType))
+            .OrderByDescending(e => e.OccurredAt)
+            .ThenByDescending(e => e.Id)
+            .Take(take)
+            .ToListAsync(ct);
 
     public Task<int> CountOpenAsync(
         string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default)

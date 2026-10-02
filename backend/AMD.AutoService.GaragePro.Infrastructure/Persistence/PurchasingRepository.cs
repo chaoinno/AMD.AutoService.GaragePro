@@ -73,6 +73,13 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         await Movements.Where(x => x.JobId == jobId && x.Type == "issue").OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
     public Task<Job?> JobAsync(Guid id, CancellationToken ct) => db.Set<Job>()
         .SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.BranchId == user.BranchId, ct);
+    // Caller resolves the job through JobAsync (shard/branch scoped) first — quotations hang off that job.
+    public async Task<IReadOnlyList<Quotation>> JobQuotationsAsync(Guid jobId, CancellationToken ct) => await db.Quotations.AsNoTracking()
+        .Include(q => q.Lines).Include(q => q.Approval)
+        .Where(q => q.JobId == jobId && q.Status != QuotationStatus.Superseded)
+        .OrderBy(q => q.Version).ToListAsync(ct);
+    public async Task<IReadOnlyList<CatalogItem>> ItemsByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken ct) => await Items
+        .Where(x => codes.Contains(x.Code)).ToListAsync(ct);
     public async Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid orderId, CancellationToken ct) => await Receipts.AsNoTracking().Include(x => x.Lines).Where(x => x.PurchaseOrderId == orderId).OrderByDescending(x => x.ReceivedAt).ToListAsync(ct);
     public Task<GoodsReceipt?> ReceiptAsync(Guid requestId, CancellationToken ct) => Receipts.Include(x => x.Lines).SingleOrDefaultAsync(x => x.RequestId == requestId, ct);
     public async Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct)

@@ -259,7 +259,14 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
     // ถ้าไม่ยิง transition ต่อ จ๊อบจะค้างที่ waitapprove ตลอดกาล (บั๊กแบบเดียวกับที่เว็บเคยเจอ)
     // guard AllLinesDecidedAndSigned|HasApprovedLines คำนวณจากข้อมูลจริง จึงไม่ต้องส่ง reason
     try {
-      await ref.read(jobsApiProvider).transition(q.jobId, 'approved');
+      // [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ (บิลแยก) — ใบที่สองที่ลูกค้าอนุมัติระหว่างซ่อม ไม่ต้องดันสถานะจ๊อบ
+      // (จ๊อบเลย "อนุมัติแล้ว" ไปแล้ว ยิง transition จะได้ JOB_TRANSITION_NOT_ALLOWED ทั้งที่ทุกอย่างถูกต้อง)
+      final job = await ref.read(jobsApiProvider).get(q.jobId);
+      if (_beforeApproved.contains(job.status)) {
+        await ref.read(jobsApiProvider).transition(q.jobId, 'approved');
+      } else if (mounted) {
+        _toast('บันทึกการอนุมัติเรียบร้อย — รายการที่อนุมัติรวมเข้ายอดชำระของงานนี้');
+      }
       ref
         ..invalidate(jobDetailProvider(q.jobId))
         ..invalidate(jobQuotationsProvider(q.jobId));
@@ -271,11 +278,14 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       if (mounted) {
         _toast(e.code == 'JOB_TRANSITION_NOT_ALLOWED'
             ? 'บันทึกลายเซ็นเรียบร้อยแล้ว — แต่สถานะงานยังไม่ขยับ '
-                'ให้ธุรการเปิดงานนี้บนเว็บแล้วกด "ยืนยันลูกค้าอนุมัติ" เพื่อให้สถานะตามมา'
+                'ให้ธุรการเปิดใบเสนอราคานี้บนเว็บแล้วกด "ดำเนินการแทนลูกค้า" เพื่อให้สถานะตามมา'
             : 'เซ็นเรียบร้อย แต่จ๊อบยังไม่เปลี่ยนสถานะ — ${e.messageTh}');
       }
     }
   }
+
+  /// สถานะจ๊อบที่ยังไม่ถึง "อนุมัติแล้ว" — ต้องตรงกับ BEFORE_APPROVED ใน web/src/features/quotations/useActForCustomer.ts
+  static const _beforeApproved = {'waitinspect', 'waitquote', 'waitapprove'};
 
   void _toast(String message) => ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -782,37 +792,7 @@ class _MoneySummary extends StatelessWidget {
                             color: Colors.white)),
                   ],
                 ),
-                if (t.deposit > 0) ...[
-                  const SizedBox(height: T.s8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('หักมัดจำที่รับไว้',
-                          style: TextStyle(fontSize: 14, color: Color(0xFFC7D6E8), height: 1.6)),
-                      Text('−${money(t.deposit)}',
-                          style: const TextStyle(
-                              fontFamily: T.fontMono, fontSize: 15, color: Color(0xFFC7D6E8))),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('คงเหลือชำระ',
-                          style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF7DD3C4),
-                              height: 1.6)),
-                      Text('${money(a?.grandTotal ?? t.grandTotal)} บาท',
-                          style: const TextStyle(
-                              fontFamily: T.fontMono,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF7DD3C4))),
-                    ],
-                  ),
-                ],
+                // [BIZ] ตัดเรื่องค่ามัดจำออกแล้ว (2026-10-02) — ไม่มีบรรทัด "หักมัดจำ"/"คงเหลือชำระ" อีก
               ],
             ),
           ),

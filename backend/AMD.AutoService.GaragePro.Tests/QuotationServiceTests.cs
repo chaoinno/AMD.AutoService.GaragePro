@@ -405,6 +405,79 @@ public sealed class QuotationServiceTests
         return template;
     }
 
+    // ---------- ใบเสนอราคาหลายใบต่อจ๊อบ (บิลแยก — 2026-10-02) ----------
+
+    [Theory]
+    [InlineData(QuotationStatus.Sent)]
+    [InlineData(QuotationStatus.Partial)]
+    [InlineData(QuotationStatus.Approved)]
+    [InlineData(QuotationStatus.Rejected)]
+    public async Task CreateAsync_allows_another_quotation_once_the_previous_one_was_sent(QuotationStatus previous)
+    {
+        var (service, repo, existing, _) = BuildForCreate(previous);
+
+        var result = await service.CreateAsync(new CreateQuotationRequest(existing.JobId, null));
+
+        Assert.True(result.Success);
+        Assert.Equal(existing.Version + 1, Assert.Single(repo.AddedQuotations).Version);
+        Assert.Equal(previous, existing.Status); // ใบเดิมไม่ถูกแทนที่ — อยู่คู่กันเป็นบิลแยก
+    }
+
+    [Fact]
+    public async Task CreateAsync_rejects_while_a_draft_is_still_open()
+    {
+        var (service, repo, existing, _) = BuildForCreate(QuotationStatus.Draft);
+
+        var result = await service.CreateAsync(new CreateQuotationRequest(existing.JobId, null));
+
+        Assert.False(result.Success);
+        Assert.Equal("QUOTE_ALREADY_EXISTS", result.Error!.Code);
+        Assert.Contains(existing.Code, result.Error.MessageTh);
+        Assert.Empty(repo.AddedQuotations);
+    }
+
+    [Fact]
+    public async Task CreateAsync_and_SignAsync_reject_once_the_combined_receipt_is_issued()
+    {
+        var (service, repo, existing, pos) = BuildForCreate(QuotationStatus.Sent);
+        existing.Lines.Add(new QuotationLine
+        {
+            Id = Guid.NewGuid(), QuotationId = existing.Id, CatalogCode = "PRT-001", Name = "ผ้าเบรกหน้า",
+            Type = LineType.Part, Quantity = 1, UnitPrice = 900m, ApprovalStatus = LineApprovalStatus.Approved,
+        });
+        pos.Receipt = new Receipt { JobId = existing.JobId, DocumentNo = "RC-26-0001" };
+
+        var created = await service.CreateAsync(new CreateQuotationRequest(existing.JobId, null));
+        var signed = await service.SignAsync(existing.Id,
+            new SignQuotationRequest("sig.png", "ยินยอม", null, 7, "พนักงาน ทดสอบ"));
+
+        Assert.Equal("QUOTE_RECEIPT_ISSUED", created.Error!.Code);
+        Assert.Equal("QUOTE_RECEIPT_ISSUED", signed.Error!.Code);
+        Assert.Empty(repo.AddedQuotations);
+        Assert.Null(existing.Approval);
+    }
+
+    private static (QuotationService Service, FakeQuotationRepository Repo, Quotation Existing, FakePosRepository Pos)
+        BuildForCreate(QuotationStatus existingStatus)
+    {
+        var job = new Job
+        {
+            Id = Guid.NewGuid(), LegacyShardKey = "db2", BranchId = 105,
+            JobNo = "JB250915001", CustomerName = "ลูกค้าทดสอบ", VehicleRegistration = "กก-1234",
+        };
+        var existing = new Quotation
+        {
+            Id = Guid.NewGuid(), JobId = job.Id, Job = job, JobNo = job.JobNo,
+            Status = existingStatus, Code = "QT-250915001-01", Version = 1,
+        };
+        var repo = new FakeQuotationRepository(existing);
+        var pos = new FakePosRepository();
+        var service = new QuotationService(
+            repo, new FakeCatalogRepository(), new FakeJobRepository { Job = job }, new FakeQuotationTemplateRepository(),
+            pos, new FakeLegacyReader(), new StubCurrentUser(UserRole.Office), TimeProvider.System);
+        return (service, repo, existing, pos);
+    }
+
     // ---------- helpers ----------
 
     private static (QuotationService Service, FakeQuotationRepository Repo, Quotation Quotation) Build(UserRole role) =>
@@ -434,7 +507,7 @@ public sealed class QuotationServiceTests
         };
         var repo = new FakeQuotationRepository(quotation);
         var service = new QuotationService(
-            repo, catalogRepo, new FakeJobRepository(), templateRepo, new FakeLegacyReader(),
+            repo, catalogRepo, new FakeJobRepository(), templateRepo, new FakePosRepository(), new FakeLegacyReader(),
             new StubCurrentUser(role), TimeProvider.System);
         return (service, repo, quotation, catalogRepo);
     }
@@ -483,8 +556,12 @@ public sealed class QuotationServiceTests
             Task.FromResult(quotation?.Id == id ? quotation : null);
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(quotation?.Id == id ? quotation : null);
-        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) =>
-            Task.FromResult(quotation);
+        public Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Quotation>>(
+                new[] { quotation }.Concat(Others).Where(q => q is not null && q.Status != QuotationStatus.Superseded)
+                    .Select(q => q!).ToList());
+        /// <summary>ใบเสนอราคาอื่นของจ๊อบเดียวกัน — จำลองจ๊อบที่มีหลายใบ (บิลแยก)</summary>
+        public List<Quotation> Others { get; } = [];
         public Task<IReadOnlyList<Quotation>> GetQueueAsync(
             string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Quotation>>(quotation is null ? [] : [quotation]);
@@ -538,9 +615,31 @@ public sealed class QuotationServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
     }
 
+    private sealed class FakePosRepository : IPosRepository
+    {
+        public Receipt? Receipt { get; set; }
+
+        public Task<Receipt?> GetReceiptByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult(Receipt);
+        public Task<IReadOnlyList<Payment>> GetPaymentsByJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Payment>>([]);
+        public Task<Payment?> GetPaymentByRequestIdAsync(Guid requestId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task<Payment?> GetPaymentAsync(Guid jobId, Guid paymentId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+        public Task AddPaymentAsync(Payment payment, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task RemovePaymentAsync(Payment payment, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task AddReceiptAsync(Receipt receipt, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
     private sealed class FakeJobRepository : IJobRepository
     {
-        public Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default) => throw new NotSupportedException();
+        public Job? Job { get; init; }
+
+        public Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default) =>
+            Job is null ? throw new NotSupportedException() : Task.FromResult<Job?>(Job);
         public Task<Job?> GetOpenByVehicleAsync(
             string shardKey, int branchId, long vehicleId, CancellationToken ct = default) =>
             throw new NotSupportedException();

@@ -10,7 +10,7 @@ type SignaturePadProps = {
 export type SignaturePadHandle = { toBlob: () => Promise<Blob | null>; clear: () => void; isEmpty: () => boolean }
 
 /// กระดาน canvas จับลายเซ็นด้วยเมาส์/นิ้ว — ยังไม่มีคอมโพเนนต์นี้บนเว็บ (มีแต่ฝั่งมือถือ)
-/// ใช้เฉพาะ stopgap "ยืนยันส่งมอบบนเว็บ" เท่านั้น (ดู [ASSUME] ใน JobCardModal PaymentStage)
+/// ใช้ในขั้นส่งมอบรถ (JobCardModal PaymentStage) และดำเนินการแทนลูกค้าอนุมัติใบเสนอราคา (CustomerApprovalModal)
 export function SignaturePad({ className, onChange, handleRef }: SignaturePadProps & {
   handleRef?: (handle: SignaturePadHandle) => void
 }) {
@@ -71,6 +71,10 @@ export function SignaturePad({ className, onChange, handleRef }: SignaturePadPro
   }
 
   const start = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    // วัดตอน mount อาจคลาดเมื่ออยู่ใน dialog ที่กำลัง animate (scale) — วัดใหม่ก่อนเส้นแรกให้ลายเซ็นตรงปลายเมาส์
+    const canvas = event.currentTarget
+    const expectedWidth = Math.round(canvas.getBoundingClientRect().width * (window.devicePixelRatio || 1))
+    if (!hasInk.current && canvas.width !== expectedWidth) resize()
     event.currentTarget.setPointerCapture(event.pointerId)
     drawing.current = true
     const ctx = context()
