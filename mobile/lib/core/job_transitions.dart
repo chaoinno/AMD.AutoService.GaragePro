@@ -57,12 +57,13 @@ abstract final class JobTransitions {
       roles: {AppRole.technician, AppRole.office, AppRole.manager},
       allowedFromMobile: true, needsReason: false,
     ),
-    JobTransition(
-      from: 'inprogress', to: 'waitparts', labelTh: 'แจ้งรออะไหล่',
-      roles: {AppRole.technician},
-      allowedFromMobile: true, needsReason: true,
-      reasonHintTh: 'ระบุอะไหล่ที่ขาด จำนวน และกำหนดที่คาดว่าจะได้',
-    ),
+    // [BIZ] ไม่มี inprogress→waitparts ที่นี่โดยตั้งใจ — ตัดปุ่ม "แจ้งรออะไหล่" ออกตามคำขอผู้ใช้ 2026-10-05
+    // ("เพื่อความง่ายของทีมช่าง") ปุ่มนี้ประกาศไว้ก่อน inprogress→qc จึงเป็น*ปุ่มหลัก*ของสถานะกำลังซ่อม
+    // ขณะที่ "ซ่อมเสร็จ ส่งตรวจ QC" ไม่โผล่บนการ์ดจ๊อบเลย (primaryFor คืนตัวแรกที่กดได้)
+    // ช่างที่ต้องรอของให้กด "พักงาน" หรือไปเริ่มคันอื่น (ระบบหยุดเวลาคันเดิมให้เอง) แล้วแจ้งธุรการทางแชทของงาน
+    // transition นี้ยังอยู่ใน JobStateMachine.cs ฝั่ง backend แต่แอปไม่เรียกแล้ว
+    //
+    // waitparts→inprogress ยังต้องอยู่ — จ๊อบเก่าที่ค้างสถานะรออะไหล่จะได้บอกช่างว่าต้องให้เว็บปลดสถานะ
     JobTransition(
       from: 'waitparts', to: 'inprogress', labelTh: 'รับของเข้าคลังแล้วเบิกให้งานนี้',
       roles: {AppRole.office, AppRole.manager},

@@ -173,7 +173,19 @@ class _QcPageState extends ConsumerState<QcPage> {
       return null;
     }
 
-    if (job.status == 'inprogress' || job.status == 'waitparts') {
+    // จ๊อบเก่าที่ค้างสถานะรออะไหล่ (แอปตัดปุ่มแจ้งรออะไหล่ออกแล้ว 2026-10-05) ส่ง QC ตรงๆ ไม่ได้ —
+    // backend ไม่มี WaitParts→Qc และ WaitParts→InProgress เปิดเฉพาะธุรการ/ผู้จัดการบนเว็บ
+    // เดิมปุ่มนี้ยิง qc ตรงๆ แล้วโดนปฏิเสธด้วย JOB_TRANSITION_NOT_ALLOWED ทุกครั้ง
+    if (job.status == 'waitparts') {
+      return const StickyActionBar(
+        label: 'ส่งตรวจ QC',
+        disabledReason: 'จ๊อบนี้ยังค้างสถานะ "รออะไหล่" — ให้ธุรการกด "ยืนยันซ่อมเสร็จ → ส่งตรวจ QC" '
+            'จากเว็บสำนักงาน',
+        onPressed: null,
+      );
+    }
+
+    if (job.status == 'inprogress') {
       return StickyActionBar(
         label: 'ส่งตรวจ QC',
         hint: 'จ๊อบยังอยู่ที่ "${job.statusLabel}" — ต้องส่งเข้า QC ก่อนจึงจะกดผ่านได้',

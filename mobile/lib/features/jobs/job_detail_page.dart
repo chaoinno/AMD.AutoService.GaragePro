@@ -357,7 +357,7 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
 
     final reason = next == null ? null : JobTransitions.disabledReason(next, role);
 
-    // [UI] ปุ่มใหญ่ต้องเป็นสิ่งที่กดได้จริงเสมอ — จ๊อบที่รออะไหล่มี transition เดียวที่เป็นงานของเว็บ
+    // [UI] ปุ่มใหญ่ต้องเป็นสิ่งที่กดได้จริงเสมอ — จ๊อบเก่าที่ค้างสถานะรออะไหล่มี transition เดียวที่เป็นงานของเว็บ
     // ถ้าปล่อยตามเดิม ช่างจะเห็นปุ่มน้ำเงินใหญ่ที่กดไม่ได้ ส่วน "พักงาน" ซึ่งเป็นสิ่งเดียวที่เขาทำได้
     // กลายเป็นปุ่มขอบบางเล็กๆ ข้างๆ · เหตุผลที่ transition ทำไม่ได้ย้ายไปอยู่ใน hint แทน ไม่ได้หายไป
     if (plan.secondary != null && (next == null || reason != null)) {
@@ -480,7 +480,7 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
     try {
       await ref.read(jobsApiProvider).transition(job.jobId, transition.to, reason: reason);
       ref.invalidate(jobDetailProvider(job.jobId));
-      // server ปิดคาบเวลาให้เองเมื่อจ๊อบไปรออะไหล่/ส่ง QC/ปิดงาน (docs/09 §6) — ถ้าไม่ซิงก์
+      // server ปิดคาบเวลาให้เองเมื่อจ๊อบส่ง QC/ผ่าน QC/ปิดงาน (docs/09 §6) — ถ้าไม่ซิงก์
       // แถบจับเวลาจะเดินเลขต่อบนคาบที่ตายไปแล้ว
       await ref.read(currentWorkProvider.notifier).refresh();
       // สถานะเปลี่ยนแล้ว รายการในคิวต้องตรงกัน
