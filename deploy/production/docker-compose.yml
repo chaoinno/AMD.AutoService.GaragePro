@@ -16,6 +16,8 @@ services:
       ASPNETCORE_URLS: http://+:8080
       TZ: Asia/Bangkok
       AllowedOrigins__0: https://gpservice.garage-pro.net
+      # เว็บโดเมนใหม่เรียก API ข้าม origin — ไม่ใส่แล้ว browser จะบล็อกทุกคำขอ (CORS) ตั้งแต่หน้า login
+      AllowedOrigins__1: https://service.garage-pro.net
       LegacyShards__DefaultShard: db2
       Jwt__Issuer: AMD.AutoService.GaragePro
       Jwt__Audience: AMD.AutoService.GaragePro.Clients
