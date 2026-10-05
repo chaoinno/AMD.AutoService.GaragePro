@@ -1536,6 +1536,11 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · มือถือ: ชื่อแอป `ServicePro` (iOS `CFBundleDisplayName` · Android `android:label` — เดิม "GP Service") · `MaterialApp.title` ·
     หน้า login · ข้อความ "ตั้งค่า > ServicePro > กล้อง" (เดิมเขียน GaragePro ทั้งที่ชื่อในเครื่องคือ GP Service)
   · backend: หัวข้อความ LINE "ขอ Demo — ServicePro" · Swagger title
+  · **native splash iOS** (เพิ่ม 2026-10-05): แก้ `LaunchScreen.storyboard` เอง (พื้น navy900 `#0F2440` = สีหน้า login + ตรากลางจอ
+    120×101pt) และแทนภาพ 1×1 ใน `LaunchImage.imageset` — **ไม่ใช้ `flutter_native_splash`** เพราะต้องแก้ `pubspec.lock` ·
+    `Info.plist` ตั้ง `UIStatusBarStyleLightContent` (มีผลเฉพาะตอน launch เพราะไม่ได้ปิด view-controller-based appearance) ·
+    หน้า login ห่อ `AnnotatedRegion(SystemUiOverlayStyle.light)` — เดิมนาฬิกาเป็นตัวดำบนพื้น navy เพราะหน้านี้ไม่มี AppBar ·
+    ตรวจบน simulator แล้ว: จอ launch ขึ้นตรา + แถบสถานะขาว · **Android ยังไม่ได้ทำ splash**
   · **ตั้งใจไม่เปลี่ยน**: ข้อความที่หมายถึงระบบ GaragePro เดิม ("ข้อมูลใช้ร่วมกับระบบ GaragePro เดิม" · "รหัสผ่านเดิมของ GaragePro" ·
     "ต่อยอดจากระบบ GaragePro") · บัญชีโซเชียล `@garagepro`/Facebook/Instagram ในหน้าติดต่อ (เป็นบัญชีจริง ยังไม่มีบัญชีใหม่) ·
     bundle id/applicationId `net.garagepro.*` (เปลี่ยนแล้วสโตร์มองเป็นแอปใหม่) · key ของ localStorage/SharedPreferences `garagepro.*`
