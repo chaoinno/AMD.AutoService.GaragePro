@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { useEffect, useState, type MouseEvent } from 'react'
+import { BrandWordmark } from '../../components/Brand'
 import { ContactSection } from './ContactSection'
 import { LoginCard } from './LoginCard'
 import './landing.css'
@@ -45,7 +46,7 @@ export function LoginPage() {
   const [active, setActive] = useState<SectionId>('login')
 
   useEffect(() => {
-    document.title = 'GaragePro Auto Services | แพลตฟอร์มจัดการงานอู่บริการซ่อมบำรุงรถยนต์'
+    document.title = 'ServicePro | แพลตฟอร์มจัดการงานอู่บริการซ่อมบำรุงรถยนต์'
   }, [])
 
   // [UI] ไฮไลต์เมนูตาม section ที่อยู่ในจอ — ใช้ IntersectionObserver แทนการฟัง scroll ทุกเฟรม
@@ -86,10 +87,9 @@ export function LoginPage() {
       <header className="landing-nav">
         <div className="landing-container landing-nav__inner">
           <a className="auth-brand" href="#login" onClick={(e) => goTo(e, 'login')}>
-            <img className="auth-brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
+            <img className="auth-brand__logo" src="/servicepro-logo.png" alt="" aria-hidden="true" />
             <span>
-              <strong>GaragePro</strong>
-              <small>Auto Services</small>
+              <BrandWordmark />
             </span>
           </a>
           <button
@@ -141,7 +141,7 @@ export function LoginPage() {
                   ขอ Demo
                 </a>
                 <a className="landing-btn landing-btn--ghost" href="#about" onClick={(e) => goTo(e, 'about')}>
-                  รู้จัก GaragePro
+                  รู้จัก ServicePro
                 </a>
               </div>
               <p className="landing-hero__staff-note">พนักงานอู่: เข้าสู่ระบบด้วยรหัสพนักงานและรหัสผ่านเดิมของ GaragePro</p>
@@ -172,11 +172,11 @@ export function LoginPage() {
               <p className="landing-eyebrow">เกี่ยวกับเรา</p>
               <h2 id="landing-about-title" className="landing-h2">Armadillo Tech Co., Ltd.</h2>
               <p className="landing-lead">
-                ผู้พัฒนา GaragePro — ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ
+                ผู้พัฒนา ServicePro — ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ
                 และเปลี่ยนทุกข้อมูลหน้างานให้เป็นแรงขับเคลื่อนการเติบโต
               </p>
               <p className="landing-body">
-                GaragePro Auto Services ต่อยอดจากระบบ GaragePro ที่อู่ซ่อมสีและตัวถังใช้งานอยู่ มาสู่งานบริการ
+                ServicePro ต่อยอดจากระบบ GaragePro ที่อู่ซ่อมสีและตัวถังใช้งานอยู่ มาสู่งานบริการ
                 ซ่อมบำรุงรถยนต์ โดยใช้ข้อมูลลูกค้าและรถชุดเดิม ไม่ต้องย้ายข้อมูลใหม่
               </p>
             </div>
@@ -200,7 +200,7 @@ export function LoginPage() {
       <footer className="landing-footer">
         <div className="landing-container landing-footer__inner">
           <p>ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ และเปลี่ยนทุกข้อมูลหน้างานให้เป็นแรงขับเคลื่อนการเติบโต</p>
-          <p>© {new Date().getFullYear()} GaragePro by Armadillo Tech Co., Ltd.</p>
+          <p>© {new Date().getFullYear()} ServicePro by Armadillo Tech Co., Ltd.</p>
         </div>
       </footer>
     </div>

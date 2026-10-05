@@ -8,6 +8,7 @@ import { useSession } from '../../lib/session'
 import { QueryState } from '../master-data/MasterDataCommon'
 import { purchaseStatusLabels } from './purchaseExport'
 import { PurchaseFinancialSummary, vatLabel } from './PurchaseFinancialSummary'
+import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 const money = (value: number) => value.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString('th-TH') : '—'
@@ -27,7 +28,7 @@ export function PurchaseDocumentModal({ kind, id, onClose }: { kind: PurchaseKin
         <div className="job-card-panel-actions print-hidden"><Button disabled={query.isFetching} onClick={() => window.print()}><Printer aria-hidden="true" /> พิมพ์ {kind}</Button></div>
         <div className="purchase-print-area"><article className="quotation-document">
           <header className="document-header">
-            <div className="document-branch"><div className="document-brand-mark" aria-hidden="true">GP</div><div><h1>{session?.branchName || 'GaragePro'}</h1><p>เอกสารจัดซื้อ</p></div></div>
+            <div className="document-branch"><DocumentBrandMark /><div><h1>{session?.branchName || BRAND_NAME}</h1><p>เอกสารจัดซื้อ</p></div></div>
             <div className="document-title"><span>{kind === 'PR' ? 'Purchase Requisition' : 'Purchase Order'}</span><h2>{title}</h2><strong>{doc.number}</strong></div>
           </header>
           <section className="document-info-grid">

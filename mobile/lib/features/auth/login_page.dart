@@ -221,8 +221,8 @@ class _Brand extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          // ใช้ตราหกเหลี่ยมล้วน ไม่ใช่โลโก้เต็ม เพราะตัวอักษร "GaragePro" ในไฟล์แบรนด์เป็นสีดำ
-          // ซึ่งอ่านไม่ออกบนพื้น navy ของหน้านี้ — ข้อความใช้ของแอปที่เป็นสีขาวอยู่แล้วด้านล่าง
+          // ตราหกเหลี่ยม ServicePro (สกัดจาก service-pro-logo/main-logo.png ให้พื้นโปร่ง)
+          // ตัวอักษรวาดเองด้านล่างแทนการใช้ไฟล์ logo-with-text.jpg ที่มีพื้นหลังลายจุดติดมาด้วย
           Image.asset(
             'assets/images/logo_mark.png',
             width: 76,
@@ -231,11 +231,21 @@ class _Brand extends StatelessWidget {
             filterQuality: FilterQuality.medium,
           ),
           const SizedBox(height: T.s12),
-          const Text('GaragePro',
-              style: TextStyle(
-                  fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white, height: 1.4)),
-          const Text('Auto Services',
-              style: TextStyle(fontSize: 14, color: T.faintOnDark, height: 1.6)),
+          // "Service" ขาว + "Pro" ฟ้าแบบเดียวกับโลโก้ — ฟ้ายกให้อ่อนกว่าในไฟล์ (#2F65C0 ได้ contrast แค่
+          // ~2.8:1 บน navy900) ให้ตรงกับเว็บ (web/src/components/Brand.tsx)
+          const Text.rich(
+            TextSpan(children: [
+              TextSpan(text: 'Service'),
+              TextSpan(text: 'Pro', style: TextStyle(color: Color(0xFF4C9BFF))),
+            ]),
+            semanticsLabel: 'ServicePro',
+            style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                fontStyle: FontStyle.italic,
+                color: Colors.white,
+                height: 1.4),
+          ),
         ],
       );
 }
