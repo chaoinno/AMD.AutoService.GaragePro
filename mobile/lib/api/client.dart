@@ -67,7 +67,8 @@ final apiClientProvider = Provider<ApiClient>((ref) {
   );
 });
 
-/// เซสชันหมดอายุ/ไม่มีสาขาในโทเคน — ระบบไม่มี refresh token จึงต้องให้เข้าสู่ระบบใหม่เท่านั้น
+/// เซสชันใช้ไม่ได้แล้ว — token มือถือไม่หมดอายุ (2026-10-05) จึงเกิดเมื่อ server ตัดสิทธิ์:
+/// พนักงานถูกปิดใช้งาน/ย้ายสาขา/เปลี่ยนสิทธิ์ (SessionRevocationMiddleware) หรือ token เสีย
 void _handleAuthFailure(Ref ref, ApiException error) {
   // หน้าที่ถูก push แบบ imperative (เช่นหน้าเซ็นลายเซ็น) ซ้อนอยู่เหนือ stack ของ router
   // ถ้าไม่ pop ก่อน ผู้ใช้จะเห็นหน้าเซ็นค้างทับหน้า login
@@ -75,13 +76,9 @@ void _handleAuthFailure(Ref ref, ApiException error) {
 
   ref.read(sessionProvider.notifier).clear();
 
-  showAppMessage(
-    error.requiresShift
-        ? 'โทเคนนี้ยังไม่ผูกกับสาขา — กรุณาเข้าสู่ระบบใหม่'
-        : 'เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่',
-    traceId: error.traceId,
-    isError: true,
-  );
+  // [UI] แสดง messageTh ของ server ตรงๆ — มันบอกเหตุผลจริง (เช่น "บัญชีนี้ถูกปิดใช้งานแล้ว")
+  // ซึ่งข้อความตายตัว "เซสชันหมดอายุ" เดิมบอกไม่ได้ และกฎ envelope ห้าม client แต่งข้อความใหม่
+  showAppMessage(error.messageTh, traceId: error.traceId, isError: true);
 }
 
 final authApiProvider = Provider((ref) => AuthApi(ref.watch(apiClientProvider)));

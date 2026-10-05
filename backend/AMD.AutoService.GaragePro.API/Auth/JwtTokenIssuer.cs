@@ -22,6 +22,18 @@ public sealed class JwtOptions
 
     /// <summary>token ใช้งานจริง — ยาวพอสำหรับหนึ่งกะ</summary>
     public int SessionHours { get; set; } = 12;
+
+    /// <summary>
+    /// token ของแอปมือถือ — 10 ปี = "ไม่หมดอายุ" ในทางปฏิบัติ (คำขอผู้ใช้ 2026-10-05)
+    /// ใส่วันหมดอายุไว้แทนการไม่ใส่ exp เลย เพราะ JwtBearer บังคับ exp (RequireExpirationTime) ทั้งระบบ
+    /// </summary>
+    public int MobileSessionDays { get; set; } = 3650;
+
+    /// <summary>
+    /// ตรวจสถานะพนักงานซ้ำทุกกี่วินาทีต่อ token (SessionRevocationMiddleware) — ปิดใช้งานพนักงานแล้ว
+    /// ถูกเตะออกช้าสุดเท่านี้ · ค่าน้อยลง = ยิง Garage DB เดิมถี่ขึ้น
+    /// </summary>
+    public int SessionCheckSeconds { get; set; } = 60;
 }
 
 /// <summary>ชื่อ claim ที่ใช้ร่วมกันระหว่างตัวออก token และตัวอ่าน</summary>
@@ -61,6 +73,16 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
     public (string Token, DateTime ExpiresAt) IssueBranchToken(AuthUserDto user, int branchId)
     {
         var expiresAt = clock.GetUtcNow().UtcDateTime.AddHours(_options.SessionHours);
+
+        var claims = BaseClaims(user);
+        claims.Add(new Claim(GarageClaims.BranchId, branchId.ToString()));
+
+        return (Write(claims, expiresAt), expiresAt);
+    }
+
+    public (string Token, DateTime ExpiresAt) IssueMobileToken(AuthUserDto user, int branchId)
+    {
+        var expiresAt = clock.GetUtcNow().UtcDateTime.AddDays(_options.MobileSessionDays);
 
         var claims = BaseClaims(user);
         claims.Add(new Claim(GarageClaims.BranchId, branchId.ToString()));

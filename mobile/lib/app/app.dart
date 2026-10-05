@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/auth/session_guard.dart';
 import '../features/work/widgets/work_focus_host.dart';
 import 'navigation.dart';
 import 'router.dart';
@@ -22,7 +23,7 @@ class GarageProApp extends ConsumerWidget {
         builder: (_, child) => GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-          child: WorkFocusHost(child: child ?? const SizedBox.shrink()),
+          child: SessionGuard(child: WorkFocusHost(child: child ?? const SizedBox.shrink())),
         ),
       );
 }

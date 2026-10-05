@@ -44,6 +44,15 @@ public interface ITokenIssuer
     /// <summary>token ที่ใช้งานได้ทันที โดยผูกสาขาจาก Staff.BranchId แต่ไม่สร้างกะ</summary>
     (string Token, DateTime ExpiresAt) IssueBranchToken(AuthUserDto user, int branchId);
 
+    /// <summary>
+    /// token ของแอปมือถือ — claim เดียวกับ <see cref="IssueBranchToken"/> แต่อายุยาวจนแทบไม่หมด
+    /// (คำขอผู้ใช้ 2026-10-05: ช่างไม่ต้อง login ใหม่ทุก 12 ชม.) การตัดสิทธิ์อาศัย
+    /// <c>IAuthService.GetSessionRevocationReasonAsync</c> ที่ตรวจทุกคำขอแทนวันหมดอายุ
+    /// · default member เพื่อไม่ต้องแก้ fake ในเทสต์ที่ไม่เกี่ยวข้อง
+    /// </summary>
+    (string Token, DateTime ExpiresAt) IssueMobileToken(AuthUserDto user, int branchId) =>
+        IssueBranchToken(user, branchId);
+
     /// <summary>token ที่ใช้งานจริง — มี branch/shift/session อยู่ใน claim</summary>
     (string Token, DateTime ExpiresAt) IssueSessionToken(AuthUserDto user, ShiftSession session);
 }
