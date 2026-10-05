@@ -4089,6 +4089,9 @@ img {
 .ui-combobox__option:hover,
 .ui-combobox__option--active { background: #f1f5f9; }
 .ui-combobox__option small { color: var(--muted); font-size: 12px; }
+.ui-combobox__option--with-icon > span { display: flex; align-items: center; gap: 8px; color: var(--primary); font-weight: 600; }
+.ui-combobox__option--with-icon > span > svg { width: 20px; height: 20px; flex-shrink: 0; }
+.ui-combobox__option--with-icon > small { padding-left: 28px; }
 
 .ui-tabs__list { display: flex; align-items: center; gap: 8px; }
 .ui-tabs__trigger { min-height: 36px; padding: 6px 14px; border: 1px solid var(--border); border-radius: var(--radius-chip); background: white; color: var(--muted); cursor: pointer; font-weight: 600; }

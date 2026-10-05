@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Input } from './input'
 
-export type ComboboxOption = { value: string; label: string; description?: string }
+export type ComboboxOption = { value: string; label: string; description?: string; icon?: LucideIcon }
 
 type ComboboxProps = {
   id?: string
@@ -94,11 +95,11 @@ export function Combobox({
                 key={option.value}
                 role="option"
                 aria-selected={index === highlight}
-                className={cn('ui-combobox__option', index === highlight && 'ui-combobox__option--active')}
+                className={cn('ui-combobox__option', index === highlight && 'ui-combobox__option--active', option.icon && 'ui-combobox__option--with-icon')}
                 onMouseDown={(event) => { event.preventDefault(); select(option) }}
                 onMouseEnter={() => setHighlight(index)}
               >
-                <span>{option.label}</span>
+                <span>{option.icon ? <option.icon aria-hidden="true" /> : null}{option.label}</span>
                 {option.description ? <small>{option.description}</small> : null}
               </li>
             ))
