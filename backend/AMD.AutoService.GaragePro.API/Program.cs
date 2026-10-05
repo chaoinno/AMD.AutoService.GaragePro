@@ -16,27 +16,6 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRateLimiter(options =>
-{
-    options.AddPolicy("purchasing-pin", context =>
-    {
-        var user = context.RequestServices.GetRequiredService<ICurrentUser>();
-        return RateLimitPartition.GetFixedWindowLimiter($"{user.ShardKey}:{user.BranchId}:{user.UserId}", _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
-        });
-    });
-    options.OnRejected = async (context, ct) =>
-    {
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        await context.HttpContext.Response.WriteAsJsonAsync(new
-        {
-            success = false, error = new { code = "PURCHASING_PIN_RATE_LIMIT", messageTh = "ลองยืนยัน PIN หลายครั้งเกินไป กรุณารอ 1 นาทีแล้วลองใหม่" },
-            traceId = context.HttpContext.TraceIdentifier
-        }, ct);
-    };
-});
-
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
     o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -158,6 +137,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 builder.Services.AddRateLimiter(o =>
 {
     o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.AddPolicy("purchasing-pin", context =>
+    {
+        var user = context.RequestServices.GetRequiredService<ICurrentUser>();
+        return RateLimitPartition.GetFixedWindowLimiter($"{user.ShardKey}:{user.BranchId}:{user.UserId}", _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+        });
+    });
     o.AddPolicy(PublicContactController.RateLimitPolicy, context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -169,6 +156,8 @@ builder.Services.AddRateLimiter(o =>
             : RateLimitPartition.GetNoLimiter("authenticated"));
     o.OnRejected = async (context, ct) =>
     {
+        var isPurchasingPin = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName == "purchasing-pin";
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
         context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
         await context.HttpContext.Response.WriteAsJsonAsync(new
         {
@@ -176,8 +165,8 @@ builder.Services.AddRateLimiter(o =>
             data = (object?)null,
             error = new
             {
-                code = "RATE_LIMITED",
-                messageTh = "ส่งข้อมูลถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อทาง LINE @garagepro / โทร 090-996-6446"
+                code = isPurchasingPin ? "PURCHASING_PIN_RATE_LIMIT" : "RATE_LIMITED",
+                messageTh = isPurchasingPin ? "ลองยืนยัน PIN หลายครั้งเกินไป กรุณารอ 1 นาทีแล้วลองใหม่" : "ส่งข้อมูลถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อทาง LINE @garagepro / โทร 090-996-6446"
             },
             traceId = context.HttpContext.TraceIdentifier
         }, ct);
@@ -214,7 +203,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseRateLimiter();
 // Catalog edits can race with a receipt/issue; return a retryable conflict instead of an unhandled 500.
 app.Use(async (context, next) =>
 {
