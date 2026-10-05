@@ -17,6 +17,12 @@ public interface IAuthService
     Task<Result<ShiftSessionDto>> OpenShiftAsync(OpenShiftRequest request, CancellationToken ct = default);
     Task<Result<bool>> CloseShiftAsync(Guid sessionId, CancellationToken ct = default);
     Task<Result<MeDto>> GetMeAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// null = token ของผู้เรียกยังใช้ได้ · มีค่า = ข้อความไทยที่บอกว่าทำไมต้องออกจากระบบ
+    /// เรียกจาก middleware ทุกคำขอ (มี cache) — token มือถือไม่หมดอายุ จึงต้องมีที่ตัดสิทธิ์
+    /// </summary>
+    Task<string?> GetSessionRevocationReasonAsync(CancellationToken ct = default);
 }
 
 public sealed class AuthService(
@@ -58,8 +64,12 @@ public sealed class AuthService(
             return Result<LoginResultDto>.Fail("AUTH_NO_BRANCH",
                 "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ");
 
-        // Web ใช้ token นี้เรียก API งานได้ทันที ส่วน Mobile เดิมยังเปิดกะต่อได้ตามปกติ
-        var (token, expiresAt) = tokens.IssueBranchToken(authUser, branch.BranchId);
+        // [SECURITY] มือถือได้ token ที่ไม่หมดอายุ (คำขอผู้ใช้ 2026-10-05) — ตัดสิทธิ์ด้วยการตรวจสถานะ
+        // พนักงานทุกคำขอแทน (GetSessionRevocationReasonAsync) · เว็บยังเป็น 12 ชม. เหมือนเดิม
+        // X-Client-Source ปลอมได้ — ผลแค่ได้ token อายุยาว ซึ่งยังถูกตัดได้ด้วยการตรวจเดียวกัน
+        var (token, expiresAt) = currentUser.Source == EventSource.Mobile
+            ? tokens.IssueMobileToken(authUser, branch.BranchId)
+            : tokens.IssueBranchToken(authUser, branch.BranchId);
 
         return Result<LoginResultDto>.Ok(new LoginResultDto(
             AccessToken: token,
@@ -245,6 +255,30 @@ public sealed class AuthService(
             ShiftId: session?.ShiftId,
             ShiftName: session?.ShiftName,
             OpenedAt: session?.OpenedAt));
+    }
+
+    public async Task<string?> GetSessionRevocationReasonAsync(CancellationToken ct = default)
+    {
+        if (currentUser.UserId <= 0) return null;
+
+        // FindByIdAsync กรอง User.Status = 1 และ Staff.Status = 1 อยู่แล้ว — กฎเดียวกับตอน login
+        // (ถ้าเข้าระบบใหม่ไม่ได้ ก็ต้องใช้ token เดิมต่อไม่ได้)
+        var shardKey = currentUser.ShardKey;
+        var user = await legacyUsers.FindByIdAsync(shardKey, currentUser.UserId, ct);
+        if (user is null)
+            return "บัญชีนี้ถูกปิดใช้งานแล้ว — ติดต่อผู้จัดการสาขา";
+
+        // สาขาใน token มาจาก Staff.BranchId ตอน login — ย้ายสาขาแล้วถ้ายังใช้ token เดิม
+        // จะเห็น/แก้ข้อมูลของสาขาเก่าได้ตลอดไปเพราะ token ไม่หมดอายุ
+        if (currentUser.BranchId > 0 && user.BranchId != currentUser.BranchId)
+            return "บัญชีนี้ถูกย้ายสาขาแล้ว — กรุณาเข้าสู่ระบบใหม่";
+
+        // role อยู่ใน claim — ถูกลดสิทธิ์ (เช่นผู้จัดการเป็นช่าง) แล้วต้องไม่เก็บสิทธิ์เดิมไว้ตลอดไป
+        var role = await ResolveRoleAsync(shardKey, user, ct);
+        if (role != currentUser.Role)
+            return "สิทธิ์ของบัญชีนี้เปลี่ยนแล้ว — กรุณาเข้าสู่ระบบใหม่";
+
+        return null;
     }
 
     // ---------- helper ----------

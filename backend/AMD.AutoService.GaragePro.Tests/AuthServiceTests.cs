@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using FluentAssertions;
@@ -27,6 +28,69 @@ public sealed class AuthServiceTests
         result.Data.RequiresShiftSelection.Should().BeFalse();
         result.Data.AccessToken.Should().Be("branch-token");
         tokens.IssuedBranchId.Should().Be(105);
+    }
+
+    // [SECURITY] 2026-10-05 มือถือได้ token ไม่หมดอายุ — เว็บต้องยังเป็นอายุสั้นเหมือนเดิม
+    [Theory]
+    [InlineData(EventSource.Mobile, "mobile-token")]
+    [InlineData(EventSource.Web, "branch-token")]
+    public async Task Login_issues_the_long_lived_token_only_to_the_mobile_app(EventSource source, string expected)
+    {
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105),
+                [new LegacyBranchSummaryDto(105, "อู่ตงเจริญยนต์", null, null)]),
+            tokens,
+            new StubCurrentUser(source: source));
+
+        var result = await service.LoginAsync(new LoginRequest("employee01", "secret"));
+
+        result.Data!.AccessToken.Should().Be(expected);
+        tokens.IssuedBranchId.Should().Be(105);
+    }
+
+    [Fact]
+    public async Task Session_stays_valid_while_staff_is_active_in_the_same_branch_and_role()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105), []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: RoleOf(ActiveUser(105))));
+
+        (await service.GetSessionRevocationReasonAsync()).Should().BeNull();
+    }
+
+    // reader คืน null เมื่อ User.Status หรือ Staff.Status ไม่ใช่ 1 — กฎเดียวกับตอน login
+    [Fact]
+    public async Task Session_is_revoked_once_staff_is_deactivated()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(null, []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105));
+
+        (await service.GetSessionRevocationReasonAsync()).Should().Contain("ปิดใช้งาน");
+    }
+
+    [Fact]
+    public async Task Session_is_revoked_when_staff_moves_to_another_branch()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 227), []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: RoleOf(ActiveUser(227))));
+
+        (await service.GetSessionRevocationReasonAsync()).Should().Contain("ย้ายสาขา");
+    }
+
+    // token ไม่หมดอายุแล้ว — ผู้จัดการที่ถูกลดเป็นช่างต้องไม่เก็บสิทธิ์ผู้จัดการใน claim ไว้ตลอดไป
+    [Fact]
+    public async Task Session_is_revoked_when_the_role_no_longer_matches_the_token()
+    {
+        var current = RoleOf(ActiveUser(105));
+        var stale = current == UserRole.Manager ? UserRole.Technician : UserRole.Manager;
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105), []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: stale));
+
+        (await service.GetSessionRevocationReasonAsync()).Should().Contain("สิทธิ์");
     }
 
     [Fact]
@@ -116,6 +180,9 @@ public sealed class AuthServiceTests
             workHook ?? new FakeWorkIntervalHook(),
             currentUser ?? new StubCurrentUser(), TimeProvider.System);
 
+    private static UserRole RoleOf(LegacyUserDto user) =>
+        RoleMapper.Resolve(user.IsAdministrator, user.PositionName, user.SectorName, user.DepartmentName);
+
     private static LegacyUserDto ActiveUser(int? branchId) => new(
         UserId: 7,
         UserName: "employee01",
@@ -159,19 +226,26 @@ public sealed class AuthServiceTests
             return ("branch-token", DateTime.UtcNow.AddHours(12));
         }
 
+        public (string Token, DateTime ExpiresAt) IssueMobileToken(AuthUserDto user, int branchId)
+        {
+            IssuedBranchId = branchId;
+            return ("mobile-token", DateTime.UtcNow.AddYears(10));
+        }
+
         public (string Token, DateTime ExpiresAt) IssueSessionToken(AuthUserDto user, ShiftSession session) =>
             ("shift-token", DateTime.UtcNow.AddHours(12));
     }
 
     private sealed class StubCurrentUser(
-        long userId = 0, int branchId = 0, UserRole role = UserRole.FrontDesk) : ICurrentUser
+        long userId = 0, int branchId = 0, UserRole role = UserRole.FrontDesk,
+        EventSource source = EventSource.Web) : ICurrentUser
     {
         public long UserId => userId;
         public string UserName => "";
         public UserRole Role => role;
         public string ShardKey => "db2";
         public int BranchId => branchId;
-        public EventSource Source => EventSource.Web;
+        public EventSource Source => source;
         public bool IsAdministrator => false;
         public Guid? SessionId => null;
     }

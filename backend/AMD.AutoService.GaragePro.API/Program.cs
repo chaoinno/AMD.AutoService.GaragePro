@@ -113,6 +113,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 builder.Services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
+builder.Services.AddMemoryCache();
 builder.Services.AddGarageProInfrastructure(builder.Configuration);
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
@@ -219,6 +220,8 @@ app.Use(async (context, next) =>
     }
 });
 app.UseAuthentication();
+// ต้องอยู่หลัง UseAuthentication (ต้องรู้ว่าใครเรียก) และก่อน UseAuthorization/controller
+app.UseMiddleware<SessionRevocationMiddleware>();
 app.UseAuthorization();
 app.UseRateLimiter();
 app.MapControllers();

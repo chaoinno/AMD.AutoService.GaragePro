@@ -402,7 +402,24 @@ promiseAt ฯลฯ) แสดงเร็วกว่าเวลาไทย�
 
 ### สิ่งที่ยังต้องทำ
 - `X-Client-Source` ยังเป็น header ที่ปลอมได้ (ไม่กระทบสิทธิ์ แต่ทำให้ audit log ระบุแหล่งที่มาผิดได้)
-- ยังไม่มี refresh token — token หมดอายุ 12 ชม. แล้วต้อง login ใหม่
+- ยังไม่มี refresh token — **เว็บ** token หมดอายุ 12 ชม. แล้วต้อง login ใหม่ · **มือถือไม่หมดอายุแล้ว** (ดูหัวข้อถัดไป)
+
+### [เพิ่ม 2026-10-05] token มือถือไม่หมดอายุ + ตัดสิทธิ์ด้วยสถานะพนักงาน (คำขอผู้ใช้)
+- login ที่มี `X-Client-Source: mobile` ได้ `ITokenIssuer.IssueMobileToken` อายุ `Jwt:MobileSessionDays` (`3650` วัน) —
+  ใส่ exp ยาวแทนการไม่ใส่ เพราะ JwtBearer บังคับ exp ทั้งระบบ · เว็บยัง `IssueBranchToken` 12 ชม.
+- `SessionRevocationMiddleware` (หลัง `UseAuthentication`) ตรวจ **ทุก token ทั้งเว็บและมือถือ** ผ่าน
+  `AuthService.GetSessionRevocationReasonAsync`: User/Staff ไม่ active (กฎเดียวกับ login: `Status = 1` ทั้งคู่) ·
+  `Staff.BranchId` ไม่ตรงกับ claim (ย้ายสาขา) · role ที่คำนวณใหม่ไม่ตรงกับ claim (ถูกลด/เพิ่มสิทธิ์) → 401 `AUTH_REQUIRED`
+  พร้อม `messageTh` บอกเหตุผล · cache ผลต่อ `jti` `Jwt:SessionCheckSeconds` (60 วิ) · Garage DB ล่ม = **fail-open** (ไม่เตะทุกคนออก)
+- มือถือ: `SessionGuard` (ที่ `MaterialApp.builder`) ยิง `GET /auth/me` ตอนเปิดแอปที่มีเซสชัน · กลับจาก background · ทุก 5 นาที
+  ระหว่างเปิดค้าง · `_handleAuthFailure` แสดง `messageTh` ของ server แทนข้อความตายตัว "เซสชันหมดอายุ"
+- **[RISK] ยังไม่มีการเพิกถอนรายเครื่อง** — มือถือหาย token ใช้ได้จนกว่าจะปิดใช้งานพนักงาน และ**เปิดใช้งานกลับเมื่อไหร่ token เดิม
+  ใช้ได้อีก** (ตรวจแค่สถานะ ไม่ได้ผูกกับเวลาออก token) · token เก็บใน SharedPreferences ไม่ใช่ Keychain · ถ้าต้องการ
+  ต้องเพิ่มตาราง "เพิกถอนก่อนเวลา X" ต่อผู้ใช้ใน ServiceDb
+- `X-Client-Source` ปลอมได้ → เว็บขอ token 10 ปีได้ แต่ยังถูกตัดด้วยการตรวจเดียวกัน
+- ตรวจแล้ว: `dotnet test` 364 ผ่าน / skipped 5 (เพิ่ม 6 ใน `AuthServiceTests`) · `dart analyze` สะอาด · `flutter test` 60 ผ่าน ·
+  simulator: แอปที่ login อยู่ไม่ถูกเตะออกผิดๆ และ log ยืนยันว่าการตรวจทำงาน · **ยังไม่ได้ทดสอบเคสถูกตัดสิทธิ์กับข้อมูลจริง**
+  (ต้องปิดใช้งานพนักงานใน Garage DB ซึ่งระบบนี้ห้ามเขียน — ให้ทดสอบผ่าน GaragePro Admin)
 - ยังไม่มี rate limit บน `/auth/login`
 
 ---

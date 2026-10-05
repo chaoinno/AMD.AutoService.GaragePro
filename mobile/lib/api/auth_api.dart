@@ -10,4 +10,8 @@ class AuthApi {
         body: {'userName': userName, 'password': password});
     return LoginResult.fromJson(data);
   }
+
+  /// ใช้ "เคาะประตู" ให้ server ตรวจว่าบัญชียังใช้งานได้ — ไม่ได้ใช้ข้อมูลที่ตอบกลับ
+  /// ถ้าถูกตัดสิทธิ์ ApiClient จะล้างเซสชันให้เองจาก AUTH_REQUIRED (ดู SessionGuard)
+  Future<void> ping() => _c.get<Object?>('/auth/me');
 }
