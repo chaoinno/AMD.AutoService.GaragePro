@@ -84,7 +84,7 @@ Production รันที่ `ssh garage_amd` จาก GitHub branch `main`; �
 | Source บน server | `/home/deployment/sources/AMD.AutoService.GaragePro` |
 | Deployment overlay | `/home/deployment/deployments/garagepro-service` |
 | Secret file (นอก Git, mode 600) | `/home/deployment/config/garagepro-service.env` |
-| Web | `https://gpservice.garage-pro.net` → Nginx → `127.0.0.1:3005` |
+| Web | `https://gpservice.garage-pro.net` และ `https://service.garage-pro.net` (เพิ่ม 2026-10-05 หลัง rebrand — ใช้ได้ทั้งคู่ ไม่ redirect · ต้องอยู่ใน `AllowedOrigins` ของ API ทั้งคู่ · ชื่อใหม่**ไม่มีใบรับรองบน origin** ใช้ใบของ gpservice ไปก่อนเพราะ Cloudflare SSL mode = Full (ไม่ strict) — ติดตั้งด้วย `add-service-domain.sh` ไม่ใช่ certbot · **[RISK] เปลี่ยน Cloudflare เป็น Full (strict) เมื่อไหร่ โดเมนนี้ขึ้น 526**) → Nginx → `127.0.0.1:3005` |
 | API | `https://gpservice-api.garage-pro.net` → Nginx → `127.0.0.1:5081` |
 | Containers | `garagepro_service_web`, `garagepro_service_api` |
 
