@@ -36,6 +36,11 @@ export const getCatalogItem = (id: string) =>
 export const createCatalogItem = (input: CatalogItemInput) =>
   apiRequest<CatalogManagementItem>('/api/v1/catalog/manage', { method: 'POST', body: JSON.stringify(input) })
 
+export type PurchasePartInput = { name: string; unit: string; code?: string; compatibility?: string }
+
+export const createPurchasePart = (input: PurchasePartInput) =>
+  apiRequest<CatalogManagementItem>('/api/v1/catalog/purchasing-parts', { method: 'POST', body: JSON.stringify(input) })
+
 export const updateCatalogItem = (id: string, input: CatalogItemInput) =>
   apiRequest<CatalogManagementItem>(`/api/v1/catalog/manage/${id}`, { method: 'PUT', body: JSON.stringify(input) })
 

@@ -168,6 +168,9 @@
 }
 .purchase-item-picker { min-width: 300px; }
 .purchase-item-picker .ui-combobox__list { position: static; max-height: 220px; margin-top: 6px; }
+.purchase-new-part-note { margin-top: 20px; }
+#purchase-new-part.management-form { max-height: none; overflow: visible; padding-right: 0; }
+.ui-dialog__content:has(#purchase-new-part) > :is(.ui-dialog__header, .ui-dialog__footer) { flex-shrink: 0; }
 #purchase-editor .purchase-entry-lines { table-layout: fixed; width: 100%; min-width: 760px; }
 #purchase-editor .purchase-entry-lines th,
 #purchase-editor .purchase-entry-lines td { padding: 7px 10px; vertical-align: middle; }
@@ -186,6 +189,7 @@
 #purchase-editor .purchase-entry-lines .purchase-entry-unit { color: #64748b; font-size: 12px; }
 #purchase-editor .purchase-entry-lines .money { text-align: right; white-space: nowrap; font-size: 13px; }
 #purchase-editor .purchase-entry-lines button { width: 30px; height: 30px; min-height: 30px; padding: 5px; }
+#purchase-editor .purchase-entry-lines .purchase-item-create { width: auto; height: auto; min-height: 28px; padding: 3px 0; margin-top: 3px; }
 #purchase-editor .purchase-table-scroll { margin: 10px 0; }
 #purchase-editor .purchase-total { padding: 10px 14px; gap: 14px; }
 #purchase-editor .purchase-total strong { font-size: 18px; }
@@ -204,6 +208,9 @@
 .purchase-entry-toolbar__controls .ui-input { height: 38px; min-height: 38px; text-align: center; }
 .purchase-entry-toolbar__controls .ui-button { height: 38px; min-height: 38px; white-space: nowrap; }
 @media (max-width: 600px) {
+  #purchase-new-part .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .ui-dialog__content:has(#purchase-new-part) > .ui-dialog__footer { flex-wrap: wrap; }
+  .ui-dialog__content:has(#purchase-new-part) > .ui-dialog__footer .ui-button { width: 100%; }
   #purchase-editor .form-grid { grid-template-columns: minmax(0, 1fr); }
   .purchase-entry-toolbar { align-items: stretch; flex-direction: column; gap: 14px; }
   .purchase-entry-toolbar__controls .field { flex: 1; width: auto; }
