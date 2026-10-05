@@ -38,7 +38,14 @@ public sealed record JobSearchQuery(
     int? JobTypeId,
     JobStatus? Status);
 
-/// <summary>ช่วงเวลาที่ต้องการดูปฏิทินนัดหมาย — กรองด้วย AppointmentAt (ไม่ว่าง) ไม่ใช่ JobTypeId
+/// <summary>ปฏิทินจ๊อบวางตามวันไหน — วันนัดเข้า (AppointmentAt) หรือวันนัดส่งมอบ (PromiseAt)</summary>
+public enum JobCalendarDateField
+{
+    Appointment,
+    Promise
+}
+
+/// <summary>ช่วงเวลาที่ต้องการดูปฏิทิน — กรองด้วยฟิลด์วันที่ที่เลือก (ไม่ว่าง) ไม่ใช่ JobTypeId
 /// (JobTypeId ถูกเปลี่ยนเป็น "ปิดจ๊อบ" เองตอนถึงสถานะจบ — ดู JobService.TransitionAsync)</summary>
 public sealed record JobAppointmentQuery(
     string ShardKey,
@@ -47,7 +54,8 @@ public sealed record JobAppointmentQuery(
     DateTime ToUtc,
     string? Keyword,
     JobStatus? Status,
-    int Take);
+    int Take,
+    JobCalendarDateField DateField = JobCalendarDateField.Appointment);
 
 public sealed record JobCalendarDto(IReadOnlyList<JobDto> Items, bool Truncated, int Limit);
 
@@ -58,14 +66,32 @@ public sealed record CreateJobRequest(
     string? SenderName,
     string? SenderPhoneNumber,
     string? Detail,
-    DateTimeOffset? AppointmentAt = null);
+    DateTimeOffset? AppointmentAt = null,
+    DateTimeOffset? PromiseAt = null);
 
 public sealed record UpdateJobAppointmentRequest(DateTimeOffset AppointmentAt);
+
+/// <summary>ตั้ง/เลื่อนวันเวลานัดส่งมอบรถคืนลูกค้า (Job.PromiseAt)</summary>
+public sealed record UpdateJobPromiseRequest(DateTimeOffset PromiseAt);
+
+/// <summary>ประวัติการเปลี่ยนวันนัด (นัดเข้า/นัดส่งมอบ) ของจ๊อบ — อ่านจาก ActivityEvent
+/// Field = "appointment" | "promise" · From เป็น null เมื่อเป็นการตั้งค่าครั้งแรก</summary>
+public sealed record JobScheduleChangeDto(
+    long Id,
+    string Field,
+    DateTime? From,
+    DateTime? To,
+    string DescriptionTh,
+    string PerformedByName,
+    string Source,
+    DateTime OccurredAt);
 
 /// <summary>แปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่ (JobTypeId=9) พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง</summary>
 public sealed record ConvertToInShopRequest(DateTimeOffset ActualArrivalAt);
 
-public sealed record CreatedJobDto(Guid JobId, string JobNo);
+/// <param name="ExistingOpenJobNo">เลขจ๊อบที่ยังไม่ปิดของรถคันเดียวกันที่มีอยู่ก่อนเปิดจ๊อบนี้ (ถ้ามี) —
+/// ให้หน้าจอเตือนว่าเปิดซ้อนกับงานเดิม ไม่ใช่ข้อผิดพลาด</param>
+public sealed record CreatedJobDto(Guid JobId, string JobNo, string? ExistingOpenJobNo = null);
 
 /// <summary>
 /// จำนวนจ๊อบที่ "ยังไม่ปิด" แยกตามสถานะ สำหรับหน้าหลักของมือถือและ badge เมนู

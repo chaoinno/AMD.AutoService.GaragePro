@@ -431,6 +431,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         {
             job = await repo.JobAsync(input.JobId.Value, ct);
             Require(job is not null, "JOB_NOT_FOUND", "ไม่พบงานที่อ้างอิงในสาขาปัจจุบัน");
+            EnsureMatchesApprovedPlan(input, await BuildWithdrawalPlan(job!, ct));
         }
 
         await Warehouse(input.WarehouseId, ct);
@@ -457,6 +458,71 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             + (job is not null ? $" (งาน {job.JobNo})" : ""));
         return await BuildWithdrawalDto(movements, ct);
     }, true, ct);
+
+    /// <summary>รายการที่ใบเบิกของ job นี้ต้องเบิก — สินค้าที่ลูกค้าอนุมัติแล้วหักส่วนที่เบิกไปแล้ว</summary>
+    public Task<Result<StockWithdrawalPlanDto>> WithdrawalPlanAsync(Guid jobId, CancellationToken ct) => Run(async () =>
+    {
+        var job = await repo.JobAsync(jobId, ct);
+        Require(job is not null, "JOB_NOT_FOUND", "ไม่พบงานที่อ้างอิงในสาขาปัจจุบัน");
+        return await BuildWithdrawalPlan(job!, ct);
+    });
+
+    /// <summary>
+    /// [BIZ] ใบเบิกที่ผูก job เบิกได้ตามรายการที่ลูกค้าอนุมัติเท่านั้น (คำขอผู้ใช้ 2026-10-02) — เพิ่มสินค้าอื่นไม่ได้
+    /// และเบิกเกินยอดที่ยังไม่ได้เบิกไม่ได้ · **เบิกบางส่วนได้** (ของในคลังยังไม่พอ/ทยอยใช้) ยอดที่เหลือเบิกต่อในใบถัดไป
+    /// · นับเฉพาะใบเสนอราคาที่ลูกค้าเซ็นแล้ว (ยังไม่เซ็น = ยังไม่ใช่การอนุมัติที่ใช้เริ่มซ่อม/เก็บเงินได้)
+    /// · รายการนอกแคตตาล็อก และรหัสที่ไม่มีในแคตตาล็อก/ไม่ได้ตั้งสต็อก FIFO เบิกจากคลังไม่ได้อยู่แล้ว จึงแจ้งแยก
+    /// · จำนวนใบเสนอราคาเป็นทศนิยมได้ แต่สต็อกนับเป็นชิ้น — ปัดต่อบรรทัด (ขั้นต่ำ 1) แบบเดียวกับที่หน้าเว็บเคยใช้
+    /// </summary>
+    private async Task<StockWithdrawalPlanDto> BuildWithdrawalPlan(Job job, CancellationToken ct)
+    {
+        var signedPartLines = (await repo.JobQuotationsAsync(job.Id, ct))
+            .Where(q => q.Approval is not null)
+            .SelectMany(q => q.Lines)
+            .Where(l => l.Type == LineType.Part && l.ApprovalStatus == LineApprovalStatus.Approved)
+            .ToList();
+        var adHocCount = signedPartLines.Count(l => string.IsNullOrWhiteSpace(l.CatalogCode));
+        var approvedByCode = signedPartLines.Where(l => !string.IsNullOrWhiteSpace(l.CatalogCode))
+            .GroupBy(l => l.CatalogCode.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => (Code: g.Key, Name: g.First().Name,
+                Quantity: g.Sum(l => Math.Max(1, (int)Math.Round(l.Quantity, MidpointRounding.AwayFromZero)))))
+            .ToList();
+
+        var items = approvedByCode.Count == 0 ? [] : await repo.ItemsByCodesAsync(approvedByCode.Select(x => x.Code).ToList(), ct);
+        var withdrawn = (await repo.MovementsByJobAsync(job.Id, ct))
+            .GroupBy(x => x.CatalogItemId).ToDictionary(g => g.Key, g => g.Sum(x => Math.Abs(x.Quantity)));
+
+        var lines = new List<StockWithdrawalPlanLineDto>();
+        var unavailable = new List<string>();
+        foreach (var approved in approvedByCode)
+        {
+            var item = items.FirstOrDefault(x => string.Equals(x.Code, approved.Code, StringComparison.OrdinalIgnoreCase));
+            if (item is not { StockManaged: true, IsActive: true, Type: LineType.Part })
+            {
+                unavailable.Add($"{approved.Code} · {approved.Name}");
+                continue;
+            }
+            var done = withdrawn.GetValueOrDefault(item.Id);
+            lines.Add(new StockWithdrawalPlanLineDto(item.Id, item.Code, item.Name, item.Unit,
+                approved.Quantity, done, Math.Max(0, approved.Quantity - done), item.Available));
+        }
+        return new StockWithdrawalPlanDto(job.Id, job.JobNo, lines, unavailable, adHocCount);
+    }
+
+    private static void EnsureMatchesApprovedPlan(StockWithdrawalInput input, StockWithdrawalPlanDto plan)
+    {
+        var remaining = plan.Lines.Where(x => x.RemainingQuantity > 0).ToList();
+        Require(remaining.Count > 0, "WITHDRAWAL_NOTHING_TO_WITHDRAW",
+            "งานนี้ไม่มีสินค้าที่ลูกค้าอนุมัติเหลือให้เบิกแล้ว (ยังไม่อนุมัติ/ยังไม่เซ็น หรือเบิกครบแล้ว)");
+        foreach (var line in input.Lines)
+        {
+            var match = remaining.FirstOrDefault(x => x.CatalogItemId == line.CatalogItemId);
+            Require(match is not null, "WITHDRAWAL_NOT_APPROVED",
+                "มีสินค้าที่ไม่อยู่ในรายการที่ลูกค้าอนุมัติ หรือเบิกครบไปแล้ว — ใบเบิกของงานเพิ่มสินค้าเองไม่ได้");
+            Require(line.Quantity <= match!.RemainingQuantity, "WITHDRAWAL_EXCEEDS_APPROVED",
+                $"เบิก {match.Code} ได้ไม่เกินยอดที่อนุมัติและยังไม่ได้เบิก ({match.RemainingQuantity} {match.Unit})");
+        }
+    }
 
     /// <summary>อ่านใบเบิกสินค้าที่สร้างแล้วด้วยเลข operation เพื่อพิมพ์ซ้ำ</summary>
     public Task<Result<StockWithdrawalDto>> WithdrawalDetailAsync(Guid operationId, CancellationToken ct) => Run(async () =>

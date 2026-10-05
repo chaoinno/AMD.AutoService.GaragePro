@@ -64,7 +64,7 @@ function StockModal({ id, onClose }: { id: string; onClose: () => void }) {
       ]} />{!query.data.lots.length && <p className="purchase-empty">ยังไม่มีล็อตของดี</p>}</div></section>
       <section><h3>ประวัติการเคลื่อนไหว (ล่าสุด 200 รายการ)</h3><div className="purchase-table-scroll"><ManagementTable data={query.data.movements} columns={[
         { id: 'document', header: 'เอกสาร / เวลา', value: (m) => new Date(m.occurredAt).getTime(), size: 240, render: (m) => <>{m.documentNumber}<small className="purchase-sub">{dateTime(m.occurredAt)}</small></> },
-        { id: 'type', header: 'ประเภท', value: (m) => ({ opening: 'ยอดยกมา', receipt: 'รับสินค้า', issue: 'เบิก FIFO' }[m.type] || m.type), render: (m) => <>{{ opening: 'ยอดยกมา', receipt: 'รับสินค้า', issue: 'เบิก FIFO' }[m.type] || m.type}</> },
+        { id: 'type', header: 'ประเภท', value: (m) => ({ opening: 'ยอดยกมา', receipt: 'รับสินค้า', issue: 'เบิก FIFO', sale: 'ขายหน้าร้าน', 'sale-void': 'คืนสต็อก (ยกเลิกขาย)' }[m.type] || m.type), render: (m) => <>{{ opening: 'ยอดยกมา', receipt: 'รับสินค้า', issue: 'เบิก FIFO', sale: 'ขายหน้าร้าน', 'sale-void': 'คืนสต็อก (ยกเลิกขาย)' }[m.type] || m.type}</> },
         { id: 'quantity', header: 'เปลี่ยนแปลง', value: (m) => m.quantity, render: (m) => <>{m.quantity > 0 ? '+' : ''}{m.quantity}</> },
         { id: 'damaged', header: 'ชำรุดเพิ่ม', value: (m) => m.damagedQuantity, render: (m) => <>{m.damagedQuantity}</> },
         { id: 'balance', header: 'ก่อน → หลัง', value: (m) => m.balanceAfter, render: (m) => <>{m.balanceBefore} → {m.balanceAfter}</> },

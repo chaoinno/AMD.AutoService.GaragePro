@@ -163,7 +163,6 @@ class Totals {
     required this.vatRate,
     required this.vat,
     required this.total,
-    required this.deposit,
     required this.grandTotal,
     this.approved,
   });
@@ -175,7 +174,6 @@ class Totals {
   final double vatRate;
   final double vat;
   final double total;
-  final double deposit;
   final double grandTotal;
 
   /// ยอดเฉพาะรายการที่อนุมัติ — null เมื่อยังเป็นฉบับร่าง
@@ -189,7 +187,6 @@ class Totals {
         vatRate: _num(j['vatRate']),
         vat: _num(j['vat']),
         total: _num(j['total']),
-        deposit: _num(j['deposit']),
         grandTotal: _num(j['grandTotal']),
         approved: j['approved'] == null
             ? null

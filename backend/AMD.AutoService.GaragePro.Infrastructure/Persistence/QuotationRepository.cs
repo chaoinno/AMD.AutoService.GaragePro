@@ -18,13 +18,13 @@ public sealed class QuotationRepository(ServiceDbContext db) : IQuotationReposit
           .Include(q => q.Job)
           .FirstOrDefaultAsync(q => q.Id == id, ct);
 
-    public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) =>
-        db.Quotations
+    public async Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+        await db.Quotations
           .Include(q => q.Lines)
           .Include(q => q.Approval)
-          .Where(q => q.JobId == jobId)
-          .OrderByDescending(q => q.Version)
-          .FirstOrDefaultAsync(ct);
+          .Where(q => q.JobId == jobId && q.Status != QuotationStatus.Superseded)
+          .OrderBy(q => q.Version)
+          .ToListAsync(ct);
 
     public async Task<IReadOnlyList<Quotation>> GetQueueAsync(
         string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default)

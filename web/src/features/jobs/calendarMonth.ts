@@ -22,3 +22,11 @@ export function isSameDay(a: Date, b: Date): boolean {
 }
 
 export const WEEKDAY_LABELS_TH = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
+/// ย้ายวันเวลาไปไว้ที่ "วัน" ใหม่ โดยคงเวลา (ชั่วโมง:นาที) เดิมตามเวลาท้องถิ่นของเครื่อง — ใช้ตอนลากจ๊อบในปฏิทิน
+/// ไปวางบนวันอื่น (ปฏิทินแสดงเป็นวัน ไม่มีช่องเวลาให้เลือก จึงไม่เปลี่ยนเวลาที่นัดไว้เดิม)
+export function moveToDay(original: Date, day: Date): Date {
+  return new Date(
+    day.getFullYear(), day.getMonth(), day.getDate(),
+    original.getHours(), original.getMinutes(), original.getSeconds(), original.getMilliseconds())
+}

@@ -8,7 +8,9 @@ using AMD.AutoService.GaragePro.Application.Qc;
 using AMD.AutoService.GaragePro.Application.Quotations;
 using AMD.AutoService.GaragePro.Application.QuotationTemplates;
 using AMD.AutoService.GaragePro.Application.Reports;
+using AMD.AutoService.GaragePro.Application.Contact;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
+using AMD.AutoService.GaragePro.Infrastructure.Notifications;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using AMD.AutoService.GaragePro.Infrastructure.Storage;
 using AMD.AutoService.GaragePro.Application.Auth;
@@ -19,6 +21,8 @@ using AMD.AutoService.GaragePro.Application.Catalog;
 using AMD.AutoService.GaragePro.Application.CatalogCategories;
 using AMD.AutoService.GaragePro.Application.Suppliers;
 using AMD.AutoService.GaragePro.Application.Warehouses;
+using AMD.AutoService.GaragePro.Application.Promotions;
+using AMD.AutoService.GaragePro.Application.Sales;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +42,10 @@ public static class DependencyInjection
 
         services.Configure<FtpOptions>(
             configuration.GetSection(FtpOptions.SectionName));
+        services.Configure<LineMessagingOptions>(
+            configuration.GetSection(LineMessagingOptions.SectionName));
+        services.AddSingleton<IContactNotifier, LineContactNotifier>();
+        services.AddScoped<IContactRequestService, ContactRequestService>();
 
         services.Configure<VehicleImageOptions>(
             configuration.GetSection(VehicleImageOptions.SectionName));
@@ -80,6 +88,12 @@ public static class DependencyInjection
         services.AddScoped<IPosRepository, PosRepository>();
         services.AddScoped<IReceiptNumberGenerator, ReceiptNumberGenerator>();
         services.AddScoped<IPosService, PosService>();
+        services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
+        services.AddScoped<ITaxInvoiceService, TaxInvoiceService>();
+        services.AddScoped<IPromotionRepository, PromotionRepository>();
+        services.AddScoped<IPromotionService, PromotionService>();
+        services.AddScoped<ISaleRepository, SaleRepository>();
+        services.AddScoped<ISaleService, SaleService>();
         services.AddScoped<IHandoverRepository, HandoverRepository>();
         services.AddScoped<IHandoverService, HandoverService>();
         services.AddScoped<IJobChatRepository, JobChatRepository>();

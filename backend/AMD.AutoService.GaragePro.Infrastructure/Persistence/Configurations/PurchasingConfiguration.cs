@@ -81,6 +81,7 @@ public sealed class PurchasingConfiguration : IEntityTypeConfiguration<PurchaseD
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.OperationId });
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.OperationId, x.StockLotId }).IsUnique().HasFilter("[StockLotId] IS NOT NULL");
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.JobId }).HasFilter("[JobId] IS NOT NULL");
+        e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.SaleId }).HasFilter("[SaleId] IS NOT NULL");
     }
     public void Configure(EntityTypeBuilder<PurchaseNumberCounter> e)
     {

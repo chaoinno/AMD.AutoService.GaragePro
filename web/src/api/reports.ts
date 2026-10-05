@@ -10,7 +10,11 @@ export type DashboardReport = {
   waitingPaymentCount: number
   collectedToday: number
   receiptsIssuedToday: number
+  /// API เก่า (ก่อนมี POS) ไม่ส่งฟิลด์นี้ — ผู้ใช้ต้องรับกรณี undefined
+  retailToday?: RetailSalesToday
 }
+
+export type RetailSalesToday = { billCount: number; totalAmount: number; itemQuantity: number; draftCount: number }
 
 export type StatusDuration = { status: string; statusLabelTh: string; segmentCount: number; averageHours: number }
 export type StuckJob = { jobId: string; jobNo: string; customerName: string; status: string; statusLabelTh: string; hoursInStatus: number; promiseAt: string | null; isOverdue: boolean }
@@ -114,3 +118,38 @@ export const voidWorkInterval = (id: string, reason: string) =>
     method: 'DELETE',
     body: JSON.stringify({ reason }),
   })
+
+// ---------- ขายหน้าร้าน (docs/11-retail-sale-pos.md) ----------
+// ต้นทุน/กำไรเป็น null (หรือไม่มาเลยเพราะ WhenWritingNull) เมื่อผู้ใช้ไม่มีสิทธิ์เห็นต้นทุน
+export type RetailDaily = { date: string; billCount: number; totalAmount: number }
+export type RetailPaymentMethod = { method: 'cash' | 'transfer' | 'card' | 'qr'; paymentCount: number; amount: number }
+export type RetailTopProduct = { code: string; name: string; unit: string; quantity: number; billCount: number; netAmount: number; costAmount?: number | null; marginAmount?: number | null }
+export type RetailPromotionUsage = { name: string; scope: 'line' | 'bill'; useCount: number; discountAmount: number }
+export type RetailSeller = { sellerName: string; billCount: number; totalAmount: number }
+export type RetailVoidedSale = { saleId: string; receiptNo?: string | null; completedAt?: string | null; voidedAt?: string | null; voidedByName?: string | null; voidReason?: string | null; totalAmount: number }
+export type RetailSalesReport = {
+  fromDate: string
+  toDate: string
+  billCount: number
+  totalAmount: number
+  netAmount: number
+  vatAmount: number
+  averageBillAmount: number
+  discountAmount: number
+  itemQuantity: number
+  costAmount?: number | null
+  marginAmount?: number | null
+  marginPercent?: number | null
+  voidedCount: number
+  voidedAmount: number
+  daily: RetailDaily[]
+  byPaymentMethod: RetailPaymentMethod[]
+  topProducts: RetailTopProduct[]
+  promotions: RetailPromotionUsage[]
+  bySeller: RetailSeller[]
+  voidedSales: RetailVoidedSale[]
+}
+
+/// fromDate/toDate = วันที่ตามปฏิทินไทย yyyy-MM-dd (รวมทั้งสองวัน) — server แปลงเป็นขอบเขต UTC เอง
+export const getRetailSalesReport = (fromDate: string, toDate: string) =>
+  apiRequest<RetailSalesReport>(`/api/v1/reports/retail-sales?fromDate=${fromDate}&toDate=${toDate}`)

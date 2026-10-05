@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMonthGrid, dayKey, isSameDay } from '../src/features/jobs/calendarMonth.ts'
+import { buildMonthGrid, dayKey, isSameDay, moveToDay } from '../src/features/jobs/calendarMonth.ts'
 
 test('buildMonthGrid returns 42 days starting on a Sunday', () => {
   // กันยายน 2569 (2026) เริ่มวันอังคาร — ต้องมีวันจากเดือนสิงหาคมนำหน้าจนกว่าจะถึงวันอาทิตย์
@@ -48,4 +48,23 @@ test('rangeStart/rangeEnd bound exactly the 42 rendered days', () => {
   assert.ok(isSameDay(grid.rangeStart, grid.days[0]))
   const dayAfterLast = new Date(grid.days[41].getFullYear(), grid.days[41].getMonth(), grid.days[41].getDate() + 1)
   assert.ok(isSameDay(grid.rangeEnd, dayAfterLast))
+})
+
+test('moveToDay keeps the original local time of day', () => {
+  const original = new Date(2026, 9, 5, 14, 30)
+  const moved = moveToDay(original, new Date(2026, 9, 12))
+  assert.equal(moved.getFullYear(), 2026)
+  assert.equal(moved.getMonth(), 9)
+  assert.equal(moved.getDate(), 12)
+  assert.equal(moved.getHours(), 14)
+  assert.equal(moved.getMinutes(), 30)
+})
+
+test('moveToDay crosses a month boundary without shifting the time', () => {
+  const original = new Date(2026, 9, 31, 8, 15)
+  const moved = moveToDay(original, new Date(2026, 10, 2))
+  assert.equal(moved.getMonth(), 10)
+  assert.equal(moved.getDate(), 2)
+  assert.equal(moved.getHours(), 8)
+  assert.equal(moved.getMinutes(), 15)
 })

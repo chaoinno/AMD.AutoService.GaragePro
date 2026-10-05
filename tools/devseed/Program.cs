@@ -171,7 +171,7 @@ return 0;
 
 async Task<SeedResult> SeedDraftAsync(JobRow job, long? techId)
 {
-    var q = await CreateWithLinesAsync(job, techId, deposit: 0m);
+    var q = await CreateWithLinesAsync(job, techId);
     if (q is null) return SeedResult.Failed("ฉบับร่าง (แก้ไขได้)", "สร้างไม่สำเร็จ");
 
     Console.WriteLine($"  ✓ ฉบับร่าง {q.Code}");
@@ -185,7 +185,7 @@ async Task<SeedResult> SeedDraftAsync(JobRow job, long? techId)
 
 async Task<SeedResult> SeedSentAsync(JobRow job, long? techId)
 {
-    var q = await CreateWithLinesAsync(job, techId, deposit: 1000m);
+    var q = await CreateWithLinesAsync(job, techId);
     if (q is null) return SeedResult.Failed("รออนุมัติ", "สร้างไม่สำเร็จ");
 
     var sent = await PostAsync($"/quotations/{q.QuotationId}/send", new { });
@@ -202,7 +202,7 @@ async Task<SeedResult> SeedSentAsync(JobRow job, long? techId)
 
 async Task<SeedResult> SeedSignedAsync(JobRow job, long? techId)
 {
-    var q = await CreateWithLinesAsync(job, techId, deposit: 500m);
+    var q = await CreateWithLinesAsync(job, techId);
     if (q is null) return SeedResult.Failed("อนุมัติบางส่วน", "สร้างไม่สำเร็จ");
 
     if (await PostAsync($"/quotations/{q.QuotationId}/send", new { }) is null)
@@ -250,7 +250,7 @@ async Task<SeedResult> SeedSignedAsync(JobRow job, long? techId)
 
 async Task<SeedResult> SeedRevisedAsync(JobRow job, long? techId)
 {
-    var q = await CreateWithLinesAsync(job, techId, deposit: 0m);
+    var q = await CreateWithLinesAsync(job, techId);
     if (q is null) return SeedResult.Failed("ฉบับแก้ไข", "สร้างไม่สำเร็จ");
 
     if (await PostAsync($"/quotations/{q.QuotationId}/send", new { }) is null)
@@ -280,12 +280,11 @@ async Task<SeedResult> SeedRevisedAsync(JobRow job, long? techId)
 
 // ─────────────────────────────────────────────────────── helpers
 
-async Task<SeedResult?> CreateWithLinesAsync(JobRow job, long? techId, decimal deposit)
+async Task<SeedResult?> CreateWithLinesAsync(JobRow job, long? techId)
 {
     var created = await PostAsync("/quotations", new
     {
         jobId = job.JobId,
-        depositAmount = deposit,
         validUntil = (DateTime?)null
     });
 

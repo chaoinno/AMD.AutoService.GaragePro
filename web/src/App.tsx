@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactElement, type ReactNode } from 'react'
 import { Monitor, RefreshCw, TriangleAlert } from 'lucide-react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
@@ -21,10 +21,23 @@ import { DashboardReportPage } from './features/reports/DashboardReportPage'
 import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
 import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
 import { StockReportPage } from './features/reports/StockReportPage'
+import { RetailSalesReportPage } from './features/reports/RetailSalesReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
+import { SalesPage } from './features/sales/SalesPage'
+import { PromotionPage } from './features/master-data/PromotionPage'
 import { useSession } from './lib/session'
 
 export default function App() {
+  const { pathname } = useLocation()
+  // [UI] หน้า landing/เข้าสู่ระบบเป็นหน้าสาธารณะที่ต้องเปิดบนมือถือได้ (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard
+  // ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
+  if (pathname === '/login') {
+    return (
+      <AppErrorBoundary>
+        <LoginRoute />
+      </AppErrorBoundary>
+    )
+  }
   return (
     <AppErrorBoundary>
       <div className="desktop-guard" role="alert">
@@ -37,7 +50,6 @@ export default function App() {
       <div className="desktop-app">
         <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/login" element={<LoginRoute />} />
           <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
@@ -51,10 +63,14 @@ export default function App() {
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
+          <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
+          <Route path="/sales/:id" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
+          <Route path="/promotions" element={<ProtectedRoute><PromotionPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Navigate to="/reports/dashboard" replace /></ProtectedRoute>} />
           <Route path="/reports/dashboard" element={<ProtectedRoute><DashboardReportPage /></ProtectedRoute>} />
           <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
           <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
+          <Route path="/reports/retail-sales" element={<ProtectedRoute><RetailSalesReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />

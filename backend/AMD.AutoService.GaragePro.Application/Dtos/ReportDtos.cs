@@ -15,7 +15,11 @@ public sealed record DashboardReportDto(
     int WaitingQcCount,
     int WaitingPaymentCount,
     decimal CollectedToday,
-    int ReceiptsIssuedToday);
+    int ReceiptsIssuedToday,
+    RetailSalesTodayDto? RetailToday = null);
+
+/// <summary>widget ขายหน้าร้านบนแดชบอร์ด — นับเฉพาะบิลที่ชำระแล้วและยังไม่ถูกยกเลิก (docs/11)</summary>
+public sealed record RetailSalesTodayDto(int BillCount, decimal TotalAmount, int ItemQuantity, int DraftCount);
 
 // ---------- รอบเวลาต่อขั้นตอนงาน (Job Cycle Time / SLA) ----------
 
@@ -65,3 +69,36 @@ public sealed record StockReportDto(
     decimal DamagedValuation,
     IReadOnlyList<StockAgingBucketDto> AgingBuckets,
     IReadOnlyList<AgingStockLotDto> OldestLots);
+
+// ---------- ขายหน้าร้าน (Retail POS) — docs/11-retail-sale-pos.md ----------
+
+/// <summary>
+/// [BIZ] ยอดขายนับเฉพาะบิล Completed ตาม "วันที่ชำระเงิน" (CompletedAt, วันตามเวลาไทย)
+/// บิลที่ชำระในช่วงแล้วถูกยกเลิกภายหลังไม่นับในยอด แต่แสดงแยกใน VoidedSales · ต้นทุน/กำไร strip ตาม role
+/// </summary>
+public sealed record RetailSalesReportDto(
+    DateOnly FromDate, DateOnly ToDate,
+    int BillCount, decimal TotalAmount, decimal NetAmount, decimal VatAmount, decimal AverageBillAmount,
+    decimal DiscountAmount, int ItemQuantity,
+    decimal? CostAmount, decimal? MarginAmount, decimal? MarginPercent,
+    int VoidedCount, decimal VoidedAmount,
+    IReadOnlyList<RetailDailyDto> Daily,
+    IReadOnlyList<RetailPaymentMethodDto> ByPaymentMethod,
+    IReadOnlyList<RetailTopProductDto> TopProducts,
+    IReadOnlyList<RetailPromotionUsageDto> Promotions,
+    IReadOnlyList<RetailSellerDto> BySeller,
+    IReadOnlyList<RetailVoidedSaleDto> VoidedSales);
+
+public sealed record RetailDailyDto(DateOnly Date, int BillCount, decimal TotalAmount);
+public sealed record RetailPaymentMethodDto(string Method, int PaymentCount, decimal Amount);
+
+/// <summary>ยอดต่อสินค้าเป็น "ยอดตามบรรทัด" หลังส่วนลด/โปรรายบรรทัด แต่ก่อนส่วนลดท้ายบิลและ VAT</summary>
+public sealed record RetailTopProductDto(
+    string Code, string Name, string Unit, int Quantity, int BillCount, decimal NetAmount,
+    decimal? CostAmount, decimal? MarginAmount);
+
+public sealed record RetailPromotionUsageDto(string Name, string Scope, int UseCount, decimal DiscountAmount);
+public sealed record RetailSellerDto(string SellerName, int BillCount, decimal TotalAmount);
+public sealed record RetailVoidedSaleDto(
+    Guid SaleId, string? ReceiptNo, DateTime? CompletedAt, DateTime? VoidedAt, string? VoidedByName,
+    string? VoidReason, decimal TotalAmount);

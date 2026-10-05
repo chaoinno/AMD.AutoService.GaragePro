@@ -13,7 +13,7 @@ import '../../widgets/common.dart';
 import '../jobs/data/jobs_providers.dart';
 
 /// รับรถ — ค้นหาลูกค้า → เลือกรถ → เปิดจ๊อบ
-/// [BIZ] 1 รถ 1 จ๊อบที่เปิดอยู่ต่อสาขา — เปิดซ้ำ server จะบล็อกด้วย JOB_DUPLICATE_OPEN
+/// [BIZ] รถที่ยังมีงานค้างเปิดจ๊อบซ้อนได้ (ยกเลิก JOB_DUPLICATE_OPEN 2026-10-02) — server บอกเลขจ๊อบเดิมกลับมาให้เตือน
 class CreateJobPage extends ConsumerStatefulWidget {
   const CreateJobPage({super.key});
 
@@ -404,6 +404,26 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
 
       await ref.read(jobListProvider.notifier).load();
       if (!mounted) return;
+
+      final existing = created.existingOpenJobNo;
+      if (existing != null) {
+        // ScaffoldMessenger อยู่ระดับแอป จึงยังเห็นหลัง pushReplacement
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Row(children: [
+            const Icon(Icons.warning_amber_rounded, color: T.amber500),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'รถคันนี้ยังมีงานที่ยังไม่เสร็จ ($existing) — ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ',
+                style: const TextStyle(fontSize: 15, height: 1.6),
+              ),
+            ),
+          ]),
+          backgroundColor: T.navy900,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+        ));
+      }
 
       // ไปต่อที่การ์ดจ๊อบทันที — ขั้นถัดไปคือเช็คลิสต์สภาพรถ
       context.pushReplacement(Routes.job(created.jobId));

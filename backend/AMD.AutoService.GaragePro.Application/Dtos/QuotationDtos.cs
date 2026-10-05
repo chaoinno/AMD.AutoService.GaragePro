@@ -25,7 +25,7 @@ public sealed record CatalogItemDto(
     int Reserved,
     int OnOrder,
     int Available,
-    string? EtaNote);
+    string? EtaNote, Guid Id = default);
 
 // ---------- ใบเสนอราคา ----------
 
@@ -96,7 +96,6 @@ public sealed record QuotationTotalsDto(
     decimal VatRate,
     decimal Vat,
     decimal Total,
-    decimal Deposit,
     decimal GrandTotal,
     decimal? TotalCost,      // null เมื่อ role ไม่มีสิทธิ์
     decimal? MarginAmount,
@@ -146,7 +145,8 @@ public sealed record QuotationValidationDto(
 
 // ---------- คำสั่ง ----------
 
-public sealed record CreateQuotationRequest(Guid JobId, DateTime? ValidUntil, decimal DepositAmount = 0m);
+/// <summary>[BIZ] ตัดเรื่องค่ามัดจำออกแล้ว (2026-10-02) — เดิมมี DepositAmount แต่ไม่มี client ไหนส่งมาจริง</summary>
+public sealed record CreateQuotationRequest(Guid JobId, DateTime? ValidUntil);
 
 public sealed record UpsertLineRequest(
     string CatalogCode,

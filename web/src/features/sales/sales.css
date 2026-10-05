@@ -1,0 +1,250 @@
+/* ขายสินค้าหน้าร้าน (POS) — docs/11-retail-sale-pos.md
+   ใช้ token จาก :root ใน index.css เท่านั้น ไม่เพิ่มสีใหม่นอกจากสถานะบิล (ชุดเดียวกับ purchase-status) */
+
+/* ---------- หัวหน้า ---------- */
+.sale-page-heading { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-bottom: 16px; }
+.sale-page-heading__icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: 12px; background: var(--blue-50); color: var(--blue-600); }
+.sale-page-heading__icon svg { width: 22px; height: 22px; }
+.sale-page-heading h2 { font-size: 21px; line-height: 1.3; }
+.sale-page-heading p { margin-top: 2px; color: var(--muted); font-size: 14px; }
+.sale-page-heading__actions { display: flex; gap: 8px; }
+
+.sale-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 14px; }
+.sale-filters .input-with-icon { flex: 1; }
+.sale-filters > select { max-width: 200px; }
+
+.sale-draft-banner { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 10px 14px; border: 1px solid #edcf8e; border-radius: 10px; background: #fff8e8; color: #8a5a00; font-size: 14px; }
+.sale-draft-banner svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.sale-draft-banner span { flex: 1; }
+
+.sale-link { padding: 0; border: 0; background: none; color: var(--blue-600); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; font-weight: 600; cursor: pointer; }
+.sale-link:hover { text-decoration: underline; }
+.sale-link:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+.sale-muted { color: var(--muted); }
+.sale-table-note { padding: 10px 14px; }
+
+.sale-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.sale-status svg { width: 15px; height: 15px; }
+.sale-status--draft { background: #fff7ed; color: #9a3412; }
+.sale-status--completed { background: #ecfdf5; color: #047857; }
+.sale-status--voided { background: #fff1f2; color: #be123c; }
+.sale-status--cancelled { background: #f1f5f9; color: #475569; }
+
+.sale-editor-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.sale-editor-heading__copy { min-width: 0; flex: 1; }
+.sale-editor-heading__eyebrow { color: var(--blue-600); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+.sale-editor-heading h2 { overflow: hidden; font-size: 21px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.sale-editor-heading p { color: var(--muted); font-size: 14px; }
+
+.sale-save-indicator { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; white-space: nowrap; }
+.sale-save-indicator svg { width: 15px; height: 15px; }
+.sale-save-indicator--ok { color: #047857; }
+.sale-save-indicator--error { color: var(--red-600); }
+
+.sale-save-error { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 14px; }
+.sale-save-error > :first-child { flex: 1; }
+
+/* ---------- editor 3 พาเนล ---------- */
+.sale-editor-grid { display: grid; align-items: start; grid-template-columns: 290px minmax(0, 1fr) 350px; gap: 16px; }
+
+.sale-panel { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 14px; background: white; box-shadow: 0 8px 24px rgb(15 36 64 / 4%); }
+.sale-panel .panel-heading h3 { font-size: 16px; }
+
+.sale-hint { display: flex; align-items: center; gap: 6px; margin-top: 8px; color: var(--muted); font-size: 13px; }
+.sale-hint svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.sale-hint--notice { color: var(--navy-700); font-weight: 600; }
+
+/* 01 สินค้า */
+.sale-product-search { padding: 12px 12px 4px; }
+.sale-product-search__input { min-height: 44px; font-size: 16px; }
+.sale-product-results { display: grid; max-height: calc(100vh - 290px); gap: 8px; overflow-y: auto; padding: 8px 12px 12px; scrollbar-width: thin; }
+.sale-product-card { display: grid; gap: 4px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: white; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease; }
+.sale-product-card:hover:not(:disabled) { border-color: var(--blue-600); box-shadow: 0 6px 16px rgb(27 107 227 / 10%); }
+.sale-product-card:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.sale-product-card:disabled { background: #f8fafc; cursor: not-allowed; }
+.sale-product-card:disabled .sale-product-card__name { color: var(--muted); }
+.sale-product-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sale-product-card__code { color: var(--blue-600); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 700; }
+.sale-product-card__inbill { padding: 1px 7px; border-radius: 6px; background: var(--blue-50); color: #1552b3; font-size: 12px; font-weight: 700; }
+.sale-product-card__name { font-size: 15px; line-height: 1.4; }
+.sale-product-card__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
+.sale-product-card__meta .money { font-weight: 700; }
+.sale-product-card__meta > span:last-child { display: inline-flex; align-items: center; gap: 4px; }
+.sale-product-card__meta svg { width: 13px; height: 13px; }
+.sale-product-card__adding { display: inline-flex; align-items: center; gap: 5px; color: var(--blue-600); font-size: 12px; }
+.sale-product-card__adding svg { width: 13px; height: 13px; }
+.stock-out { color: var(--red-600); font-weight: 600; }
+
+.sale-inline-state { display: grid; justify-items: center; gap: 6px; padding: 24px 12px; border: 1px dashed #cbd5e1; border-radius: 10px; color: var(--muted); font-size: 14px; text-align: center; }
+.sale-inline-state svg { width: 22px; height: 22px; }
+.sale-inline-state small { color: var(--faint); font-size: 12px; }
+.sale-inline-state--error { border-color: #efb7b7; background: #fff5f5; color: #a31d1d; }
+
+/* 02 รายการขาย */
+.sale-lines { margin: 0; padding: 0; list-style: none; }
+.sale-line { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.sale-line:last-child { border-bottom: 0; }
+.sale-line--short { background: #fffaf2; }
+.sale-line__title { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto 34px; align-items: center; gap: 10px; }
+.sale-line__name { display: flex; min-width: 0; flex-direction: column; }
+.sale-line__name strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.sale-line__name small { color: var(--muted); font-size: 13px; }
+.sale-line__net { display: flex; align-items: flex-end; flex-direction: column; line-height: 1.3; }
+.sale-line__net small { color: var(--faint); font-size: 11px; }
+.sale-line__net .money { font-size: 16px; font-weight: 700; }
+.sale-line__fields { display: grid; grid-template-columns: 136px 92px minmax(0, 1fr); gap: 10px; margin: 10px 0 0 36px; }
+.sale-line__breakdown { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 8px 0 0 36px; color: var(--muted); font-size: 13px; }
+.sale-line__breakdown .money { color: inherit; }
+.sale-line__stock,
+.sale-line__error { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0 36px; font-size: 13px; font-weight: 600; }
+.sale-line__stock { color: var(--orange-600); }
+.sale-line__error { color: var(--red-600); }
+.sale-line__stock svg,
+.sale-line__error svg { width: 15px; height: 15px; flex: 0 0 auto; margin-top: 2px; }
+
+.sale-field { display: grid; min-width: 0; gap: 4px; }
+.sale-field > span:first-child { color: var(--muted); font-size: 13px; font-weight: 600; }
+.sale-field .ui-input,
+.sale-field .ui-select { min-height: 40px; font-size: 15px; }
+.sale-field .ui-input[aria-invalid='true'] { border-color: var(--red-600); }
+.sale-field__error,
+.sale-field__warn { display: flex; align-items: flex-start; gap: 5px; font-size: 12px; font-weight: 600; }
+.sale-field__error { color: var(--red-600); }
+.sale-field__warn { color: #8a5a00; }
+.sale-field__warn svg { width: 14px; height: 14px; flex: 0 0 auto; margin-top: 1px; }
+
+.sale-stepper { display: grid; grid-template-columns: 38px minmax(0, 1fr) 38px; min-height: 40px; overflow: hidden; border: 1px solid var(--input); border-radius: var(--radius-input); background: white; }
+.sale-stepper:focus-within { border-color: var(--ring); box-shadow: 0 0 0 3px rgb(27 107 227 / 14%); }
+.sale-stepper button { display: grid; place-items: center; border: 0; background: #f8fafc; color: var(--navy-700); cursor: pointer; }
+.sale-stepper button:hover:not(:disabled) { background: var(--blue-50); color: var(--blue-600); }
+.sale-stepper button:disabled { color: #cbd5e1; cursor: not-allowed; }
+.sale-stepper button svg { width: 16px; height: 16px; }
+.sale-stepper input { width: 100%; min-width: 0; border: 0; border-inline: 1px solid var(--border); background: white; color: var(--navy-900); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 15px; font-variant-numeric: tabular-nums; text-align: center; outline: none; }
+.sale-stepper input[aria-invalid='true'] { color: var(--red-600); }
+
+/* 03 สรุปและชำระเงิน */
+.sale-summary-panel { overflow: visible; }
+.sale-summary-panel__sticky { position: sticky; top: 98px; }
+.sale-summary-section { display: grid; gap: 12px; padding: 14px; border-bottom: 1px solid var(--border); }
+.sale-summary-section h4 { color: var(--navy-700); font-size: 14px; }
+
+.sale-customer { display: grid; gap: 10px; }
+.sale-customer__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sale-customer__label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.sale-customer__label svg { width: 15px; height: 15px; }
+.sale-customer__walkin { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; }
+.sale-customer__selected { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 12px; border: 1px solid #bde2da; border-radius: 10px; background: #f0faf8; }
+.sale-customer__selected span { display: flex; min-width: 0; flex-direction: column; }
+.sale-customer__selected strong { overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.sale-customer__selected small { color: var(--muted); font-size: 13px; }
+
+.sale-segmented { display: inline-flex; padding: 3px; border-radius: 10px; background: #eef2f7; }
+.sale-segmented button { min-width: 44px; min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.sale-segmented button.is-active { background: white; color: var(--navy-900); box-shadow: 0 1px 3px rgb(15 36 64 / 14%); }
+.sale-segmented button:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.sale-segmented--small button { min-height: 30px; font-size: 13px; }
+.sale-discount-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px; }
+
+.sale-check { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+.sale-check input { width: 18px; height: 18px; accent-color: var(--blue-600); }
+
+.sale-money-summary { font-size: 14px; }
+.sale-checkout-area { display: grid; gap: 8px; padding: 0 14px 14px; }
+.sale-checkout-button { width: 100%; min-height: 56px; font-size: 17px; }
+.sale-checkout-button .money { color: inherit; font-size: 18px; }
+
+/* ---------- modal ชำระเงิน ---------- */
+.sale-checkout { display: grid; gap: 14px; }
+.sale-checkout__total { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-radius: 12px; background: var(--navy-900); color: white; font-size: 16px; font-weight: 700; }
+.sale-checkout__total .money { color: white; font-size: 24px; }
+.sale-pay-rows { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sale-pay-row { display: grid; grid-template-columns: 150px 150px minmax(0, 1fr) 36px; align-items: end; gap: 10px; }
+.sale-checkout__split { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sale-checkout__balance { color: var(--orange-600); font-size: 14px; font-weight: 700; }
+.sale-checkout__balance .money { color: inherit; }
+.sale-checkout__balance.is-ok { color: #047857; }
+.sale-cash { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px 14px; padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: #f8fafc; }
+.sale-cash__quick { display: flex; flex-wrap: wrap; align-items: end; gap: 6px; }
+.sale-cash__quick button { min-height: 40px; padding: 0 12px; border: 1px solid var(--input); border-radius: 8px; background: white; color: var(--navy-900); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.sale-cash__quick button.is-active { border-color: var(--blue-600); background: var(--blue-50); color: #1552b3; }
+.sale-cash__change { display: flex; grid-column: 1 / -1; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px dashed #cbd5e1; font-size: 16px; font-weight: 700; }
+.sale-cash__change .money { color: #047857; font-size: 22px; }
+.sale-cash__change.is-short .money { color: var(--red-600); }
+.sale-checkout__pending { display: flex; gap: 10px; padding: 14px; border: 1px solid #edcf8e; border-radius: 12px; background: #fff8e8; color: #8a5a00; }
+.sale-checkout__pending > svg { width: 20px; height: 20px; flex: 0 0 auto; }
+.sale-checkout__pending p { margin: 4px 0 6px; font-size: 14px; }
+
+/* ---------- หน้าบิลที่ปิดแล้ว ---------- */
+.sale-detail-grid { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; }
+.sale-detail-document { min-width: 0; overflow-x: auto; }
+.sale-detail-aside { position: sticky; top: 98px; }
+.sale-detail-actions { display: grid; gap: 8px; padding: 14px; border-bottom: 1px solid var(--border); }
+.sale-detail-payments { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sale-detail-payments li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sale-detail-payments span { display: flex; flex-direction: column; }
+.sale-detail-payments small { color: var(--muted); font-size: 12px; }
+.sale-void-button { width: 100%; border-color: #efb7b7; color: var(--red-600); }
+
+.sale-change-banner { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 14px 18px; border: 1px solid #bde2da; border-radius: 12px; background: #f0faf8; color: #0b6d5e; font-size: 17px; font-weight: 700; }
+.sale-change-banner svg { width: 24px; height: 24px; }
+.sale-change-banner .money { margin-left: auto; color: #0b6d5e; font-size: 26px; }
+.sale-void-banner { display: flex; gap: 10px; margin-bottom: 14px; padding: 12px 16px; border: 1px solid #f4b8c4; border-radius: 12px; background: #fff1f2; color: #9f1239; }
+.sale-void-banner svg { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 2px; }
+.sale-void-banner p { margin-top: 2px; font-size: 14px; }
+
+/* ใบเสร็จ */
+.sale-receipt-document .sale-col-qty { width: 80px; }
+.sale-receipt-document .sale-col-money { width: 86px; }
+.sale-receipt-document { position: relative; overflow: hidden; }
+.sale-receipt-document__sub { display: block; color: var(--muted); font-size: 10px; }
+.sale-receipt-document__payments { display: grid; gap: 2px; margin: 4px 0 8px; padding: 0; list-style: none; }
+.sale-receipt-document__payments li { display: flex; justify-content: space-between; gap: 12px; max-width: 260px; }
+.sale-receipt-watermark { position: absolute; top: 38%; left: 50%; z-index: 1; padding: 6px 28px; border: 6px solid rgb(192 38 38 / 35%); border-radius: 12px; color: rgb(192 38 38 / 35%); font-size: 64px; font-weight: 800; pointer-events: none; transform: translate(-50%, -50%) rotate(-18deg); white-space: nowrap; }
+
+/* ใบเสร็จกระดาษม้วน (เครื่องพิมพ์ความร้อน) — ขาวดำล้วน หัวพิมพ์ไม่มีสีเทา จึงไม่ใช้สีรองในเนื้อใบเสร็จ */
+.sale-receipt-format { display: grid; gap: 6px; }
+.sale-receipt-format > span { font-size: 13px; font-weight: 700; }
+.sale-receipt-format .ui-tabs__list { width: 100%; }
+.sale-receipt-format .ui-tabs__trigger { flex: 1 1 0; padding: 6px 4px; white-space: nowrap; }
+.sale-receipt-format p { margin: 0; font-size: 12px; }
+.sale-thermal-preview { display: flex; justify-content: center; padding: 24px 16px; border: 1px solid var(--border); border-radius: 12px; background: #e2e8f0; }
+.sale-thermal { box-sizing: border-box; flex: 0 0 auto; padding: 4mm 4mm 6mm; background: white; box-shadow: 0 2px 10px rgb(15 23 42 / 18%); color: #000; font-size: 12px; line-height: 1.35; }
+.sale-thermal--roll58 { padding: 3mm 5mm 6mm; font-size: 10.5px; }
+.sale-thermal * { color: #000; }
+.sale-thermal hr { margin: 2mm 0; border: 0; border-top: 1px dashed #000; }
+.sale-thermal__head { display: grid; gap: 1px; margin-bottom: 2mm; text-align: center; }
+.sale-thermal__brand { font-size: 1.5em; font-weight: 800; }
+.sale-thermal__title { margin-top: 1mm; font-size: 1.15em; }
+.sale-thermal__voided { margin-top: 1mm; padding: 1mm 0; border: 2px solid #000; font-size: 1.15em; }
+.sale-thermal__meta { display: grid; gap: 1px; margin: 0; }
+.sale-thermal__meta div { display: flex; gap: 2mm; }
+.sale-thermal__meta dt { flex: 0 0 auto; min-width: 5.2em; }
+.sale-thermal__meta dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+.sale-thermal__lines { display: grid; gap: 1.5mm; margin: 0; padding: 0; list-style: none; }
+.sale-thermal__name { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.sale-thermal__row { display: flex; align-items: baseline; justify-content: space-between; gap: 2mm; }
+.sale-thermal__row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.sale-thermal__row--sub { padding-left: 3mm; }
+.sale-thermal__money { flex: 0 0 auto; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sale-thermal__totals { display: grid; gap: 1px; }
+.sale-thermal__grand { margin-top: 1mm; font-size: 1.3em; font-weight: 800; }
+.sale-thermal__note { margin: 2mm 0 0; overflow-wrap: anywhere; }
+.sale-thermal__foot { display: grid; gap: 1px; margin-top: 3mm; text-align: center; }
+.sale-thermal__foot small { font-size: 0.85em; }
+
+@media (max-width: 1360px) {
+  .sale-editor-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; gap: 12px; }
+  .sale-line__fields { grid-template-columns: 128px 84px minmax(0, 1fr); }
+}
+
+@media print {
+  .sale-detail-grid { display: block; }
+  .sale-detail-document { overflow: visible; }
+  .sale-receipt-watermark { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+
+  /* กระดาษม้วน: @page margin 0 มาจาก SaleThermalReceipt — ต้องล้าง padding ของ layout ด้วย ไม่งั้นใบเสร็จเยื้องขวาหลุดขอบกระดาษ */
+  body:has(.sale-thermal) .app-shell__body,
+  body:has(.sale-thermal) .app-main { margin: 0 !important; padding: 0 !important; }
+  .sale-thermal-preview { display: block; padding: 0; border: 0; border-radius: 0; background: none; }
+  .sale-thermal { box-shadow: none; }
+}

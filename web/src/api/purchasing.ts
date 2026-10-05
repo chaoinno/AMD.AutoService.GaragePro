@@ -47,6 +47,10 @@ export type Withdrawal = { operationId: string; documentNumber: string; warehous
 export type WithdrawalSummary = { operationId: string; documentNumber: string; occurredAt: string; requesterName: string; issuedByName: string; lineCount: number; totalQuantity: number; reason: string }
 export const createWithdrawal = (input: WithdrawalInput) => apiRequest<Withdrawal>('/api/v1/inventory/withdrawals', { method: 'POST', body: JSON.stringify(input) })
 export const getWithdrawal = (operationId: string) => apiRequest<Withdrawal>(`/api/v1/inventory/withdrawals/${operationId}`)
+// [BIZ] ใบเบิกที่ผูก job ต้องเบิกตาม plan นี้พอดี (ทุกบรรทัดที่ remainingQuantity > 0) — API ปฏิเสธถ้าเพิ่ม/ลบ/แก้จำนวน
+export type WithdrawalPlanLine = { catalogItemId: string; code: string; name: string; unit: string; approvedQuantity: number; withdrawnQuantity: number; remainingQuantity: number; available: number }
+export type WithdrawalPlan = { jobId: string; jobNo: string; lines: WithdrawalPlanLine[]; unavailableItems: string[]; adHocCount: number }
+export const getJobWithdrawalPlan = (jobId: string) => apiRequest<WithdrawalPlan>(`/api/v1/inventory/withdrawals/by-job/${jobId}/plan`)
 export const getJobWithdrawals = (jobId: string) => apiRequest<WithdrawalSummary[]>(`/api/v1/inventory/withdrawals/by-job/${jobId}`)
 
 // Retain an uncertain command across modal closes/reloads so retry uses the same UUID and payload.

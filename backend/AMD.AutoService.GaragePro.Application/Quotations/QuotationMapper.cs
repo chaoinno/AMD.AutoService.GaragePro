@@ -42,7 +42,6 @@ public static class QuotationMapper
                 VatRate: q.VatRate,
                 Vat: q.VatAmount,
                 Total: q.TotalAmount,
-                Deposit: q.DepositAmount,
                 GrandTotal: q.GrandTotal,
                 TotalCost: showCost ? q.TotalCost : null,
                 MarginAmount: showCost ? q.NetAmount - q.TotalCost : null,
@@ -135,7 +134,8 @@ public static class QuotationMapper
         Reserved: c.Reserved,
         OnOrder: c.OnOrder,
         Available: c.Available,
-        EtaNote: c.EtaNote);
+        EtaNote: c.EtaNote,
+        Id: c.Id);
 
     public static QuotationValidationDto ToDto(QuotationValidationResult r) => new(
         r.IsValid,

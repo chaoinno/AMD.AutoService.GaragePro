@@ -21,6 +21,9 @@ public interface IPurchasingRepository
     Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? itemId, Guid? operationId, CancellationToken ct);
     Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct);
     Task<Job?> JobAsync(Guid id, CancellationToken ct);
+    // ใบเสนอราคาที่ยังไม่ถูกแทนที่ของ job พร้อมบรรทัด+การอนุมัติ — ใช้กำหนดว่าใบเบิกของ job เบิกอะไรได้บ้าง
+    Task<IReadOnlyList<Quotation>> JobQuotationsAsync(Guid jobId, CancellationToken ct);
+    Task<IReadOnlyList<CatalogItem>> ItemsByCodesAsync(IReadOnlyCollection<string> codes, CancellationToken ct);
     Task<IReadOnlyList<GoodsReceipt>> ReceiptsAsync(Guid orderId, CancellationToken ct);
     Task<GoodsReceipt?> ReceiptAsync(Guid requestId, CancellationToken ct);
     Task<string> NumberAsync(string kind, DateTime now, CancellationToken ct);

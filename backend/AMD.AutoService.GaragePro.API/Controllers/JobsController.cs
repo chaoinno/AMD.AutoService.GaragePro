@@ -42,15 +42,17 @@ public sealed class JobsController(
     }
 
     /// <summary>
-    /// มุมมองปฏิทินนัดหมาย — คืนงานทุกงานที่มี AppointmentAt อยู่ในช่วง [from, to)
+    /// มุมมองปฏิทิน — คืนงานทุกงานที่มีวันนัดตาม dateField อยู่ในช่วง [from, to)
+    /// dateField: appointment (ค่าเริ่มต้น — วันนัดเข้า) · promise (วันนัดส่งมอบ)
     /// ไม่ใช่ keyset cursor (คนละ contract กับ /search)
     /// </summary>
     [HttpGet("calendar")]
     public async Task<IActionResult> Calendar(
         [FromQuery] DateTimeOffset from, [FromQuery] DateTimeOffset to,
-        [FromQuery] string? q = null, [FromQuery] string? status = null, CancellationToken ct = default)
+        [FromQuery] string? q = null, [FromQuery] string? status = null,
+        [FromQuery] string? dateField = null, CancellationToken ct = default)
     {
-        var result = await jobService.GetCalendarAsync(from, to, q, status, ct);
+        var result = await jobService.GetCalendarAsync(from, to, q, status, dateField, ct);
 
         if (!result.Success)
         {
@@ -142,6 +144,39 @@ public sealed class JobsController(
         return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
     }
 
+    /// <summary>ตั้ง/เลื่อนวันเวลานัดส่งมอบรถ — ทุกประเภทงานที่ยังไม่ถึงสถานะจบ · บันทึก ActivityEvent ทุกครั้ง</summary>
+    [HttpPut("{jobId:guid}/promise")]
+    public async Task<IActionResult> UpdatePromise(
+        Guid jobId, [FromBody] UpdateJobPromiseRequest request, CancellationToken ct)
+    {
+        var result = await jobService.UpdatePromiseAsync(jobId, request, ct);
+
+        if (!result.Success)
+        {
+            var status = result.Error?.Code switch
+            {
+                "JOB_NOT_FOUND" => StatusCodes.Status404NotFound,
+                "JOB_PROMISE_LOCKED" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest
+            };
+            return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));
+        }
+
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/วันนัดส่งมอบของจ๊อบ (ใหม่สุดก่อน)</summary>
+    [HttpGet("{jobId:guid}/schedule-history")]
+    public async Task<IActionResult> ScheduleHistory(Guid jobId, CancellationToken ct)
+    {
+        var result = await jobService.GetScheduleHistoryAsync(jobId, ct);
+
+        if (!result.Success)
+            return NotFound(Envelope.From(result, HttpContext.TraceIdentifier));
+
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
     /// <summary>แปลงงานนัดหมายเป็นรถในอู่พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง — ไม่ผูกกับวันนัดหมายที่ตั้งไว้</summary>
     [HttpPut("{jobId:guid}/convert-to-in-shop")]
     public async Task<IActionResult> ConvertToInShop(
@@ -173,7 +208,6 @@ public sealed class JobsController(
         {
             var status = result.Error?.Code switch
             {
-                "JOB_DUPLICATE_OPEN" => StatusCodes.Status409Conflict,
                 "CUSTOMER_NOT_FOUND" or "VEHICLE_NOT_FOUND" => StatusCodes.Status404NotFound,
                 _ => StatusCodes.Status400BadRequest
             };

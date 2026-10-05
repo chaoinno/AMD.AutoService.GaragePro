@@ -7,14 +7,22 @@ public interface IJobRepository
 {
     Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default);
 
-    /// <summary>งานที่ยังไม่ปิดของรถคันนี้ — ใช้กันเปิดจ๊อบซ้ำ</summary>
+    /// <summary>งานที่ยังไม่ปิดของรถคันนี้ (ตัวใดตัวหนึ่ง) — ใช้เตือนตอนเปิดจ๊อบซ้อน ไม่ได้บล็อก</summary>
     Task<Job?> GetOpenByVehicleAsync(
         string shardKey, int branchId, long vehicleId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Job>> SearchAsync(JobSearchQuery query, CancellationToken ct = default);
 
-    /// <summary>งานนัดหมายในช่วงเวลาที่กำหนด (AppointmentAt ไม่ว่าง) เรียงตามเวลานัดจากน้อยไปมาก — ใช้มุมมองปฏิทิน</summary>
+    /// <summary>งานที่มีวันนัดตาม query.DateField (นัดเข้า/นัดส่งมอบ) อยู่ในช่วงเวลาที่กำหนด
+    /// เรียงตามเวลานัดจากน้อยไปมาก — ใช้มุมมองปฏิทิน</summary>
     Task<IReadOnlyList<Job>> GetAppointmentsAsync(JobAppointmentQuery query, CancellationToken ct = default);
+
+    /// <summary>ActivityEvent ของจ๊อบนี้ที่เป็นชนิดตามที่ระบุ เรียงใหม่สุดก่อน
+    /// default คืนว่างเพื่อไม่ต้องไล่แก้ fake ในไฟล์เทสต์ที่ไม่เกี่ยวข้อง (ทำแบบเดียวกับ ICurrentUser.StaffId) —
+    /// JobRepository ตัวจริง override เสมอ</summary>
+    Task<IReadOnlyList<ActivityEvent>> GetEventsAsync(
+        Guid jobId, IReadOnlyCollection<string> eventTypes, int take, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<ActivityEvent>>([]);
 
     /// <summary>จำนวนงานที่ยังไม่ปิด (ไม่รวม Completed/Cancelled) — ใช้แสดงตัวเลขในเมนู</summary>
     Task<int> CountOpenAsync(string shardKey, int branchId, int? jobTypeId, CancellationToken ct = default);

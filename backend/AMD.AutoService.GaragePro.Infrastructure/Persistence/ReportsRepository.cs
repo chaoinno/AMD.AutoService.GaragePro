@@ -10,11 +10,19 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
         Scope(db.Jobs, shardKey, branchId).ToListReadOnlyAsync(ct);
 
     public async Task<decimal> GetCollectedAmountAsync(
-        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
-        await db.Payments
+        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
+    {
+        var jobPayments = await db.Payments
             .Where(p => p.LegacyShardKey == shardKey && p.LegacyBranchId == branchId
                 && p.ReceivedAt >= fromUtc && p.ReceivedAt < toUtc)
             .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+        var retailPayments = await db.SalePayments
+            .Where(p => p.Sale!.LegacyShardKey == shardKey && p.Sale.LegacyBranchId == branchId
+                && p.Sale.Status == Domain.Enums.SaleStatus.Completed
+                && p.ReceivedAt >= fromUtc && p.ReceivedAt < toUtc)
+            .SumAsync(p => (decimal?)p.Amount, ct) ?? 0m;
+        return jobPayments + retailPayments;
+    }
 
     public async Task<int> GetReceiptsIssuedCountAsync(
         string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct)
@@ -62,6 +70,21 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
         db.Warehouses
             .Where(w => w.LegacyShardKey == shardKey && w.LegacyBranchId == branchId)
             .ToListReadOnlyAsync(ct);
+
+    public Task<IReadOnlyList<Sale>> GetRetailSalesCompletedInRangeAsync(
+        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct) =>
+        db.Sales.AsNoTracking()
+            .Include(s => s.Lines)
+            .Include(s => s.Payments)
+            .Where(s => s.LegacyShardKey == shardKey && s.LegacyBranchId == branchId
+                && (s.Status == Domain.Enums.SaleStatus.Completed || s.Status == Domain.Enums.SaleStatus.Voided)
+                && s.CompletedAt >= fromUtc && s.CompletedAt < toUtc)
+            .AsSplitQuery()
+            .ToListReadOnlyAsync(ct);
+
+    public Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct) =>
+        db.Sales.CountAsync(s => s.LegacyShardKey == shardKey && s.LegacyBranchId == branchId
+            && s.Status == Domain.Enums.SaleStatus.Draft, ct);
 
     private static IQueryable<Job> Scope(IQueryable<Job> jobs, string shardKey, int branchId) =>
         jobs.Where(j => j.LegacyShardKey == shardKey && j.BranchId == branchId);

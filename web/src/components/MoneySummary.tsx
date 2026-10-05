@@ -51,29 +51,21 @@ export function MoneySummary({
           <div className="approved-total-comparison__quoted">
             <span>ยอดตามใบเสนอราคา</span>
             <Money value={totals.total} suffix=" บาท" />
-            <small>คงเหลือหลังหักมัดจำ <Money value={totals.grandTotal} suffix=" บาท" /></small>
           </div>
           <div className="approved-total-comparison__approved">
             <span>ยอดที่ลูกค้าอนุมัติ</span>
             <Money value={totals.approved.total} suffix=" บาท" />
             <small>
-              คงเหลือหลังหักมัดจำ <Money value={totals.approved.grandTotal} suffix=" บาท" /> · อนุมัติ {totals.approved.approvedCount} · ไม่อนุมัติ {totals.approved.rejectedCount} รายการ
+              อนุมัติ {totals.approved.approvedCount} · ไม่อนุมัติ {totals.approved.rejectedCount} รายการ
             </small>
           </div>
         </section>
       ) : (
         <>
+          {/* [BIZ] ตัดเรื่องค่ามัดจำออกแล้ว (2026-10-02) — ไม่มีบรรทัด "หักมัดจำ"/"คงเหลือชำระ" อีก */}
           <div className="money-summary__total">
             <span>ยอดสุทธิ</span>
             <Money value={totals.total} />
-          </div>
-          <div className="money-summary__row money-summary__deduction">
-            <span>หักมัดจำ</span>
-            <Money value={totals.deposit} prefix="−" />
-          </div>
-          <div className="money-summary__row money-summary__grand">
-            <span>คงเหลือชำระ</span>
-            <Money value={totals.grandTotal} />
           </div>
         </>
       )}

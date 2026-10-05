@@ -45,7 +45,13 @@ jq -r '
   "ConnectionStrings__ServiceDb=" + .["ConnectionStrings:ServiceDb"],
   "LegacyShards__ConnectionStrings__db1=" + .["LegacyShards:ConnectionStrings:db1"],
   "LegacyShards__ConnectionStrings__db2=" + .["LegacyShards:ConnectionStrings:db2"],
-  "Jwt__Key=" + .["Jwt:Key"]
+  "Jwt__Key=" + .["Jwt:Key"],
+  # ฟอร์มติดต่อหน้า landing → กลุ่ม LINE (ไม่บังคับ — ไม่ตั้งแล้วฟอร์มตอบ CONTACT_UNAVAILABLE)
+  # ต้องอยู่ในไฟล์นี้ ไม่งั้นรันสคริปต์ซ้ำแล้วค่าที่เคยเพิ่มด้วยมือบน server จะหายเพราะไฟล์ถูกเขียนทับทั้งไฟล์
+  (select(.["LineMessaging:ChannelAccessToken"] // "" | length > 0)
+    | "LineMessaging__ChannelAccessToken=" + .["LineMessaging:ChannelAccessToken"]),
+  (select(.["LineMessaging:ContactGroupId"] // "" | length > 0)
+    | "LineMessaging__ContactGroupId=" + .["LineMessaging:ContactGroupId"])
 ' "$input_json" > "$temp_env"
 jq -r '
   "Ftp__Host=" + (.Ftp.Host | tostring),

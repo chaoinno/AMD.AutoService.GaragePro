@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 
@@ -18,7 +19,7 @@ public interface IQcChecklistService
 }
 
 /// <summary>
-/// เช็คลิสต์ตรวจสอบคุณภาพ (QC) — รายการมาจากบรรทัดที่ลูกค้าอนุมัติในใบเสนอราคาปัจจุบันของ job นี้
+/// เช็คลิสต์ตรวจสอบคุณภาพ (QC) — รายการมาจากบรรทัดที่ลูกค้าอนุมัติในทุกใบเสนอราคาที่ยังไม่ถูกแทนที่ของ job นี้
 /// [BIZ] ไม่มีสถานะ "ไม่ผ่าน"/process ตีกลับ (คำขอผู้ใช้ 2026-09-09) — ผ่านอย่างเดียว ถ้ายังไม่ผ่านไปแจ้งช่างแก้
 /// นอกระบบแล้วย้อนกลับมาติ๊กผ่านทีหลัง guard `QcPassed` ของ `JobService.ComputeGuardAsync` คำนวณจากรายการนี้จริง
 /// (ไม่ใช่ manual-override อีกต่อไปสำหรับ Qc→Ready)
@@ -43,6 +44,19 @@ public sealed class QcChecklistService(
             var draft = await CreateDraftAsync(jobId, ct);
             if (!draft.Success) return Result<QcChecklistDto>.Fail(draft.Error!);
             checklist = draft.Data!;
+        }
+        else if (!checklist.IsLocked)
+        {
+            // [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ — ลูกค้าอาจอนุมัติใบที่สองหลังเปิดหน้า QC ไปแล้ว เติมเฉพาะบรรทัดที่ยังไม่มี
+            // (ไม่ลบ/ไม่แก้ของเดิม — ผลตรวจที่ติ๊กไว้ต้องอยู่ครบ) guard Qc→Ready ตรวจซ้ำด้วยกฎเดียวกันเสมอ
+            var missing = JobQuotations.NotCoveredByQc(
+                checklist.Items, await quotations.GetActiveForJobAsync(jobId, ct));
+            if (missing.Count > 0)
+            {
+                foreach (var line in missing)
+                    checklist.Items.Add(NewItem(checklist, line));
+                await repository.SaveChangesAsync(ct);
+            }
         }
 
         return Result<QcChecklistDto>.Ok(QcMapper.ToDto(checklist));
@@ -128,9 +142,7 @@ public sealed class QcChecklistService(
 
     private async Task<Result<QcChecklist>> CreateDraftAsync(Guid jobId, CancellationToken ct)
     {
-        var quotation = await quotations.GetLatestForJobAsync(jobId, ct);
-        var approvedLines = quotation?.Lines.Where(l => l.ApprovalStatus == LineApprovalStatus.Approved).ToList()
-            ?? [];
+        var approvedLines = JobQuotations.ApprovedLines(await quotations.GetActiveForJobAsync(jobId, ct));
 
         if (approvedLines.Count == 0)
             return Result<QcChecklist>.Fail(
@@ -145,19 +157,21 @@ public sealed class QcChecklistService(
             CreatedAt = Now
         };
 
-        checklist.Items = approvedLines.Select(line => new QcChecklistItem
-        {
-            QcChecklistId = checklist.Id,
-            QuotationLineId = line.Id,
-            CatalogCode = line.CatalogCode,
-            Name = line.Name,
-            Type = line.Type,
-            Result = QcItemResult.Pending
-        }).ToList();
+        checklist.Items = approvedLines.Select(line => NewItem(checklist, line)).ToList();
 
         await repository.AddAsync(checklist, ct);
         await repository.SaveChangesAsync(ct);
 
         return Result<QcChecklist>.Ok(checklist);
     }
+
+    private static QcChecklistItem NewItem(QcChecklist checklist, QuotationLine line) => new()
+    {
+        QcChecklistId = checklist.Id,
+        QuotationLineId = line.Id,
+        CatalogCode = line.CatalogCode,
+        Name = line.Name,
+        Type = line.Type,
+        Result = QcItemResult.Pending
+    };
 }

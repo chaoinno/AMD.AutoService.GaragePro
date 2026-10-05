@@ -37,6 +37,9 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
         var (dayStartUtc, dayEndUtc) = ThaiDayBoundsUtc(now);
         var collectedToday = await repo.GetCollectedAmountAsync(user.ShardKey, user.BranchId, dayStartUtc, dayEndUtc, ct);
         var receiptsToday = await repo.GetReceiptsIssuedCountAsync(user.ShardKey, user.BranchId, dayStartUtc, dayEndUtc, ct);
+        var retailToday = (await repo.GetRetailSalesCompletedInRangeAsync(user.ShardKey, user.BranchId, dayStartUtc, dayEndUtc, ct))
+            .Where(x => x.Status == SaleStatus.Completed).ToList();
+        var retailDrafts = await repo.CountRetailDraftsAsync(user.ShardKey, user.BranchId, ct);
 
         return Result<DashboardReportDto>.Ok(new DashboardReportDto(
             JobsByStatus: byStatus,
@@ -47,7 +50,10 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             WaitingQcCount: jobs.Count(j => j.Status == JobStatus.Qc),
             WaitingPaymentCount: jobs.Count(j => j.Status == JobStatus.Ready),
             CollectedToday: collectedToday,
-            ReceiptsIssuedToday: receiptsToday));
+            ReceiptsIssuedToday: receiptsToday,
+            RetailToday: new RetailSalesTodayDto(
+                retailToday.Count, retailToday.Sum(x => x.TotalAmount),
+                retailToday.Sum(x => x.Lines.Sum(l => l.Quantity)), retailDrafts)));
     }
 
     public async Task<Result<CycleTimeReportDto>> GetCycleTimeAsync(
@@ -203,6 +209,112 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
 
         return Result<StockReportDto>.Ok(new StockReportDto(totalValuation, damagedValuation, agingBuckets, oldestLots));
     }
+
+    /// <summary>ช่วงวันที่ยาวสุดของรายงานขายหน้าร้าน — กันดึงบิลทั้งปีหลายปีมาคิดในหน่วยความจำครั้งเดียว</summary>
+    public const int RetailReportMaxDays = 366;
+
+    /// <summary>
+    /// รายงานขายหน้าร้าน — fromDate/toDate เป็น "วันที่ตามปฏิทินไทย" (รวมทั้งสองวัน) ไม่ใช่เวลา UTC
+    /// เพื่อไม่ให้บิลตอนเช้ามืด (00:00–07:00 ไทย) ไปตกวันก่อนหน้าแบบที่เกิดเมื่อส่งเวลา local มาเทียบกับ UTC
+    /// </summary>
+    public async Task<Result<RetailSalesReportDto>> GetRetailSalesAsync(
+        DateOnly? fromDate, DateOnly? toDate, CancellationToken ct = default)
+    {
+        if (!Allowed) return Forbidden<RetailSalesReportDto>();
+
+        var today = DateOnly.FromDateTime(Now.AddHours(7));
+        var to = toDate ?? today;
+        var from = fromDate ?? new DateOnly(to.Year, to.Month, 1);
+        if (from > to)
+            return Result<RetailSalesReportDto>.Fail("REPORTS_VALIDATION", "วันที่เริ่มต้องไม่เกินวันที่สิ้นสุด");
+        if (to.DayNumber - from.DayNumber + 1 > RetailReportMaxDays)
+            return Result<RetailSalesReportDto>.Fail("REPORTS_VALIDATION", $"เลือกช่วงวันที่ได้ไม่เกิน {RetailReportMaxDays} วัน");
+
+        var fromUtc = ThaiDateStartUtc(from);
+        var toUtc = ThaiDateStartUtc(to.AddDays(1));
+        var sales = await repo.GetRetailSalesCompletedInRangeAsync(user.ShardKey, user.BranchId, fromUtc, toUtc, ct);
+        var completed = sales.Where(x => x.Status == SaleStatus.Completed).ToList();
+        var voided = sales.Where(x => x.Status == SaleStatus.Voided).OrderByDescending(x => x.VoidedAt).ToList();
+        var canSeeCost = user.CanSeeCost;
+
+        var total = completed.Sum(x => x.TotalAmount);
+        var net = completed.Sum(x => x.NetAmount);
+        var cost = completed.Sum(x => x.CostTotal);
+        var margin = net - cost;
+
+        var byDay = completed.GroupBy(x => ThaiDate(x.CompletedAt!.Value)).ToDictionary(g => g.Key, g => g.ToList());
+        // ทุกวันในช่วง รวมวันที่ไม่มีบิล — กราฟต้องเห็น "วันที่ขายไม่ได้" ไม่ใช่ข้ามไปเงียบๆ
+        var daily = Enumerable.Range(0, to.DayNumber - from.DayNumber + 1)
+            .Select(i => from.AddDays(i))
+            .Select(d => byDay.TryGetValue(d, out var list)
+                ? new RetailDailyDto(d, list.Count, list.Sum(x => x.TotalAmount))
+                : new RetailDailyDto(d, 0, 0m))
+            .ToList();
+
+        var byMethod = completed.SelectMany(x => x.Payments)
+            .GroupBy(p => p.Method)
+            .Select(g => new RetailPaymentMethodDto(PosMapper.ToMethodToken(g.Key), g.Count(), g.Sum(p => p.Amount)))
+            .OrderByDescending(x => x.Amount)
+            .ToList();
+
+        var products = completed
+            .SelectMany(x => x.Lines.Select(l => (Sale: x, Line: l)))
+            .GroupBy(x => x.Line.CatalogItemId)
+            .Select(g =>
+            {
+                var latest = g.OrderByDescending(x => x.Sale.CompletedAt).First().Line;
+                var lineNet = g.Sum(x => x.Line.NetAmount);
+                var lineCost = g.Sum(x => x.Line.CostAmount ?? 0m);
+                return new RetailTopProductDto(
+                    latest.Code, latest.Name, latest.Unit, g.Sum(x => x.Line.Quantity), g.Select(x => x.Sale.Id).Distinct().Count(),
+                    lineNet, canSeeCost ? lineCost : null, canSeeCost ? lineNet - lineCost : null);
+            })
+            .OrderByDescending(x => x.NetAmount).ThenByDescending(x => x.Quantity)
+            .Take(20)
+            .ToList();
+
+        var linePromos = completed.SelectMany(x => x.Lines)
+            .Where(l => l.PromotionId.HasValue && l.PromotionAmount > 0)
+            .GroupBy(l => l.PromotionId!.Value)
+            .Select(g => new RetailPromotionUsageDto(g.First().PromotionName ?? g.First().PromotionCode ?? "โปรโมชัน", "line", g.Count(), g.Sum(l => l.PromotionAmount)));
+        var billPromos = completed
+            .Where(x => x.BillPromotionId.HasValue && x.BillPromotionAmount > 0)
+            .GroupBy(x => x.BillPromotionId!.Value)
+            .Select(g => new RetailPromotionUsageDto(g.First().BillPromotionName ?? g.First().BillPromotionCode ?? "โปรโมชันท้ายบิล", "bill", g.Count(), g.Sum(x => x.BillPromotionAmount)));
+        var promotions = linePromos.Concat(billPromos).OrderByDescending(x => x.DiscountAmount).ToList();
+
+        var bySeller = completed
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.CompletedByName) ? "ไม่ระบุ" : x.CompletedByName!)
+            .Select(g => new RetailSellerDto(g.Key, g.Count(), g.Sum(x => x.TotalAmount)))
+            .OrderByDescending(x => x.TotalAmount)
+            .ToList();
+
+        return Result<RetailSalesReportDto>.Ok(new RetailSalesReportDto(
+            from, to,
+            BillCount: completed.Count,
+            TotalAmount: total,
+            NetAmount: net,
+            VatAmount: completed.Sum(x => x.VatAmount),
+            AverageBillAmount: completed.Count == 0 ? 0m : Math.Round(total / completed.Count, 2, MidpointRounding.AwayFromZero),
+            DiscountAmount: completed.Sum(x => x.LineDiscountAmount + x.LinePromotionAmount + x.BillDiscountAmount + x.BillPromotionAmount),
+            ItemQuantity: completed.Sum(x => x.Lines.Sum(l => l.Quantity)),
+            CostAmount: canSeeCost ? cost : null,
+            MarginAmount: canSeeCost ? margin : null,
+            MarginPercent: canSeeCost ? (net == 0m ? 0m : Math.Round(margin / net * 100m, 2)) : null,
+            VoidedCount: voided.Count,
+            VoidedAmount: voided.Sum(x => x.TotalAmount),
+            Daily: daily,
+            ByPaymentMethod: byMethod,
+            TopProducts: products,
+            Promotions: promotions,
+            BySeller: bySeller,
+            VoidedSales: voided.Select(x => new RetailVoidedSaleDto(
+                x.Id, x.ReceiptNo, x.CompletedAt, x.VoidedAt, x.VoidedByName, x.VoidReason, x.TotalAmount)).ToList()));
+    }
+
+    private static DateOnly ThaiDate(DateTime utc) => DateOnly.FromDateTime(utc.AddHours(7));
+    private static DateTime ThaiDateStartUtc(DateOnly date) =>
+        DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue).AddHours(-7), DateTimeKind.Utc);
 
     private static int AgeDays(StockLot lot, DateTime now) => (int)(now - lot.ReceivedAt).TotalDays;
 

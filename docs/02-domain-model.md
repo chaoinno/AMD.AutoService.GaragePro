@@ -237,6 +237,9 @@ Payment: id, jobId, method(PaymentMethod), amount, status(PaymentStatus),
          reference, slipImage, edcTerminal, qrExpiresAt,
          receivedBy, receivedAt, idempotencyKey  ← กันเก็บซ้ำ
 Deposit: id, jobId, amount, receivedAt   ← มัดจำตอนรับรถ นำมาหักตอนจ่าย
+         [ยังไม่ทำ — ตัดออกจากขอบเขต 2026-10-02] ระบบไม่มีมัดจำเลย `Quotation.DepositAmount` เลิกใช้แล้ว
+         ถ้าจะทำ: เป็นการรับเงินของจ๊อบ (ไม่ใช่ฟิลด์ใบเสนอราคา — จ๊อบมีหลายใบได้จะหักซ้ำ) และต้องตอบก่อน:
+         ใบรับเงินมัดจำแยกเลขไหม · ใครรับได้ · ยกเลิกงานคืน/ริบ · มัดจำเกินยอดจริงคืนอย่างไร
 
 FiscalDocument: id(RC-24-xxxx | IV-24-xxxx), jobId, type(DocumentType),
          recipientName, taxId, address, subtotal, vat, total,

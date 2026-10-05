@@ -23,7 +23,7 @@ public class Payment
 }
 
 /// <summary>
-/// ใบเสร็จรับเงิน — 1 job ออกได้ใบเดียว (MVP: ไม่มีใบกำกับภาษี/reprint/void, OQ#6-7 ยังไม่ตอบ)
+/// ใบเสร็จรับเงิน — 1 job ออกได้ใบเดียว (ไม่มี reprint นับครั้ง/void — OQ#7 ยังไม่ตอบ) · ใบกำกับภาษีแยกเป็น TaxInvoice (IV-)
 /// </summary>
 public class Receipt
 {

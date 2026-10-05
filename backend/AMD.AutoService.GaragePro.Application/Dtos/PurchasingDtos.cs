@@ -45,5 +45,11 @@ public sealed record StockWithdrawalLineDto(Guid CatalogItemId, string Code, str
 public sealed record StockWithdrawalDto(Guid OperationId, string DocumentNumber, Guid WarehouseId, string WarehouseName,
     Guid? JobId, string? JobNo, long RequesterStaffId, string RequesterName, string IssuedByName, string Reason,
     DateTime OccurredAt, IReadOnlyList<StockWithdrawalLineDto> Lines, decimal? TotalCost);
+// [BIZ] ใบเบิกที่ผูก job เบิกได้เฉพาะสินค้าที่ลูกค้าอนุมัติ (ใบที่เซ็นแล้ว) ตามจำนวนที่เหลือ — เพิ่ม/ลบ/แก้จำนวนไม่ได้
+// Remaining = อนุมัติ − เบิกไปแล้วด้วยใบเบิกก่อนหน้าของ job เดียวกัน
+public sealed record StockWithdrawalPlanLineDto(Guid CatalogItemId, string Code, string Name, string Unit,
+    int ApprovedQuantity, int WithdrawnQuantity, int RemainingQuantity, int Available);
+public sealed record StockWithdrawalPlanDto(Guid JobId, string JobNo, IReadOnlyList<StockWithdrawalPlanLineDto> Lines,
+    IReadOnlyList<string> UnavailableItems, int AdHocCount);
 public sealed record StockWithdrawalSummaryDto(Guid OperationId, string DocumentNumber, DateTime OccurredAt,
     string RequesterName, string IssuedByName, int LineCount, int TotalQuantity, string Reason);

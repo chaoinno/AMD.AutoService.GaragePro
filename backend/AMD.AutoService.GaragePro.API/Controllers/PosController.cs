@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
 /// <summary>
-/// ชำระเงิน/ใบเสร็จ — MVP: บันทึกยอดเดียวต่อครั้ง ไม่มี split/EDC/QR gateway จริง ไม่มีใบกำกับภาษี/reprint/void
+/// ชำระเงิน/ใบเสร็จ/ใบกำกับภาษี — MVP: บันทึกยอดเดียวต่อครั้ง ไม่มี split/EDC/QR gateway จริง ไม่มี reprint/void
 /// </summary>
 [ApiController]
 [Route("api/v1")]
 [Produces("application/json")]
 [Authorize]
 [RequireShiftSession]
-public sealed class PosController(IPosService service) : ControllerBase
+public sealed class PosController(IPosService service, ITaxInvoiceService taxInvoices) : ControllerBase
 {
     /// <summary>ยอดสรุป: ยอดรวม/ชำระแล้ว/คงเหลือ + รายการชำระเงิน + ใบเสร็จถ้าออกแล้ว</summary>
     [HttpGet("jobs/{jobId:guid}/payment-summary")]
@@ -45,6 +45,17 @@ public sealed class PosController(IPosService service) : ControllerBase
         Guid jobId, [FromBody] SetVatIncludedRequest request, CancellationToken ct) =>
         Render(await service.SetVatIncludedAsync(jobId, request.Included, ct));
 
+    /// <summary>สถานะใบกำกับภาษี: ออกแล้ว/ยัง · เหตุผลที่ยังออกไม่ได้ · ข้อมูลผู้ซื้อที่เติมจากลูกค้าให้แก้ก่อนออก</summary>
+    [HttpGet("jobs/{jobId:guid}/tax-invoice")]
+    public async Task<IActionResult> GetTaxInvoice(Guid jobId, CancellationToken ct) =>
+        Render(await taxInvoices.GetStateAsync(jobId, ct));
+
+    /// <summary>ออกใบกำกับภาษีเต็มรูป (IV-) — ต้องออกใบเสร็จแล้วและงานคิด VAT · ออกได้ใบเดียวต่องาน (เรียกซ้ำคืนใบเดิม)</summary>
+    [HttpPost("jobs/{jobId:guid}/tax-invoice")]
+    public async Task<IActionResult> IssueTaxInvoice(
+        Guid jobId, [FromBody] IssueTaxInvoiceRequest request, CancellationToken ct) =>
+        Render(await taxInvoices.IssueAsync(jobId, request, ct));
+
     private IActionResult Render<T>(Result<T> result)
     {
         if (result.Success) return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
@@ -53,8 +64,10 @@ public sealed class PosController(IPosService service) : ControllerBase
         {
             "JOB_NOT_FOUND" or "POS_PAYMENT_NOT_FOUND" => StatusCodes.Status404NotFound,
             "JOB_OTHER_BRANCH" or "POS_FORBIDDEN" => StatusCodes.Status403Forbidden,
-            "POS_RECEIPT_ISSUED" or "POS_VAT_LOCKED" => StatusCodes.Status409Conflict,
+            "POS_RECEIPT_ISSUED" or "POS_VAT_LOCKED" or "TAX_INVOICE_TOTAL_MISMATCH" => StatusCodes.Status409Conflict,
             "POS_VALIDATION" or "POS_NO_QUOTATION" or "POS_BALANCE_NOT_SETTLED" or "POS_CONFLICT"
+                or "POS_QUOTATION_AWAITING_CUSTOMER" or "TAX_INVOICE_VALIDATION" or "TAX_INVOICE_RECEIPT_REQUIRED"
+                or "TAX_INVOICE_NO_VAT" or "TAX_INVOICE_SELLER_TAX_ID_MISSING"
                 => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status422UnprocessableEntity
         };

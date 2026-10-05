@@ -27,4 +27,10 @@ public interface IReportsRepository
     Task<IReadOnlyList<CatalogItem>> GetCatalogItemsAsync(string shardKey, int branchId, CancellationToken ct);
 
     Task<IReadOnlyList<Warehouse>> GetWarehousesAsync(string shardKey, int branchId, CancellationToken ct);
+
+    /// <summary>บิลขายหน้าร้านที่ชำระเงินในช่วง (Completed + Voided ตาม CompletedAt) พร้อมบรรทัดและรายการรับเงิน</summary>
+    Task<IReadOnlyList<Sale>> GetRetailSalesCompletedInRangeAsync(
+        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, CancellationToken ct);
+
+    Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct);
 }

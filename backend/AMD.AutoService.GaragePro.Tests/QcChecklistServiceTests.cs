@@ -54,6 +54,35 @@ public sealed class QcChecklistServiceTests
     }
 
     [Fact]
+    public async Task GetOrCreateAsync_adds_lines_approved_on_a_later_quotation_without_touching_existing_results()
+    {
+        static Quotation WithApprovedLine(string code, string name)
+        {
+            var q = new Quotation { JobId = TestJobId, Code = code };
+            q.Lines.Add(new QuotationLine
+            {
+                QuotationId = q.Id, CatalogCode = name == "ผ้าเบรกหน้า" ? "PRT-001" : "PRT-002", Name = name,
+                Type = LineType.Part, Quantity = 1, ApprovalStatus = LineApprovalStatus.Approved
+            });
+            return q;
+        }
+
+        var first = WithApprovedLine("QT-1", "ผ้าเบรกหน้า");
+        var repo = new FakeQcChecklistRepository();
+        var created = await CreateService(repo, first).GetOrCreateAsync(TestJobId);
+        var firstItemId = created.Data!.Items.Single().Id;
+        await CreateService(repo, first).SaveItemAsync(TestJobId, firstItemId, new SaveQcChecklistItemRequest("pass", null));
+
+        var second = WithApprovedLine("QT-2", "ใบปัดน้ำฝน");
+        var result = await CreateService(repo, first, second).GetOrCreateAsync(TestJobId);
+
+        result.Success.Should().BeTrue();
+        result.Data!.Items.Should().HaveCount(2);
+        result.Data.Items.Single(i => i.Id == firstItemId).Result.Should().Be("pass");
+        result.Data.Items.Should().ContainSingle(i => i.Name == "ใบปัดน้ำฝน" && i.Result == "pending");
+    }
+
+    [Fact]
     public async Task SaveItemAsync_rejects_unknown_item_and_invalid_result_token()
     {
         var repo = new FakeQcChecklistRepository();
@@ -126,9 +155,13 @@ public sealed class QcChecklistServiceTests
     }
 
     private static QcChecklistService CreateService(
-        FakeQcChecklistRepository? repo = null, Quotation? quotation = null) =>
-        new(repo ?? new FakeQcChecklistRepository(), new FakeJobRepository(),
-            new FakeQuotationRepository(quotation), new StubCurrentUser(), TimeProvider.System);
+        FakeQcChecklistRepository? repo = null, Quotation? quotation = null, params Quotation[] others)
+    {
+        var quotations = new FakeQuotationRepository(quotation);
+        quotations.Others.AddRange(others);
+        return new(repo ?? new FakeQcChecklistRepository(), new FakeJobRepository(),
+            quotations, new StubCurrentUser(), TimeProvider.System);
+    }
 
     private sealed class StubCurrentUser : ICurrentUser
     {
@@ -170,7 +203,12 @@ public sealed class QcChecklistServiceTests
     {
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
         public Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default) => Task.FromResult(quotation);
-        public Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default) => Task.FromResult(quotation);
+        public Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Quotation>>(
+                new[] { quotation }.Concat(Others).Where(q => q is not null && q.Status != QuotationStatus.Superseded)
+                    .Select(q => q!).ToList());
+        /// <summary>ใบเสนอราคาอื่นของจ๊อบเดียวกัน — จำลองจ๊อบที่มีหลายใบ (บิลแยก)</summary>
+        public List<Quotation> Others { get; } = [];
         public Task<IReadOnlyList<Quotation>> GetQueueAsync(
             string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Quotation>>(quotation is null ? [] : [quotation]);

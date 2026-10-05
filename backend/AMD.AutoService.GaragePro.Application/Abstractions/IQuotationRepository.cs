@@ -8,8 +8,9 @@ public interface IQuotationRepository
     Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default);
     Task<Quotation?> GetWithLinesAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>ใบล่าสุดของงานนี้ (เวอร์ชันสูงสุด)</summary>
-    Task<Quotation?> GetLatestForJobAsync(Guid jobId, CancellationToken ct = default);
+    /// <summary>ทุกใบของงานนี้ที่ยังไม่ถูกแทนที่ (รวมใบร่าง) พร้อมบรรทัด+การอนุมัติ เรียงตามเวอร์ชัน
+    /// [BIZ] จ๊อบมีใบเสนอราคาได้หลายใบ (บิลแยก) — ห้ามสรุปจาก "ใบล่าสุด" ใบเดียวอีกต่อไป ดู Domain JobQuotations</summary>
+    Task<IReadOnlyList<Quotation>> GetActiveForJobAsync(Guid jobId, CancellationToken ct = default);
 
     Task<IReadOnlyList<Quotation>> GetQueueAsync(
         string shardKey, int branchId, string? statusFilter, Guid? jobId = null, CancellationToken ct = default);

@@ -33,6 +33,13 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     public async Task<IActionResult> SalesMargin(DateTime? fromDate, DateTime? toDate, CancellationToken ct) =>
         Render(await service.GetSalesMarginAsync(fromDate, toDate, ct));
 
+    /// <summary>ขายหน้าร้าน: ยอดขาย บิล สินค้าขายดี ช่องทางชำระ โปรโมชัน และบิลที่ยกเลิก — ต้นทุน/กำไร strip ตาม role</summary>
+    /// <param name="fromDate">วันที่เริ่ม (ปฏิทินไทย yyyy-MM-dd รวมวันนี้) — ค่าเริ่มต้นวันที่ 1 ของเดือน</param>
+    /// <param name="toDate">วันที่สิ้นสุด (ปฏิทินไทย yyyy-MM-dd รวมวันนี้) — ค่าเริ่มต้นวันนี้ · ช่วงยาวสุด 366 วัน</param>
+    [HttpGet("retail-sales")]
+    public async Task<IActionResult> RetailSales(DateOnly? fromDate, DateOnly? toDate, CancellationToken ct) =>
+        Render(await service.GetRetailSalesAsync(fromDate, toDate, ct));
+
     /// <summary>มูลค่าสต็อก อายุสต็อกคงเหลือ (FIFO) และสินค้าเสียหาย</summary>
     [HttpGet("stock")]
     public async Task<IActionResult> Stock(CancellationToken ct) => Render(await service.GetStockAsync(ct));
