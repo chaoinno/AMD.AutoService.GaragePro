@@ -2,9 +2,11 @@ import { apiRequest, isApiError } from './client'
 import type { PagedResult } from './types'
 
 export type PurchaseKind = 'PR' | 'PO'
-export type PurchaseLine = { id: string; catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number; receivedGood: number; receivedDamaged: number; outstanding: number }
-export type Purchase = { id: string; kind: PurchaseKind; number: string; status: string; sourceRequestId: string | null; supplierId: string | null; supplierName: string | null; warehouseId: string; warehouseName: string; requiredDate: string | null; note: string | null; paymentTerms: string | null; cancelReason: string | null; createdByName: string; createdAt: string; approvedByName: string | null; approvedAt: string | null; updatedAt: string; total: number; version: string; lines: PurchaseLine[] }
-export type PurchaseInput = { warehouseId: string; supplierId: string | null; requiredDate: string | null; note: string; paymentTerms: string; version?: string; lines: { catalogItemId: string; quantity: number; unitCost: number }[] }
+export type PurchaseLine = { id: string; catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number; receivedGood: number; receivedDamaged: number; outstanding: number; approvalStatus: 'approved' | 'pending' }
+export type PurchaseApprovalChange = { catalogItemId: string; code: string; name: string; change: 'added' | 'modified' | 'removed'; previousQuantity: number | null; previousUnitCost: number | null; quantity: number | null; unitCost: number | null }
+export type PurchaseTaxChange = { previousHasVat: boolean; previousVatRate: number; hasVat: boolean; vatRate: number }
+export type Purchase = { id: string; kind: PurchaseKind; number: string; status: string; sourceRequestId: string | null; supplierId: string | null; supplierName: string | null; warehouseId: string; warehouseName: string; requiredDate: string | null; note: string | null; paymentTerms: string | null; cancelReason: string | null; createdByName: string; createdAt: string; approvedByName: string | null; approvedAt: string | null; updatedAt: string; total: number; subtotal: number; vatAmount: number; hasVat: boolean; vatRate: number; taxApprovalChange: PurchaseTaxChange | null; version: string; lines: PurchaseLine[]; approvalChanges: PurchaseApprovalChange[] }
+export type PurchaseInput = { warehouseId: string; supplierId: string | null; requiredDate: string | null; note: string; paymentTerms: string; hasVat: boolean; version?: string; lines: { catalogItemId: string; quantity: number; unitCost: number }[] }
 export type ReceiptInput = { requestId: string; deliveryNumber: string; lines: { purchaseLineId: string; goodQuantity: number; damagedQuantity: number; unitCost: number; note: string }[] }
 export type Receipt = { id: string; number: string; purchaseOrderId: string; deliveryNumber: string; receivedAt: string; receivedByName: string; lines: ReceiptInput['lines'] }
 export type StockItem = { id: string; code: string; name: string; unit: string; stockManaged: boolean; onHand: number; reserved: number; available: number; onOrder: number; damaged: number; value: number | null }
@@ -27,7 +29,7 @@ export async function purchases(kind: PurchaseKind, q: string, status: string, p
 }
 export const purchase = (kind: PurchaseKind, id: string) => apiRequest<Purchase>(`${path(kind)}/${id}`)
 export const savePurchase = (kind: PurchaseKind, id: string | null, input: PurchaseInput) => apiRequest<Purchase>(`${path(kind)}${id ? `/${id}` : ''}`, { method: id ? 'PUT' : 'POST', body: JSON.stringify(input) })
-export const purchaseAction = (doc: Purchase, action: string, reason: string) => apiRequest<Purchase>(`${path(doc.kind)}/${doc.id}/${action}`, { method: 'POST', body: JSON.stringify({ version: doc.version, reason }) })
+export const purchaseAction = (doc: Purchase, action: string, reason: string, pinCode?: string) => apiRequest<Purchase>(`${path(doc.kind)}/${doc.id}/${action}`, { method: 'POST', body: JSON.stringify({ version: doc.version, reason, ...(action === 'approve' ? { pinCode } : {}) }) })
 export const convertPurchase = (doc: Purchase, supplierId: string) => apiRequest<Purchase>(`${path('PR')}/${doc.id}/convert`, { method: 'POST', body: JSON.stringify({ version: doc.version, supplierId }) })
 export const approvalThreshold = () => apiRequest<number>('/api/v1/purchase-orders/approval-threshold')
 export const countOpenPurchaseOrders = () => apiRequest<number>('/api/v1/purchase-orders/count-open')

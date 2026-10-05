@@ -21,6 +21,8 @@ public sealed class PurchasingConfiguration : IEntityTypeConfiguration<PurchaseD
         e.Property(x => x.WarehouseName).HasMaxLength(200); e.Property(x => x.CreatedByName).HasMaxLength(200);
         e.Property(x => x.Note).HasMaxLength(1000); e.Property(x => x.CancelReason).HasMaxLength(1000);
         e.Property(x => x.PaymentTerms).HasMaxLength(300); e.Property(x => x.RowVersion).IsRowVersion();
+        e.Property(x => x.VatRate).HasPrecision(5, 4).HasDefaultValue(0.07m);
+        e.Property(x => x.ApprovedVatRate).HasPrecision(5, 4);
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Number }).IsUnique();
         e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Kind, x.Status, x.CreatedAt });
         e.HasIndex(x => x.SourceRequestId).IsUnique().HasFilter("[SourceRequestId] IS NOT NULL");

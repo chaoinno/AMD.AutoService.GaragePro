@@ -2,16 +2,21 @@ namespace AMD.AutoService.GaragePro.Application.Dtos;
 
 public sealed record PurchaseLineInput(Guid CatalogItemId, int Quantity, decimal UnitCost);
 public sealed record PurchaseInput(Guid WarehouseId, Guid? SupplierId, DateTime? RequiredDate,
-    string? Note, string? PaymentTerms, IReadOnlyList<PurchaseLineInput> Lines, string? Version = null);
-public sealed record PurchaseActionInput(string Version, string? Reason = null);
+    string? Note, string? PaymentTerms, IReadOnlyList<PurchaseLineInput> Lines, string? Version = null, bool? HasVat = null);
+public sealed record PurchaseActionInput(string Version, string? Reason = null, string? PinCode = null);
 public sealed record ConvertPurchaseInput(Guid SupplierId, string Version);
 public sealed record PurchaseLineDto(Guid Id, Guid CatalogItemId, string Code, string Name, string Unit,
-    int Quantity, decimal UnitCost, int ReceivedGood, int ReceivedDamaged, int Outstanding);
+    int Quantity, decimal UnitCost, int ReceivedGood, int ReceivedDamaged, int Outstanding, string ApprovalStatus = "pending");
+public sealed record PurchaseApprovalChangeDto(Guid CatalogItemId, string Code, string Name, string Change,
+    int? PreviousQuantity, decimal? PreviousUnitCost, int? Quantity, decimal? UnitCost);
+public sealed record PurchaseTaxChangeDto(bool PreviousHasVat, decimal PreviousVatRate, bool HasVat, decimal VatRate);
 public sealed record PurchaseDto(Guid Id, string Kind, string Number, string Status, Guid? SourceRequestId,
     Guid? SupplierId, string? SupplierName, Guid WarehouseId, string WarehouseName, DateTime? RequiredDate,
     string? Note, string? PaymentTerms, string? CancelReason, string CreatedByName, DateTime CreatedAt,
     string? ApprovedByName, DateTime? ApprovedAt, DateTime UpdatedAt, decimal Total, string Version,
-    IReadOnlyList<PurchaseLineDto> Lines);
+    IReadOnlyList<PurchaseLineDto> Lines, IReadOnlyList<PurchaseApprovalChangeDto> ApprovalChanges,
+    bool HasVat = false, decimal VatRate = 0.07m, decimal Subtotal = 0m, decimal VatAmount = 0m,
+    PurchaseTaxChangeDto? TaxApprovalChange = null);
 public sealed record ReceiptLineInput(Guid PurchaseLineId, int GoodQuantity, int DamagedQuantity,
     decimal UnitCost, string? Note);
 public sealed record ReceiptInput(Guid RequestId, string DeliveryNumber, IReadOnlyList<ReceiptLineInput> Lines);

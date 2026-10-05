@@ -35,6 +35,11 @@
   --accent-foreground: #1552b3;
   --destructive: #c02626;
   --destructive-foreground: #ffffff;
+  --success: #0b6d5e;
+  --success-foreground: #ffffff;
+  --warning: #fff8e8;
+  --warning-foreground: #8a5a00;
+  --warning-border: #edcf8e;
   --input: #cbd5e1;
   --ring: #1b6be3;
   --radius: 14px;
@@ -3811,6 +3816,12 @@ img {
 .ui-button--default:not(:disabled):hover { background: #155ac1; box-shadow: 0 10px 22px rgb(27 107 227 / 25%); }
 .ui-button--destructive { background: var(--destructive); color: var(--destructive-foreground); }
 .ui-button--destructive:not(:disabled):hover { background: #a31d1d; }
+.ui-button--destructive-outline { border-color: color-mix(in srgb, var(--destructive) 40%, var(--border)); background: var(--card); color: var(--destructive); }
+.ui-button--destructive-outline:not(:disabled):hover { border-color: var(--destructive); background: color-mix(in srgb, var(--destructive) 6%, var(--card)); }
+.ui-button--success { background: var(--success); color: var(--success-foreground); }
+.ui-button--success:not(:disabled):hover { background: color-mix(in srgb, var(--success) 85%, black); }
+.ui-button--warning { border-color: var(--warning-border); background: var(--warning); color: var(--warning-foreground); }
+.ui-button--warning:not(:disabled):hover { border-color: var(--warning-foreground); background: color-mix(in srgb, var(--warning-foreground) 8%, var(--warning)); }
 .ui-button--outline { border-color: #cbd5e1; background: white; color: var(--navy-900); }
 .ui-button--outline:not(:disabled):hover { border-color: var(--blue-600); background: #f7faff; color: var(--blue-600); }
 .ui-button--secondary { background: var(--blue-50); color: #1552b3; }
@@ -4273,8 +4284,12 @@ img {
 .pagination-bar .ui-button svg { width: 14px; height: 14px; }
 
 .management-form { display: grid; max-height: min(68vh, 760px); gap: 18px; overflow-y: auto; padding-right: 4px; }
-.management-form > section { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: white; }
-.management-form > section > h3 { color: var(--navy-900); font-size: 15px; }
+.master-form-fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.management-form > section, .management-form > .master-form-fieldset > section { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: white; }
+.management-form > section > h3, .master-form-fieldset > section > h3 { color: var(--navy-900); font-size: 15px; }
+@media (max-width: 600px) {
+  .master-form-fieldset .form-grid { grid-template-columns: minmax(0, 1fr); }
+}
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 16px; }
 .field { display: grid; min-width: 0; gap: 6px; color: var(--navy-700); font-size: 12px; font-weight: 700; }
 .field--wide { grid-column: 1 / -1; }

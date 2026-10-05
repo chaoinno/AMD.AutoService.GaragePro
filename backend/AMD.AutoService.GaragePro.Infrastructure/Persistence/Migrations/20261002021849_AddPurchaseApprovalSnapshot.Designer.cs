@@ -4,6 +4,7 @@ using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ServiceDbContext))]
-    partial class ServiceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002021849_AddPurchaseApprovalSnapshot")]
+    partial class AddPurchaseApprovalSnapshot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -885,15 +888,8 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<long?>("ApprovedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<bool?>("ApprovedHasVat")
-                        .HasColumnType("bit");
-
                     b.Property<string>("ApprovedLinesJson")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("ApprovedVatRate")
-                        .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
 
                     b.Property<string>("CancelReason")
                         .HasMaxLength(1000)
@@ -909,9 +905,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("HasVat")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -968,12 +961,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal>("VatRate")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)")
-                        .HasDefaultValue(0.07m);
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uniqueidentifier");

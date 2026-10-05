@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using AMD.AutoService.GaragePro.API;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Abstractions;
@@ -12,6 +13,27 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddPolicy("purchasing-pin", context =>
+    {
+        var user = context.RequestServices.GetRequiredService<ICurrentUser>();
+        return RateLimitPartition.GetFixedWindowLimiter($"{user.ShardKey}:{user.BranchId}:{user.UserId}", _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
+        });
+    });
+    options.OnRejected = async (context, ct) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            success = false, error = new { code = "PURCHASING_PIN_RATE_LIMIT", messageTh = "ลองยืนยัน PIN หลายครั้งเกินไป กรุณารอ 1 นาทีแล้วลองใหม่" },
+            traceId = context.HttpContext.TraceIdentifier
+        }, ct);
+    };
+});
 
 builder.Services.AddControllers().AddJsonOptions(o =>
 {
@@ -163,6 +185,7 @@ app.Use(async (context, next) =>
 });
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "ok", at = DateTime.UtcNow }));
 

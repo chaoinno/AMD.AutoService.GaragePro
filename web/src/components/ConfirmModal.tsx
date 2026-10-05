@@ -10,7 +10,7 @@ import {
 
 type ConfirmModalProps = {
   open: boolean
-  title: string
+  title: ReactNode
   description?: ReactNode
   onClose: () => void
   children?: ReactNode

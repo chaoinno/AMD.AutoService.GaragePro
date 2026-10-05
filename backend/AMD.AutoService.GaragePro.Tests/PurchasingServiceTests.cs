@@ -10,27 +10,272 @@ namespace AMD.AutoService.GaragePro.Tests;
 
 public class PurchasingServiceTests
 {
+    [Theory]
+    [InlineData(false, 1, 100, 0, 100)]
+    [InlineData(true, 1, 100, 7, 107)]
+    [InlineData(true, 3, 19.99, 4.20, 64.17)]
+    [InlineData(true, 1, 1.50, 0.11, 1.61)]
+    public async Task Vat_is_calculated_on_document_subtotal_and_rounded_to_satang(bool hasVat, int qty,
+        double cost, double vat, double total)
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(qty, (decimal)cost) with { HasVat = hasVat }, default)).Data!;
+        Assert.Equal(hasVat, pr.HasVat); Assert.Equal(0.07m, pr.VatRate);
+        Assert.Equal(qty * (decimal)cost, pr.Subtotal);
+        Assert.Equal((decimal)vat, pr.VatAmount); Assert.Equal((decimal)total, pr.Total);
+        var loaded = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        Assert.Equal(pr.VatAmount, loaded.VatAmount); Assert.Equal(pr.Total, loaded.Total);
+    }
+
+    [Fact]
+    public async Task Approved_pr_transfers_vat_and_total_to_po_without_second_approval()
+    {
+        var f = new Fixture(); var input = f.Input(2, 100) with { HasVat = true };
+        var pr = (await f.Service.SaveAsync("PR", null, input, default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        Assert.True(po.HasVat); Assert.Equal(200m, po.Subtotal); Assert.Equal(14m, po.VatAmount); Assert.Equal(214m, po.Total);
+        Assert.Equal("approved", po.Status); Assert.Null(po.TaxApprovalChange); Assert.Empty(po.ApprovalChanges);
+        // Older callers omitting HasVat must not remove a document's existing VAT.
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input(2, 100) with { Version = po.Version }, default)).Data!;
+        Assert.True(po.HasVat); Assert.Equal("approved", po.Status);
+    }
+
+    [Fact]
+    public async Task Vat_only_po_revision_keeps_line_approval_but_requires_pin_reapproval()
+    {
+        var f = new Fixture(); var po = await f.SentPo();
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, HasVat = true }, default)).Data!;
+        Assert.Equal("draft", po.Status); Assert.Equal(0, f.CurrentItem.OnOrder);
+        Assert.Empty(po.ApprovalChanges); Assert.All(po.Lines, x => Assert.Equal("approved", x.ApprovalStatus));
+        Assert.False(po.TaxApprovalChange!.PreviousHasVat); Assert.True(po.TaxApprovalChange.HasVat);
+        Assert.False((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        Assert.False((await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "9999"), default)).Success);
+        po = (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Data!;
+        Assert.Null(po.TaxApprovalChange); Assert.Equal(64.20m, po.Total);
+        Assert.Contains(f.Repo.All<ActivityEvent>(), x => x.EntityId == po.Id && x.EventType == "purchasing.po.approved-tax");
+        po = (await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Data!;
+        Assert.Equal(3, f.CurrentItem.OnOrder);
+        var receipt = await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "VAT-DEL", [new(po.Lines[0].Id, 3, 0, 20, null)]), default);
+        Assert.True(receipt.Success); Assert.Equal(20m, Assert.Single(f.Repo.All<StockLot>()).UnitCost);
+    }
+
+    [Fact]
+    public async Task Vat_revision_of_converted_pr_propagates_and_reapproval_grants_only_changed_tax()
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        // Independent PO price revisions cannot be approved by an unrelated PR tax approval.
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input(3, 25) with { Version = po.Version }, default)).Data!;
+        pr = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input() with { Version = pr.Version, HasVat = true }, default)).Data!;
+        Assert.NotNull(pr.TaxApprovalChange); Assert.Empty(pr.ApprovalChanges);
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.True(po.HasVat); Assert.Null(po.TaxApprovalChange); Assert.Single(po.ApprovalChanges);
+        Assert.Equal(25m, po.Lines[0].UnitCost); Assert.Equal("draft", po.Status);
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, HasVat = true }, default)).Data!;
+        Assert.Equal("approved", po.Status); Assert.Equal(64.20m, po.Total);
+        Assert.True((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+    }
+
+    [Fact]
+    public async Task Reverting_vat_restores_approval_and_pr_line_revision_preserves_independent_po_tax()
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, HasVat = true }, default)).Data!;
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, HasVat = false }, default)).Data!;
+        Assert.Equal("approved", po.Status); Assert.Null(po.TaxApprovalChange);
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, HasVat = true }, default)).Data!;
+        pr = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input(4) with { Version = pr.Version }, default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.True(po.HasVat); Assert.NotNull(po.TaxApprovalChange); Assert.Empty(po.ApprovalChanges); Assert.Equal("draft", po.Status);
+    }
+
+    [Fact]
+    public async Task Office_approval_threshold_uses_total_including_vat()
+    {
+        var f = new Fixture();
+        var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 9900) with { HasVat = true }, default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        f.User.Role = UserRole.Office;
+        Assert.Equal(10593m, po.Total);
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Error?.Code);
+    }
+
     [Fact]
     public async Task Pr_requires_manager_approval_and_converts_only_once()
     {
         var f = new Fixture();
         var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
         Assert.False((await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Success);
-        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version, PinCode: "0042"), default)).Data!;
         f.User.Role = UserRole.Office;
-        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version), default)).Error?.Code);
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Error?.Code);
         f.User.Role = UserRole.Manager;
-        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
         Assert.Equal(f.User.UserName, pr.ApprovedByName);
         Assert.NotNull(pr.ApprovedAt);
         var po = await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default);
         Assert.True(po.Success); Assert.Equal(pr.Id, po.Data!.SourceRequestId);
+        Assert.Equal("approved", po.Data.Status); Assert.Equal(pr.ApprovedAt, po.Data.ApprovedAt);
+        Assert.Equal(pr.ApprovedByName, po.Data.ApprovedByName); Assert.Empty(po.Data.ApprovalChanges);
         Assert.False((await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Success);
         Assert.Single(f.Repo.All<PurchaseDocument>().Where(x => x.Kind == "PO"));
         Assert.Equal(0, (await f.Service.SearchAsync("PR", null, null, 1, 25, default)).Data!.TotalItems);
         Assert.Equal(1, (await f.Service.SearchAsync("PO", null, null, 1, 25, default)).Data!.TotalItems);
         var changed = f.Input() with { Version = po.Data.Version, Lines = [new(f.Item.Id, 99, 20)] };
-        Assert.False((await f.Service.SaveAsync("PO", po.Data.Id, changed, default)).Success);
+        var revision = await f.Service.SaveAsync("PO", po.Data.Id, changed, default);
+        Assert.True(revision.Success); Assert.Equal("draft", revision.Data!.Status);
+    }
+
+    [Theory]
+    [InlineData(null, "PURCHASING_VALIDATION")]
+    [InlineData("123", "PURCHASING_VALIDATION")]
+    [InlineData("12345", "PURCHASING_VALIDATION")]
+    [InlineData("12a4", "PURCHASING_VALIDATION")]
+    [InlineData("9999", "PURCHASING_PIN_INVALID")]
+    public async Task Approval_requires_valid_branch_pin_and_failed_attempt_does_not_approve(string? pin, string code)
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        var reply = await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: pin), default);
+        Assert.Equal(code, reply.Error?.Code);
+        var latest = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        Assert.Equal("pending", latest.Status); Assert.Null(latest.ApprovedAt);
+        Assert.DoesNotContain(f.Repo.All<ActivityEvent>(), x => x.EventType.EndsWith(".approve"));
+    }
+
+    [Fact]
+    public async Task Item_revisions_preserve_unchanged_approval_track_additions_and_deletions_and_block_send()
+    {
+        var f = new Fixture();
+        var b = new CatalogItem { Code = "B", Name = "B", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
+        var c = new CatalogItem { Code = "C", Name = "C", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
+        f.Repo.Add(b); f.Repo.Add(c);
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input() with { Lines = [new(f.Item.Id, 3, 20), new(b.Id, 1, 10)] }, default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        var lineId = po.Lines.Single(x => x.CatalogItemId == f.Item.Id).Id;
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, Lines = [new(f.Item.Id, 3, 20), new(c.Id, 2, 30)] }, default)).Data!;
+        Assert.Equal("draft", po.Status); Assert.Equal(lineId, po.Lines.Single(x => x.CatalogItemId == f.Item.Id).Id);
+        Assert.Equal("approved", po.Lines.Single(x => x.CatalogItemId == f.Item.Id).ApprovalStatus);
+        Assert.Equal("pending", po.Lines.Single(x => x.CatalogItemId == c.Id).ApprovalStatus);
+        Assert.Equal(new[] { "removed", "added" }, po.ApprovalChanges.Select(x => x.Change));
+        Assert.False((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Data!;
+        Assert.Empty(po.ApprovalChanges); Assert.All(po.Lines, line => Assert.Equal("approved", line.ApprovalStatus));
+        var audit = f.Repo.All<ActivityEvent>().Last(x => x.EntityId == po.Id && x.EventType.EndsWith(".approved-lines"));
+        Assert.DoesNotContain("0042", audit.PayloadJson!);
+        Assert.Equal(2, JsonSerializer.Deserialize<List<PurchaseApprovalChangeDto>>(audit.PayloadJson!)!.Count);
+        Assert.True((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+    }
+
+    [Fact]
+    public async Task Converted_pr_revision_updates_only_affected_po_items_and_inherits_reapproval()
+    {
+        var f = new Fixture();
+        var b = new CatalogItem { Code = "B", Name = "B", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
+        f.Repo.Add(b);
+        var input = f.Input() with { Lines = [new(f.Item.Id, 3, 20), new(b.Id, 1, 10)] };
+        var pr = (await f.Service.SaveAsync("PR", null, input, default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        // An independent PO price revision must survive PR edits and still require its own approval.
+        po = (await f.Service.SaveAsync("PO", po.Id, input with { Version = po.Version, Lines = [new(f.Item.Id, 3, 20), new(b.Id, 1, 15)] }, default)).Data!;
+        pr = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        pr = (await f.Service.SaveAsync("PR", pr.Id, input with { Version = pr.Version, Lines = [new(f.Item.Id, 4, 20), new(b.Id, 1, 10)] }, default)).Data!;
+        Assert.Single(pr.ApprovalChanges); Assert.Equal("modified", pr.ApprovalChanges[0].Change);
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        Assert.Equal("converted", pr.Status);
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.Equal(4, po.Lines.Single(x => x.CatalogItemId == f.Item.Id).Quantity);
+        Assert.Equal("approved", po.Lines.Single(x => x.CatalogItemId == f.Item.Id).ApprovalStatus);
+        Assert.Equal(15, po.Lines.Single(x => x.CatalogItemId == b.Id).UnitCost);
+        Assert.Single(po.ApprovalChanges); Assert.Equal(b.Id, po.ApprovalChanges[0].CatalogItemId);
+        Assert.Equal("draft", po.Status);
+    }
+
+    [Fact]
+    public async Task Partial_po_revision_keeps_receipt_line_id_and_rebalances_outstanding_stock()
+    {
+        var f = new Fixture(); var po = await f.SentPo(3, 20);
+        var lineId = po.Lines[0].Id;
+        Assert.True((await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL", [new(lineId, 2, 0, 20, null)]), default)).Success);
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.Equal(1, f.CurrentItem.OnOrder);
+        Assert.False((await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version, Lines = [new(f.Item.Id, 1, 20)] }, default)).Success);
+        po = (await f.Service.SaveAsync("PO", po.Id, f.Input(5, 25) with { Version = po.Version }, default)).Data!;
+        Assert.Equal("draft", po.Status); Assert.Equal(0, f.CurrentItem.OnOrder);
+        Assert.Equal(lineId, po.Lines[0].Id); Assert.Equal(2, po.Lines[0].ReceivedGood); Assert.Equal(3, po.Lines[0].Outstanding);
+        Assert.Single(po.ApprovalChanges);
+        Assert.False((await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "BLOCK", [new(lineId, 1, 0, 25, null)]), default)).Success);
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Data!;
+        Assert.Equal(3, f.CurrentItem.OnOrder); Assert.Equal(2, f.CurrentItem.OnHand);
+        Assert.True((await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL2", [new(lineId, 3, 0, 25, null)]), default)).Success);
+        Assert.Equal(0, f.CurrentItem.OnOrder); Assert.Equal(5, f.CurrentItem.OnHand);
+    }
+
+    [Fact]
+    public async Task Note_only_edit_preserves_approval_and_branch_pin_verification_uses_user_scope()
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        Assert.Equal("db2", f.Pin.ShardKey); Assert.Equal(105, f.Pin.BranchId);
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input() with { Version = pr.Version, Note = "เปลี่ยนหมายเหตุ" }, default)).Data!;
+        Assert.Equal("approved", pr.Status); Assert.Empty(pr.ApprovalChanges);
+    }
+
+    [Fact]
+    public async Task Pr_reapproval_grants_linked_po_approval_without_a_second_approval_and_reverting_restores_baseline()
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        var po = (await f.Service.ConvertAsync(pr.Id, new(f.Supplier.Id, pr.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Data!;
+        Assert.Equal(3, f.CurrentItem.OnOrder);
+        pr = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input(4) with { Version = pr.Version }, default)).Data!;
+        Assert.Equal(0, f.CurrentItem.OnOrder);
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default)).Data!;
+        pr = (await f.Service.ActionAsync("PR", pr.Id, "approve", new(pr.Version, PinCode: "0042"), default)).Data!;
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.Equal("approved", po.Status); Assert.Empty(po.ApprovalChanges);
+        Assert.True((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+        Assert.Equal(4, f.CurrentItem.OnOrder);
+        pr = (await f.Service.GetAsync("PR", pr.Id, default)).Data!;
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input(5) with { Version = pr.Version }, default)).Data!;
+        Assert.Equal("draft", pr.Status);
+        pr = (await f.Service.SaveAsync("PR", pr.Id, f.Input(4) with { Version = pr.Version }, default)).Data!;
+        Assert.Equal("converted", pr.Status); Assert.Empty(pr.ApprovalChanges);
+        po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
+        Assert.Equal("approved", po.Status); Assert.Empty(po.ApprovalChanges);
+        Assert.True((await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Success);
+        Assert.Equal(4, f.CurrentItem.OnOrder);
     }
 
     [Fact]
@@ -100,7 +345,7 @@ public class PurchasingServiceTests
         var f = new Fixture(); var po = await f.SentPo(5, 20);
         await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL", [new(po.Lines[0].Id, 2, 0, 20, null)]), default);
         po = (await f.Service.GetAsync("PO", po.Id, default)).Data!;
-        Assert.False((await f.Service.ActionAsync("PO", po.Id, "cancel", new(po.Version), default)).Success);
+        Assert.False((await f.Service.ActionAsync("PO", po.Id, "cancel", new(po.Version, PinCode: "0042"), default)).Success);
         Assert.True((await f.Service.ActionAsync("PO", po.Id, "cancel", new(po.Version, "ยกเลิกยอดที่เหลือ"), default)).Success);
         Assert.Equal(2, f.CurrentItem.OnHand); Assert.Equal(0, f.CurrentItem.OnOrder);
         Assert.False((await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL2", [new(po.Lines[0].Id, 1, 0, 20, null)]), default)).Success);
@@ -123,12 +368,12 @@ public class PurchasingServiceTests
     public async Task Office_cannot_approve_above_threshold_or_receive_cost_variance_and_costs_are_masked()
     {
         var f = new Fixture(); var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 10001), default)).Data!;
-        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version, PinCode: "0042"), default)).Data!;
         f.User.Role = UserRole.Office;
-        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version), default)).Error?.Code);
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Error?.Code);
         f.User.Role = UserRole.Manager;
-        po = (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version), default)).Data!;
-        po = (await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "send", new(po.Version, PinCode: "0042"), default)).Data!;
         f.User.Role = UserRole.Office;
         Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL", [new(po.Lines[0].Id, 1, 0, 5, "ส่วนต่าง")]), default)).Error?.Code);
         Assert.True((await f.Service.ReceiveAsync(po.Id, new(Guid.NewGuid(), "DEL", [new(po.Lines[0].Id, 1, 0, 10001, null)]), default)).Success);
@@ -140,7 +385,7 @@ public class PurchasingServiceTests
     public async Task Stale_version_and_cross_branch_or_shard_access_are_rejected()
     {
         var f = new Fixture(); var po = (await f.Service.SaveAsync("PO", null, f.Input(), default)).Data!;
-        Assert.True((await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Success);
+        Assert.True((await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version, PinCode: "0042"), default)).Success);
         Assert.Equal("PURCHASING_CONFLICT", (await f.Service.SaveAsync("PO", po.Id, f.Input() with { Version = po.Version }, default)).Error?.Code);
         f.User.BranchId = 999;
         Assert.Equal("PURCHASE_NOT_FOUND", (await f.Service.GetAsync("PO", po.Id, default)).Error?.Code);
@@ -194,6 +439,7 @@ public class PurchasingServiceTests
     {
         public TestUser User { get; } = new(); public FakeRepository Repo { get; }
         public PurchasingService Service { get; }
+        public TestBranchPinVerifier Pin { get; } = new();
         public CatalogItem Item { get; } = new() { Code = "A", Name = "อะไหล่", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Warehouse Warehouse { get; } = new() { Code = "W", Name = "คลัง", LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Supplier Supplier { get; } = new() { Code = "S", Name = "ซัพพลายเออร์" };
@@ -202,7 +448,7 @@ public class PurchasingServiceTests
         public Fixture()
         {
             Repo = new(User); Repo.Add(Item); Repo.Add(Warehouse); Repo.Add(Supplier);
-            Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]));
+            Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]), Pin);
         }
         public PurchaseInput Input(int qty = 3, decimal cost = 20) => new(Warehouse.Id, Supplier.Id, null, "ทดสอบ", null, [new(Item.Id, qty, cost)]);
         public Task<PurchaseDto> SentPo(int qty = 3, decimal cost = 20) => SentPo(Input(qty, cost));
@@ -212,7 +458,7 @@ public class PurchasingServiceTests
             var po = created.Data!;
             foreach (var action in new[] { "submit", "approve", "send" })
             {
-                var result = await Service.ActionAsync("PO", po.Id, action, new(po.Version), default);
+                var result = await Service.ActionAsync("PO", po.Id, action, new(po.Version, PinCode: "0042"), default);
                 Assert.True(result.Success, result.Error?.MessageTh); po = result.Data!;
             }
             return po;
@@ -233,6 +479,7 @@ public class PurchasingServiceTests
             catch { data = snapshot.Select(x => JsonSerializer.Deserialize(x.Json, x.Type)!).ToList(); throw; }
         }
         public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().SingleOrDefault(x => x.Id == id && x.Kind == kind && Scope(x.LegacyShardKey, x.LegacyBranchId)));
+        public Task<PurchaseDocument?> OrderForRequestAsync(Guid id, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().SingleOrDefault(x => x.Kind == "PO" && x.SourceRequestId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<ActivityEvent?> ApprovalAsync(string kind, Guid id, CancellationToken ct) => Task.FromResult(All<ActivityEvent>().Where(x => x.EntityId == id && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve").OrderByDescending(x => x.OccurredAt).FirstOrDefault());
         public Task<(IReadOnlyList<PurchaseDocument> Items, int Total)> SearchAsync(string kind, string? q, string? status, int page, int pageSize, CancellationToken ct)
         {

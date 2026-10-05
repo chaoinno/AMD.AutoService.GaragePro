@@ -10,6 +10,7 @@ public interface IPurchasingRepository
     // "open" = not yet fully received/closed (excludes complete and cancelled) — backs the default worklist filter and menu badge.
     Task<int> CountOpenAsync(string kind, CancellationToken ct);
     Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct);
+    Task<PurchaseDocument?> OrderForRequestAsync(Guid requestId, CancellationToken ct);
     Task<ActivityEvent?> ApprovalAsync(string kind, Guid documentId, CancellationToken ct);
     Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct);
     Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct);

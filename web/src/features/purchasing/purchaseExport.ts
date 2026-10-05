@@ -11,16 +11,17 @@ export async function createPurchaseWorkbook(documents: Purchase[], branch: stri
     ['เลขเอกสาร', 26], ['ประเภท', 12], ['สถานะ', 22], ['สาขา', 28], ['วันที่สร้าง', 23],
     ['ผู้สร้าง', 26], ['ผู้อนุมัติ', 26], ['วันที่อนุมัติ', 23], ['ซัพพลายเออร์', 32], ['คลัง', 24],
     ['วันที่ต้องการ', 20], ['มูลค่าก่อนภาษี (บาท)', 25], ['เงื่อนไขชำระเงิน', 32], ['หมายเหตุ', 40],
+    ['VAT', 16], ['อัตรา VAT (%)', 18], ['ภาษีมูลค่าเพิ่ม (บาท)', 25], ['ยอดสุทธิ (บาท)', 25],
   ].map(([header, width]) => ({ header: String(header), width: Number(width) }))
   const lines = workbook.addWorksheet('รายละเอียดสินค้า')
   lines.columns = [['เลขเอกสาร', 26], ['รหัสสินค้า', 22], ['สินค้า', 40], ['หน่วย', 14], ['จำนวน', 16], ['ราคา/หน่วย (บาท)', 24], ['มูลค่า (บาท)', 24], ['รับดี', 16], ['ชำรุด', 16], ['ค้างรับ', 16]].map(([header, width]) => ({ header: String(header), width: Number(width) }))
   for (const doc of documents) {
-    summary.addRow([doc.number, doc.kind, purchaseStatusLabels[doc.status] || doc.status, branch, new Date(doc.createdAt), doc.createdByName, doc.approvedByName, doc.approvedAt ? new Date(doc.approvedAt) : null, doc.supplierName, doc.warehouseName, doc.requiredDate ? new Date(doc.requiredDate) : null, doc.total, doc.paymentTerms, doc.note])
+    summary.addRow([doc.number, doc.kind, purchaseStatusLabels[doc.status] || doc.status, branch, new Date(doc.createdAt), doc.createdByName, doc.approvedByName, doc.approvedAt ? new Date(doc.approvedAt) : null, doc.supplierName, doc.warehouseName, doc.requiredDate ? new Date(doc.requiredDate) : null, doc.subtotal, doc.paymentTerms, doc.note, doc.hasVat ? 'มี VAT' : 'ไม่มี VAT', doc.hasVat ? Math.round(doc.vatRate * 10000) / 100 : 0, doc.vatAmount, doc.total])
     for (const line of doc.lines) lines.addRow([doc.number, line.code, line.name, line.unit, line.quantity, line.unitCost, Math.round(line.quantity * line.unitCost * 100) / 100, doc.kind === 'PO' ? line.receivedGood : null, doc.kind === 'PO' ? line.receivedDamaged : null, doc.kind === 'PO' ? line.outstanding : null])
   }
   for (const column of [5, 8]) summary.getColumn(column).numFmt = 'dd/mm/yyyy hh:mm'
   summary.getColumn(11).numFmt = 'dd/mm/yyyy'
-  summary.getColumn(12).numFmt = '#,##0.00'
+  for (const column of [12, 16, 17, 18]) summary.getColumn(column).numFmt = '#,##0.00'
   for (const column of [5, 6, 7, 8, 9, 10]) lines.getColumn(column).numFmt = '#,##0.00'
   for (const sheet of [summary, lines]) {
     sheet.views = [{ state: 'frozen', ySplit: 1 }]

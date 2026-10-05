@@ -42,7 +42,7 @@ public sealed class PurchaseRequestsController(PurchasingService service) : Purc
     [HttpPost]
     public async Task<IActionResult> Create(PurchaseInput input, CancellationToken ct) => Render(await service.SaveAsync("PR", null, input, ct), true);
 
-    /// <summary>แก้ไขใบขอซื้อเฉพาะฉบับร่าง — ต้องส่ง version จากรายละเอียดล่าสุด</summary>
+    /// <summary>แก้ไข PR — รายการที่เปลี่ยนแปลงต้องขออนุมัติใหม่ และปรับ PO ที่อ้างอิงพร้อมกัน</summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, PurchaseInput input, CancellationToken ct) => Render(await service.SaveAsync("PR", id, input, ct));
 
@@ -52,9 +52,10 @@ public sealed class PurchaseRequestsController(PurchasingService service) : Purc
     public async Task<IActionResult> Submit(Guid id, PurchaseActionInput input, CancellationToken ct) =>
         Render(await service.ActionAsync("PR", id, "submit", input, ct));
 
-    /// <summary>ผู้จัดการอนุมัติ PR เพื่อให้แปลงเป็น PO</summary>
+    /// <summary>ผู้จัดการอนุมัติรายการ PR ด้วย pinCode สาขา 4 หลัก — PO รับผลอนุมัติต่อโดยอัตโนมัติ</summary>
     /// <remarks>ส่ง version ปัจจุบันเสมอ การส่งกลับหรือยกเลิกต้องระบุ reason ระบบเก็บผู้ดำเนินการ เวลา และแหล่งที่มา</remarks>
     [HttpPost("{id:guid}/approve")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("purchasing-pin")]
     public async Task<IActionResult> Approve(Guid id, PurchaseActionInput input, CancellationToken ct) =>
         Render(await service.ActionAsync("PR", id, "approve", input, ct));
 
@@ -70,8 +71,8 @@ public sealed class PurchaseRequestsController(PurchasingService service) : Purc
     public async Task<IActionResult> Cancel(Guid id, PurchaseActionInput input, CancellationToken ct) =>
         Render(await service.ActionAsync("PR", id, "cancel", input, ct));
 
-    /// <summary>แปลง PR ที่อนุมัติแล้วเป็น PO ฉบับร่าง พร้อมเลือกซัพพลายเออร์</summary>
-    /// <remarks>หนึ่ง PR แปลงได้หนึ่ง PO ทั้งรายการและจำนวนตามที่อนุมัติ ระบบป้องกันแปลงซ้ำ และสามารถแก้ราคาซื้อใน PO ฉบับร่าง</remarks>
+    /// <summary>แปลง PR เป็น PO ที่อนุมัติแล้ว พร้อมเลือกซัพพลายเออร์</summary>
+    /// <remarks>หนึ่ง PR แปลงได้หนึ่ง PO ไม่ต้องอนุมัติซ้ำ รายการที่แก้ไขภายหลังต้องส่งขออนุมัติใหม่</remarks>
     [HttpPost("{id:guid}/convert")]
     public async Task<IActionResult> Convert(Guid id, ConvertPurchaseInput input, CancellationToken ct) => Render(await service.ConvertAsync(id, input, ct), true);
 }
@@ -103,7 +104,7 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
     [HttpPost]
     public async Task<IActionResult> Create(PurchaseInput input, CancellationToken ct) => Render(await service.SaveAsync("PO", null, input, ct), true);
 
-    /// <summary>แก้ไขใบสั่งซื้อเฉพาะฉบับร่าง — ต้องส่ง version จากรายละเอียดล่าสุด</summary>
+    /// <summary>แก้ไข PO — เก็บผลอนุมัติรายการเดิม และขออนุมัติใหม่เฉพาะรายการที่เปลี่ยนแปลง</summary>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, PurchaseInput input, CancellationToken ct) => Render(await service.SaveAsync("PO", id, input, ct));
 
@@ -113,9 +114,10 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
     public async Task<IActionResult> Submit(Guid id, PurchaseActionInput input, CancellationToken ct) =>
         Render(await service.ActionAsync("PO", id, "submit", input, ct));
 
-    /// <summary>อนุมัติ PO — เกินวงเงินที่กำหนดต้องเป็นผู้จัดการ</summary>
+    /// <summary>อนุมัติรายการ PO ที่เพิ่มหรือแก้ไขด้วย pinCode สาขา 4 หลัก — PO จาก PR ไม่ต้องอนุมัติซ้ำ</summary>
     /// <remarks>ส่ง version ปัจจุบันเสมอ การส่งกลับหรือยกเลิกต้องระบุ reason ระบบเก็บผู้ดำเนินการ เวลา และแหล่งที่มา</remarks>
     [HttpPost("{id:guid}/approve")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("purchasing-pin")]
     public async Task<IActionResult> Approve(Guid id, PurchaseActionInput input, CancellationToken ct) =>
         Render(await service.ActionAsync("PO", id, "approve", input, ct));
 
