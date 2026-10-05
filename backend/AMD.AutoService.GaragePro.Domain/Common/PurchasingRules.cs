@@ -4,6 +4,13 @@ namespace AMD.AutoService.GaragePro.Domain.Common;
 
 public static class PurchasingRules
 {
+    public static (decimal Subtotal, decimal VatAmount, decimal Total) Totals(PurchaseDocument doc)
+    {
+        var subtotal = doc.Lines.Sum(x => x.Quantity * x.UnitCost);
+        var vat = doc.HasVat ? decimal.Round(subtotal * doc.VatRate, 2, MidpointRounding.AwayFromZero) : 0m;
+        return (subtotal, vat, subtotal + vat);
+    }
+
     public static string? NextStatus(string kind, string status, string action) => (kind, status, action) switch
     {
         (_, "draft", "submit") => "pending",

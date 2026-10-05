@@ -68,6 +68,7 @@ public static class DependencyInjection
         services.AddScoped<IQuotationTemplateService, QuotationTemplateService>();
         services.AddScoped<ICatalogCategoryService, CatalogCategoryService>();
         services.AddScoped<IPurchasingRepository, PurchasingRepository>();
+        services.AddScoped<IBranchPinVerifier, BranchPinVerifier>();
         services.AddScoped<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingService>();
         services.AddSingleton(configuration.GetSection("Purchasing").Get<AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions>()
             ?? new AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions());

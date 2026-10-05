@@ -80,6 +80,69 @@ public sealed class CatalogServiceTests
         "P-OIL-1", LineType.Part, "น้ำมันเครื่อง", "ใช้ได้ทั่วไป", "ขวด",
         100m, 150m, null, 10, 2, 3, 0, "รับของวันพรุ่งนี้");
 
+    [Theory]
+    [InlineData(UserRole.Manager)]
+    [InlineData(UserRole.Office)]
+    public async Task Purchasing_can_register_new_part_without_stock_or_price_changes(UserRole role)
+    {
+        var repository = new StubRepository();
+        var service = new CatalogService(repository, new StubUser(role));
+        var result = await service.CreatePurchasePartAsync(new(" ลูกปืนล้อหน้า ", " ชิ้น "));
+
+        Assert.True(result.Success);
+        var item = Assert.IsType<CatalogItem>(repository.Added);
+        Assert.StartsWith("PART-", item.Code);
+        Assert.Equal("ลูกปืนล้อหน้า", item.Name);
+        Assert.Equal("ชิ้น", item.Unit);
+        Assert.Equal(LineType.Part, item.Type);
+        Assert.Equal(0, item.OnHand + item.Reserved + item.OnOrder + item.Damaged);
+        Assert.Equal(0, item.Cost);
+        Assert.Equal(0, item.Price);
+        Assert.Equal("db2", item.LegacyShardKey);
+        Assert.Equal(105, item.LegacyBranchId);
+        Assert.Equal("catalog.created-for-purchase", Assert.Single(repository.Events).EventType);
+        Assert.Equal(7, repository.Events[0].PerformedByUserId);
+        if (role == UserRole.Office) Assert.Null(result.Data!.Cost);
+    }
+
+    [Theory]
+    [InlineData(UserRole.FrontDesk)]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Lead)]
+    public async Task Other_roles_cannot_register_parts_through_purchasing(UserRole role)
+    {
+        var repository = new StubRepository();
+        var result = await new CatalogService(repository, new StubUser(role))
+            .CreatePurchasePartAsync(new("ลูกปืน", "ชิ้น"));
+        Assert.Equal("CATALOG_PURCHASE_FORBIDDEN", result.Error?.Code);
+        Assert.Null(repository.Added);
+        Assert.Empty(repository.Events);
+    }
+
+    [Fact]
+    public async Task New_purchase_part_rejects_duplicate_code_without_creating_another_item()
+    {
+        var repository = new StubRepository { CodeExists = true };
+        var result = await new CatalogService(repository, new StubUser(UserRole.Office))
+            .CreatePurchasePartAsync(new("ลูกปืน", "ชิ้น", " existing "));
+        Assert.Equal("CATALOG_CODE_DUPLICATE", result.Error?.Code);
+        Assert.Null(repository.Added);
+        Assert.Empty(repository.Events);
+    }
+
+    [Theory]
+    [InlineData(" ", "ชิ้น", "CATALOG_NAME_REQUIRED")]
+    [InlineData("ลูกปืน", " ", "CATALOG_UNIT_REQUIRED")]
+    public async Task New_purchase_part_validates_required_metadata(string name, string unit, string errorCode)
+    {
+        var repository = new StubRepository();
+        var result = await new CatalogService(repository, new StubUser(UserRole.Office))
+            .CreatePurchasePartAsync(new(name, unit));
+        Assert.Equal(errorCode, result.Error?.Code);
+        Assert.Null(repository.Added);
+    }
+
     private static CatalogItem Entity() => new()
     {
         Code = "P-OIL-1", Type = LineType.Part, Name = "น้ำมันเครื่อง", Unit = "ขวด",
@@ -101,6 +164,7 @@ public sealed class CatalogServiceTests
 
     private sealed class StubRepository : ICatalogRepository
     {
+        public bool CodeExists { get; set; }
         public CatalogItem? Existing { get; set; }
         public CatalogItem? Added { get; private set; }
         public List<ActivityEvent> Events { get; } = [];
@@ -116,7 +180,7 @@ public sealed class CatalogServiceTests
             Task.FromResult(Existing?.Id == id ? Existing : null);
 
         public Task<bool> CodeExistsAsync(string shardKey, int branchId, string code, Guid? excludingId,
-            CancellationToken ct = default) => Task.FromResult(false);
+            CancellationToken ct = default) => Task.FromResult(CodeExists);
 
         public Task AddAsync(CatalogItem item, CancellationToken ct = default)
         {

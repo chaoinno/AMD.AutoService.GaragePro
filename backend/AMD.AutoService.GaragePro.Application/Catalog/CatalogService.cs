@@ -12,6 +12,7 @@ public interface ICatalogService
     Task<Result<PagedResult<CatalogManagementItemDto>>> SearchAsync(CatalogManagementQuery query, CancellationToken ct = default);
     Task<Result<CatalogManagementItemDto>> GetAsync(Guid id, CancellationToken ct = default);
     Task<Result<CatalogManagementItemDto>> CreateAsync(CatalogUpsertRequest request, CancellationToken ct = default);
+    Task<Result<CatalogManagementItemDto>> CreatePurchasePartAsync(PurchasePartCreateRequest request, CancellationToken ct = default);
     Task<Result<CatalogManagementItemDto>> UpdateAsync(Guid id, CatalogUpsertRequest request, CancellationToken ct = default);
     Task<Result<bool>> SetStatusAsync(Guid id, CatalogStatusRequest request, CancellationToken ct = default);
 }
@@ -62,6 +63,26 @@ public sealed class CatalogService : ICatalogService
     {
         var forbidden = EnsureCanManage();
         if (forbidden is not null) return Result<CatalogManagementItemDto>.Fail(forbidden);
+        return await CreateCoreAsync(request, "catalog.created", ct);
+    }
+
+    public Task<Result<CatalogManagementItemDto>> CreatePurchasePartAsync(
+        PurchasePartCreateRequest request, CancellationToken ct = default)
+    {
+        if (currentUser.Role is not (UserRole.Manager or UserRole.Office))
+            return Task.FromResult(Result<CatalogManagementItemDto>.Fail("CATALOG_PURCHASE_FORBIDDEN", "เฉพาะผู้จัดการหรือธุรการจัดซื้อเท่านั้นที่เพิ่มอะไหล่สำหรับสั่งซื้อได้"));
+
+        // Purchasing may register a new part, but cannot set balances, selling prices or costs.
+        var input = new CatalogUpsertRequest(
+            Clean(request.Code) ?? $"PART-{Guid.NewGuid():N}", LineType.Part,
+            request.Name ?? "", request.Compatibility, request.Unit ?? "",
+            0, 0, null, 0, 0, 0, 0, null);
+        return CreateCoreAsync(input, "catalog.created-for-purchase", ct);
+    }
+
+    private async Task<Result<CatalogManagementItemDto>> CreateCoreAsync(
+        CatalogUpsertRequest request, string eventType, CancellationToken ct)
+    {
         var normalized = Normalize(request);
         var error = CatalogValidator.Validate(normalized);
         if (error is not null) return Result<CatalogManagementItemDto>.Fail(error);
@@ -91,7 +112,7 @@ public sealed class CatalogService : ICatalogService
             WarehouseId = normalized.WarehouseId
         };
         await repository.AddAsync(item, ct);
-        await repository.AddEventAsync(Event(item, "catalog.created", $"เพิ่มสินค้า {item.Code} {item.Name}"), ct);
+        await repository.AddEventAsync(Event(item, eventType, $"เพิ่มสินค้า {item.Code} {item.Name}"), ct);
         await repository.SaveChangesAsync(ct);
         return Result<CatalogManagementItemDto>.Ok(Map(item));
     }

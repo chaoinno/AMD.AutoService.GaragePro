@@ -17,7 +17,7 @@ public sealed class PurchasingOptions
 }
 
 public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser user, TimeProvider clock,
-    PurchasingOptions options, IStaffRepository staffRepo)
+    PurchasingOptions options, IStaffRepository staffRepo, IBranchPinVerifier branchPin)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
     private bool Manager => user.Role == UserRole.Manager;
@@ -63,14 +63,32 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
                 LegacyBranchId = user.BranchId, CreatedBy = user.UserId, CreatedByName = user.UserName, CreatedAt = Now
             };
             if (id.HasValue) Version(doc, input.Version);
-            Require(doc.Status == "draft", "PURCHASING_STATE", "แก้ไขได้เฉพาะเอกสารร่าง");
+            Require(doc.Status is "draft" or "pending" or "approved" or "converted" or "sent" or "partial", "PURCHASING_STATE", "เอกสารที่รับครบหรือยกเลิกแล้วไม่สามารถแก้ไขได้");
+            var linked = kind == "PR" && id.HasValue ? await repo.OrderForRequestAsync(doc.Id, ct) : null;
+            if (linked is not null) Require(linked.Status is not ("complete" or "cancelled"), "PURCHASING_STATE", "PO ที่อ้างอิงรับครบหรือยกเลิกแล้ว ไม่สามารถแก้ไข PR ได้");
+            PurchaseApproval.Preserve(doc);
+            var previous = doc.Lines.Select(PurchaseApproval.Value).ToList();
+            var previousTax = (doc.HasVat, doc.VatRate);
+            var outstanding = doc.Lines.ToDictionary(x => x.CatalogItemId, PurchasingRules.Outstanding);
+            var oldStatus = doc.Status;
             await Fill(doc, input, ct);
+            var taxChanged = previousTax != (doc.HasVat, doc.VatRate);
+            var changed = !previous.Select(x => (x.CatalogItemId, x.Quantity, x.UnitCost)).OrderBy(x => x.CatalogItemId)
+                .SequenceEqual(doc.Lines.Select(x => (x.CatalogItemId, x.Quantity, x.UnitCost)).OrderBy(x => x.CatalogItemId));
+            if (changed || taxChanged)
+            {
+                if (kind == "PO" && oldStatus is "sent" or "partial") await AdjustOnOrder(outstanding, -1, ct);
+                doc.Status = "draft";
+                if (linked is not null) await ReviseLinkedOrder(linked, previous, doc, taxChanged, ct);
+            }
+            if (doc.Status is "draft" or "pending" && doc.ApprovedLinesJson is not null && !PurchaseApproval.NeedsApproval(doc))
+                doc.Status = linked is null ? "approved" : "converted";
             doc.UpdatedAt = Now;
             if (!id.HasValue) repo.Add(doc);
             Audit(doc.Id, kind, id.HasValue ? "updated" : "created", $"บันทึก {doc.Number}");
             return doc;
         }, true, ct);
-        return saved.Success ? Result<PurchaseDto>.Ok(Map(saved.Data!)) : Result<PurchaseDto>.Fail(saved.Error!);
+        return saved.Success ? Result<PurchaseDto>.Ok(Map(saved.Data!, await repo.ApprovalAsync(kind, saved.Data!.Id, ct))) : Result<PurchaseDto>.Fail(saved.Error!);
     }
 
     private async Task Fill(PurchaseDocument doc, PurchaseInput input, CancellationToken ct)
@@ -93,20 +111,54 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
                 "จำนวนต้องเป็นจำนวนเต็ม 1–1,000,000 และราคาต้องเป็นเลขไม่ติดลบทศนิยมไม่เกิน 2 ตำแหน่ง");
             var item = await Item(line.CatalogItemId, ct);
             Valid(item.IsActive && item.Type == LineType.Part, "เลือกได้เฉพาะสินค้าอะไหล่ที่เปิดใช้งาน");
-            lines.Add(new PurchaseLine { DocumentId = doc.Id, CatalogItemId = item.Id, Code = item.Code,
-                Name = item.Name, Unit = item.Unit, Quantity = line.Quantity, UnitCost = line.UnitCost });
+            var existing = doc.Lines.SingleOrDefault(x => x.CatalogItemId == item.Id);
+            Valid(line.Quantity >= (existing?.ReceivedGood ?? 0) + (existing?.ReceivedDamaged ?? 0), "จำนวนสั่งซื้อต้องไม่น้อยกว่าจำนวนที่รับสินค้าแล้ว");
+            var updated = existing ?? new PurchaseLine { DocumentId = doc.Id, CatalogItemId = item.Id };
+            updated.Code = item.Code; updated.Name = item.Name; updated.Unit = item.Unit;
+            updated.Quantity = line.Quantity; updated.UnitCost = line.UnitCost;
+            lines.Add(updated);
         }
-        if (doc.SourceRequestId.HasValue)
-        {
-            var request = await Document("PR", doc.SourceRequestId.Value, ct);
-            Valid(lines.Count == request.Lines.Count && lines.All(x => request.Lines.Any(y => y.CatalogItemId == x.CatalogItemId && y.Quantity == x.Quantity)),
-                "PO ที่แปลงจาก PR ต้องคงรายการและจำนวนตาม PR ที่อนุมัติแล้ว");
-        }
-        repo.RemoveLines(doc.Lines);
+        var removed = doc.Lines.Where(x => !lines.Contains(x)).ToList();
+        Valid(removed.All(x => x.ReceivedGood + x.ReceivedDamaged == 0), "ไม่สามารถลบรายการที่รับสินค้าแล้ว");
+        repo.RemoveLines(removed);
         doc.Lines = lines;
         doc.WarehouseId = warehouse.Id; doc.WarehouseName = warehouse.Name;
         doc.SupplierId = supplier?.Id; doc.SupplierName = supplier?.Name;
         doc.RequiredDate = input.RequiredDate?.Date; doc.Note = Clean(input.Note); doc.PaymentTerms = Clean(input.PaymentTerms);
+        doc.HasVat = input.HasVat ?? doc.HasVat;
+    }
+
+    private async Task AdjustOnOrder(IReadOnlyDictionary<Guid, int> quantities, int direction, CancellationToken ct)
+    {
+        foreach (var (id, quantity) in quantities)
+        {
+            var item = await Item(id, ct);
+            var value = (long)item.OnOrder + quantity * direction;
+            Valid(value is >= 0 and <= int.MaxValue, "ยอดรอรับไม่สอดคล้องกับ PO กรุณาตรวจสอบสต็อก");
+            item.OnOrder = (int)value;
+        }
+    }
+
+    private async Task ReviseLinkedOrder(PurchaseDocument po, IReadOnlyList<PurchaseApproval.Line> previous,
+        PurchaseDocument pr, bool taxChanged, CancellationToken ct)
+    {
+        PurchaseApproval.Preserve(po);
+        var outstanding = po.Lines.ToDictionary(x => x.CatalogItemId, PurchasingRules.Outstanding);
+        var oldStatus = po.Status;
+        var old = previous.ToDictionary(x => x.CatalogItemId);
+        var current = pr.Lines.ToDictionary(x => x.CatalogItemId);
+        var changedIds = old.Keys.Union(current.Keys).Where(id => !old.TryGetValue(id, out var before)
+            || !current.TryGetValue(id, out var after) || !PurchaseApproval.Matches(before, after)).ToHashSet();
+        var lines = po.Lines.Where(x => !changedIds.Contains(x.CatalogItemId))
+            .Select(x => new PurchaseLineInput(x.CatalogItemId, x.Quantity, x.UnitCost))
+            .Concat(pr.Lines.Where(x => changedIds.Contains(x.CatalogItemId))
+                .Select(x => new PurchaseLineInput(x.CatalogItemId, x.Quantity, x.UnitCost))).ToList();
+        await Fill(po, new(po.WarehouseId, po.SupplierId, po.RequiredDate, po.Note, po.PaymentTerms, lines,
+            HasVat: taxChanged ? pr.HasVat : po.HasVat), ct);
+        if (taxChanged) po.VatRate = pr.VatRate;
+        if (oldStatus is "sent" or "partial") await AdjustOnOrder(outstanding, -1, ct);
+        po.Status = PurchaseApproval.NeedsApproval(po) ? "draft" : "approved"; po.UpdatedAt = Now;
+        Audit(po.Id, "PO", "revised-from-pr", $"ปรับรายการตาม {pr.Number} และรออนุมัติรายการที่เปลี่ยนแปลง");
     }
 
     public async Task<Result<PurchaseDto>> ActionAsync(string kind, Guid id, string action, PurchaseActionInput input, CancellationToken ct)
@@ -118,15 +170,56 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             Require(next is not null && action is "submit" or "approve" or "return" or "send" or "cancel",
                 "PURCHASING_STATE", "สถานะเอกสารนี้ไม่อนุญาตให้ดำเนินการดังกล่าว");
             if (action is "cancel" or "return") Valid(Clean(input.Reason) is { Length: <= 1000 }, "กรุณาระบุเหตุผลไม่เกิน 1,000 ตัวอักษร");
+            if (kind == "PR" && action == "cancel") Require(await repo.OrderForRequestAsync(doc.Id, ct) is null,
+                "PURCHASING_STATE", "PR นี้สร้าง PO แล้ว กรุณาดำเนินการยกเลิกที่ PO");
             if (action is "approve" or "return")
             {
-                Require(Manager || (kind == "PO" && doc.Lines.Sum(x => x.Quantity * x.UnitCost) <= options.ManagerApprovalThreshold),
+                Require(Manager || (kind == "PO" && PurchasingRules.Totals(doc).Total <= options.ManagerApprovalThreshold),
                     "PURCHASING_FORBIDDEN", "เอกสารนี้ต้องให้ผู้จัดการสาขาอนุมัติหรือส่งกลับแก้ไข");
-                doc.ApprovedBy = action == "approve" ? user.UserId : null;
-                doc.ApprovedAt = action == "approve" ? Now : null;
+                if (action == "approve")
+                {
+                    Valid(input.PinCode is { Length: 4 } && input.PinCode.All(c => c is >= '0' and <= '9'), "กรุณากรอก PIN สาขาเป็นตัวเลข 4 หลัก");
+                    Require(await branchPin.VerifyAsync(user.ShardKey, user.BranchId, input.PinCode!, ct), "PURCHASING_PIN_INVALID", "PIN สาขาไม่ถูกต้อง กรุณาลองอีกครั้ง");
+                    if (kind == "PR")
+                    {
+                        var linked = await repo.OrderForRequestAsync(doc.Id, ct);
+                        if (linked is not null)
+                        {
+                            Require(linked.Status is not ("complete" or "cancelled"), "PURCHASING_STATE", "PO ที่อ้างอิงปิดแล้ว ไม่สามารถอนุมัติการแก้ไข PR ได้");
+                            PurchaseApproval.InheritChanges(linked, doc, PurchaseApproval.Changes(doc));
+                            if (!PurchaseApproval.NeedsApproval(linked))
+                            {
+                                linked.Status = "approved"; linked.ApprovedBy = user.UserId; linked.ApprovedAt = Now;
+                                Audit(linked.Id, "PO", "approve", $"รับผลอนุมัติรายการจาก {doc.Number}");
+                            }
+                            linked.UpdatedAt = Now; next = "converted";
+                        }
+                    }
+                    var changes = PurchaseApproval.Changes(doc);
+                    if (PurchaseApproval.TaxChange(doc) is { } taxChange)
+                        repo.Add(new ActivityEvent { EntityId = doc.Id, EntityType = kind,
+                            EventType = $"purchasing.{kind.ToLowerInvariant()}.approved-tax", DescriptionTh = $"อนุมัติการเปลี่ยน VAT ของ {doc.Number}",
+                            PayloadJson = JsonSerializer.Serialize(taxChange), PerformedByUserId = user.UserId,
+                            PerformedByName = user.UserName, Source = user.Source, OccurredAt = Now });
+                    repo.Add(new ActivityEvent { EntityId = doc.Id, EntityType = kind,
+                        EventType = $"purchasing.{kind.ToLowerInvariant()}.approved-lines", DescriptionTh = $"อนุมัติ {changes.Count} รายการที่เปลี่ยนแปลงใน {doc.Number}",
+                        PayloadJson = JsonSerializer.Serialize(changes), PerformedByUserId = user.UserId,
+                        PerformedByName = user.UserName, Source = user.Source, OccurredAt = Now });
+                    PurchaseApproval.Approve(doc);
+                }
+                if (action == "approve") { doc.ApprovedBy = user.UserId; doc.ApprovedAt = Now; }
             }
             if (action is "submit" or "send")
             {
+                if (action == "send")
+                {
+                    Require(!PurchaseApproval.NeedsApproval(doc), "PURCHASING_STATE", "มีรายการหรือ VAT ที่ยังไม่อนุมัติ กรุณาส่งขออนุมัติการแก้ไขก่อนสั่งซื้อ");
+                    if (doc.SourceRequestId.HasValue)
+                    {
+                        var source = await Document("PR", doc.SourceRequestId.Value, ct);
+                        Require(source.Status == "converted", "PURCHASING_STATE", "PR ต้นทางกำลังแก้ไข กรุณาอนุมัติ PR ก่อนสั่งซื้อ");
+                    }
+                }
                 await Warehouse(doc.WarehouseId, ct);
                 if (kind == "PO") await Supplier(doc.SupplierId!.Value, ct);
                 foreach (var line in doc.Lines)
@@ -144,7 +237,11 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
                     item.OnOrder += delta;
                     item.PurchasingLocked = true;
                 }
-            if (action == "send") doc.SentAt = Now;
+            if (action == "send")
+            {
+                doc.SentAt = Now;
+                if (doc.Lines.All(x => PurchasingRules.Outstanding(x) == 0)) next = "complete";
+            }
             if (action == "cancel") doc.CancelReason = Clean(input.Reason);
             doc.Status = next!; doc.UpdatedAt = Now;
             Audit(doc.Id, kind, action, $"{doc.Number}: {action} {Clean(input.Reason)}");
@@ -160,21 +257,29 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         {
             var pr = await Document("PR", id, ct); Version(pr, input.Version);
             Require(PurchasingRules.NextStatus("PR", pr.Status, "convert") is not null, "PURCHASING_STATE", "แปลงเป็น PO ได้เฉพาะ PR ที่อนุมัติและยังไม่ถูกแปลง");
+            Require(await repo.OrderForRequestAsync(id, ct) is null, "PURCHASING_STATE", "PR นี้สร้าง PO แล้ว");
             var supplier = await Supplier(input.SupplierId, ct);
             await Warehouse(pr.WarehouseId, ct);
             var po = new PurchaseDocument { Kind = "PO", Number = await repo.NumberAsync("PO", Now, ct),
                 LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId, SourceRequestId = pr.Id,
                 WarehouseId = pr.WarehouseId, WarehouseName = pr.WarehouseName, SupplierId = supplier.Id,
                 SupplierName = supplier.Name, RequiredDate = pr.RequiredDate, Note = pr.Note, PaymentTerms = supplier.PaymentTerms,
-                CreatedBy = user.UserId, CreatedByName = user.UserName, CreatedAt = Now, UpdatedAt = Now };
+                HasVat = pr.HasVat, VatRate = pr.VatRate,
+                CreatedBy = user.UserId, CreatedByName = user.UserName, CreatedAt = Now, UpdatedAt = Now,
+                Status = "approved", ApprovedBy = pr.ApprovedBy, ApprovedAt = pr.ApprovedAt };
             po.Lines = pr.Lines.Select(x => new PurchaseLine { DocumentId = po.Id, CatalogItemId = x.CatalogItemId,
                 Code = x.Code, Name = x.Name, Unit = x.Unit, Quantity = x.Quantity, UnitCost = x.UnitCost }).ToList();
             repo.Add(po); pr.Status = "converted"; pr.UpdatedAt = Now;
+            PurchaseApproval.Approve(po);
+            var approval = await repo.ApprovalAsync("PR", pr.Id, ct);
+            repo.Add(new ActivityEvent { EntityType = "PO", EntityId = po.Id, EventType = "purchasing.po.approve",
+                DescriptionTh = $"รับผลอนุมัติจาก {pr.Number}", PerformedByUserId = pr.ApprovedBy ?? user.UserId,
+                PerformedByName = approval?.PerformedByName ?? user.UserName, Source = user.Source, OccurredAt = pr.ApprovedAt ?? Now });
             Audit(pr.Id, "PR", "converted", $"แปลง {pr.Number} เป็น {po.Number}");
             Audit(po.Id, "PO", "created", $"สร้างจาก {pr.Number}");
             return po;
         }, true, ct);
-        return result.Success ? Result<PurchaseDto>.Ok(Map(result.Data!)) : Result<PurchaseDto>.Fail(result.Error!);
+        return result.Success ? Result<PurchaseDto>.Ok(Map(result.Data!, await repo.ApprovalAsync("PO", result.Data!.Id, ct))) : Result<PurchaseDto>.Fail(result.Error!);
     }
 
     public Task<Result<IReadOnlyList<ReceiptDto>>> ReceiptsAsync(Guid orderId, CancellationToken ct) => Run<IReadOnlyList<ReceiptDto>>(async () =>
@@ -486,11 +591,18 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             UnitCost = cost, Reason = reason, PerformedByName = user.UserName, OccurredAt = Now };
         repo.Add(movement); return movement;
     }
-    private static PurchaseDto Map(PurchaseDocument x, ActivityEvent? approval = null) => new(x.Id, x.Kind, x.Number, x.Status, x.SourceRequestId,
+    private static PurchaseDto Map(PurchaseDocument x, ActivityEvent? approval = null)
+    {
+        var baseline = PurchaseApproval.Baseline(x).ToDictionary(l => l.CatalogItemId);
+        var totals = PurchasingRules.Totals(x);
+        return new(x.Id, x.Kind, x.Number, x.Status, x.SourceRequestId,
         x.SupplierId, x.SupplierName, x.WarehouseId, x.WarehouseName, x.RequiredDate, x.Note, x.PaymentTerms, x.CancelReason,
         x.CreatedByName, Utc(x.CreatedAt), x.ApprovedBy.HasValue ? approval?.PerformedByName : null,
-        x.ApprovedAt.HasValue ? Utc(x.ApprovedAt.Value) : null, Utc(x.UpdatedAt), x.Lines.Sum(l => l.Quantity * l.UnitCost), Convert.ToBase64String(x.RowVersion),
-        x.Lines.OrderBy(l => l.Code).Select(l => new PurchaseLineDto(l.Id, l.CatalogItemId, l.Code, l.Name, l.Unit, l.Quantity, l.UnitCost, l.ReceivedGood, l.ReceivedDamaged, PurchasingRules.Outstanding(l))).ToList());
+        x.ApprovedAt.HasValue ? Utc(x.ApprovedAt.Value) : null, Utc(x.UpdatedAt), totals.Total, Convert.ToBase64String(x.RowVersion),
+        x.Lines.OrderBy(l => l.Code).Select(l => new PurchaseLineDto(l.Id, l.CatalogItemId, l.Code, l.Name, l.Unit, l.Quantity, l.UnitCost, l.ReceivedGood, l.ReceivedDamaged, PurchasingRules.Outstanding(l),
+            baseline.TryGetValue(l.CatalogItemId, out var before) && PurchaseApproval.Matches(before, l) ? "approved" : "pending")).ToList(), PurchaseApproval.Changes(x, baseline),
+        x.HasVat, x.VatRate, totals.Subtotal, totals.VatAmount, PurchaseApproval.TaxChange(x));
+    }
     private static ReceiptDto MapReceipt(GoodsReceipt x) => new(x.Id, x.Number, x.PurchaseOrderId, x.DeliveryNumber, Utc(x.ReceivedAt),
         x.ReceivedByName, x.Lines.Select(l => new ReceiptLineDto(l.PurchaseLineId, l.GoodQuantity, l.DamagedQuantity, l.UnitCost, l.Note)).ToList());
     private static StockItemDto MapStock(CatalogItem x, decimal? value) => new(x.Id, x.Code, x.Name, x.Unit, x.StockManaged, x.OnHand, x.Reserved, x.Available, x.OnOrder, x.Damaged, x.StockManaged ? value : null);

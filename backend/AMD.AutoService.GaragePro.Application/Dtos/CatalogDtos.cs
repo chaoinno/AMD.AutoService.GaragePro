@@ -50,3 +50,9 @@ public sealed record CatalogUpsertRequest(
     Guid? WarehouseId = null);
 
 public sealed record CatalogStatusRequest(bool IsActive);
+
+public sealed record PurchasePartCreateRequest(
+    string Name,
+    string Unit,
+    string? Code = null,
+    string? Compatibility = null);

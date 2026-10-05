@@ -4,6 +4,7 @@ using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ServiceDbContext))]
-    partial class ServiceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261002021849_AddPurchaseApprovalSnapshot")]
+    partial class AddPurchaseApprovalSnapshot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -874,88 +877,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_Payment", (string)null);
                 });
 
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Promotion", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("CreatedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime?>("EndsAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LegacyBranchId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LegacyShardKey")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal?>("MaxAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("MinSubtotal")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<int>("Scope")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("StartsAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("UpdatedByName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<long>("UpdatedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal>("Value")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
-                        .IsUnique()
-                        .HasDatabaseName("UX_svc_Promotion_Code");
-
-                    b.ToTable("svc_Promotion", (string)null);
-                });
-
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -967,15 +888,8 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<long?>("ApprovedBy")
                         .HasColumnType("bigint");
 
-                    b.Property<bool?>("ApprovedHasVat")
-                        .HasColumnType("bit");
-
                     b.Property<string>("ApprovedLinesJson")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<decimal?>("ApprovedVatRate")
-                        .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)");
 
                     b.Property<string>("CancelReason")
                         .HasMaxLength(1000)
@@ -991,9 +905,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
-
-                    b.Property<bool>("HasVat")
-                        .HasColumnType("bit");
 
                     b.Property<string>("Kind")
                         .IsRequired()
@@ -1050,12 +961,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<decimal>("VatRate")
-                        .ValueGeneratedOnAdd()
-                        .HasPrecision(5, 4)
-                        .HasColumnType("decimal(5,4)")
-                        .HasDefaultValue(0.07m);
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uniqueidentifier");
@@ -1748,283 +1653,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_ReceiptNumberCounter", (string)null);
                 });
 
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Sale", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("BillDiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("BillDiscountType")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("BillDiscountValue")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("BillPromotionAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("BillPromotionCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<Guid?>("BillPromotionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BillPromotionName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("CheckoutRequestHash")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<Guid?>("CheckoutRequestId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("CompletedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CompletedByName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long?>("CompletedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<decimal>("CostTotal")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedByName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long>("CreatedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("CustomerName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("CustomerPhone")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<decimal>("GrossAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("LegacyBranchId")
-                        .HasColumnType("int");
-
-                    b.Property<long?>("LegacyCustomerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("LegacyShardKey")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("LineDiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("LinePromotionAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("NetAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ReceiptNo")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("rowversion");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("SubtotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("VatAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("VatIncluded")
-                        .HasColumnType("bit");
-
-                    b.Property<decimal>("VatRate")
-                        .HasColumnType("decimal(5,4)");
-
-                    b.Property<string>("VoidReason")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<Guid?>("VoidRequestId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("VoidedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("VoidedByName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long?>("VoidedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<Guid>("WarehouseId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "CheckoutRequestId")
-                        .IsUnique()
-                        .HasFilter("[CheckoutRequestId] IS NOT NULL");
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "ReceiptNo")
-                        .IsUnique()
-                        .HasFilter("[ReceiptNo] IS NOT NULL");
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Status", "CreatedAt");
-
-                    b.ToTable("svc_Sale", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SaleLine", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("CatalogItemId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<decimal?>("CostAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("DiscountPercent")
-                        .HasColumnType("decimal(5,2)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<decimal>("NetAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("PromotionAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("PromotionCode")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<Guid?>("PromotionId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("PromotionName")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("SaleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CatalogItemId");
-
-                    b.HasIndex("SaleId", "CatalogItemId")
-                        .IsUnique();
-
-                    b.ToTable("svc_SaleLine", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SalePayment", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Method")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("ReceivedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ReceivedByName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long>("ReceivedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("Reference")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<Guid>("SaleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SaleId");
-
-                    b.ToTable("svc_SalePayment", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SaleReceiptNumberCounter", b =>
-                {
-                    b.Property<string>("LegacyShardKey")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("LegacyBranchId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LastSequence")
-                        .HasColumnType("int");
-
-                    b.HasKey("LegacyShardKey", "LegacyBranchId", "Year");
-
-                    b.ToTable("svc_SaleReceiptNumberCounter", (string)null);
-                });
-
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Shift", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2261,9 +1889,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<long?>("RequesterStaffId")
                         .HasColumnType("bigint");
 
-                    b.Property<Guid?>("SaleId")
-                        .HasColumnType("uniqueidentifier");
-
                     b.Property<Guid?>("StockLotId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2291,9 +1916,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .HasFilter("[JobId] IS NOT NULL");
 
                     b.HasIndex("LegacyShardKey", "LegacyBranchId", "OperationId");
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "SaleId")
-                        .HasFilter("[SaleId] IS NOT NULL");
 
                     b.HasIndex("LegacyShardKey", "LegacyBranchId", "CatalogItemId", "OccurredAt");
 
@@ -2365,168 +1987,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UX_svc_Supplier_Code");
 
                     b.ToTable("svc_Supplier", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BuyerAddress")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("BuyerBranchNo")
-                        .HasMaxLength(5)
-                        .HasColumnType("nvarchar(5)");
-
-                    b.Property<string>("BuyerName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("BuyerTaxId")
-                        .HasMaxLength(13)
-                        .HasColumnType("nvarchar(13)");
-
-                    b.Property<string>("DocumentNo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<DateTime>("IssuedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("IssuedByName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<long>("IssuedByUserId")
-                        .HasColumnType("bigint");
-
-                    b.Property<Guid>("JobId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("LegacyBranchId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("LegacyShardKey")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("NetAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid>("ReceiptId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("SellerAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("SellerName")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("SellerPhone")
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<string>("SellerTaxId")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<decimal>("TotalAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("VatAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("VatRate")
-                        .HasColumnType("decimal(5,4)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("JobId")
-                        .IsUnique();
-
-                    b.HasIndex("ReceiptId")
-                        .IsUnique();
-
-                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "DocumentNo")
-                        .IsUnique();
-
-                    b.ToTable("svc_TaxInvoice", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoiceLine", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<decimal>("DiscountAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("NetAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,3)");
-
-                    b.Property<string>("QuotationCode")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<int>("Sequence")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("TaxInvoiceId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Unit")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TaxInvoiceId", "Sequence");
-
-                    b.ToTable("svc_TaxInvoiceLine", (string)null);
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoiceNumberCounter", b =>
-                {
-                    b.Property<string>("LegacyShardKey")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("LegacyBranchId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.Property<int>("LastSequence")
-                        .HasColumnType("int");
-
-                    b.HasKey("LegacyShardKey", "LegacyBranchId", "Year");
-
-                    b.ToTable("svc_TaxInvoiceNumberCounter", (string)null);
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.UserRoleOverride", b =>
@@ -2976,34 +2436,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("QuotationTemplate");
                 });
 
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SaleLine", b =>
-                {
-                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
-                        .WithMany()
-                        .HasForeignKey("CatalogItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Sale", "Sale")
-                        .WithMany("Lines")
-                        .HasForeignKey("SaleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sale");
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SalePayment", b =>
-                {
-                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Sale", "Sale")
-                        .WithMany("Payments")
-                        .HasForeignKey("SaleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Sale");
-                });
-
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.StockLot", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", null)
@@ -3041,15 +2473,6 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoiceLine", b =>
-                {
-                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoice", null)
-                        .WithMany("Lines")
-                        .HasForeignKey("TaxInvoiceId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
@@ -3116,21 +2539,9 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Lines");
                 });
 
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Sale", b =>
-                {
-                    b.Navigation("Lines");
-
-                    b.Navigation("Payments");
-                });
-
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Supplier", b =>
                 {
                     b.Navigation("CatalogItems");
-                });
-
-            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.TaxInvoice", b =>
-                {
-                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Warehouse", b =>

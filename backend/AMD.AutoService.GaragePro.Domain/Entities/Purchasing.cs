@@ -17,11 +17,18 @@ public class PurchaseDocument
     public DateTime? RequiredDate { get; set; }
     public string? Note { get; set; }
     public string? PaymentTerms { get; set; }
+    // Unit costs are before VAT; tax is calculated once on the document subtotal.
+    public bool HasVat { get; set; }
+    public decimal VatRate { get; set; } = 0.07m;
+    public bool? ApprovedHasVat { get; set; }
+    public decimal? ApprovedVatRate { get; set; }
     public string? CancelReason { get; set; }
     public long CreatedBy { get; set; }
     public string CreatedByName { get; set; } = "";
     public long? ApprovedBy { get; set; }
     public DateTime? ApprovedAt { get; set; }
+    // Last approved item values. Retained through revisions, including deleted items.
+    public string? ApprovedLinesJson { get; set; }
     public DateTime? SentAt { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

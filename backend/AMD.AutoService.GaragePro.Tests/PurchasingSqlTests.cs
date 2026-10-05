@@ -29,7 +29,7 @@ public class PurchasingSqlTests
         async Task<Result<T>> Call<T>(Func<PurchasingService, Task<Result<T>>> call)
         {
             await using var db = NewDb();
-            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new(), new ThrowingStaffRepository()));
+            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new(), new ThrowingStaffRepository(), new TestBranchPinVerifier()));
         }
         var item = new CatalogItem { Code = "TEST-FIFO", Name = "ข้อมูลทดสอบ FIFO ชั่วคราว", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
         var warehouse = new Warehouse { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "คลังทดสอบชั่วคราว", LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
@@ -37,14 +37,26 @@ public class PurchasingSqlTests
         try
         {
             await using (var db = NewDb()) { db.AddRange(item, warehouse, supplier); await db.SaveChangesAsync(); }
-            var input = new PurchaseInput(warehouse.Id, null, null, "Integration test", null, [new(item.Id, 5, 10)]);
+            var input = new PurchaseInput(warehouse.Id, null, null, "Integration test", null, [new(item.Id, 5, 10)], HasVat: true);
             var pr = Success(await Call(s => s.SaveAsync("PR", null, input, default)));
             Assert.NotEmpty(pr.Version);
             pr = Success(await Call(s => s.SaveAsync("PR", pr.Id, input with { Version = pr.Version, Note = "Edited draft" }, default)));
             Assert.Single(pr.Lines);
-            foreach (var action in new[] { "submit", "approve" }) pr = Success(await Call(s => s.ActionAsync("PR", pr.Id, action, new(pr.Version), default)));
+            foreach (var action in new[] { "submit", "approve" }) pr = Success(await Call(s => s.ActionAsync("PR", pr.Id, action, new(pr.Version, PinCode: "0042"), default)));
             var po = Success(await Call(s => s.ConvertAsync(pr.Id, new(supplier.Id, pr.Version), default)));
-            foreach (var action in new[] { "submit", "approve", "send" }) po = Success(await Call(s => s.ActionAsync("PO", po.Id, action, new(po.Version), default)));
+            Assert.Equal("approved", po.Status);
+            Assert.True(po.HasVat); Assert.Equal(50m, po.Subtotal); Assert.Equal(3.50m, po.VatAmount); Assert.Equal(53.50m, po.Total);
+            po = Success(await Call(s => s.GetAsync("PO", po.Id, default)));
+            Assert.True(po.HasVat); Assert.Null(po.TaxApprovalChange);
+            // Tax-only revision must persist across DbContexts without clearing item approval.
+            po = Success(await Call(s => s.SaveAsync("PO", po.Id, input with { SupplierId = supplier.Id, Version = po.Version, HasVat = false }, default)));
+            po = Success(await Call(s => s.GetAsync("PO", po.Id, default)));
+            Assert.Equal("draft", po.Status); Assert.NotNull(po.TaxApprovalChange); Assert.Empty(po.ApprovalChanges);
+            Assert.All(po.Lines, x => Assert.Equal("approved", x.ApprovalStatus));
+            foreach (var action in new[] { "submit", "approve" }) po = Success(await Call(s => s.ActionAsync("PO", po.Id, action, new(po.Version, PinCode: "0042"), default)));
+            po = Success(await Call(s => s.GetAsync("PO", po.Id, default)));
+            Assert.False(po.HasVat); Assert.Null(po.TaxApprovalChange); Assert.Equal(50m, po.Total);
+            po = Success(await Call(s => s.ActionAsync("PO", po.Id, "send", new(po.Version), default)));
             var receive = new ReceiptInput(Guid.NewGuid(), "SQL-DEL-1", [new(po.Lines[0].Id, 2, 0, 10, null)]);
             var replies = await Task.WhenAll(Call(s => s.ReceiveAsync(po.Id, receive, default)), Call(s => s.ReceiveAsync(po.Id, receive, default)));
             Assert.All(replies, x => Assert.True(x.Success, x.Error?.MessageTh));

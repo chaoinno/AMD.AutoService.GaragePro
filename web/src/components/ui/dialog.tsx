@@ -79,7 +79,7 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
     previousFocus.current = document.activeElement as HTMLElement | null
     document.body.classList.add('modal-open')
     const frame = window.requestAnimationFrame(() => {
-      const first = contentRef.current?.querySelector<HTMLElement>(
+      const first = contentRef.current?.querySelector<HTMLElement>('[data-dialog-autofocus]:not([disabled])') ?? contentRef.current?.querySelector<HTMLElement>(
         'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
       )
       ;(first ?? contentRef.current)?.focus()

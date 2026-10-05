@@ -43,6 +43,10 @@ public sealed class CatalogController(ICatalogRepository catalog, ICatalogServic
     public async Task<IActionResult> Create([FromBody] CatalogUpsertRequest request, CancellationToken ct) =>
         Render(await service.CreateAsync(request, ct), created: true);
 
+    [HttpPost("purchasing-parts")]
+    public async Task<IActionResult> CreatePurchasePart([FromBody] PurchasePartCreateRequest request, CancellationToken ct) =>
+        Render(await service.CreatePurchasePartAsync(request, ct), created: true);
+
     [HttpPut("manage/{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CatalogUpsertRequest request, CancellationToken ct) =>
         Render(await service.UpdateAsync(id, request, ct));
@@ -60,7 +64,7 @@ public sealed class CatalogController(ICatalogRepository catalog, ICatalogServic
         var status = result.Error!.Code switch
         {
             "CATALOG_NOT_FOUND" => StatusCodes.Status404NotFound,
-            "CATALOG_MANAGE_FORBIDDEN" => StatusCodes.Status403Forbidden,
+            "CATALOG_MANAGE_FORBIDDEN" or "CATALOG_PURCHASE_FORBIDDEN" => StatusCodes.Status403Forbidden,
             "CATALOG_CODE_DUPLICATE" or "CATEGORY_NOT_LEAF" => StatusCodes.Status409Conflict,
             "CATEGORY_NOT_FOUND" or "WAREHOUSE_NOT_FOUND" => StatusCodes.Status404NotFound,
             _ => StatusCodes.Status422UnprocessableEntity

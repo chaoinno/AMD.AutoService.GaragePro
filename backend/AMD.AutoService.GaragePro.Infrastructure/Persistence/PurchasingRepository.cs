@@ -48,9 +48,18 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         return query.CountAsync(ct);
     }
     public Task<PurchaseDocument?> GetAsync(string kind, Guid id, CancellationToken ct) => Documents.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == id && x.Kind == kind, ct);
-    public Task<ActivityEvent?> ApprovalAsync(string kind, Guid documentId, CancellationToken ct) => db.ActivityEvents.AsNoTracking()
-        .Where(x => x.EntityId == documentId && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve")
-        .OrderByDescending(x => x.OccurredAt).FirstOrDefaultAsync(ct);
+    public Task<PurchaseDocument?> OrderForRequestAsync(Guid requestId, CancellationToken ct) => Documents.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Kind == "PO" && x.SourceRequestId == requestId, ct);
+    public async Task<ActivityEvent?> ApprovalAsync(string kind, Guid documentId, CancellationToken ct)
+    {
+        // Legacy converted orders may inherit approval without an order-specific event.
+        var doc = await Documents.Select(x => new { x.Id, x.SourceRequestId }).SingleOrDefaultAsync(x => x.Id == documentId, ct);
+        if (doc is null) return null;
+        var approval = await db.ActivityEvents.AsNoTracking()
+            .Where(x => x.EntityId == documentId && x.EntityType == kind && x.EventType == $"purchasing.{kind.ToLowerInvariant()}.approve")
+            .OrderByDescending(x => x.OccurredAt).ThenByDescending(x => x.Id).FirstOrDefaultAsync(ct);
+        return approval ?? (kind == "PO" && doc.SourceRequestId.HasValue
+            ? await ApprovalAsync("PR", doc.SourceRequestId.Value, ct) : null);
+    }
     public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Items.SingleOrDefaultAsync(x => x.Id == id, ct);
     public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => db.Warehouses.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     // Suppliers are global master data in the existing schema. Documents remain tenant scoped.
