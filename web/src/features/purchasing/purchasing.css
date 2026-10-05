@@ -189,7 +189,6 @@
 #purchase-editor .purchase-entry-lines .purchase-entry-unit { color: #64748b; font-size: 12px; }
 #purchase-editor .purchase-entry-lines .money { text-align: right; white-space: nowrap; font-size: 13px; }
 #purchase-editor .purchase-entry-lines button { width: 30px; height: 30px; min-height: 30px; padding: 5px; }
-#purchase-editor .purchase-entry-lines .purchase-item-create { width: auto; height: auto; min-height: 28px; padding: 3px 0; margin-top: 3px; }
 #purchase-editor .purchase-table-scroll { margin: 10px 0; }
 #purchase-editor .purchase-total { padding: 10px 14px; gap: 14px; }
 #purchase-editor .purchase-total strong { font-size: 18px; }
