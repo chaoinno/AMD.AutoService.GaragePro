@@ -219,6 +219,17 @@ img {
   font-size: 17px;
 }
 
+/* ตัวอักษรโลโก้ ServicePro — ใช้บนพื้นเข้มเท่านั้น (ดู components/Brand.tsx) */
+.brand-wordmark {
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -0.01em;
+}
+
+.brand-wordmark__accent {
+  color: #4c9bff;
+}
+
 .brand__copy small {
   margin-top: 3px;
   color: #94a3b8;
@@ -3336,18 +3347,13 @@ img {
   gap: 12px;
 }
 
+/* ตราหกเหลี่ยม ServicePro เป็นรูป (มีสีในตัว) — ไม่ต้องพึ่งพื้นหลัง CSS ที่เบราว์เซอร์ไม่พิมพ์ถ้าไม่เปิด "พิมพ์พื้นหลัง" */
 .document-brand-mark {
-  display: grid;
+  display: block;
   width: 44px;
   height: 44px;
   flex: 0 0 auto;
-  place-items: center;
-  border-radius: 10px;
-  background: var(--navy-900);
-  color: white;
-  font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  font-size: 14px;
-  font-weight: 700;
+  object-fit: contain;
 }
 
 .document-branch h1 {

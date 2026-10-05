@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import type { Sale } from '../../api/sales'
 import { formatDateTime, formatMoney, formatNumber } from '../../lib/format'
 import { paymentMethodLabel } from './saleFormat'
+import { BRAND_NAME } from '../../components/Brand'
 
 export type ReceiptFormat = 'a4' | 'roll80' | 'roll58'
 
@@ -53,7 +54,7 @@ export function SaleThermalReceipt({ sale, branchName, format, change = 0 }: {
         aria-label={`ใบเสร็จกระดาษม้วน ${widthMm} มม.`}
       >
         <header className="sale-thermal__head">
-          <strong className="sale-thermal__brand">GaragePro</strong>
+          <strong className="sale-thermal__brand">{BRAND_NAME}</strong>
           <span>{branchName || 'ไม่ระบุสาขา'}</span>
           <strong className="sale-thermal__title">ใบเสร็จรับเงิน</strong>
           {voided ? <strong className="sale-thermal__voided">*** ยกเลิกแล้ว ***</strong> : null}

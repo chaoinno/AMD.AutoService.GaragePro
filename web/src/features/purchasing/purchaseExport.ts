@@ -5,7 +5,7 @@ export const purchaseStatusLabels: Record<string, string> = { draft: 'ฉบั�
 export async function createPurchaseWorkbook(documents: Purchase[], branch: string) {
   const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'GaragePro'
+  workbook.creator = 'ServicePro'
   const summary = workbook.addWorksheet('รายการเอกสาร')
   summary.columns = [
     ['เลขเอกสาร', 26], ['ประเภท', 12], ['สถานะ', 22], ['สาขา', 28], ['วันที่สร้าง', 23],

@@ -122,9 +122,9 @@ void _showPermissionHelp(BuildContext context, String code) {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, height: 1.5)),
       content: Text(
         isCamera
-            ? 'เปิดสิทธิ์ได้ที่ ตั้งค่า > GaragePro > กล้อง แล้วกลับมาถ่ายใหม่\n'
+            ? 'เปิดสิทธิ์ได้ที่ ตั้งค่า > ServicePro > กล้อง แล้วกลับมาถ่ายใหม่\n'
                 'ระหว่างนี้เลือกรูปจากคลังภาพแทนได้'
-            : 'เปิดสิทธิ์ได้ที่ ตั้งค่า > GaragePro > รูปภาพ แล้วกลับมาเลือกใหม่\n'
+            : 'เปิดสิทธิ์ได้ที่ ตั้งค่า > ServicePro > รูปภาพ แล้วกลับมาเลือกใหม่\n'
                 'ระหว่างนี้ถ่ายรูปด้วยกล้องแทนได้',
         style: const TextStyle(fontSize: 15, height: 1.7),
       ),

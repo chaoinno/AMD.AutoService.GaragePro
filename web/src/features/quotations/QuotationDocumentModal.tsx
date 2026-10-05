@@ -22,6 +22,7 @@ import { formatDate, formatDateTime, formatNumber } from '../../lib/format'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
 import { VERBAL_APPROVAL_SIGNATURE_PATH } from './customerApproval'
+import { DocumentBrandMark } from '../../components/Brand'
 
 function getSignatureUrl(path: string) {
   return `${API_BASE_URL}/api/v1/attachments/file?path=${encodeURIComponent(path)}`
@@ -129,7 +130,7 @@ function QuotationDocument({ quotation }: { quotation: Quotation }) {
     <article className="quotation-document">
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
             <h1>{quotation.branch.name}</h1>
             <p>{quotation.branch.address || 'ไม่ระบุที่อยู่'}</p>

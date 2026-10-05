@@ -12,14 +12,21 @@ void main() {
     expect(AppRole.parse(null), AppRole.unknown);
   });
 
-  test('แจ้งรออะไหล่เป็นของช่างบนมือถือเท่านั้น', () {
-    final t = JobTransitions.from('inprogress').firstWhere((t) => t.to == 'waitparts');
+  // [BIZ] 2026-10-05 ตัดปุ่ม "แจ้งรออะไหล่" ออกเพื่อความง่ายของทีมช่าง — ถ้ามีคนใส่กลับ ปุ่มหลักของ
+  // สถานะกำลังซ่อมจะกลับไปเป็นรออะไหล่ทันที (ประกาศไว้ก่อน qc) และ "ส่งตรวจ QC" จะหายจากการ์ดจ๊อบอีก
+  test('แอปไม่มีปุ่มแจ้งรออะไหล่ — ปุ่มหลักของช่างตอนกำลังซ่อมคือส่งตรวจ QC', () {
+    expect(JobTransitions.all.where((t) => t.to == 'waitparts'), isEmpty);
 
-    expect(t.allowedFromMobile, isTrue);
-    expect(t.allowsRole(AppRole.technician), isTrue);
-    expect(t.allowsRole(AppRole.office), isFalse);
-    // guard PartsRequestComplete ยังคำนวณจากข้อมูลจริงไม่ได้ จึงต้องบังคับเหตุผลเสมอ
-    expect(t.needsReason, isTrue);
+    final primary = JobTransitions.primaryFor('inprogress', AppRole.technician);
+    expect(primary?.to, 'qc');
+    expect(JobTransitions.disabledReason(primary!, AppRole.technician), isNull);
+  });
+
+  test('จ๊อบเก่าที่ค้างรออะไหล่ยังบอกช่างได้ว่าต้องให้เว็บปลดสถานะ', () {
+    final primary = JobTransitions.primaryFor('waitparts', AppRole.technician);
+
+    expect(primary?.to, 'inprogress');
+    expect(JobTransitions.disabledReason(primary!, AppRole.technician), 'ต้องทำรายการนี้จากเว็บสำนักงาน');
   });
 
   test('ส่งใบเสนอราคาและรับของเข้าคลังยังทำจากมือถือไม่ได้ และต้องบอกเหตุผลที่ปุ่มถูกปิด', () {

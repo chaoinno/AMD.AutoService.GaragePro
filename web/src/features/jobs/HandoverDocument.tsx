@@ -1,6 +1,7 @@
 import type { Handover } from '../../api/handover'
 import type { Job } from '../../api/types'
 import { formatDateTime } from '../../lib/format'
+import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 type HandoverDocumentProps = { job: Job; handover: Handover; signatureImageUrl: string | null }
 
@@ -14,9 +15,9 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
     <article className="quotation-document">
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
-            <h1>GaragePro</h1>
+            <h1>{BRAND_NAME}</h1>
             <p>{job.branchName || 'ไม่ระบุสาขา'}</p>
           </div>
         </div>

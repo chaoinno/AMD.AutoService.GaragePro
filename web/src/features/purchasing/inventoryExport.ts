@@ -3,7 +3,7 @@ import type { StockItem } from '../../api/purchasing'
 export async function createInventoryWorkbook(items: StockItem[], canSeeCost: boolean) {
   const { default: ExcelJS } = await import('exceljs')
   const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'GaragePro'
+  workbook.creator = 'ServicePro'
   const sheet = workbook.addWorksheet('สต็อก FIFO')
   const columns: [string, number][] = [['รหัสสินค้า', 22], ['สินค้า', 40], ['หน่วย', 14], ['การใช้ FIFO', 24], ['คงเหลือ', 16], ['จอง', 16], ['พร้อมใช้', 16], ['รอรับ', 16], ['ชำรุด', 16]]
   if (canSeeCost) columns.push(['มูลค่า FIFO (บาท)', 24])

@@ -97,7 +97,7 @@ public sealed class ContactRequestService(IContactNotifier notifier, TimeProvide
     {
         var at = TimeZoneInfo.ConvertTime(clock.GetUtcNow(), Bangkok);
         var sb = new StringBuilder()
-            .AppendLine("📩 ขอ Demo — GaragePro Auto Services")
+            .AppendLine("📩 ขอ Demo — ServicePro")
             .AppendLine($"ชื่อผู้ติดต่อ: {Clean(r.Name)}")
             .AppendLine($"อู่/บริษัท: {Clean(r.Garage)}")
             .AppendLine($"เบอร์โทร: {Clean(r.Phone)}");

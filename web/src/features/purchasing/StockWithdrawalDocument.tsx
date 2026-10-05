@@ -1,6 +1,7 @@
 import type { Withdrawal } from '../../api/purchasing'
 import { formatDateTime } from '../../lib/format'
 import { money } from './PurchasingPage'
+import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 type StockWithdrawalDocumentProps = { withdrawal: Withdrawal }
 
@@ -11,9 +12,9 @@ export function StockWithdrawalDocument({ withdrawal }: StockWithdrawalDocumentP
     <article className="quotation-document">
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
-            <h1>GaragePro</h1>
+            <h1>{BRAND_NAME}</h1>
             <p>{withdrawal.warehouseName}</p>
           </div>
         </div>

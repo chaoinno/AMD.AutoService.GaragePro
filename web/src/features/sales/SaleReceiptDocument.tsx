@@ -3,6 +3,7 @@ import type { Sale } from '../../api/sales'
 import { Money } from '../../components/Money'
 import { formatDateTime, formatMoney, formatNumber } from '../../lib/format'
 import { paymentMethodLabel } from './saleFormat'
+import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 /// ใบเสร็จขายหน้าร้าน SL- — ใช้ class เดียวกับใบเสร็จงานซ่อม (quotation-document/document-*)
 /// [BIZ] เอกสารที่ให้ลูกค้าห้ามแสดงต้นทุน/กำไรเลย แม้ผู้พิมพ์จะเป็นผู้จัดการ (กฎข้อ 10)
@@ -13,9 +14,9 @@ export function SaleReceiptDocument({ sale, branchName }: { sale: Sale; branchNa
       {voided ? <div className="sale-receipt-watermark" aria-hidden="true">ยกเลิกแล้ว</div> : null}
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
-            <h1>GaragePro</h1>
+            <h1>{BRAND_NAME}</h1>
             <p>{branchName || 'ไม่ระบุสาขา'}</p>
           </div>
         </div>

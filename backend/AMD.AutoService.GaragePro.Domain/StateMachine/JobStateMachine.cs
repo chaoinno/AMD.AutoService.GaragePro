@@ -49,6 +49,9 @@ public static class JobStateMachine
             [UserRole.Technician, UserRole.Office, UserRole.Manager], [EventSource.Mobile, EventSource.Web],
             JobGuard.HasApprovedLines),
 
+        // [BIZ] 2026-10-05 แอปช่างตัดปุ่ม "แจ้งรออะไหล่" ออกแล้ว (คำขอผู้ใช้ "เพื่อความง่ายของทีมช่าง") —
+        // ไม่มี client ไหนเรียกเส้นทางนี้อีก (มือถือ mobile/lib/core/job_transitions.dart · เว็บไม่เคยมี)
+        // คงไว้ให้แอปรุ่นเก่าที่ยังไม่อัปเดตกดได้ และให้จ๊อบที่ค้าง waitparts อยู่เดิมเดินต่อได้ด้วยเส้นทางถัดไป
         new(JobStatus.InProgress, JobStatus.WaitParts,
             "แจ้งรออะไหล่ + เหตุผล + ETA · ถ้าเลือก “ทำงานอื่นต่อได้” ล็อกเฉพาะรายการนั้น · งานที่เสร็จแล้วไม่ถูกล้าง",
             [UserRole.Technician], [EventSource.Mobile],

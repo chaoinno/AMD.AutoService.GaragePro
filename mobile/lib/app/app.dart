@@ -11,7 +11,7 @@ class GarageProApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
-        title: 'GaragePro Service Ops',
+        title: 'ServicePro',
         debugShowCheckedModeBanner: false,
         theme: buildAppTheme(),
         scaffoldMessengerKey: scaffoldMessengerKey,

@@ -2,6 +2,7 @@ import { AlertTriangle, CheckCircle2, Circle, MinusCircle } from 'lucide-react'
 import type { Attachment, IntakeCheckResult, IntakeChecklist, IntakeChecklistItem, Job } from '../../api/types'
 import { AttachmentImage } from '../../components/AttachmentImage'
 import { formatDate, formatDateTime } from '../../lib/format'
+import { DocumentBrandMark } from '../../components/Brand'
 
 const CATEGORY_LABEL_TH: Record<string, string> = {
   exterior: 'ตรวจสอบภายนอกรอบคัน',
@@ -32,7 +33,7 @@ export function IntakeReceiptDocument({ job, checklist, photos }: IntakeReceiptD
     <article className="quotation-document intake-document">
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
             <h1>{job.branchName}</h1>
             <p>สาขา {job.branchName}</p>

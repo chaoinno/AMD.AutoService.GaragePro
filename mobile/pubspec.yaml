@@ -54,8 +54,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
 
-# App icon — สร้างจากตราหกเหลี่ยม GaragePro (assets/icon/app_icon.png ที่มีพื้นหลังเทาเต็มขอบ
-# สำหรับ iOS/Android legacy launcher icon) รันด้วย `dart run flutter_launcher_icons` แล้ว commit
+# App icon — สร้างจากตราหกเหลี่ยม ServicePro (service-pro-logo/main-logo.png) บนพื้นสีเดียวกับไฟล์แบรนด์
+# (assets/icon/app_icon.png 1024px ทึบเต็มขอบ สำหรับ iOS/Android legacy launcher icon) รันด้วย `dart run flutter_launcher_icons` แล้ว commit
 # ไฟล์ที่ถูก generate ไว้ใน ios/Runner/Assets.xcassets และ android/app/src/main/res
 flutter_launcher_icons:
   android: "ic_launcher"
@@ -63,7 +63,7 @@ flutter_launcher_icons:
   remove_alpha_ios: true
   image_path: "assets/icon/app_icon.png"
   min_sdk_android: 21
-  adaptive_icon_background: "#6D6E71"
+  adaptive_icon_background: "#050A15"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 # For information on the generic Dart part of this file, see the
@@ -78,11 +78,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    # โลโก้จริงจากไฟล์แบรนด์ (GaragePro v2 Redesign/LOGO GaragePro/2.png)
-    # logo_mark = ตราหกเหลี่ยมล้วน (ฟ้า/ขาว) ใช้บนพื้นเข้มได้
-    # logo_full = รวมตัวอักษร "GaragePro" ที่เป็นสีดำ — ใช้ได้เฉพาะบนพื้นสว่าง
+    # logo_mark = ตราหกเหลี่ยม ServicePro พื้นโปร่ง (สกัดจาก service-pro-logo/main-logo.png) ใช้ได้ทั้งพื้นเข้ม/สว่าง
     - assets/images/logo_mark.png
-    - assets/images/logo_full.png
     - assets/fonts/OFL-NotoSansThai.txt
     - assets/fonts/OFL-IBMPlexMono.txt
 

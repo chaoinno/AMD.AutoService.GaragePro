@@ -31,6 +31,7 @@ import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/pu
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
 import { clearStoredSession, useSession } from '../lib/session'
+import { BRAND_NAME, BrandWordmark } from './Brand'
 import { Avatar, AvatarFallback } from './ui/avatar'
 import {
   DropdownMenu,
@@ -98,7 +99,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     () => window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1',
   )
   useEffect(() => {
-    document.title = `${title} | GaragePro`
+    document.title = `${title} | ServicePro`
   }, [title])
   const toggleSidebar = () => {
     const next = !sidebarCollapsed
@@ -146,10 +147,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     <div className={`app-shell ${documentMode ? 'app-shell--document' : ''} ${sidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}>
       <aside className="sidebar print-hidden">
         <div className="brand">
-          <img className="brand__logo" src="/garagepro-logo.png" alt="" aria-hidden="true" />
+          <img className="brand__logo" src="/servicepro-logo.png" alt="" aria-hidden="true" />
           <span className="brand__copy">
-            <strong>GaragePro</strong>
-            <small>Auto Services</small>
+            <BrandWordmark />
           </span>
         </div>
         <nav className="sidebar__nav" aria-label="เมนูหลัก">
@@ -213,7 +213,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
       <div className="app-shell__body">
         <header className="topbar print-hidden">
           <div>
-            <span className="topbar__eyebrow">Auto Services</span>
+            <span className="topbar__eyebrow">{BRAND_NAME}</span>
             <h1>{title}</h1>
           </div>
           <div className="topbar__actions">

@@ -29,7 +29,7 @@ builder.Services.AddSwaggerGen(o =>
 {
     o.SwaggerDoc("v1", new()
     {
-        Title = "GaragePro Service Ops API",
+        Title = "ServicePro API",
         Version = "v1",
         Description = "ระบบปฏิบัติการงานบริการ — ใบเสนอราคา เอกสาร และไฟล์แนบ"
     });

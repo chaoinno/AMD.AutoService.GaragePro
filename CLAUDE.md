@@ -1513,6 +1513,36 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ข้อความ error `HANDOVER_NOTE_REQUIRED` · ไม่เปลี่ยนข้อมูล/API (`isReturned` เดิม: true = คืนแล้ว/ไม่มี, false = สูญหาย ยังต้องมีหมายเหตุ)
   · ตรวจแล้ว: Web `tsc -b` · `dart analyze` · `dotnet build` ผ่าน
 
+- ✅ **[แก้ 2026-10-05] แอปช่างตัดปุ่ม "แจ้งรออะไหล่" ออก** (คำขอผู้ใช้ "เพื่อความง่ายของทีมช่าง")
+  · ลบ `inprogress→waitparts` จาก `mobile/lib/core/job_transitions.dart` — ปุ่มนี้ประกาศก่อน `inprogress→qc` จึงเคยเป็น
+  **ปุ่มหลัก**ของสถานะกำลังซ่อม และ "ซ่อมเสร็จ ส่งตรวจ QC" ไม่เคยโผล่บนการ์ดจ๊อบเลย (`primaryFor` คืนตัวแรก) ตอนนี้ปุ่มหลักคือส่ง QC
+  · **backend ไม่ได้ลบ** `InProgress→WaitParts` (precedent เดียวกับ `Qc→InProgress`) — แอปรุ่นเก่ายังกดได้ ถ้าจะบังคับจริงต้องลบที่ `JobStateMachine.cs`
+  · ช่างที่รอของ: กด "พักงาน" หรือไปเริ่มคันอื่น (ระบบหยุดเวลาคันเดิมด้วย `switchedJob`) แล้วแจ้งธุรการทางแชทของงาน
+  · **ผลต่อข้อมูล**: ไม่มี `WorkEndReason.waitParts` ใหม่ · พักรอของข้ามคืนจะถูกตัดเป็น `autoCapped` ที่ 12 ชม. (ต้องให้หัวหน้าแก้) ·
+    รายงานรอบเวลารวมช่วงรอของเข้า "กำลังซ่อม" · ธุรการไม่เห็นสถานะ "รออะไหล่" บนแดชบอร์ด/รายการอีก
+  · จ๊อบเก่าที่ค้าง `waitparts`: แอปบอกช่างว่าต้องให้เว็บปลด · หน้า QC บนมือถือเดิมยิง `qc` ตรงๆ แล้วโดน `JOB_TRANSITION_NOT_ALLOWED`
+    ทุกครั้ง แก้ให้ปิดปุ่มพร้อมเหตุผลแล้ว · ธุรการใช้ "ยืนยันซ่อมเสร็จ → ส่งตรวจ QC" บนเว็บ (ไล่ `waitparts→inprogress→qc` ให้เอง)
+    · **ยังไม่ได้ตรวจในฐานจริงว่ามีจ๊อบค้างสถานะนี้กี่งาน** (VPN ต่อไม่ติดในรอบนี้)
+  · ตรวจแล้ว: `dart analyze` สะอาด · `flutter test` ผ่าน 60 (แทนเทสต์ "แจ้งรออะไหล่เป็นของช่าง" ด้วย 2 เทสต์ใหม่) · **ยังไม่ได้ทดสอบบน simulator**
+
+- ✅ **[แก้ 2026-10-05] Rebrand "GaragePro Auto Services / GP Service" → ServicePro** (ไฟล์ต้นฉบับ `service-pro-logo/`)
+  · โลโก้: สกัดตราหกเหลี่ยมพื้นโปร่งจาก `main-logo.png` (ไล่ alpha เฉพาะขอบตามระยะห่างจากสีพื้น `#050A15`) →
+    `web/public/servicepro-logo.png` (favicon/sidebar/landing/หัวเอกสาร) · `web/public/apple-touch-icon.png` ·
+    `mobile/assets/images/logo_mark.png` · ไอคอนแอป `mobile/assets/icon/*` (1024px พื้น `#050A15`) แล้วรัน `dart run flutter_launcher_icons`
+    · ลบ `web/public/garagepro-logo.png` และ `mobile/assets/images/logo_full.png` (ไม่มีที่ใช้ และมีตัวอักษร GaragePro เดิม)
+  · เว็บ: `web/src/components/Brand.tsx` ใหม่ — `BRAND_NAME` · `BrandWordmark` ("Service" + "Pro" ฟ้า `#4C9BFF` ยกให้อ่อนกว่าในไฟล์โลโก้
+    เพราะ `#2F65C0` บน navy-900 ได้ contrast ~2.8:1) · `DocumentBrandMark` แทนกล่อง "GP" บนหัวเอกสารพิมพ์ทั้ง 7 แบบ ·
+    title/favicon/sidebar/eyebrow ของ topbar/landing/footer · Excel `workbook.creator` · ตัดคำรอง "Auto Services" ออก (โลโก้ใหม่ไม่มี tagline)
+  · มือถือ: ชื่อแอป `ServicePro` (iOS `CFBundleDisplayName` · Android `android:label` — เดิม "GP Service") · `MaterialApp.title` ·
+    หน้า login · ข้อความ "ตั้งค่า > ServicePro > กล้อง" (เดิมเขียน GaragePro ทั้งที่ชื่อในเครื่องคือ GP Service)
+  · backend: หัวข้อความ LINE "ขอ Demo — ServicePro" · Swagger title
+  · **ตั้งใจไม่เปลี่ยน**: ข้อความที่หมายถึงระบบ GaragePro เดิม ("ข้อมูลใช้ร่วมกับระบบ GaragePro เดิม" · "รหัสผ่านเดิมของ GaragePro" ·
+    "ต่อยอดจากระบบ GaragePro") · บัญชีโซเชียล `@garagepro`/Facebook/Instagram ในหน้าติดต่อ (เป็นบัญชีจริง ยังไม่มีบัญชีใหม่) ·
+    bundle id/applicationId `net.garagepro.*` (เปลี่ยนแล้วสโตร์มองเป็นแอปใหม่) · key ของ localStorage/SharedPreferences `garagepro.*`
+    (เปลี่ยนแล้วผู้ใช้หลุดจากระบบ) · namespace/โดเมน `gpservice.garage-pro.net`
+  · ตรวจแล้ว: Web `tsc -b`/`vite build` ผ่าน · ตรวจในเบราว์เซอร์ที่ 375/1024/1280/1440px (landing + sidebar ด้วยเซสชันจำลอง) ·
+    `dotnet test` ผ่าน 358 / skipped 5 · **ยังไม่ได้เปิดดูไอคอน/หน้า login บน simulator และยังไม่ได้พิมพ์เอกสารจริง**
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง

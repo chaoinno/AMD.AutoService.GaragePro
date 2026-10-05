@@ -3,6 +3,7 @@ import { Money } from '../../../components/Money'
 import { bahtText } from '../../../lib/bahtText'
 import { formatDateTime, formatMoney, formatNumber } from '../../../lib/format'
 import './billing.css'
+import { DocumentBrandMark } from '../../../components/Brand'
 
 export type BillingKind = 'statement' | 'receipt' | 'taxInvoice'
 export type CopyLabel = 'original' | 'copy'
@@ -92,7 +93,7 @@ export function BillingDocument({ data, copyLabel }: { data: BillingDocumentData
     <article className="quotation-document billing-document">
       <header className="document-header">
         <div className="document-branch">
-          <div className="document-brand-mark" aria-hidden="true">GP</div>
+          <DocumentBrandMark />
           <div>
             <h1>{data.seller.name}</h1>
             <p>{data.seller.address || 'ไม่ระบุที่อยู่'}</p>
