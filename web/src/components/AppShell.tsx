@@ -27,6 +27,7 @@ import {
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
+import { NotificationBell } from './notifications/NotificationBell'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
@@ -228,6 +229,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                 <strong>{session?.branchName ?? 'ไม่พบข้อมูลสาขา'}</strong>
               </span>
             </div>
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger className="user-menu" aria-label="เปิดเมนูผู้ใช้งาน">
                 <Avatar>

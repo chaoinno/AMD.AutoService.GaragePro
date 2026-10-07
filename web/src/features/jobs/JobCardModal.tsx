@@ -66,7 +66,7 @@ import { QuotationDocumentModal } from '../quotations/QuotationDocumentModal'
 import { QuotationEditorModal } from '../quotations/QuotationEditorModal'
 import { QuotationTemplatePickerModal } from '../quotations/QuotationTemplatePickerModal'
 
-type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
+export type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
 
 const STAGES: { key: StageKey; label: string }[] = [
   { key: 'intake', label: 'รับรถ' },
@@ -91,13 +91,26 @@ const STAGE_INDEX_BY_STATUS: Record<JobStatusToken, number> = {
   cancelled: 5,
 }
 
+export function isStageKey(value: string | null): value is StageKey {
+  return STAGES.some((stage) => stage.key === value)
+}
+
 type JobCardModalProps = {
   jobId: string | null
   onClose: () => void
+  /// เปิดมาที่ขั้นนี้แทนขั้นปัจจุบันของจ๊อบ — ใช้กับลิงก์จากแจ้งเตือน (เช่น ผลอนุมัติใบเสนอราคา)
+  initialStage?: StageKey
+  /// เปิดแผงแชทค้างไว้เลย — ใช้กับแจ้งเตือน "ถูกกล่าวถึงในแชท"
+  openChat?: boolean
 }
 
-export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
+export function JobCardModal({ jobId, onClose, initialStage, openChat = false }: JobCardModalProps) {
   const [viewStage, setViewStage] = useState<number | null>(null)
+
+  // ลิงก์ใหม่ (จ๊อบหรือขั้นเปลี่ยน) ต้องพาไปขั้นที่ลิงก์ระบุ แม้ modal จะเปิดค้างอยู่แล้ว
+  useEffect(() => {
+    setViewStage(initialStage ? STAGES.findIndex((stage) => stage.key === initialStage) : null)
+  }, [jobId, initialStage])
 
   const jobQuery = useQuery({
     queryKey: ['job-detail', jobId],
@@ -226,7 +239,7 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
             <StageContent stageKey={STAGES[stageIndex]?.key ?? 'intake'} job={job} />
             </div>
           )}
-          <JobChatWidget jobId={jobId} />
+          <JobChatWidget key={`${jobId}:${openChat ? 'chat' : ''}`} jobId={jobId} defaultOpen={openChat} />
         </>
       )}
     </ConfirmModal>

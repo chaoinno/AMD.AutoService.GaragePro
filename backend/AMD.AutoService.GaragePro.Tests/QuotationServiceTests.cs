@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Application.Quotations;
@@ -457,8 +458,75 @@ public sealed class QuotationServiceTests
         Assert.Null(existing.Approval);
     }
 
+    // ---------- แจ้งเตือน (ลูกค้าตัดสินใจใบเสนอราคา) ----------
+
+    [Fact]
+    public async Task SignAsync_notifies_quotation_creator_and_only_technicians_of_approved_labor_lines()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var (service, _, existing, _) = BuildForCreate(QuotationStatus.Sent, notifications);
+        existing.CreatedByUserId = 31;
+        existing.Lines.Add(Line(LineType.Labor, LineApprovalStatus.Approved, technician: 501));
+        existing.Lines.Add(Line(LineType.Labor, LineApprovalStatus.Rejected, technician: 502));
+        existing.Lines.Add(Line(LineType.Part, LineApprovalStatus.Approved, technician: null));
+
+        var signed = await service.SignAsync(existing.Id, new SignQuotationRequest("sig.png", "ยินยอม", null, 7, "พนักงาน ทดสอบ"));
+
+        Assert.True(signed.Success, signed.Error?.MessageTh);
+        var toCreator = Assert.Single(notifications.ToUser);
+        Assert.Equal(31, toCreator.UserId);
+        Assert.Equal(NotificationKinds.QuotationPartial, toCreator.Draft.Kind);
+        Assert.Equal(existing.JobId, toCreator.Draft.JobId);
+        Assert.Equal("quote", toCreator.Draft.LinkHint);
+        Assert.Equal([501L], notifications.ToStaff.Select(x => x.StaffId));
+        Assert.Contains(NotificationSubjects.QuotationAllRejected(existing.Id), notifications.Resolved);
+    }
+
+    [Fact]
+    public async Task SignAsync_with_every_line_approved_sends_the_approved_kind()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var (service, _, existing, _) = BuildForCreate(QuotationStatus.Sent, notifications);
+        existing.Lines.Add(Line(LineType.Part, LineApprovalStatus.Approved, technician: null));
+
+        await service.SignAsync(existing.Id, new SignQuotationRequest("sig.png", "ยินยอม", null, 7, "พนักงาน ทดสอบ"));
+
+        Assert.Equal(NotificationKinds.QuotationApproved, Assert.Single(notifications.ToUser).Draft.Kind);
+    }
+
+    [Fact]
+    public async Task DecideLineAsync_notifies_creator_once_when_every_line_ends_up_rejected()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var (service, _, existing, _) = BuildForCreate(QuotationStatus.Sent, notifications);
+        existing.CreatedByUserId = 31;
+        var first = Line(LineType.Part, LineApprovalStatus.Pending, technician: null);
+        var second = Line(LineType.Part, LineApprovalStatus.Pending, technician: null);
+        existing.Lines.Add(first);
+        existing.Lines.Add(second);
+        var reject = new LineDecisionRequest(LineApprovalStatus.Rejected, "ราคาสูงเกินไป");
+
+        await service.DecideLineAsync(existing.Id, first.Id, reject);
+        Assert.Empty(notifications.ToUser);   // ยังเหลือบรรทัดที่ยังไม่ตัดสินใจ
+
+        await service.DecideLineAsync(existing.Id, second.Id, reject);
+        await service.DecideLineAsync(existing.Id, second.Id, reject);   // ลูกค้ายืนยันซ้ำ ไม่แจ้งซ้ำ
+
+        var sent = Assert.Single(notifications.ToUser);
+        Assert.Equal(NotificationKinds.QuotationAllRejected, sent.Draft.Kind);
+        Assert.Equal(31, sent.UserId);
+        Assert.Equal(NotificationSubjects.QuotationAllRejected(existing.Id), sent.Draft.SubjectKey);
+    }
+
+    private static QuotationLine Line(LineType type, LineApprovalStatus status, long? technician) => new()
+    {
+        Id = Guid.NewGuid(), CatalogCode = $"C-{Guid.NewGuid():N}"[..10], Name = "รายการทดสอบ", Type = type,
+        Quantity = 1, UnitPrice = 500m, ApprovalStatus = status, AssignedTechnicianId = technician,
+        RejectReason = status == LineApprovalStatus.Rejected ? "ราคาสูงเกินไป" : null,
+    };
+
     private static (QuotationService Service, FakeQuotationRepository Repo, Quotation Existing, FakePosRepository Pos)
-        BuildForCreate(QuotationStatus existingStatus)
+        BuildForCreate(QuotationStatus existingStatus, FakeNotificationPublisher? notifications = null)
     {
         var job = new Job
         {
@@ -474,7 +542,7 @@ public sealed class QuotationServiceTests
         var pos = new FakePosRepository();
         var service = new QuotationService(
             repo, new FakeCatalogRepository(), new FakeJobRepository { Job = job }, new FakeQuotationTemplateRepository(),
-            pos, new FakeLegacyReader(), new StubCurrentUser(UserRole.Office), TimeProvider.System);
+            pos, new FakeLegacyReader(), new StubCurrentUser(UserRole.Office), notifications ?? new FakeNotificationPublisher(), TimeProvider.System);
         return (service, repo, existing, pos);
     }
 
@@ -508,7 +576,7 @@ public sealed class QuotationServiceTests
         var repo = new FakeQuotationRepository(quotation);
         var service = new QuotationService(
             repo, catalogRepo, new FakeJobRepository(), templateRepo, new FakePosRepository(), new FakeLegacyReader(),
-            new StubCurrentUser(role), TimeProvider.System);
+            new StubCurrentUser(role), new FakeNotificationPublisher(), TimeProvider.System);
         return (service, repo, quotation, catalogRepo);
     }
 

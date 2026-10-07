@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Domain.Entities;
 
 namespace AMD.AutoService.GaragePro.Application.JobChat;
@@ -68,6 +69,7 @@ public sealed class JobChatService(
     IAttachmentRepository attachments,
     IStaffRepository staffRepo,
     ICurrentUser user,
+    INotificationPublisher notifications,
     TimeProvider clock) : IJobChatService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
@@ -180,6 +182,21 @@ public sealed class JobChatService(
             Source = user.Source,
             OccurredAt = Now
         }, ct);
+
+        if (mentions.Count > 0)
+        {
+            var job = jobResult.Data!;
+            var preview = body is not null
+                ? NotificationRules.PlainText(body)
+                : $"ส่งรูป {linkedAttachments.Count} รูป";
+            await notifications.ToStaffAsync(new NotificationDraft(
+                NotificationKinds.ChatMention,
+                $"{user.UserName} กล่าวถึงคุณในแชท · {job.JobNo} {job.VehicleRegistration}",
+                NotificationRules.Truncate(preview, 120),
+                nameof(JobChatMessage), message.Id, jobId, LinkHint: "chat"),
+                mentions.Select(m => m.StaffId), ct);
+        }
+
         await chats.SaveChangesAsync(ct);
 
         var attachmentDtos = linkedAttachments.Select(ToAttachmentDto).ToList();
@@ -225,16 +242,16 @@ public sealed class JobChatService(
             latest.Select(x => new JobChatLatestDto(x.JobId, x.MessageId, x.CreatedAt)).ToList());
     }
 
-    private async Task<Result<bool>> ValidateJobScopeAsync(Guid jobId, CancellationToken ct)
+    private async Task<Result<Job>> ValidateJobScopeAsync(Guid jobId, CancellationToken ct)
     {
         var job = await jobs.GetAsync(jobId, ct);
         if (job is null)
-            return Result<bool>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+            return Result<Job>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
 
         if (job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
-            return Result<bool>.Fail("JOB_OTHER_BRANCH", "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
+            return Result<Job>.Fail("JOB_OTHER_BRANCH", "งานนี้อยู่คนละสาขากับที่คุณเข้าใช้งานอยู่");
 
-        return Result<bool>.Ok(true);
+        return Result<Job>.Ok(job);
     }
 
     private static JobChatAttachmentDto ToAttachmentDto(Attachment a) => new(

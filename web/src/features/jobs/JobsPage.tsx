@@ -3,6 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import type { ColumnDef } from '@tanstack/react-table'
 import { CarFront, ClipboardList, Plus, Search, TriangleAlert, UserRound } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
@@ -33,7 +34,7 @@ import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
 import { formatDateTime, localInputToIso, nowLocalInputValue } from '../../lib/format'
-import { JobCardModal } from './JobCardModal'
+import { isStageKey, JobCardModal } from './JobCardModal'
 import { JobsCalendar } from './JobsCalendar'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { CalendarDays, List as ListIcon } from 'lucide-react'
@@ -68,6 +69,32 @@ export function JobsPage() {
   const [calendarDateField, setCalendarDateField] = useState<JobCalendarDateField>('appointment')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  // ลิงก์จากแจ้งเตือน: /jobs?job=<id>&stage=quote&chat=1 — จ๊อบที่คลิกเองจากตารางมาก่อนลิงก์เสมอ
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const linkedJobId = searchParams.get('job')
+  const linkedStage = searchParams.get('stage')
+  const linkedChat = searchParams.get('chat') === '1'
+  const openJobId = selectedJobId ?? linkedJobId
+  const fromLink = selectedJobId === null && linkedJobId !== null
+  // อ่าน URL ปัจจุบันตรงๆ ไม่ใช้ค่าจาก closure — openJob ถูกจับไว้ใน useMemo ของคอลัมน์ตาราง
+  const clearJobLink = () => {
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('job')) return
+    params.delete('job')
+    params.delete('stage')
+    params.delete('chat')
+    const search = params.toString()
+    navigate({ search: search ? `?${search}` : '' }, { replace: true })
+  }
+  const openJob = (jobId: string) => {
+    clearJobLink()
+    setSelectedJobId(jobId)
+  }
+  const closeJob = () => {
+    clearJobLink()
+    setSelectedJobId(null)
+  }
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
@@ -200,7 +227,7 @@ export function JobsPage() {
       size: 110,
       enableSorting: false,
       cell: ({ row }) => (
-        <Button variant="outline" size="sm" onClick={() => setSelectedJobId(row.original.jobId)}>
+        <Button variant="outline" size="sm" onClick={() => openJob(row.original.jobId)}>
           <ClipboardList aria-hidden="true" /> จัดการ
         </Button>
       ),
@@ -371,11 +398,16 @@ export function JobsPage() {
           query={searchText}
           status={statusFilter || undefined}
           dateField={calendarDateField}
-          onSelectJob={setSelectedJobId}
+          onSelectJob={openJob}
         />
       )}
       <CreateJobModal open={createOpen} onClose={() => setCreateOpen(false)} />
-      <JobCardModal jobId={selectedJobId} onClose={() => setSelectedJobId(null)} />
+      <JobCardModal
+        jobId={openJobId}
+        onClose={closeJob}
+        initialStage={fromLink && isStageKey(linkedStage) ? linkedStage : undefined}
+        openChat={fromLink && linkedChat}
+      />
     </AppShell>
   )
 }

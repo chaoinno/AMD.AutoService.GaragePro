@@ -221,11 +221,17 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 
 ## 13 · Notifications & Realtime
 
-| Method | Endpoint |
-|---|---|
-| GET | `/notifications?unreadOnly=` |
-| POST | `/notifications/{id}/read` · `/read-all` |
-| POST | `/devices` (FCM/APNs token) |
+| Method | Endpoint | สถานะ |
+|---|---|---|
+| GET | `/notifications?unreadOnly=&beforeAt=&beforeId=&take=` | **ทำแล้ว 2026-10-07** · keyset ใหม่→เก่า ย้อนหลัง 30 วัน · คืน `{items, hasMore}` |
+| GET | `/notifications/unread-count` | **ทำแล้ว** · คืน `{unread}` (ไม่นับเรื่องที่มีคนดำเนินการแล้ว) |
+| POST | `/notifications/{id}/read` · `/read-all` | **ทำแล้ว** · ทำซ้ำได้ · คืน `{unread}` ล่าสุด |
+| DELETE | `/notifications/{id}/read` | **ทำแล้ว** · กลับเป็นยังไม่อ่าน |
+| POST | `/devices` (FCM/APNs token) | ยังไม่ทำ (ยังไม่มี push) |
+
+ผู้รับเป็น **รายบุคคล (Staff.Id)** หรือ **กลุ่มบทบาท (bitmask ของ UserRole)** — ไม่มีทางดึงรายชื่อพนักงานตามบทบาท
+จาก legacy จึงคัดตอนอ่านด้วย role ใน JWT · สถานะอ่านแยกต่อคน (`svc_NotificationRead`) · ชนิด/ผู้รับ/การปิดเรื่อง
+ดูที่ `CLAUDE.md` หัวข้อ "แจ้งเตือนบนเว็บ" · client poll `unread-count` ทุก 30 วิ จนกว่าจะมี realtime
 
 **Realtime (Open Question #2)** — แนะนำ **SignalR** เพราะทีมใช้ .NET อยู่แล้ว
 ```

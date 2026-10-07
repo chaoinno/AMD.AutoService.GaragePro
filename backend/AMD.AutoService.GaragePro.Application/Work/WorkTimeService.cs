@@ -396,10 +396,7 @@ public sealed class WorkTimeService(
     /// </summary>
     private async Task<Result<long>> CurrentStaffIdAsync(CancellationToken ct)
     {
-        if (user.StaffId is long fromClaim && fromClaim > 0) return Result<long>.Ok(fromClaim);
-
-        var legacy = await legacyUsers.FindByIdAsync(user.ShardKey, user.UserId, ct);
-        if (legacy?.StaffId is long fromLegacy && fromLegacy > 0) return Result<long>.Ok(fromLegacy);
+        if (await CurrentStaff.ResolveAsync(user, legacyUsers, ct) is long staffId) return Result<long>.Ok(staffId);
 
         return Result<long>.Fail(
             "WORK_NO_STAFF_PROFILE", "บัญชีนี้ไม่ได้ผูกกับข้อมูลพนักงาน — ออกจากระบบแล้วเข้าใหม่อีกครั้ง");

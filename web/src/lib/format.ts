@@ -46,6 +46,21 @@ export function formatDate(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
 }
 
+/// เวลาแบบสัมพัทธ์สำหรับรายการแจ้งเตือน — เกิน 7 วันกลับไปใช้วันเวลาเต็ม
+export function formatRelativeTime(value: string | null | undefined, now: Date = new Date()): string {
+  if (!value) return 'ไม่ระบุ'
+  const date = parseApiInstant(value)
+  if (Number.isNaN(date.getTime())) return value
+  const minutes = Math.floor((now.getTime() - date.getTime()) / 60_000)
+  if (minutes < 1) return 'เมื่อสักครู่'
+  if (minutes < 60) return `${minutes} นาทีที่แล้ว`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} วันที่แล้ว`
+  return dateTimeFormatter.format(date)
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return 'ไม่ระบุ'
   const date = parseApiInstant(value)

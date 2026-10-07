@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Application.Purchasing;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
@@ -114,6 +115,75 @@ public class PurchasingServiceTests
         f.User.Role = UserRole.Office;
         Assert.Equal(10593m, po.Total);
         Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default)).Error?.Code);
+    }
+
+    [Fact]
+    public async Task Submitting_po_within_threshold_notifies_managers_and_office_then_approval_resolves_and_tells_creator()
+    {
+        var f = new Fixture();
+        var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 500), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+
+        var pending = Assert.Single(f.Notifications.ToRoles);
+        Assert.Equal(NotificationKinds.PurchasePending, pending.Draft.Kind);
+        Assert.Equal([UserRole.Manager, UserRole.Office], pending.Roles);
+        Assert.Equal("PO", pending.Draft.EntityType);
+        Assert.Equal(po.Id, pending.Draft.EntityId);
+        var subject = NotificationSubjects.PurchasePending("PO", po.Id);
+        Assert.Equal(subject, pending.Draft.SubjectKey);
+
+        await f.Service.ActionAsync("PO", po.Id, "approve", new(po.Version, PinCode: "0042"), default);
+
+        Assert.DoesNotContain(subject, f.Notifications.OpenSubjects);
+        var result = Assert.Single(f.Notifications.ToUser);
+        Assert.Equal(NotificationKinds.PurchaseApproved, result.Draft.Kind);
+        Assert.Equal(f.User.UserId, result.UserId);
+    }
+
+    [Fact]
+    public async Task Pending_pr_and_po_above_threshold_notify_managers_only()
+    {
+        var f = new Fixture();
+        var pr = (await f.Service.SaveAsync("PR", null, f.Input(1, 500), default)).Data!;
+        await f.Service.ActionAsync("PR", pr.Id, "submit", new(pr.Version), default);
+        var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 20000), default)).Data!;
+        await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default);
+
+        Assert.All(f.Notifications.ToRoles, x => Assert.Equal([UserRole.Manager], x.Roles));
+        Assert.Equal(2, f.Notifications.ToRoles.Count);
+    }
+
+    [Fact]
+    public async Task Returning_tells_creator_the_reason_and_resubmitting_opens_a_fresh_pending_notification()
+    {
+        var f = new Fixture();
+        var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 500), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "return", new(po.Version, Reason: "ราคาสูงไป"), default)).Data!;
+
+        var subject = NotificationSubjects.PurchasePending("PO", po.Id);
+        Assert.DoesNotContain(subject, f.Notifications.OpenSubjects);
+        var returned = Assert.Single(f.Notifications.ToUser);
+        Assert.Equal(NotificationKinds.PurchaseReturned, returned.Draft.Kind);
+        Assert.Contains("ราคาสูงไป", returned.Draft.BodyTh);
+
+        await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default);
+        Assert.Equal(2, f.Notifications.ToRoles.Count);
+        Assert.Contains(subject, f.Notifications.OpenSubjects);
+    }
+
+    [Fact]
+    public async Task Editing_a_pending_document_back_to_draft_resolves_its_pending_notification()
+    {
+        var f = new Fixture();
+        var po = (await f.Service.SaveAsync("PO", null, f.Input(1, 500), default)).Data!;
+        po = (await f.Service.ActionAsync("PO", po.Id, "submit", new(po.Version), default)).Data!;
+
+        var edited = await f.Service.SaveAsync("PO", po.Id, f.Input(2, 500) with { Version = po.Version }, default);
+
+        Assert.True(edited.Success, edited.Error?.MessageTh);
+        Assert.Equal("draft", edited.Data!.Status);
+        Assert.DoesNotContain(NotificationSubjects.PurchasePending("PO", po.Id), f.Notifications.OpenSubjects);
     }
 
     [Fact]
@@ -504,6 +574,7 @@ public class PurchasingServiceTests
         public TestUser User { get; } = new(); public FakeRepository Repo { get; }
         public PurchasingService Service { get; }
         public TestBranchPinVerifier Pin { get; } = new();
+        public FakeNotificationPublisher Notifications { get; } = new();
         public CatalogItem Item { get; } = new() { Code = "A", Name = "อะไหล่", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Warehouse Warehouse { get; } = new() { Code = "W", Name = "คลัง", LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Supplier Supplier { get; } = new() { Code = "S", Name = "ซัพพลายเออร์" };
@@ -512,7 +583,7 @@ public class PurchasingServiceTests
         public Fixture()
         {
             Repo = new(User); Repo.Add(Item); Repo.Add(Warehouse); Repo.Add(Supplier);
-            Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]), Pin);
+            Service = new(Repo, User, TimeProvider.System, new(), new FakeStaffRepository([Requester]), Pin, Notifications);
         }
         public Job AddJob() { var job = new Job { JobNo = "JB-TEST", LegacyShardKey = "db2", BranchId = 105 }; Repo.Add(job); return job; }
         public void AddQuotation(Job job, bool signed, params QuotationLine[] lines) => Repo.Quotations.Add(new Quotation
