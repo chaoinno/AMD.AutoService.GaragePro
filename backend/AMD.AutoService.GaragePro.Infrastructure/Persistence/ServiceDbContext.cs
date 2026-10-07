@@ -45,6 +45,8 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<SalePayment> SalePayments => Set<SalePayment>();
     public DbSet<SaleReceiptNumberCounter> SaleReceiptNumberCounters => Set<SaleReceiptNumberCounter>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<NotificationRead> NotificationReads => Set<NotificationRead>();
 
     /// <summary>
     /// [RISK — พบ 2026-09-16] เดิมไม่มีการระบุ DateTimeKind ที่จุดไหนเลย (ไม่มี converter ที่นี่ ไม่มีใน

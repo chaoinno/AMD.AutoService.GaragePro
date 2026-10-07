@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, CheckCircle2, CircleOff, ClipboardList, Clock3, FileSpreadsheet, LoaderCircle, PackageCheck, Plus, Printer, RefreshCw, Search, Send, ShoppingCart, SquarePen, Trash2, Truck, Undo2, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { PurchaseApprovalPin } from './PurchaseApprovalPin'
 import { PurchaseProgress } from './PurchaseProgress'
@@ -75,6 +75,19 @@ function PurchasingWorkspace({ kind }: { kind: PurchaseKind }) {
   const [selected, setSelected] = useState<{ kind: PurchaseKind; id: string } | null>(null)
   const [creating, setCreating] = useState(false)
   const navigate = useNavigate()
+  // ลิงก์จากแจ้งเตือน: /purchasing/po?doc=<id> — เอกสารที่คลิกเองจากตารางมาก่อนลิงก์เสมอ
+  const [searchParams] = useSearchParams()
+  const linkedDoc = searchParams.get('doc')
+  const opened = selected ?? (linkedDoc ? { kind, id: linkedDoc } : null)
+  const clearDocLink = () => {
+    const params = new URLSearchParams(window.location.search)
+    if (!params.has('doc')) return
+    params.delete('doc')
+    const search = params.toString()
+    navigate({ search: search ? `?${search}` : '' }, { replace: true })
+  }
+  const openDoc = (doc: { kind: PurchaseKind; id: string }) => { clearDocLink(); setSelected(doc) }
+  const closeDoc = () => { clearDocLink(); setSelected(null) }
   // PO's "ทุกสถานะ" (status === '') hides complete/cancelled by default — those are done, not worklist items.
   // Typing a search keyword looks across every status instead, since the user is hunting for a specific document.
   // Picking any explicit status (including "รับครบแล้ว"/"ยกเลิก") always wins regardless of keyword.
@@ -108,12 +121,12 @@ function PurchasingWorkspace({ kind }: { kind: PurchaseKind }) {
         { id: 'supplier', header: 'ซัพพลายเออร์ / คลัง', value: (doc) => [doc.supplierName, doc.warehouseName].filter(Boolean).join(' '), size: 270, render: (doc) => <>{doc.supplierName || 'ยังไม่ระบุซัพพลายเออร์'}<small className="purchase-sub">{doc.warehouseName}</small></> },
         { id: 'status', header: 'สถานะ', value: (doc) => statuses[doc.status] || doc.status, render: (doc) => <><PurchaseStatus status={doc.status} /></> },
         { id: 'total', header: 'ยอดสุทธิ', value: (doc) => doc.total, render: (doc) => <><span className="money">{money(doc.total)}</span><small className="purchase-sub">{vatLabel(doc.hasVat, doc.vatRate)}</small></> },
-        { id: 'actions', header: '', render: (doc) => <Button variant="outline" size="sm" onClick={() => setSelected({ kind, id: doc.id })}><ClipboardList aria-hidden="true" /> เปิดเอกสาร</Button> },
+        { id: 'actions', header: '', render: (doc) => <Button variant="outline" size="sm" onClick={() => openDoc({ kind, id: doc.id })}><ClipboardList aria-hidden="true" /> เปิดเอกสาร</Button> },
       ]} />{query.data?.items.length === 0 && <p className="purchase-empty">ยังไม่มีเอกสารที่ตรงกับการค้นหา กด “สร้าง {kind}” เพื่อเริ่มต้น</p>}</Card>
       <div className="purchase-pagination"><span>{query.data?.totalItems ?? 0} เอกสาร · หน้า {page}</span><Button variant="outline" disabled={page === 1} title={page === 1 ? 'อยู่หน้าแรกแล้ว' : undefined} onClick={() => setPage(p => p - 1)}>ก่อนหน้า</Button><Button variant="outline" disabled={page >= (query.data?.totalPages || 1)} title={page >= (query.data?.totalPages || 1) ? 'ไม่มีหน้าถัดไป' : undefined} onClick={() => setPage(p => p + 1)}>ถัดไป</Button></div>
     </QueryState>
-    {creating && <PurchaseEditor kind={kind} onClose={() => setCreating(false)} onSaved={doc => { setCreating(false); setSelected({ kind: doc.kind, id: doc.id }) }} />}
-    {selected && <PurchaseDetail key={`${selected.kind}-${selected.id}`} {...selected} onClose={() => setSelected(null)} onConverted={() => navigate('/purchasing/po')} />}
+    {creating && <PurchaseEditor kind={kind} onClose={() => setCreating(false)} onSaved={doc => { setCreating(false); openDoc({ kind: doc.kind, id: doc.id }) }} />}
+    {opened && <PurchaseDetail key={`${opened.kind}-${opened.id}`} {...opened} onClose={closeDoc} onConverted={() => navigate('/purchasing/po')} />}
   </AppShell>
 }
 

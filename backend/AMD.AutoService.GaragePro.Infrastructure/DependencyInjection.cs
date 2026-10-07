@@ -97,6 +97,11 @@ public static class DependencyInjection
         services.AddScoped<IHandoverRepository, HandoverRepository>();
         services.AddScoped<IHandoverService, HandoverService>();
         services.AddScoped<IJobChatRepository, JobChatRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Notifications.INotificationPublisher,
+            AMD.AutoService.GaragePro.Infrastructure.Notifications.NotificationPublisher>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Notifications.INotificationService,
+            AMD.AutoService.GaragePro.Application.Notifications.NotificationService>();
         services.AddScoped<IJobChatService, JobChatService>();
         services.AddScoped<IReportsRepository, ReportsRepository>();
         services.AddScoped<ReportsService>();

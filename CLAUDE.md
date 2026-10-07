@@ -1565,6 +1565,39 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ตรวจแล้ว: Web `tsc -b`/`vite build` ผ่าน · ตรวจในเบราว์เซอร์ที่ 375/1024/1280/1440px (landing + sidebar ด้วยเซสชันจำลอง) ·
     `dotnet test` ผ่าน 358 / skipped 5 · **ยังไม่ได้เปิดดูไอคอน/หน้า login บน simulator และยังไม่ได้พิมพ์เอกสารจริง**
 
+- ✅ **[เพิ่ม 2026-10-07] แจ้งเตือนบนเว็บ (กระดิ่ง + ศูนย์แจ้งเตือน)** — คำขอผู้ใช้ · วางแผนผ่าน plan mode
+  · **7 ชนิด** (`Domain/Entities/Notification.cs` `NotificationKinds`): `chat.mention` → StaffId ที่ถูก @ ·
+    `quotation.approved`/`quotation.partial` (ตอนเซ็น) → **คนสร้างใบ + ช่างในบรรทัดค่าแรงที่อนุมัติ** (ผู้ใช้เลือก) ·
+    `quotation.all_rejected` (ตอนตัดสินใจบรรทัดสุดท้ายแล้วไม่มีบรรทัดอนุมัติ — เซ็นไม่ได้ตาม `QUOTE_NOTHING_APPROVED`) → คนสร้างใบ ·
+    `purchase.pending` (submit) → **กลุ่มบทบาท** PR = Manager · PO ≤ `ManagerApprovalThreshold` = Manager+Office (กติกาเดียวกับด่านอนุมัติ) ·
+    `purchase.approved`/`purchase.returned` → คนสร้างเอกสาร
+  · **ไม่แจ้งผู้กระทำเอง** · **"ดำเนินการแล้ว"** (`SubjectKey` + `ResolvedAt`): รออนุมัติปิดเมื่อ approve/return/cancel หรือแก้จนกลับเป็นร่าง ·
+    ไม่อนุมัติทั้งใบปิดเมื่อเซ็นหรือออกฉบับแก้ไข · เรื่องที่ปิดแล้วไม่นับเป็นยังไม่อ่าน แต่ยังแสดงพร้อมชื่อคนจัดการ
+  · **ผู้รับเป็น Staff.Id เสมอ** — คนสร้างเอกสารเก็บเป็น User.Id จึงแปลงผ่าน `ILegacyUserReader.FindByIdAsync` (ทางเดียวที่มี)
+    · **ไม่มีทางดึงพนักงานตามบทบาท** จึงเก็บแถวเดียวพร้อม `AudienceRoles` bitmask แล้วคัดตอนอ่านด้วย role ใน JWT
+    · สถานะอ่านแยกต่อคนที่ `svc_NotificationRead` · กติกาการมองเห็นอยู่ที่เดียว `NotificationRules.VisibleTo` (ใช้ทั้ง EF และเทสต์)
+  · **เขียนใน SaveChanges/transaction เดียวกับ action หลัก** — `INotificationPublisher` ห้าม save เอง (แบบ `IWorkIntervalHook`) ·
+    จัดซื้อต้องเรียก**ภายใน** `AtomicAsync` เพราะ `BranchStockTransaction` ล้าง ChangeTracker ตอนเริ่ม · อ่าน Garage DB ไม่ได้ตอนหาผู้รับ
+    = ข้ามคนนั้น + log warning ไม่ทำให้ action ล้ม · implementation อยู่ Infrastructure (`Notifications/NotificationPublisher.cs`) เพราะ
+    Application ไม่มี logging · ไม่ใช้ unique dedupe key (ชนแล้วพา action หลัก rollback) ใช้เช็คก่อนแทน
+  · `CurrentStaff.ResolveAsync` (`Application/Common/`) = Staff.Id จาก claim → fallback legacy · `WorkTimeService` ย้ายมาใช้ตัวนี้แล้ว
+  · API `NotificationsController`: `GET /notifications` · `GET /notifications/unread-count` · `POST|DELETE /notifications/{id}/read` ·
+    `POST /notifications/read-all` (ดู `docs/03-api-contract.md` §13) · แสดงย้อนหลัง **30 วัน** · ยังไม่มีการลบแถวเก่า (ไม่มี background worker)
+  · migration `AddNotifications` = 2 ตารางใหม่ล้วน — **รันกับ ServiceDb จริงแล้ว 2026-10-07** (ผู้ใช้อนุญาต · ก่อนรันมีค้างตัวเดียว)
+  · เว็บ: `components/notifications/` — กระดิ่งบน topbar poll `unread-count` ทุก 30 วิ (เฉพาะแท็บที่มองอยู่ + ตอนกลับมาที่แท็บ) ·
+    toast "มีการแจ้งเตือนใหม่" เมื่อจำนวนเพิ่มจาก poll (การกดอ่าน/ยังไม่อ่านเองไม่ทำให้เด้ง) · drawer (`Sheet`) แท็บยังไม่อ่าน/ทั้งหมด ·
+    ยังไม่อ่าน = จุด + พื้นฟ้า + หัวเรื่องหนา + ป้าย "ใหม่" · **เปิด drawer เฉยๆ ไม่นับว่าอ่าน** · การ์ดที่เพิ่งอ่านยังอยู่ที่เดิมจนปิด drawer ·
+    ปุ่มซองจดหมายสลับอ่าน/ยังไม่อ่าน · **คลิกการ์ด = อ่าน + เปิดงานนั้น**
+  · **deep link ใหม่** (เดิมไม่มีเลย): `/jobs?job=<id>&stage=quote&chat=1` (`JobCardModal` `initialStage`/`openChat` ·
+    `JobChatWidget` `defaultOpen`) · `/purchasing/:kind?doc=<id>` · ปิดการ์ด/เอกสารแล้วลบพารามิเตอร์ออกจาก URL
+  · ทดสอบแล้ว: `dotnet test` ผ่าน **386 / skipped 5** (เพิ่ม `NotificationTests.cs` 13 + chat 2 + ใบเสนอราคา 3 + จัดซื้อ 4) ·
+    Web `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ (เซสชัน + API จำลองด้วยการแทน `fetch` — ไม่ได้รัน API จริง): badge นับถูก,
+    สลับอ่าน/ยังไม่อ่าน, แท็บทั้งหมดแสดงแบบอ่านแล้ว/ดำเนินการแล้ว, คลิก PO เปิดรายละเอียดเอกสาร, คลิก mention เปิดการ์ดจ๊อบพร้อมแชท,
+    toast เมื่อมีของใหม่, 1024px ไม่ล้น · **ผู้ใช้ทดสอบกับ API + ฐานจริงด้วยบัญชีจริง 2 บัญชี (เว็บ 2 พอร์ต 5173/3000) แล้วยืนยันว่าใช้ได้**
+  · **ข้อจำกัด**: แอปมือถือยังไม่มีกระดิ่ง/push — **ช่างที่ได้แจ้งเตือนเรื่องใบเสนอราคาจะยังไม่เห็น** จนกว่าจะทำฝั่งแอป ·
+    กด "ดู" ใน toast ขณะเปิดการ์ดจ๊อบอยู่ drawer จะซ้อนบนการ์ด และกด Esc จะปิดทั้งคู่ · ไม่มีตั้งค่าปิดแจ้งเตือนรายชนิด ·
+    [RISK] endpoint สืบทอด `[RequireShiftSession]` แต่ข้อมูลกรองตามผู้รับแล้ว
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
@@ -1582,6 +1615,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 - Offline queue ของ Flutter (`TMP-` + conflict) · หน้า `/sync` — **งานใหญ่ อย่าประเมินต่ำ** (ตกลงกันแล้วว่ารอบนี้ online-only)
 - มือถือ: สแกน QR (`/jobs/by-qr/{code}` ยังไม่มี endpoint) · push notification · พิมพ์เอกสาร A4 (ต้องเพิ่ม `printing`+`pdf`)
 - Realtime (SignalR) · refresh token · หน้าตั้งค่า
+- แจ้งเตือนบนมือถือ (กระดิ่ง + push FCM/APNs) · ลบแจ้งเตือนเก่ากว่า 30 วัน · ตั้งค่าปิดแจ้งเตือนรายชนิด
 - สร้าง/แก้นัดหมายด้วยการคลิกช่องว่างในปฏิทิน (ตอนนี้แก้ได้จากการ์ดจ๊อบเท่านั้น) · จัดลำดับบรรทัดในเทมเพลต
   ใบเสนอราคาแบบลาก (v1 = เรียงตามลำดับที่เพิ่ม) · `RowVersion` ที่ header เทมเพลต (ตอนนี้ last-write-wins)
 - ปฏิทินนัดหมาย/เทมเพลตใบเสนอราคาบนมือถือ (รอบนี้ทำเฉพาะเว็บ — แอป Flutter ยังไม่มีทั้งสองอย่าง)

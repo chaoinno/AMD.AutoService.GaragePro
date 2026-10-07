@@ -921,3 +921,41 @@ export type VehicleReferenceData = {
   primaryColors: LookupItem[]
   colorMixes: LookupItem[]
 }
+
+// ---------- แจ้งเตือน (กระดิ่ง) ----------
+
+export type NotificationKind =
+  | 'chat.mention'
+  | 'quotation.approved'
+  | 'quotation.partial'
+  | 'quotation.all_rejected'
+  | 'purchase.pending'
+  | 'purchase.approved'
+  | 'purchase.returned'
+
+/// ฟิลด์ที่อาจเป็น null ประกาศเป็น optional — API ตัดฟิลด์ null ทิ้ง (WhenWritingNull) ห้ามเช็ค === null
+export type AppNotification = {
+  id: string
+  kind: NotificationKind | string
+  titleTh: string
+  bodyTh?: string
+  jobId?: string
+  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO'
+  entityType: string
+  entityId?: string
+  linkHint?: string
+  actorName: string
+  createdAt: string
+  readAt?: string
+  resolvedAt?: string
+  resolvedByName?: string
+}
+
+export type NotificationPage = {
+  items: AppNotification[]
+  hasMore: boolean
+}
+
+export type NotificationCount = {
+  unread: number
+}
