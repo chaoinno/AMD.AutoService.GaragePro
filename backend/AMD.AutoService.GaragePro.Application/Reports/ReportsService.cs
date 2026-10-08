@@ -413,7 +413,10 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
     private const int ServiceDueMaxDays = 366;
 
     /// <summary>[BIZ] รายชื่อรถที่ถึง/ใกล้ถึงวันนัดเข้ารับบริการครั้งถัดไป (จากใบส่งมอบ) ให้ผู้จัดการ/ธุรการโทรตาม
-    /// เอาเฉพาะการส่งมอบล่าสุดของรถแต่ละคัน และตัดรถที่กลับมาเปิดจ๊อบใหม่ (ไม่นับจ๊อบที่ยกเลิก) หลังส่งมอบครั้งนั้นแล้ว
+    /// เอาเฉพาะการส่งมอบล่าสุดของรถแต่ละคัน และตัดรถที่ไม่ต้องโทรตามแล้ว: (1) กลับมาเปิดจ๊อบใหม่หลังส่งมอบครั้งนั้น
+    /// (ไม่นับจ๊อบที่ยกเลิก) หรือ (2) **ยังมีจ๊อบอื่นที่ยังไม่ปิดอยู่** ไม่ว่าเปิดเมื่อไหร่ (เพิ่ม 2026-10-08 ตามคำขอผู้ใช้ —
+    /// พบตอนทดสอบว่ารถที่มีงานเปิดค้างไว้ก่อนวันส่งมอบยังขึ้นในรายชื่อโทรตาม ทั้งที่รถยังอยู่ในอู่)
+    /// จ๊อบของใบส่งมอบนั้นเองไม่นับ — หลังเซ็นส่งมอบยังอยู่ "พร้อมส่งมอบ" จนกว่าจะปิดงาน
     /// ใช้วันที่เป็นหลัก — ไม่รู้เลขไมล์ปัจจุบันของรถ ไมล์นัดจึงแสดงประกอบเท่านั้น</summary>
     public async Task<Result<ServiceDueReportDto>> GetServiceDueAsync(
         DateOnly? fromDate, DateOnly? toDate, CancellationToken ct = default)
@@ -440,9 +443,10 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             {
                 var vehicleId = h.Job!.VehicleId;
                 var isLatest = !latestHandoverByVehicle.TryGetValue(vehicleId, out var latestJobId) || latestJobId == h.JobId;
-                var cameBack = visitsByVehicle[vehicleId].Any(v =>
-                    v.JobId != h.JobId && v.CreatedAt > h.SubmittedAt && v.Status != JobStatus.Cancelled);
-                return isLatest && !cameBack;
+                var otherVisits = visitsByVehicle[vehicleId].Where(v => v.JobId != h.JobId).ToList();
+                var cameBack = otherVisits.Any(v => v.CreatedAt > h.SubmittedAt && v.Status != JobStatus.Cancelled);
+                var hasOpenJob = otherVisits.Any(v => !JobStateMachine.IsTerminal(v.Status));
+                return isLatest && !cameBack && !hasOpenJob;
             })
             .Select(h => new ServiceDueItemDto(
                 h.Job!.VehicleId, h.Job.VehicleRegistration, h.Job.VehicleModel, h.Job.CustomerName, h.Job.CustomerPhone,

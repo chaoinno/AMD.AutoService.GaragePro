@@ -434,6 +434,32 @@ public sealed class ReportsServiceTests
         result.Data.Items[0].DaysUntilDue.Should().Be(-2);
     }
 
+    /// <summary>พบตอนทดสอบกับข้อมูลจริง 2026-10-08: รถมีงานเปิดค้างไว้ก่อนวันส่งมอบ ยังขึ้นในรายชื่อโทรตาม</summary>
+    [Fact]
+    public async Task GetServiceDueAsync_drops_vehicles_that_still_have_another_open_job_even_if_opened_before_handover()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var now = DateTime.UtcNow;
+        var handedJob = VehicleJob(1, "JB-1A", now.AddDays(-10), status: JobStatus.Ready); // ตัวเองยังไม่ปิดงาน — ไม่นับ
+        var openBefore = VehicleJob(1, "JB-1B", now.AddDays(-5), status: JobStatus.WaitApprove);
+        var closedOther = VehicleJob(2, "JB-2A", now.AddDays(-20), plate: "2ขข 2222");
+        var closedBefore = VehicleJob(2, "JB-2B", now.AddDays(-15), plate: "2ขข 2222", status: JobStatus.Completed);
+        HandoverRecord Handed(Job job) => new()
+        {
+            JobId = job.Id, SubmittedAt = now.AddDays(-1), NextServiceDueOn = today.AddDays(3),
+            MileageAtHandover = 10_000, NextServiceMileage = 15_000
+        };
+        var repo = new FakeReportsRepository
+        {
+            Jobs = [handedJob, openBefore, closedOther, closedBefore],
+            Handovers = [Handed(handedJob), Handed(closedOther)]
+        };
+
+        var result = await CreateService(repo, UserRole.Manager).GetServiceDueAsync(null, null);
+
+        result.Data!.Items.Select(i => i.LastJobNo).Should().Equal("JB-2A");
+    }
+
     [Theory]
     [InlineData(UserRole.Technician)]
     [InlineData(UserRole.FrontDesk)]
