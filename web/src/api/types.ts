@@ -442,12 +442,15 @@ export type Job = {
   status: JobStatusToken
   statusLabel: string
   isOverdue: boolean
+  /** เลขไมล์ขณะรับรถ (กม.) — ไม่มีใน JSON เมื่อยังไม่บันทึก (API ตัด null ทิ้ง) ห้ามเช็ค === null */
+  mileageAtIntake?: number | null
 }
 
 export type TransitionJobInput = { toStatus: JobStatusToken | string; reason?: string }
 export type JobTransitionResult = { status: JobStatusToken; statusLabel: string }
 export type UpdateJobAppointmentInput = { appointmentAt: string }
 export type UpdateJobPromiseInput = { promiseAt: string }
+export type UpdateJobMileageInput = { mileageAtIntake: number }
 /// ปฏิทินวางจ๊อบตามวันไหน — appointment = วันที่นัดเข้า (AppointmentAt) · promise = วันที่นัดส่งมอบ (PromiseAt)
 export type JobCalendarDateField = 'appointment' | 'promise'
 /// ประวัติการเปลี่ยนวันนัด — from เป็น null เมื่อเป็นการตั้งค่าครั้งแรก
@@ -461,7 +464,8 @@ export type JobScheduleChange = {
   source: string
   occurredAt: string
 }
-export type ConvertToInShopInput = { actualArrivalAt: string }
+/** mileageAtIntake บังคับถ้าจ๊อบยังไม่มีเลขไมล์ (รถนัดหมายเปิดจ๊อบตอนรถยังไม่มา) */
+export type ConvertToInShopInput = { actualArrivalAt: string; mileageAtIntake?: number }
 export type JobCalendarResult = { items: Job[]; truncated: boolean; limit: number }
 
 export type JobStatusOption = { token: string; label: string }
@@ -573,6 +577,8 @@ export type CreateJobInput = {
   detail?: string
   appointmentAt?: string
   promiseAt?: string
+  /** บังคับเมื่อ jobTypeId = 9 (รถในอู่) — รถนัดหมายบันทึกตอนแปลงเป็นรถในอู่ */
+  mileageAtIntake?: number
 }
 
 export type CreatedJob = {

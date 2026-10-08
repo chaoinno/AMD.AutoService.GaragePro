@@ -1,6 +1,7 @@
 import type { Handover } from '../../api/handover'
 import type { Job } from '../../api/types'
-import { formatDateTime } from '../../lib/format'
+import { formatDateTime, formatKm } from '../../lib/format'
+import { nextServiceText } from './HandoverServiceInfoSection'
 import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 type HandoverDocumentProps = { job: Job; handover: Handover; signatureImageUrl: string | null }
@@ -33,6 +34,7 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
           <InfoRow label="ลูกค้า" value={job.customerName || 'ไม่ระบุชื่อ'} strong />
           <InfoRow label="ทะเบียนรถ" value={job.vehicleRegistration || 'ไม่ระบุทะเบียน'} />
           <InfoRow label="เลขที่งาน" value={job.jobNo} />
+          <InfoRow label="ไมล์รับรถ" value={formatKm(handover.mileageAtIntake ?? job.mileageAtIntake)} />
         </InfoBlock>
         <InfoBlock title="ข้อมูลการส่งมอบ">
           <InfoRow
@@ -41,7 +43,17 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
             strong
           />
           <InfoRow label="ผู้ส่งมอบ" value={handover.submittedByUserName || 'ยังไม่ระบุ'} />
+          <InfoRow label="ไมล์ส่งมอบ" value={formatKm(handover.mileageAtHandover)} strong />
         </InfoBlock>
+      </section>
+
+      {/* [BIZ] นัดครั้งถัดไป — ก่อนยืนยันส่งมอบวันที่เป็นพรีวิว (server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น) */}
+      <section className="document-next-service" aria-label="นัดเข้ารับบริการครั้งถัดไป">
+        <span>นัดเข้ารับบริการครั้งถัดไป</span>
+        <strong>{nextServiceText(handover.nextServiceMileage, handover.nextServiceDueOn)}</strong>
+        {!handover.isLocked && handover.nextServiceDueOn ? (
+          <small>วันที่จะนับใหม่จากวันที่ยืนยันส่งมอบจริง</small>
+        ) : null}
       </section>
 
       <section className="document-lines">

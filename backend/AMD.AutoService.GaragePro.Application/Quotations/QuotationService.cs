@@ -601,6 +601,7 @@ public sealed class QuotationService(
         VehicleRegistration = job.VehicleRegistration,
         VehicleModel = job.VehicleModel,
         VehicleVin = job.VehicleVin,
+        VehicleMileage = job.MileageAtIntake,
         BranchName = branch?.Name ?? job.BranchName,
         BranchAddress = branch?.Address,
         BranchTaxId = branch?.TaxId,

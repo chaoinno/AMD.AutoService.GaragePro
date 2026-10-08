@@ -38,6 +38,7 @@ import { isStageKey, JobCardModal } from './JobCardModal'
 import { JobsCalendar } from './JobsCalendar'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { CalendarDays, List as ListIcon } from 'lucide-react'
+import { mileageInputError } from './mileage'
 import './jobs.css'
 
 const JOB_TYPE_OPTIONS = [
@@ -423,7 +424,19 @@ const jobDetailsSchema = z.object({
   appointmentAt: z.string().optional(),
   // วันนัดส่งมอบ — ไม่บังคับทุกประเภทงาน (ตั้ง/เลื่อนภายหลังจากการ์ดจ๊อบหรือลากในปฏิทินได้)
   promiseAt: z.string().optional(),
+  // [BIZ] เลขไมล์ขณะรับรถ — บังคับเฉพาะรถในอู่ (รถอยู่ที่อู่แล้ว) ตรงกับ JobService.ValidateMileage
+  mileageAtIntake: z.string().optional(),
 }).superRefine((values, ctx) => {
+  if (values.jobTypeId === 9) {
+    const mileage = mileageInputError(values.mileageAtIntake ?? '')
+    if (mileage.km == null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['mileageAtIntake'],
+        message: mileage.error ?? 'กรุณากรอกเลขไมล์ขณะรับรถ',
+      })
+    }
+  }
   if (values.jobTypeId === 10 && !values.appointmentAt) {
     ctx.addIssue({
       code: 'custom',
@@ -529,7 +542,7 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
   })
 
   const jobDetailsDefaults: JobDetailsValues = {
-    jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '', appointmentAt: '', promiseAt: '',
+    jobTypeId: 9, senderName: '', senderPhoneNumber: '', detail: '', appointmentAt: '', promiseAt: '', mileageAtIntake: '',
   }
   const jobForm = useForm<JobDetailsValues>({
     resolver: zodResolver(jobDetailsSchema),
@@ -561,6 +574,9 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
         ? localInputToIso(values.appointmentAt)
         : undefined,
       promiseAt: values.promiseAt ? localInputToIso(values.promiseAt) : undefined,
+      mileageAtIntake: values.jobTypeId === 9
+        ? mileageInputError(values.mileageAtIntake ?? '').km ?? undefined
+        : undefined,
     })
   })
 
@@ -710,7 +726,11 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
               <Field label="วันเวลาที่ลูกค้าจะนำรถเข้า *" error={jobForm.formState.errors.appointmentAt?.message}>
                 <Input type="datetime-local" min={nowLocalInputValue()} {...jobForm.register('appointmentAt')} />
               </Field>
-            ) : null}
+            ) : (
+              <Field label="เลขไมล์ขณะรับรถ (กม.) *" error={jobForm.formState.errors.mileageAtIntake?.message}>
+                <Input inputMode="numeric" placeholder="เช่น 45210" {...jobForm.register('mileageAtIntake')} />
+              </Field>
+            )}
             <Field label="วันเวลานัดส่งมอบรถ (ไม่บังคับ)" error={jobForm.formState.errors.promiseAt?.message}>
               <Input
                 type="datetime-local"

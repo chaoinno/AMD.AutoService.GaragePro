@@ -18,6 +18,17 @@ public class HandoverRecord
 
     public string? SignatureImagePath { get; set; }
 
+    // [BIZ] เพิ่ม 2026-10-08 — เลขไมล์ตอนส่งมอบ + นัดเข้ารับบริการครั้งถัดไป (บังคับก่อนเซ็นส่งมอบ)
+    // พิมพ์ลงใบส่งมอบรถ และเป็นแหล่งข้อมูลของรายงานรถใกล้ครบรอบบริการ (/reports/service-due)
+    public int? MileageAtHandover { get; set; }
+    public int? NextServiceMileage { get; set; }
+    /// <summary>ระยะเวลาที่ผู้ใช้กรอก (เดือน) — เก็บไว้เพื่อคำนวณวันนัดใหม่จากวันที่ส่งมอบจริงตอนเซ็น</summary>
+    public int? NextServiceMonths { get; set; }
+    /// <summary>วันนัดครั้งถัดไป (วันที่ตามเวลาไทย) = วันส่งมอบ + NextServiceMonths — ก่อนเซ็นเป็นค่าพรีวิวจากวันที่บันทึก</summary>
+    public DateOnly? NextServiceDueOn { get; set; }
+    public DateTime? ServiceInfoUpdatedAt { get; set; }
+    public string? ServiceInfoUpdatedByUserName { get; set; }
+
     public DateTime? SubmittedAt { get; set; }
     public long? SubmittedByUserId { get; set; }
     public string? SubmittedByUserName { get; set; }

@@ -102,3 +102,47 @@ public sealed record RetailSellerDto(string SellerName, int BillCount, decimal T
 public sealed record RetailVoidedSaleDto(
     Guid SaleId, string? ReceiptNo, DateTime? CompletedAt, DateTime? VoidedAt, string? VoidedByName,
     string? VoidReason, decimal TotalAmount);
+
+// ---------- ประวัติรถ (เปิดทุกบทบาท — ช่าง/หัวหน้าช่างไม่เห็นตัวเงิน) ----------
+
+public sealed record VehicleHistoryMatchDto(
+    long VehicleId, string VehicleRegistration, string? VehicleModel, string CustomerName, string? CustomerPhone,
+    int VisitCount, DateTime LastVisitAt, string LastJobNo);
+
+/// <param name="Truncated">จ๊อบที่ตรงคำค้นเกินเพดาน — รายการรถอาจไม่ครบ ให้หน้าจอบอกให้พิมพ์ให้เจาะจงขึ้น</param>
+public sealed record VehicleHistorySearchDto(IReadOnlyList<VehicleHistoryMatchDto> Items, bool Truncated);
+
+/// <param name="Amount">ยอดก่อน VAT ของบรรทัด — null เมื่อบทบาทนี้ไม่เห็นตัวเงิน</param>
+public sealed record VehicleHistoryLineDto(
+    string QuotationCode, string Name, string Type, decimal Quantity, string Unit, decimal? Amount, string? TechnicianName);
+
+public sealed record VehicleHistoryVisitDto(
+    Guid JobId, string JobNo, DateTime OpenedAt, DateTime? HandedOverAt, string? JobTypeName,
+    string Status, string StatusLabelTh, string? Detail,
+    int? MileageAtIntake, int? MileageAtHandover,
+    IReadOnlyList<VehicleHistoryLineDto> Lines,
+    string? ReceiptDocumentNo, decimal? ReceiptTotal,
+    int? NextServiceMileage, DateOnly? NextServiceDueOn);
+
+/// <param name="ShowAmounts">false = บทบาทนี้ไม่เห็นตัวเงิน (ช่าง/หัวหน้าช่าง) — ยอดเงินทุกช่องเป็น null</param>
+/// <param name="NextService">นัดครั้งถัดไปจากการส่งมอบล่าสุด (ถ้ามี)</param>
+public sealed record VehicleHistoryDto(
+    long VehicleId, string VehicleRegistration, string? VehicleModel, string? VehicleVin,
+    string CustomerName, string? CustomerPhone, bool ShowAmounts,
+    VehicleNextServiceDto? NextService,
+    IReadOnlyList<VehicleHistoryVisitDto> Visits);
+
+public sealed record VehicleNextServiceDto(string FromJobNo, int? Mileage, DateOnly DueOn);
+
+// ---------- รถใกล้ครบรอบบริการ (CRM — ผู้จัดการ/ธุรการ) ----------
+
+/// <param name="DaysUntilDue">ติดลบ = เลยกำหนดมาแล้วกี่วัน</param>
+public sealed record ServiceDueItemDto(
+    long VehicleId, string VehicleRegistration, string? VehicleModel, string CustomerName, string? CustomerPhone,
+    Guid LastJobId, string LastJobNo, DateTime HandedOverAt, int? MileageAtHandover,
+    int? NextServiceMileage, DateOnly NextServiceDueOn, int DaysUntilDue);
+
+public sealed record ServiceDueReportDto(
+    DateOnly FromDate, DateOnly ToDate, DateOnly Today,
+    int OverdueCount, int DueWithin7DaysCount, int DueWithin30DaysCount,
+    IReadOnlyList<ServiceDueItemDto> Items);

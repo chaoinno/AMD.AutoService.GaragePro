@@ -39,6 +39,10 @@ public interface IJobService
     Task<Result<JobDto>> UpdatePromiseAsync(
         Guid jobId, UpdateJobPromiseRequest request, CancellationToken ct = default);
 
+    /// <summary>บันทึก/แก้เลขไมล์ขณะรับรถ — ล็อกเมื่อส่งมอบรถแล้วหรือถึงสถานะจบ</summary>
+    Task<Result<JobDto>> UpdateMileageAsync(
+        Guid jobId, UpdateJobMileageRequest request, CancellationToken ct = default);
+
     /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/วันนัดส่งมอบของจ๊อบ (ใหม่สุดก่อน)</summary>
     Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
         Guid jobId, CancellationToken ct = default);
@@ -91,6 +95,7 @@ public sealed class JobService(
 
     private const string AppointmentChangedEvent = "job.appointment.changed";
     private const string PromiseChangedEvent = "job.promise.changed";
+    private const string MileageChangedEvent = "job.mileage.changed";
 
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -157,6 +162,20 @@ public sealed class JobService(
     private static DateTime? EffectiveArrival(Job job) => job.ActualArrivalAt ?? job.AppointmentAt;
 
     private static string FormatLocal(DateTime utc) => $"{utc.AddHours(7):dd/MM/yyyy HH:mm}";
+
+    /// <summary>[BIZ] เพิ่ม 2026-10-08 — เลขไมล์ขณะรับรถ บังคับเมื่อรถอยู่ที่อู่จริง (เปิดจ๊อบรถในอู่ · แปลงรถนัดหมาย
+    /// เป็นรถในอู่ · ก่อนส่ง checklist รับรถ) ไม่บังคับตอนเปิดจ๊อบรถนัดหมายเพราะรถยังไม่มา</summary>
+    private static Result<int?> ValidateMileage(int? km, bool required)
+    {
+        if (km is null)
+            return required
+                ? Result<int?>.Fail("JOB_VALIDATION", "กรุณาบันทึกเลขไมล์ขณะรับรถ", "mileageAtIntake")
+                : Result<int?>.Ok(null);
+
+        return Odometer.IsValid(km.Value)
+            ? Result<int?>.Ok(km)
+            : Result<int?>.Fail("JOB_VALIDATION", $"เลขไมล์ต้องอยู่ระหว่าง 0 ถึง {Odometer.MaxKm:N0} กม.", "mileageAtIntake");
+    }
 
     public async Task<Result<JobDto>> GetAsync(Guid jobId, CancellationToken ct = default)
     {
@@ -289,6 +308,10 @@ public sealed class JobService(
         if (!orderResult.Success)
             return Result<CreatedJobDto>.Fail(orderResult.Error!);
 
+        var mileageResult = ValidateMileage(request.MileageAtIntake, required: request.JobTypeId == InShopTypeId);
+        if (!mileageResult.Success)
+            return Result<CreatedJobDto>.Fail(mileageResult.Error!);
+
         var customerResult = await customerVehicles.GetCustomerAsync(request.CustomerId, ct);
         if (!customerResult.Success)
             return Result<CreatedJobDto>.Fail("CUSTOMER_NOT_FOUND", "ไม่พบข้อมูลลูกค้าที่เลือก", nameof(request.CustomerId));
@@ -329,6 +352,7 @@ public sealed class JobService(
             Detail = string.IsNullOrWhiteSpace(request.Detail) ? null : request.Detail.Trim(),
             AppointmentAt = appointmentAt,
             PromiseAt = promiseAt,
+            MileageAtIntake = mileageResult.Data,
             CreatedByUserId = user.UserId,
             CreatedByUserName = user.UserName,
             CreatedAt = Now,
@@ -345,6 +369,7 @@ public sealed class JobService(
             DescriptionTh = $"เปิดจ๊อบ {jobNo}" +
                 (appointmentAt is null ? "" : $" · นัดหมาย {FormatLocal(appointmentAt.Value)} น.") +
                 (promiseAt is null ? "" : $" · นัดส่งมอบ {FormatLocal(promiseAt.Value)} น.") +
+                (mileageResult.Data is null ? "" : $" · เลขไมล์ {mileageResult.Data:N0} กม.") +
                 (openJob is null ? "" : $" · รถคันนี้ยังมีงานค้าง {openJob.JobNo}"),
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
@@ -580,6 +605,53 @@ public sealed class JobService(
         return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
     }
 
+    /// <summary>[BIZ] เพิ่ม 2026-10-08 — แก้เลขไมล์ขณะรับรถได้จนกว่าจะส่งมอบรถ (หลังส่งมอบ ไมล์รับรถเป็นฐานที่ใช้
+    /// เทียบไมล์ส่งมอบที่ลูกค้าเซ็นรับไปแล้ว แก้ทีหลังจะทำให้เอกสารสองใบขัดกัน) · เขียน job.mileage.changed เมื่อค่าเปลี่ยนจริง
+    /// [RISK] สิทธิ์สืบทอดช่องโหว่ RBAC เดิมของ JobsController ([RequireShiftSession] เท่านั้น)</summary>
+    public async Task<Result<JobDto>> UpdateMileageAsync(
+        Guid jobId, UpdateJobMileageRequest request, CancellationToken ct = default)
+    {
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
+            return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
+
+        if (JobStateMachine.IsTerminal(job.Status))
+            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขเลขไมล์ไม่ได้");
+
+        var handover = await handoverRepo.GetByJobAsync(job.Id, ct);
+        if (handover?.IsLocked == true)
+            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "ส่งมอบรถแล้ว — แก้ไขเลขไมล์ขณะรับรถไม่ได้");
+
+        var mileageResult = ValidateMileage(request.MileageAtIntake, required: true);
+        if (!mileageResult.Success)
+            return Result<JobDto>.Fail(mileageResult.Error!);
+
+        var oldKm = job.MileageAtIntake;
+        var newKm = mileageResult.Data!.Value;
+        if (oldKm == newKm)
+            return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+
+        job.MileageAtIntake = newKm;
+        await jobs.AddEventAsync(new ActivityEvent
+        {
+            JobId = job.Id,
+            EntityId = job.Id,
+            EntityType = nameof(Job),
+            EventType = MileageChangedEvent,
+            DescriptionTh = oldKm is null
+                ? $"บันทึกเลขไมล์ขณะรับรถ {newKm:N0} กม."
+                : $"แก้เลขไมล์ขณะรับรถจาก {oldKm:N0} เป็น {newKm:N0} กม.",
+            PerformedByUserId = user.UserId,
+            PerformedByName = user.UserName,
+            Source = user.Source,
+            OccurredAt = Now,
+            PayloadJson = JsonSerializer.Serialize(new { from = oldKm, to = newKm })
+        }, ct);
+        await jobs.SaveChangesAsync(ct);
+
+        return Result<JobDto>.Ok(JobMapper.ToDto(job, Now));
+    }
+
     /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/นัดส่งมอบ — อ่านจาก ActivityEvent ที่ UpdateAppointmentAsync/
     /// UpdatePromiseAsync เขียนไว้ (from/to อยู่ใน PayloadJson ไม่ต้อง parse ข้อความไทย)</summary>
     public async Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
@@ -648,7 +720,14 @@ public sealed class JobService(
             return Result<JobDto>.Fail(
                 "JOB_VALIDATION", "วันเวลาที่รถเข้าอู่จริงต้องไม่เกินวันเวลาปัจจุบัน", "actualArrivalAt");
 
+        // [BIZ] รถมาถึงอู่จริงตอนนี้ — ต้องมีเลขไมล์ (ส่งมาเอง หรือบันทึกไว้แล้วผ่าน PUT /mileage)
+        var mileageResult = ValidateMileage(
+            request.MileageAtIntake ?? job.MileageAtIntake, required: true);
+        if (!mileageResult.Success)
+            return Result<JobDto>.Fail(mileageResult.Error!);
+
         job.JobTypeId = InShopTypeId;
+        job.MileageAtIntake = mileageResult.Data;
         job.JobTypeName = "รถในอู่";
         job.ActualArrivalAt = arrivalUtc;
 
@@ -658,7 +737,8 @@ public sealed class JobService(
             EntityId = job.Id,
             EntityType = nameof(Job),
             EventType = "job.converted_to_in_shop",
-            DescriptionTh = $"แปลงประเภทงานจากรถนัดหมายเป็นรถในอู่ · เข้าอู่จริงเมื่อ {arrivalUtc.AddHours(7):dd/MM/yyyy HH:mm} น.",
+            DescriptionTh = $"แปลงประเภทงานจากรถนัดหมายเป็นรถในอู่ · เข้าอู่จริงเมื่อ {arrivalUtc.AddHours(7):dd/MM/yyyy HH:mm} น." +
+                $" · เลขไมล์ {mileageResult.Data:N0} กม.",
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
@@ -667,7 +747,8 @@ public sealed class JobService(
             {
                 fromJobTypeId = AppointmentTypeId,
                 toJobTypeId = InShopTypeId,
-                actualArrivalAt = arrivalUtc.ToString("O")
+                actualArrivalAt = arrivalUtc.ToString("O"),
+                mileageAtIntake = mileageResult.Data
             })
         }, ct);
 

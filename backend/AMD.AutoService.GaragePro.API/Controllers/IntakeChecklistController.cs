@@ -50,6 +50,7 @@ public sealed class IntakeChecklistController(IIntakeChecklistService service) :
             "JOB_OTHER_BRANCH" => StatusCodes.Status403Forbidden,
             "INTAKE_LOCKED" => StatusCodes.Status409Conflict,
             "INTAKE_ITEM_UNKNOWN" or "INTAKE_RESULT_INVALID" or "INTAKE_NOTE_REQUIRED" or "INTAKE_INCOMPLETE"
+                or "INTAKE_MILEAGE_REQUIRED"
                 => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status422UnprocessableEntity
         };

@@ -294,6 +294,168 @@ public sealed class ReportsServiceTests
         retail.DraftCount.Should().Be(3);
     }
 
+    // ── ประวัติรถ + รถใกล้ครบรอบบริการ (เพิ่ม 2026-10-08) ───────────────────────
+
+    private static Job VehicleJob(long vehicleId, string jobNo, DateTime createdAt, string plate = "1กก 1234",
+        string? phone = "081-234-5678", JobStatus status = JobStatus.Completed) => new()
+    {
+        LegacyShardKey = "db2", BranchId = 105, VehicleId = vehicleId, JobNo = jobNo, CreatedAt = createdAt,
+        VehicleRegistration = plate, CustomerPhone = phone, CustomerName = "ลูกค้า ทดสอบ", Status = status
+    };
+
+    [Theory]
+    [InlineData("1กก-1234")]
+    [InlineData("1กก1234")]
+    [InlineData("0812345678")]
+    [InlineData("081 234")]
+    public async Task SearchVehicleHistoryAsync_ignores_spaces_and_dashes(string term)
+    {
+        var repo = new FakeReportsRepository
+        {
+            Jobs =
+            [
+                VehicleJob(1, "JB1", DateTime.UtcNow.AddDays(-30)),
+                VehicleJob(1, "JB2", DateTime.UtcNow.AddDays(-1)),
+                VehicleJob(2, "JB3", DateTime.UtcNow, plate: "9ขข 9999", phone: "0899999999")
+            ]
+        };
+
+        var result = await CreateService(repo, UserRole.Technician).SearchVehicleHistoryAsync(term);
+
+        var match = result.Data!.Items.Should().ContainSingle().Subject;
+        match.VehicleId.Should().Be(1);
+        match.VisitCount.Should().Be(2);
+        match.LastJobNo.Should().Be("JB2");
+    }
+
+    [Fact]
+    public async Task SearchVehicleHistoryAsync_requires_at_least_three_characters()
+    {
+        var result = await CreateService(new FakeReportsRepository(), UserRole.Manager).SearchVehicleHistoryAsync("1-ก");
+
+        result.Error!.Code.Should().Be("VEHICLE_HISTORY_VALIDATION");
+    }
+
+    private static FakeReportsRepository HistoryRepo()
+    {
+        var job = VehicleJob(1, "JB1", DateTime.UtcNow.AddDays(-10));
+        job.MileageAtIntake = 40_000;
+        var superseded = new Quotation { JobId = job.Id, Code = "QT-1-01", Version = 1, Status = QuotationStatus.Superseded };
+        superseded.Lines.Add(new QuotationLine { Name = "ของเก่า", ApprovalStatus = LineApprovalStatus.Approved, NetAmount = 9m });
+        var active = new Quotation { JobId = job.Id, Code = "QT-1-02", Version = 2, Status = QuotationStatus.Approved };
+        active.Lines.Add(new QuotationLine
+        {
+            Sequence = 1, Name = "เปลี่ยนน้ำมันเครื่อง", Type = LineType.Labor, Quantity = 1, Unit = "งาน",
+            ApprovalStatus = LineApprovalStatus.Approved, NetAmount = 500m
+        });
+        active.Lines.Add(new QuotationLine { Sequence = 2, Name = "ไม่อนุมัติ", ApprovalStatus = LineApprovalStatus.Rejected, NetAmount = 100m });
+        return new FakeReportsRepository
+        {
+            Jobs = [job],
+            Quotations = [superseded, active],
+            Receipts = [new Receipt { JobId = job.Id, DocumentNo = "RC-26-0001", TotalAmount = 535m }],
+            Handovers =
+            [
+                new HandoverRecord
+                {
+                    JobId = job.Id, SubmittedAt = DateTime.UtcNow.AddDays(-9), MileageAtHandover = 40_020,
+                    NextServiceMileage = 50_000, NextServiceMonths = 6, NextServiceDueOn = new DateOnly(2027, 4, 1)
+                }
+            ]
+        };
+    }
+
+    [Fact]
+    public async Task GetVehicleHistoryAsync_lists_only_approved_lines_of_active_quotations()
+    {
+        var result = await CreateService(HistoryRepo(), UserRole.FrontDesk).GetVehicleHistoryAsync(1);
+
+        var visit = result.Data!.Visits.Should().ContainSingle().Subject;
+        visit.Lines.Should().ContainSingle(l => l.Name == "เปลี่ยนน้ำมันเครื่อง" && l.Amount == 500m);
+        visit.ReceiptTotal.Should().Be(535m);
+        visit.MileageAtIntake.Should().Be(40_000);
+        visit.MileageAtHandover.Should().Be(40_020);
+        result.Data.ShowAmounts.Should().BeTrue();
+        result.Data.NextService!.DueOn.Should().Be(new DateOnly(2027, 4, 1));
+        result.Data.NextService.Mileage.Should().Be(50_000);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.Lead)]
+    public async Task GetVehicleHistoryAsync_hides_money_from_workshop_roles(UserRole role)
+    {
+        var result = await CreateService(HistoryRepo(), role).GetVehicleHistoryAsync(1);
+
+        result.Data!.ShowAmounts.Should().BeFalse();
+        result.Data.Visits.Single().ReceiptTotal.Should().BeNull();
+        result.Data.Visits.Single().Lines.Should().OnlyContain(l => l.Amount == null);
+    }
+
+    [Fact]
+    public async Task GetVehicleHistoryAsync_returns_not_found_for_an_unknown_vehicle()
+    {
+        var result = await CreateService(HistoryRepo(), UserRole.Manager).GetVehicleHistoryAsync(99);
+
+        result.Error!.Code.Should().Be("VEHICLE_HISTORY_NOT_FOUND");
+    }
+
+    [Fact]
+    public async Task GetServiceDueAsync_keeps_only_the_latest_handover_and_drops_vehicles_that_came_back()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var now = DateTime.UtcNow;
+        // รถ 1: ส่งมอบสองครั้ง — ครั้งเก่า (ครบกำหนดในช่วง) ต้องไม่ขึ้น เหลือครั้งใหม่
+        var v1Old = VehicleJob(1, "JB-1A", now.AddDays(-200));
+        var v1New = VehicleJob(1, "JB-1B", now.AddDays(-100));
+        // รถ 2: ส่งมอบแล้วกลับมาเปิดจ๊อบใหม่ → ไม่ต้องตาม
+        var v2 = VehicleJob(2, "JB-2A", now.AddDays(-150), plate: "2ขข 2222");
+        var v2Back = VehicleJob(2, "JB-2B", now.AddDays(-5), plate: "2ขข 2222", status: JobStatus.InProgress);
+        // รถ 3: กลับมาแต่จ๊อบถูกยกเลิก → ยังต้องตาม
+        var v3 = VehicleJob(3, "JB-3A", now.AddDays(-150), plate: "3คค 3333");
+        var v3Cancelled = VehicleJob(3, "JB-3B", now.AddDays(-5), plate: "3คค 3333", status: JobStatus.Cancelled);
+
+        HandoverRecord Handed(Job job, int daysAgo, int dueInDays) => new()
+        {
+            JobId = job.Id, SubmittedAt = now.AddDays(-daysAgo), NextServiceDueOn = today.AddDays(dueInDays),
+            MileageAtHandover = 10_000, NextServiceMileage = 15_000
+        };
+        var repo = new FakeReportsRepository
+        {
+            Jobs = [v1Old, v1New, v2, v2Back, v3, v3Cancelled],
+            Handovers = [Handed(v1Old, 199, -10), Handed(v1New, 99, 5), Handed(v2, 149, 3), Handed(v3, 149, -2)]
+        };
+
+        var result = await CreateService(repo, UserRole.Office).GetServiceDueAsync(null, null);
+
+        result.Data!.Items.Select(i => i.LastJobNo).Should().Equal("JB-3A", "JB-1B");
+        result.Data.OverdueCount.Should().Be(1);
+        result.Data.DueWithin7DaysCount.Should().Be(1);
+        result.Data.Items[0].DaysUntilDue.Should().Be(-2);
+    }
+
+    [Theory]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.FrontDesk)]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Lead)]
+    public async Task GetServiceDueAsync_is_manager_or_office_only(UserRole role)
+    {
+        var result = await CreateService(new FakeReportsRepository(), role).GetServiceDueAsync(null, null);
+
+        result.Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+    }
+
+    [Fact]
+    public async Task GetServiceDueAsync_rejects_an_inverted_or_too_long_range()
+    {
+        var service = CreateService(new FakeReportsRepository(), UserRole.Manager);
+        var d = new DateOnly(2026, 10, 1);
+
+        (await service.GetServiceDueAsync(d, d.AddDays(-1))).Error!.Code.Should().Be("REPORTS_VALIDATION");
+        (await service.GetServiceDueAsync(d, d.AddDays(400))).Error!.Code.Should().Be("REPORTS_VALIDATION");
+    }
+
     private static ReportsService CreateService(IReportsRepository repo, UserRole role) =>
         new(repo, new StubCurrentUser(role), TimeProvider.System);
 
@@ -352,5 +514,40 @@ public sealed class ReportsServiceTests
 
         public Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct) =>
             Task.FromResult(RetailDraftCount);
+
+        public List<Receipt> Receipts { get; set; } = [];
+        public List<HandoverRecord> Handovers { get; set; } = [];
+
+        // มิเรอร์ ReportsRepository: เทียบแบบตัดช่องว่าง/ขีดทั้งสองฝั่ง ใหม่สุดก่อน
+        public Task<IReadOnlyList<Job>> SearchJobsByVehicleOrPhoneAsync(
+            string shardKey, int branchId, string normalizedTerm, int take, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<Job>>(Jobs
+                .Where(j => ReportsService.NormalizeSearchTerm(j.VehicleRegistration).Contains(normalizedTerm)
+                    || ReportsService.NormalizeSearchTerm(j.CustomerPhone).Contains(normalizedTerm))
+                .OrderByDescending(j => j.CreatedAt).Take(take).ToList());
+
+        public Task<VehicleHistoryData> GetVehicleHistoryAsync(
+            string shardKey, int branchId, long vehicleId, CancellationToken ct)
+        {
+            var jobs = Jobs.Where(j => j.VehicleId == vehicleId).ToList();
+            var ids = jobs.Select(j => j.Id).ToHashSet();
+            return Task.FromResult(new VehicleHistoryData(
+                jobs,
+                Quotations.Where(q => ids.Contains(q.JobId) && q.Status != QuotationStatus.Superseded).ToList(),
+                Receipts.Where(r => ids.Contains(r.JobId)).ToList(),
+                Handovers.Where(h => ids.Contains(h.JobId)).ToList()));
+        }
+
+        public Task<ServiceDueData> GetServiceDueAsync(
+            string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct)
+        {
+            foreach (var h in Handovers) h.Job = Jobs.First(j => j.Id == h.JobId);
+            var candidates = Handovers.Where(h => h.SubmittedAt != null && h.NextServiceDueOn >= from && h.NextServiceDueOn <= to).ToList();
+            return Task.FromResult(new ServiceDueData(
+                candidates,
+                Jobs.Select(j => new VehicleVisitRef(j.VehicleId, j.Id, j.CreatedAt, j.Status)).ToList(),
+                Handovers.Where(h => h.SubmittedAt != null)
+                    .Select(h => new VehicleHandoverRef(h.Job!.VehicleId, h.JobId, h.SubmittedAt!.Value)).ToList()));
+        }
     }
 }

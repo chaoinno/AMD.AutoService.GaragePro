@@ -21,7 +21,18 @@ class HandoverApi {
     return HandoverChecklistItem.fromJson(data);
   }
 
-  /// ต้องตัดสินใจครบทุกรายการและมีลายเซ็นก่อน — ส่งแล้วล็อก
+  /// เลขไมล์ตอนส่งมอบ + นัดครั้งถัดไป (ไมล์ + จำนวนเดือน — server คำนวณวันที่ให้) — ต้องบันทึกก่อนเซ็น
+  Future<Handover> saveServiceInfo(String jobId,
+      {required int mileageAtHandover, required int nextServiceMileage, required int nextServiceMonths}) async {
+    final data = await _c.put<Map<String, dynamic>>('/jobs/$jobId/handover/service-info', body: {
+      'mileageAtHandover': mileageAtHandover,
+      'nextServiceMileage': nextServiceMileage,
+      'nextServiceMonths': nextServiceMonths,
+    });
+    return Handover.fromJson(data);
+  }
+
+  /// ต้องตัดสินใจครบทุกรายการ บันทึกไมล์/นัดครั้งถัดไป และมีลายเซ็นก่อน — ส่งแล้วล็อก
   Future<Handover> submit(String jobId, String signatureAttachmentPath) async {
     final data = await _c.put<Map<String, dynamic>>('/jobs/$jobId/handover/submit',
         body: {'signatureAttachmentPath': signatureAttachmentPath});

@@ -391,7 +391,11 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.Property(x => x.CreatedByUserName).HasMaxLength(200);
             e.Property(x => x.SignatureImagePath).HasMaxLength(500);
             e.Property(x => x.SubmittedByUserName).HasMaxLength(200);
+            e.Property(x => x.ServiceInfoUpdatedByUserName).HasMaxLength(200);
             e.Ignore(x => x.IsLocked);
+
+            // รายงานรถใกล้ครบรอบบริการกรองช่วงวันนัด — มีแค่แถวที่ส่งมอบแล้วจึงจะมีความหมาย
+            e.HasIndex(x => x.NextServiceDueOn).HasFilter("[NextServiceDueOn] IS NOT NULL");
 
             // 1 งาน = 1 ใบส่งมอบเสมอ (เหมือน QcChecklist)
             e.HasOne(x => x.Job).WithMany()

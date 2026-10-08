@@ -29,7 +29,13 @@ public sealed class HandoverController(IHandoverService service) : ControllerBas
         Guid jobId, Guid itemId, [FromBody] SaveHandoverItemRequest request, CancellationToken ct) =>
         Render(await service.SaveItemAsync(jobId, itemId, request, ct));
 
-    /// <summary>ยืนยันส่งมอบ — ต้องตัดสินใจครบทุกรายการ + มีลายเซ็นแล้ว</summary>
+    /// <summary>บันทึกเลขไมล์ตอนส่งมอบ + นัดครั้งถัดไป (ไมล์ + จำนวนเดือน ระบบคำนวณวันที่ให้) — แก้ได้จนกว่าจะเซ็นส่งมอบ</summary>
+    [HttpPut("jobs/{jobId:guid}/handover/service-info")]
+    public async Task<IActionResult> SaveServiceInfo(
+        Guid jobId, [FromBody] SaveHandoverServiceInfoRequest request, CancellationToken ct) =>
+        Render(await service.SaveServiceInfoAsync(jobId, request, ct));
+
+    /// <summary>ยืนยันส่งมอบ — ต้องตัดสินใจครบทุกรายการ + บันทึกไมล์/นัดครั้งถัดไป + มีลายเซ็นแล้ว</summary>
     [HttpPut("jobs/{jobId:guid}/handover/submit")]
     public async Task<IActionResult> Submit(
         Guid jobId, [FromBody] SubmitHandoverRequest request, CancellationToken ct) =>
@@ -45,6 +51,7 @@ public sealed class HandoverController(IHandoverService service) : ControllerBas
             "JOB_OTHER_BRANCH" or "HANDOVER_FORBIDDEN" => StatusCodes.Status403Forbidden,
             "HANDOVER_LOCKED" => StatusCodes.Status409Conflict,
             "HANDOVER_NOTE_REQUIRED" or "HANDOVER_SIGNATURE_REQUIRED" or "HANDOVER_INCOMPLETE"
+                or "HANDOVER_VALIDATION" or "HANDOVER_SERVICE_INFO_REQUIRED" or "HANDOVER_INTAKE_MILEAGE_REQUIRED"
                 => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status422UnprocessableEntity
         };

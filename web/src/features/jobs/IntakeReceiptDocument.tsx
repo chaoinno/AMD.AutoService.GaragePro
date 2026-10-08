@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Circle, MinusCircle } from 'lucide-react'
 import type { Attachment, IntakeCheckResult, IntakeChecklist, IntakeChecklistItem, Job } from '../../api/types'
 import { AttachmentImage } from '../../components/AttachmentImage'
-import { formatDate, formatDateTime } from '../../lib/format'
+import { formatDate, formatDateTime, formatKm } from '../../lib/format'
 import { DocumentBrandMark } from '../../components/Brand'
 
 const CATEGORY_LABEL_TH: Record<string, string> = {
@@ -57,6 +57,7 @@ export function IntakeReceiptDocument({ job, checklist, photos }: IntakeReceiptD
               <InfoRow label="ทะเบียน" value={job.vehicleRegistration || 'ไม่ระบุ'} strong />
               <InfoRow label="รุ่น" value={job.vehicleModel || 'ไม่ระบุ'} />
               <InfoRow label="เลขตัวถัง" value={job.vehicleVin || 'ไม่ระบุ'} />
+              <InfoRow label="เลขไมล์" value={job.mileageAtIntake != null ? formatKm(job.mileageAtIntake) : 'ไม่ระบุ'} />
             </div>
             <div>
               <InfoRow label="เลขงาน" value={job.jobNo} strong />

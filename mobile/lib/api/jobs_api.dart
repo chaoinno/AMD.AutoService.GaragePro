@@ -54,6 +54,7 @@ class JobsApi {
     String? senderName,
     String? senderPhoneNumber,
     String? detail,
+    int? mileageAtIntake,
   }) async {
     final data = await _c.post<Map<String, dynamic>>('/jobs', body: {
       'customerId': customerId,
@@ -62,8 +63,16 @@ class JobsApi {
       'senderName': senderName,
       'senderPhoneNumber': senderPhoneNumber,
       'detail': detail,
+      'mileageAtIntake': ?mileageAtIntake,
     });
     return CreatedJob.fromJson(data);
+  }
+
+  /// บันทึก/แก้เลขไมล์ขณะรับรถ — ล็อกเมื่อส่งมอบรถแล้ว (`JOB_MILEAGE_LOCKED`)
+  Future<Job> updateMileage(String jobId, int mileageAtIntake) async {
+    final data = await _c.put<Map<String, dynamic>>('/jobs/$jobId/mileage',
+        body: {'mileageAtIntake': mileageAtIntake});
+    return Job.fromJson(data);
   }
 
   /// [reason] บังคับเฉพาะ transition ที่ guard ยังคำนวณจากข้อมูลจริงไม่ได้

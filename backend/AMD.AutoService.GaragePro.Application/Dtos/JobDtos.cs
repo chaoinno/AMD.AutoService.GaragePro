@@ -26,7 +26,8 @@ public sealed record JobDto(
     string? JobTypeName,
     string Status,
     string StatusLabel,
-    bool IsOverdue);
+    bool IsOverdue,
+    int? MileageAtIntake = null);
 
 public sealed record JobSearchQuery(
     string ShardKey,
@@ -67,12 +68,16 @@ public sealed record CreateJobRequest(
     string? SenderPhoneNumber,
     string? Detail,
     DateTimeOffset? AppointmentAt = null,
-    DateTimeOffset? PromiseAt = null);
+    DateTimeOffset? PromiseAt = null,
+    int? MileageAtIntake = null);
 
 public sealed record UpdateJobAppointmentRequest(DateTimeOffset AppointmentAt);
 
 /// <summary>ตั้ง/เลื่อนวันเวลานัดส่งมอบรถคืนลูกค้า (Job.PromiseAt)</summary>
 public sealed record UpdateJobPromiseRequest(DateTimeOffset PromiseAt);
+
+/// <summary>บันทึก/แก้เลขไมล์ขณะรับรถ (Job.MileageAtIntake) — กม.</summary>
+public sealed record UpdateJobMileageRequest(int MileageAtIntake);
 
 /// <summary>ประวัติการเปลี่ยนวันนัด (นัดเข้า/นัดส่งมอบ) ของจ๊อบ — อ่านจาก ActivityEvent
 /// Field = "appointment" | "promise" · From เป็น null เมื่อเป็นการตั้งค่าครั้งแรก</summary>
@@ -87,7 +92,8 @@ public sealed record JobScheduleChangeDto(
     DateTime OccurredAt);
 
 /// <summary>แปลงงานนัดหมาย (JobTypeId=10) เป็นรถในอู่ (JobTypeId=9) พร้อมบันทึกวันเวลาที่รถเข้าอู่จริง</summary>
-public sealed record ConvertToInShopRequest(DateTimeOffset ActualArrivalAt);
+/// <param name="MileageAtIntake">เลขไมล์ตอนรถเข้าอู่ — บังคับถ้าจ๊อบยังไม่มีค่า (รถนัดหมายเปิดจ๊อบตอนรถยังไม่มา)</param>
+public sealed record ConvertToInShopRequest(DateTimeOffset ActualArrivalAt, int? MileageAtIntake = null);
 
 /// <param name="ExistingOpenJobNo">เลขจ๊อบที่ยังไม่ปิดของรถคันเดียวกันที่มีอยู่ก่อนเปิดจ๊อบนี้ (ถ้ามี) —
 /// ให้หน้าจอเตือนว่าเปิดซ้อนกับงานเดิม ไม่ใช่ข้อผิดพลาด</param>
@@ -135,5 +141,6 @@ public static class JobMapper
         JobTypeName: job.JobTypeName,
         Status: JobStateMachine.ToToken(job.Status),
         StatusLabel: JobStateMachine.Describe(job.Status),
-        IsOverdue: job.IsOverdue(nowUtc));
+        IsOverdue: job.IsOverdue(nowUtc),
+        MileageAtIntake: job.MileageAtIntake);
 }
