@@ -227,7 +227,7 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 ของจริงเพิ่ม 2026-10-08:
 | GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
 | GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
-| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
 
 ---
 

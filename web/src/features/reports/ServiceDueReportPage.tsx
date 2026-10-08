@@ -34,7 +34,7 @@ const PRESETS: { value: Preset; label: string }[] = [
 ]
 
 /// [BIZ] เพิ่ม 2026-10-08 — รายชื่อรถที่ถึง/ใกล้ถึงวันนัดเข้ารับบริการครั้งถัดไป (จากใบส่งมอบ) ให้ผู้จัดการ/ธุรการโทรตาม
-/// ใช้การส่งมอบล่าสุดของรถแต่ละคัน และตัดคันที่กลับมาเปิดจ๊อบใหม่แล้ว (server ทำให้)
+/// ใช้การส่งมอบล่าสุดของรถแต่ละคัน และตัดคันที่กลับมาเปิดจ๊อบใหม่แล้วหรือยังมีงานเปิดค้างอยู่ (server ทำให้)
 export function ServiceDueReportPage() {
   const [[fromDate, toDate], setRange] = useState<[string, string]>(() => presetRange('overdue-30'))
   const query = useQuery({
@@ -49,7 +49,7 @@ export function ServiceDueReportPage() {
       <section className="report-page-heading">
         <div>
           <h2><AlarmClock aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />รถใกล้ครบรอบบริการ</h2>
-          <p>จากวันนัดครั้งถัดไปที่บันทึกตอนส่งมอบรถ · ใช้การส่งมอบล่าสุดของรถแต่ละคัน · ไม่รวมคันที่กลับมาเปิดจ๊อบใหม่แล้ว</p>
+          <p>จากวันนัดครั้งถัดไปที่บันทึกตอนส่งมอบรถ · ใช้การส่งมอบล่าสุดของรถแต่ละคัน · ไม่รวมคันที่กลับมาเปิดจ๊อบใหม่แล้วหรือยังมีงานเปิดค้างอยู่</p>
         </div>
         <div className="report-date-filter">
           <div className="report-presets" role="group" aria-label="ช่วงวันนัดสำเร็จรูป">
