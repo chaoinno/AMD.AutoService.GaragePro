@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Application.Handover;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using FluentAssertions;
@@ -92,7 +93,10 @@ public sealed class HandoverServiceTests
 
     private static HandoverRecord SeedRecord(FakeHandoverRepository repo)
     {
-        var record = new HandoverRecord { JobId = TestJobId };
+        var record = new HandoverRecord
+        {
+            JobId = TestJobId, MileageAtHandover = 10_500, NextServiceMileage = 15_500, NextServiceMonths = 6
+        };
         record.Items.Add(new HandoverChecklistItem
         {
             HandoverRecordId = record.Id, ItemCode = "key", Name = "กุญแจรถ"
@@ -164,6 +168,110 @@ public sealed class HandoverServiceTests
         submitted.Data!.IsLocked.Should().BeTrue();
     }
 
+    // ── ไมล์ส่งมอบ + นัดครั้งถัดไป (เพิ่ม 2026-10-08) ──────────────────────────────
+
+    [Fact]
+    public async Task SubmitAsync_requires_service_info_before_signing()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        DecideEveryItem(record);
+        record.MileageAtHandover = null;
+        record.NextServiceMileage = null;
+        record.NextServiceMonths = null;
+
+        var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+
+        result.Error!.Code.Should().Be("HANDOVER_SERVICE_INFO_REQUIRED");
+        record.IsLocked.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SubmitAsync_stamps_the_next_service_date_from_the_actual_handover_day()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        DecideEveryItem(record);
+        record.NextServiceDueOn = new DateOnly(2000, 1, 1); // ค่าพรีวิวเก่าจากวันที่บันทึก ต้องถูกคำนวณใหม่
+
+        var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+
+        result.Success.Should().BeTrue();
+        result.Data!.NextServiceDueOn.Should().Be(ServiceSchedule.ThaiDate(DateTime.UtcNow).AddMonths(6));
+        result.Data.MileageAtIntake.Should().Be(10_000);
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_saves_values_and_previews_the_due_date()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(12_000, 17_000, 3));
+
+        result.Success.Should().BeTrue();
+        result.Data!.MileageAtHandover.Should().Be(12_000);
+        result.Data.NextServiceMileage.Should().Be(17_000);
+        result.Data.NextServiceMonths.Should().Be(3);
+        result.Data.NextServiceDueOn.Should().Be(ServiceSchedule.ThaiDate(DateTime.UtcNow).AddMonths(3));
+    }
+
+    [Theory]
+    [InlineData(9_999, 15_000, 6, "mileageAtHandover")]  // น้อยกว่าไมล์รับรถ 10,000
+    [InlineData(12_000, 12_000, 6, "nextServiceMileage")] // นัดต้องมากกว่าไมล์ส่งมอบ
+    [InlineData(12_000, 17_000, 0, "nextServiceMonths")]
+    [InlineData(12_000, 17_000, 25, "nextServiceMonths")]
+    public async Task SaveServiceInfoAsync_validates_mileage_order_and_month_range(
+        int handover, int next, int months, string field)
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(handover, next, months));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be(field);
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_requires_intake_mileage_first()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo, intakeMileage: null).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(12_000, 17_000, 6));
+
+        result.Error!.Code.Should().Be("HANDOVER_INTAKE_MILEAGE_REQUIRED");
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_is_locked_after_handover()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo).SubmittedAt = DateTime.UtcNow;
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(12_000, 17_000, 6));
+
+        result.Error!.Code.Should().Be("HANDOVER_LOCKED");
+    }
+
+    [Theory]
+    [InlineData("2027-01-31T05:00:00Z", 1, "2027-02-28")] // ปลายเดือนปัดลงวันสุดท้ายของเดือนถัดไป
+    [InlineData("2028-01-31T05:00:00Z", 1, "2028-02-29")] // ปีอธิกสุรทิน
+    [InlineData("2026-12-31T18:00:00Z", 6, "2027-07-01")] // 01:00 น. 1 ม.ค. เวลาไทย — นับจากวันไทย ไม่ใช่วัน UTC
+    public void NextDueOn_counts_months_from_the_thai_calendar_day(string handedOverUtc, int months, string expected)
+    {
+        // InvariantCulture — เครื่อง dev ตั้ง th-TH (ปฏิทินพุทธ) DateOnly.Parse เฉยๆ จะอ่านปีผิด
+        var inv = System.Globalization.CultureInfo.InvariantCulture;
+        var utc = DateTime.Parse(handedOverUtc, inv, System.Globalization.DateTimeStyles.AdjustToUniversal);
+
+        ServiceSchedule.NextDueOn(utc, months).Should().Be(DateOnly.ParseExact(expected, "yyyy-MM-dd", inv));
+    }
+
     private static void DecideEveryItem(HandoverRecord record)
     {
         foreach (var item in record.Items)
@@ -181,8 +289,9 @@ public sealed class HandoverServiceTests
     private static HandoverService CreateService(
         FakeHandoverRepository repo,
         UserRole role = UserRole.Cashier,
-        bool receiptIssued = true) =>
-        new(repo, new FakeJobRepository(), new FakePosRepository(receiptIssued ? IssuedReceipt : null),
+        bool receiptIssued = true,
+        int? intakeMileage = 10_000) =>
+        new(repo, new FakeJobRepository(intakeMileage), new FakePosRepository(receiptIssued ? IssuedReceipt : null),
             new StubCurrentUser(role), TimeProvider.System);
 
     /// <summary>ออกใบเสร็จแล้วหรือยัง — เป็นเงื่อนไขเดียวที่ HandoverService อ่านจากฝั่ง POS</summary>
@@ -219,13 +328,14 @@ public sealed class HandoverServiceTests
         public bool IsAdministrator => false;
     }
 
-    private sealed class FakeJobRepository : IJobRepository
+    private sealed class FakeJobRepository(int? intakeMileage) : IJobRepository
     {
         public Task<Job?> GetAsync(Guid jobId, CancellationToken ct = default) =>
             Task.FromResult<Job?>(new Job
             {
                 Id = jobId, LegacyShardKey = "db2", BranchId = 105, JobNo = "JB2608310105001",
                 CustomerName = "ลูกค้าทดสอบ", VehicleRegistration = "1กก-1234", JobTypeId = 9,
+                MileageAtIntake = intakeMileage
             });
         public Task<Job?> GetOpenByVehicleAsync(string shardKey, int branchId, long vehicleId, CancellationToken ct = default) =>
             throw new NotImplementedException();

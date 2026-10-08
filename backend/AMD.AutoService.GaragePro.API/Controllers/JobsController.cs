@@ -165,6 +165,27 @@ public sealed class JobsController(
         return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
     }
 
+    /// <summary>บันทึก/แก้เลขไมล์ขณะรับรถ (กม.) — ล็อกเมื่อส่งมอบรถแล้วหรือจ๊อบปิดแล้ว (JOB_MILEAGE_LOCKED)</summary>
+    [HttpPut("{jobId:guid}/mileage")]
+    public async Task<IActionResult> UpdateMileage(
+        Guid jobId, [FromBody] UpdateJobMileageRequest request, CancellationToken ct)
+    {
+        var result = await jobService.UpdateMileageAsync(jobId, request, ct);
+
+        if (!result.Success)
+        {
+            var status = result.Error?.Code switch
+            {
+                "JOB_NOT_FOUND" => StatusCodes.Status404NotFound,
+                "JOB_MILEAGE_LOCKED" => StatusCodes.Status409Conflict,
+                _ => StatusCodes.Status400BadRequest
+            };
+            return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));
+        }
+
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
     /// <summary>ประวัติการเปลี่ยนวันนัดเข้า/วันนัดส่งมอบของจ๊อบ (ใหม่สุดก่อน)</summary>
     [HttpGet("{jobId:guid}/schedule-history")]
     public async Task<IActionResult> ScheduleHistory(Guid jobId, CancellationToken ct)

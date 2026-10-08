@@ -10,7 +10,8 @@ import { AttachmentImage } from '../../components/AttachmentImage'
 import { StateBlock } from '../../components/StateBlock'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
-import { formatDateTime } from '../../lib/format'
+import { formatDateTime, formatKm } from '../../lib/format'
+import { UpdateMileageModal } from './UpdateMileageModal'
 
 const RESULT_META: Record<Exclude<IntakeCheckResult, 'pending'>, { label: string; icon: typeof CheckCircle2; className: string }> = {
   ok: { label: 'ปกติ', icon: CheckCircle2, className: 'intake-item__result-btn--ok' },
@@ -20,6 +21,7 @@ const RESULT_META: Record<Exclude<IntakeCheckResult, 'pending'>, { label: string
 
 export function IntakeChecklistPanel({ job }: { job: Job }) {
   const queryClient = useQueryClient()
+  const [editingMileage, setEditingMileage] = useState(false)
 
   const checklistQuery = useQuery({
     queryKey: ['job-intake-checklist', job.jobId],
@@ -77,6 +79,11 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
   const categories = groupByCategory(checklist.items)
   const pendingCount = checklist.items.filter((i) => i.result === 'pending').length
   const issueCount = checklist.items.filter((i) => i.result === 'issue').length
+  // [BIZ] API ปฏิเสธการส่ง checklist ถ้ายังไม่มีเลขไมล์ (INTAKE_MILEAGE_REQUIRED) — บอกและให้บันทึกได้ตรงนี้เลย
+  const missingMileage = job.mileageAtIntake == null
+  const submitBlockedReason = pendingCount > 0
+    ? `ยังตรวจไม่ครบ — เหลืออีก ${pendingCount} รายการ`
+    : missingMileage ? 'ยังไม่ได้บันทึกเลขไมล์ขณะรับรถ' : undefined
 
   return (
     <Card>
@@ -90,6 +97,22 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
         ) : null}
       </CardHeader>
       <CardContent>
+        <div className="intake-checklist__mileage">
+          <span>เลขไมล์ขณะรับรถ:</span>
+          {missingMileage ? (
+            <span className="job-detail-overdue" role="status">
+              <AlertTriangle aria-hidden="true" /> ยังไม่ได้บันทึก — ต้องบันทึกก่อนส่ง checklist
+            </span>
+          ) : (
+            <strong className="job-detail-mileage">{formatKm(job.mileageAtIntake)}</strong>
+          )}
+          {!checklist.isLocked ? (
+            <Button variant="outline" size="sm" onClick={() => setEditingMileage(true)}>
+              {missingMileage ? 'บันทึกเลขไมล์' : 'แก้ไขเลขไมล์'}
+            </Button>
+          ) : null}
+        </div>
+        {editingMileage ? <UpdateMileageModal job={job} onClose={() => setEditingMileage(false)} /> : null}
         <div className="intake-checklist__categories">
           {categories.map((category) => (
             <section key={category.key} className="intake-category">
@@ -111,15 +134,15 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
 
         {!checklist.isLocked ? (
           <div className="job-card-panel-actions intake-checklist__submit-row">
-            {pendingCount > 0 ? (
-              <span className="intake-checklist__submit-hint">ยังตรวจไม่ครบ — เหลืออีก {pendingCount} รายการ</span>
+            {submitBlockedReason ? (
+              <span className="intake-checklist__submit-hint">{submitBlockedReason}</span>
             ) : issueCount > 0 ? (
               <span className="intake-checklist__submit-hint">พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ — ตรวจทานก่อนส่ง</span>
             ) : null}
             <Button
               onClick={() => submitMutation.mutate()}
-              disabled={pendingCount > 0 || submitMutation.isPending}
-              title={pendingCount > 0 ? `ยังตรวจไม่ครบ — เหลืออีก ${pendingCount} รายการ` : undefined}
+              disabled={Boolean(submitBlockedReason) || submitMutation.isPending}
+              title={submitBlockedReason}
             >
               {submitMutation.isPending ? 'กำลังส่ง…' : 'ส่ง checklist และล็อกรายการ'}
             </Button>

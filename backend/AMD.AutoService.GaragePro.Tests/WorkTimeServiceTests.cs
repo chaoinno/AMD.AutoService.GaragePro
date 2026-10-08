@@ -532,6 +532,8 @@ public sealed class WorkTimeServiceTests
             Guid jobId, ConvertToInShopRequest request, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<JobDto>> UpdatePromiseAsync(
             Guid jobId, UpdateJobPromiseRequest request, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<Result<JobDto>> UpdateMileageAsync(
+            Guid jobId, UpdateJobMileageRequest request, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<IReadOnlyList<JobScheduleChangeDto>>> GetScheduleHistoryAsync(
             Guid jobId, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<Result<JobCalendarDto>> GetCalendarAsync(

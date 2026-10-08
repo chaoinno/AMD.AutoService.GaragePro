@@ -78,3 +78,35 @@
 .dashboard-widget__links { display: flex; gap: 8px; }
 .dashboard-widget .stat-tile-grid { margin-bottom: 0; }
 .dashboard-widget .stat-tile { box-shadow: none; background: #f8fafc; }
+
+/* ---------- ประวัติรถ (VehicleHistoryReportPage) ---------- */
+.vehicle-history-search { display: flex; gap: 8px; align-items: center; }
+.vehicle-history-search .ui-input, .vehicle-history-search input { min-width: 260px; }
+.vehicle-history-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; padding: 18px 20px; margin: 12px 0 16px; }
+.vehicle-history-head h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; font-size: 20px; color: var(--navy-900); }
+.vehicle-history-head h3 svg { width: 20px; height: 20px; }
+.vehicle-history-head p { margin: 2px 0; }
+.vehicle-history-next { display: grid; gap: 4px; align-content: start; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-card); max-width: 420px; }
+.vehicle-history-next span { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.vehicle-history-next span svg { width: 15px; height: 15px; }
+.vehicle-history-next small { color: var(--muted); }
+.vehicle-history-timeline { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.vehicle-history-visit { display: grid; gap: 10px; padding: 16px 18px; }
+.vehicle-history-visit header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.vehicle-history-visit header > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.vehicle-history-visit__detail { margin: 0; color: var(--navy-900); }
+.vehicle-history-visit__facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
+.vehicle-history-visit__facts dt { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.vehicle-history-visit__facts dt svg { width: 14px; height: 14px; }
+.vehicle-history-visit__facts dd { margin: 2px 0 0; font-weight: 600; }
+.vehicle-history-lines { width: 100%; border-collapse: collapse; font-size: 15px; }
+.vehicle-history-lines th { text-align: left; font-size: 14px; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.vehicle-history-lines td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+
+/* ---------- รถใกล้ครบรอบบริการ (ServiceDueReportPage) ---------- */
+.service-due-toolbar { justify-content: space-between; }
+.service-due-status { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 14px; font-weight: 600; }
+.service-due-status svg { width: 14px; height: 14px; }
+.service-due-status--overdue { background: #fbe9e9; color: #a31d1d; }
+.service-due-status--soon { background: #fdf3e2; color: #8a5a00; }
+.service-due-status--later { background: #eef1f6; color: var(--navy-900); }

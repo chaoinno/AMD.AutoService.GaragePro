@@ -22,6 +22,8 @@ import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
 import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
 import { StockReportPage } from './features/reports/StockReportPage'
 import { RetailSalesReportPage } from './features/reports/RetailSalesReportPage'
+import { ServiceDueReportPage } from './features/reports/ServiceDueReportPage'
+import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
@@ -71,6 +73,8 @@ export default function App() {
           <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
           <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
           <Route path="/reports/retail-sales" element={<ProtectedRoute><RetailSalesReportPage /></ProtectedRoute>} />
+          <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
+          <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />

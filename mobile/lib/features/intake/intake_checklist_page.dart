@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
+import '../../core/mileage.dart';
 import '../../core/tokens.dart';
 import '../../models/attachment.dart';
 import '../../models/intake.dart';
@@ -9,6 +10,7 @@ import '../../widgets/common.dart';
 import '../attachments/photo_upload.dart';
 import '../attachments/widgets/auth_image.dart';
 import '../jobs/data/jobs_providers.dart';
+import 'mileage_dialog.dart';
 
 final intakeChecklistProvider = FutureProvider.autoDispose.family<IntakeChecklist, String>(
   (ref, jobId) => ref.watch(intakeApiProvider).get(jobId),
@@ -41,6 +43,9 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(intakeChecklistProvider(widget.jobId));
+    // [BIZ] ส่งเช็คลิสต์ไม่ได้ถ้ายังไม่มีเลขไมล์ขณะรับรถ (INTAKE_MILEAGE_REQUIRED) — ระหว่างโหลดจ๊อบถือว่ายังไม่รู้ ไม่บล็อก
+    final mileage = ref.watch(jobDetailProvider(widget.jobId)).value?.mileageAtIntake;
+    final mileageKnown = ref.watch(jobDetailProvider(widget.jobId)).hasValue;
 
     return Scaffold(
       appBar: AppBar(title: const Text('ตรวจสภาพรถขณะรับ')),
@@ -57,11 +62,15 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
             ? null
             : StickyActionBar(
                 label: 'ส่งผลตรวจสภาพรถ',
-                disabledReason: checklist.complete
-                    ? null
-                    : 'ยังตรวจไม่ครบ เหลืออีก ${checklist.pendingCount} รายการ',
+                disabledReason: !checklist.complete
+                    ? 'ยังตรวจไม่ครบ เหลืออีก ${checklist.pendingCount} รายการ'
+                    : mileageKnown && mileage == null
+                        ? 'บันทึกเลขไมล์ขณะรับรถก่อน'
+                        : null,
                 hint: checklist.complete ? 'ส่งแล้วจะแก้ไขไม่ได้อีก' : null,
-                onPressed: _busy || !checklist.complete ? null : _submit,
+                onPressed: _busy || !checklist.complete || (mileageKnown && mileage == null)
+                    ? null
+                    : _submit,
               ),
         orElse: () => null,
       ),
@@ -84,6 +93,8 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
               tone: StateTone.neutral,
             ),
           ),
+        _mileage(checklist.isLocked),
+        const SizedBox(height: T.s16),
         _photos(),
         const SizedBox(height: T.s16),
         for (final entry in grouped.entries) ...[
@@ -95,6 +106,64 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
         ],
       ],
     );
+  }
+
+  Widget _mileage(bool locked) {
+    final job = ref.watch(jobDetailProvider(widget.jobId)).value;
+    final km = job?.mileageAtIntake;
+    final missing = job != null && km == null;
+
+    return Container(
+      padding: const EdgeInsets.all(T.s16),
+      decoration: BoxDecoration(
+        color: T.cardBg,
+        border: Border.all(color: missing ? T.amber500 : T.border),
+        borderRadius: BorderRadius.circular(T.rCard),
+      ),
+      child: Row(
+        children: [
+          Icon(missing ? Icons.warning_amber_rounded : Icons.speed,
+              color: missing ? T.amber500 : T.navy900),
+          const SizedBox(width: T.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('เลขไมล์ขณะรับรถ', style: TextStyle(fontSize: 14, color: T.muted, height: 1.5)),
+                Text(
+                  job == null ? 'กำลังโหลด…' : missing ? 'ยังไม่ได้บันทึก — ต้องบันทึกก่อนส่ง' : formatKm(km),
+                  style: TextStyle(
+                      fontSize: missing ? 15 : 18,
+                      fontWeight: FontWeight.w700,
+                      height: 1.5,
+                      fontFamily: missing ? null : T.fontMono),
+                ),
+              ],
+            ),
+          ),
+          if (job != null && !locked)
+            OutlinedButton(
+              onPressed: _busy ? null : () => _editMileage(km),
+              child: Text(missing ? 'บันทึก' : 'แก้ไข', style: const TextStyle(fontSize: 15)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editMileage(int? current) async {
+    final km = await showMileageDialog(context,
+        title: current == null ? 'บันทึกเลขไมล์ขณะรับรถ' : 'แก้ไขเลขไมล์ขณะรับรถ', initial: current);
+    if (km == null || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(jobsApiProvider).updateMileage(widget.jobId, km);
+      ref.invalidate(jobDetailProvider(widget.jobId));
+    } on ApiException catch (e) {
+      if (mounted) _toast(e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Widget _photos() {
