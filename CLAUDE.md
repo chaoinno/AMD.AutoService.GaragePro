@@ -535,7 +535,7 @@ SQL/FTP จริง) — เทสต์ `Validate()` และ `IsSafeRelative
   · ปรับเฉพาะ Web — `mobile/lib/core/tokens.dart` (Flutter) ไม่ได้แตะ เพราะฟอนต์/ขนาดไม่ได้อยู่ใน `web/src/lib/tokens.ts`
   (มีแค่สี) จึงไม่ขัดกฎ "ต้องแก้ให้ตรงกันทั้งสองที่" ด้านล่าง — ถ้าต้องการให้ mobile ใช้ฟอนต์/ขนาดเดียวกันต้องทำแยก
 - Mobile: touch ≥48px · CTA 54–56px · ฟอร์มยาวใช้ sticky bar + บันทึกร่าง
-- Web: desktop 1440 หลัก · 1024 ย่อ sidebar · **< 1024px ไม่รองรับ**
+- Web: desktop 1440 หลัก · 1024 ย่อ sidebar · **< 1024px ไม่รองรับ** (ยกเว้นหน้าสาธารณะ `/` และ `/login` ที่รองรับมือถือ)
 - ข้อความ UI เป็นภาษาไทยทั้งหมด · โค้ดและตัวแปรเป็นอังกฤษ
 
 ### ตารางจัดการข้อมูล (อัปเดต 2026-09-04 ตามคำขอผู้ใช้)
@@ -1397,12 +1397,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   ความสูงแบบมีเงื่อนไข 108/142 เพราะ `PreferredSize` ไม่ยืดตามลูก · ข้อความ empty state บอกชื่อตัวกรองที่ค้างแทน
   คำว่า "ตัวกรองที่เลือก" ลอยๆ · ทดสอบจริงบน simulator แล้ว: ตั้งตัวกรองจากหน้าหลัก → เห็นแถบ → กด "ล้าง" → งานขึ้นครบ 7 รายการ
 
-- ✅ **[เพิ่ม 2026-09-23] หน้า `/login` เป็น landing page นำเสนอผลิตภัณฑ์** (คำขอผู้ใช้) — navbar 3 เมนู:
-  "เข้าสู่ระบบ" (เลื่อนไปการ์ด login บนสุด + โฟกัสช่องรหัสพนักงาน) · "เกี่ยวกับเรา" (Armadillo Tech Co., Ltd.) ·
-  "ติดต่อ" (ฟอร์มขอ Demo คัดฟิลด์/ช่องทางติดต่อจาก `https://gp.ipongs.com/#contact`)
-  · ไฟล์: `web/src/features/auth/LoginPage.tsx` (layout) · `LoginCard.tsx` (ตรรกะ login เดิมย้ายมาไม่เปลี่ยน) ·
-  `ContactSection.tsx` · `landing.css` · **`App.tsx` แสดง `/login` นอก `desktop-guard`** — หน้าเดียวที่รองรับจอ < 1024px
-  (ผู้สนใจเปิดจากมือถือ) ระบบหลังล็อกอินยังเป็น desktop เท่านั้นตามเดิม
+- ✅ **[เพิ่ม 2026-09-23] หน้า `/login` เป็น landing page นำเสนอผลิตภัณฑ์** (คำขอผู้ใช้) — **[แทนที่ 2026-10-09 ดูหัวข้อถัดไป:
+  หน้าขายย้ายไป `/` และ login เป็น modal]** เดิม navbar 3 เมนู (เข้าสู่ระบบ/เกี่ยวกับเรา/ติดต่อ) การ์ด login อยู่ใน hero
+  · ฟอร์มติดต่อ (`ContactSection.tsx` — ย้ายไป `web/src/features/landing/` แล้ว ตรรกะไม่เปลี่ยน) คัดฟิลด์/ช่องทางจาก `https://gp.ipongs.com/#contact`
   · **[อัปเดต 2026-09-23] ฟอร์มติดต่อส่งเข้ากลุ่ม LINE จริงแล้ว** (ตัดตัวเลือกแพ็กเกจออกตามคำขอ) —
   `POST /api/v1/public/contact-requests` (`PublicContactController` → `ContactRequestService` →
   `IContactNotifier`/`LineContactNotifier` = LINE Messaging API `POST /v2/bot/message/push` ไปที่ groupId)
@@ -1425,6 +1422,33 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ 1440px และ 375px: เมนูเลื่อนถูก section + ไฮไลต์เมนูตามตำแหน่ง,
   เมนูแฮมเบอร์เกอร์บนมือถือ, ไม่มี horizontal scroll, validation ช่องบังคับกันส่ง, ส่งแล้วได้ข้อความสรุปถูกต้อง, ไม่มี console error
   · ยังไม่ได้ทดสอบ login จริงผ่านหน้าใหม่ (ไม่ได้รัน API ในรอบนี้ — ตรรกะ login ไม่ได้แก้)
+
+- ✅ **[เพิ่ม 2026-10-09] หน้าแรก `/` เป็นหน้าขายแพลตฟอร์ม + เข้าสู่ระบบเป็น modal + ส่วนแอปมือถือ** (คำขอผู้ใช้ · วางแผนผ่าน plan mode)
+  · **Routing (`App.tsx` `PublicRoute`)**: `/` และ `/login` แสดง `LandingPage` เดียวกันนอก `desktop-guard` · **modal ผูกกับ URL** — เปิดเมื่อ
+    path = `/login` · ปุ่ม "เริ่มใช้งาน" = `navigate('/login', {state:{fromLanding}})` · ปิด = `navigate(-1)` (เปิดจากปุ่ม) หรือ replace `/`
+    (เปิดจากลิงก์ตรง) → ปุ่ม back ปิด modal ได้ และ 401 (`api/client.ts` → `/login`) กับ `ProtectedRoute` เด้ง modal เองโดยไม่ต้องแก้ client
+    · มีเซสชัน: `/login` → `/jobs` เหมือนเดิม · `/` **ไม่ redirect แล้ว** แสดงหน้าขายโดยปุ่มเปลี่ยนเป็น "เข้าสู่ระบบงาน" ไป `/jobs`
+    (ผลข้างเคียง: พนักงานที่เปิดโดเมนเปล่าต้องกดปุ่มอีกครั้ง) · ลบ `RootRedirect`
+  · **Login**: `features/auth/LoginForm.tsx` (ตรรกะจาก `LoginCard` เดิมไม่เปลี่ยน + `data-dialog-autofocus`) · `LoginDialog.tsx` ใช้ `Dialog` เดิม
+    (focus trap/Escape/คืนโฟกัส) · ระหว่างกำลังเข้าสู่ระบบปิดไม่ได้ (กัน navigate ซ้อน) · ลบ `LoginPage.tsx`/`LoginCard.tsx` และ CSS
+    `.auth-page`/`.login-intro`/`.login-card*` ที่ไม่ใช้แล้วใน `index.css`
+  · **หน้าขาย** `web/src/features/landing/`: `LandingPage.tsx` (nav 5 เมนู + CTA · แฮมเบอร์เกอร์ ≤960px) · `sections/` Hero (+ จุดเด่น 3 ข้อ) ·
+    Features 9 ข้อ · Workflow 7 ขั้น (ใครทำ + เว็บ/แอป) · MobileApp · About (เนื้อหาเดิม) · แถบ CTA โทร/ขอ Demo · Contact เดิม · footer
+    · **[BIZ] ข้อความขายต้องเป็นความสามารถที่มีจริงเท่านั้น ห้ามแต่งจำนวนลูกค้า/รีวิว/สถิติ** — มีคอมเมนต์กำกับในแต่ละ section
+    (POS ขายหน้าร้านถูกอ้างในฟีเจอร์ทั้งที่ยังไม่ได้ทดสอบกับ API จริง — ดู docs/11)
+  · **Mockup** `mockups/WebAppMockup.tsx`/`PhoneMockup.tsx` (queue/handover): HTML/CSS ข้อมูลสมมติ ใช้สี `.job-status-*` เดิม · ขนาดภายในเป็น `em`
+    อิง `font-size` แบบ `cqw` ของกรอบ (`container-type: inline-size`) จึงย่อขยายทั้งก้อนเหมือนรูป · `role="img"` + `aria-label` · คอลัมน์เลขจ๊อบ
+    ในตารางจำลองอยู่ท้ายสุดเพราะภาพมือถือใน hero ซ้อนขอบขวา
+  · **แอปมือถือ**: `appStore.ts` `PLAY_STORE_URL` · badge ทางการ `web/public/store/google-play-badge-th.png` (ดาวน์โหลดจาก play.google.com) ·
+    QR `web/public/store/google-play-qr.svg` (สร้างครั้งเดียวด้วย `qrcode@1.5.4` ใน scratchpad — ไม่ใช่ dependency) ซ่อนที่ < 1024px ·
+    iOS = ป้าย "เร็วๆ นี้" กดไม่ได้ **ไม่ใช้ badge App Store ของ Apple** (guideline ห้ามใช้กับแอปที่ยังไม่อยู่บน store — เปลี่ยนเมื่อขึ้น store จริง) ·
+    footer มีข้อความเครื่องหมายการค้า Google Play
+  · `index.html`: description ใหม่ + `og:*` (og:image ชี้ `https://service.garage-pro.net/servicepro-logo.png`)
+  · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) 16 ผ่าน · เบราว์เซอร์ 1440/1024/375px: ไม่มี horizontal scroll ·
+    เมนูเลื่อนถูก section + ไฮไลต์ · "เริ่มใช้งาน" → `/login` + modal + โฟกัสช่องรหัสพนักงาน · Escape/ปุ่ม X/back ปิดแล้วกลับ `/` ·
+    `/jobs` ไม่มีเซสชัน → `/login` พร้อม modal · ว่าง → ข้อความ validation · ล็อกอินผิด (จำลอง `fetch`) → Alert + traceId ·
+    เซสชันจำลอง: ปุ่มเป็น "เข้าสู่ระบบงาน" และ `/login` → `/jobs` · QR ถอดด้วย `BarcodeDetector` ได้ URL Play Store ตรงตัว ·
+    modal ที่ 375px ขอบ 16px · **ยังไม่ได้ล็อกอินจริงกับ API** (ตรรกะ login ไม่ได้แก้) และยังไม่ได้ตรวจพรีวิวลิงก์ใน LINE/Facebook หลัง deploy
 
 - ✅ **[เพิ่ม 2026-10-02] วันนัดส่งมอบ + ปฏิทินกรองนัดเข้า/นัดส่งมอบ + ลากวางเปลี่ยนวัน** (คำขอผู้ใช้ — ดูกฎข้อ 20)
   · การ์ดจ๊อบ: แถว "วันเวลานัดส่งมอบรถ" + ปุ่มตั้ง/เลื่อน (`ReschedulePromiseModal`) + ป้าย "เกินกำหนดส่งมอบแล้ว"

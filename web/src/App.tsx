@@ -4,7 +4,7 @@ import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
-import { LoginPage } from './features/auth/LoginPage'
+import { LandingPage } from './features/landing/LandingPage'
 import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
 import { JobsPage } from './features/jobs/JobsPage'
 import { CustomerPage } from './features/customers/CustomerPage'
@@ -31,12 +31,12 @@ import { useSession } from './lib/session'
 
 export default function App() {
   const { pathname } = useLocation()
-  // [UI] หน้า landing/เข้าสู่ระบบเป็นหน้าสาธารณะที่ต้องเปิดบนมือถือได้ (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard
-  // ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
-  if (pathname === '/login') {
+  // [UI] หน้าแรก (หน้าขาย) และ /login (หน้าเดียวกัน + modal เข้าสู่ระบบ) เป็นหน้าสาธารณะที่ต้องเปิดบนมือถือได้
+  // (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard — ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
+  if (pathname === '/' || pathname === '/login') {
     return (
       <AppErrorBoundary>
-        <LoginRoute />
+        <PublicRoute />
       </AppErrorBoundary>
     )
   }
@@ -51,7 +51,6 @@ export default function App() {
       </div>
       <div className="desktop-app">
         <Routes>
-          <Route path="/" element={<RootRedirect />} />
           <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
           <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
@@ -84,15 +83,12 @@ export default function App() {
   )
 }
 
-function RootRedirect() {
+function PublicRoute() {
+  const { pathname } = useLocation()
   const { session } = useSession()
-  return <Navigate to={session ? '/jobs' : '/login'} replace />
-}
-
-function LoginRoute() {
-  const { session } = useSession()
-  if (session) return <Navigate to="/jobs" replace />
-  return <LoginPage />
+  // มีเซสชันแล้วไม่ต้องเห็นฟอร์มเข้าสู่ระบบ — ส่วนหน้าแรก `/` ยังเปิดดูได้ (ปุ่มหลักพาเข้า /jobs)
+  if (pathname === '/login' && session) return <Navigate to="/jobs" replace />
+  return <LandingPage loginOpen={pathname === '/login'} hasSession={Boolean(session)} />
 }
 
 function ProtectedRoute({ children }: { children: ReactElement }) {
