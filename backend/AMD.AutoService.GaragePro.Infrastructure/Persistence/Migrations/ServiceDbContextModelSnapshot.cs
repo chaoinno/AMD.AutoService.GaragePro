@@ -483,6 +483,25 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("JobId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int?>("MileageAtHandover")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("NextServiceDueOn")
+                        .HasColumnType("date");
+
+                    b.Property<int?>("NextServiceMileage")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("NextServiceMonths")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ServiceInfoUpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ServiceInfoUpdatedByUserName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("SignatureImagePath")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
@@ -501,6 +520,9 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("JobId")
                         .IsUnique();
+
+                    b.HasIndex("NextServiceDueOn")
+                        .HasFilter("[NextServiceDueOn] IS NOT NULL");
 
                     b.ToTable("svc_HandoverRecord", (string)null);
                 });
@@ -817,6 +839,115 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.HasKey("LegacyShardKey", "BranchId", "CounterDate");
 
                     b.ToTable("svc_JobNumberCounter", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long?>("ActorStaffId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ActorUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AudienceRoles")
+                        .HasColumnType("int");
+
+                    b.Property<string>("BodyTh")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid?>("JobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("LinkHint")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<long?>("RecipientStaffId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ResolvedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ResolvedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SubjectKey")
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<string>("TitleTh")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "CreatedAt")
+                        .HasDatabaseName("IX_svc_Notification_Audience")
+                        .HasFilter("[AudienceRoles] <> 0");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "SubjectKey")
+                        .HasDatabaseName("IX_svc_Notification_OpenSubject")
+                        .HasFilter("[SubjectKey] IS NOT NULL AND [ResolvedAt] IS NULL");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "RecipientStaffId", "CreatedAt")
+                        .HasDatabaseName("IX_svc_Notification_Recipient")
+                        .HasFilter("[RecipientStaffId] IS NOT NULL");
+
+                    b.ToTable("svc_Notification", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_svc_Notification_Recipient", "([RecipientStaffId] IS NOT NULL AND [AudienceRoles] = 0) OR ([RecipientStaffId] IS NULL AND [AudienceRoles] <> 0)");
+                        });
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.NotificationRead", b =>
+                {
+                    b.Property<Guid>("NotificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<long>("StaffId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("NotificationId", "StaffId");
+
+                    b.ToTable("svc_NotificationRead", (string)null);
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Payment", b =>
@@ -2874,6 +3005,15 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Job");
 
                     b.Navigation("ReplyToMessage");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.NotificationRead", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Notification", null)
+                        .WithMany()
+                        .HasForeignKey("NotificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", b =>

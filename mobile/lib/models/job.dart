@@ -22,6 +22,7 @@ class Job {
     required this.status,
     required this.statusLabel,
     required this.isOverdue,
+    this.mileageAtIntake,
   });
 
   final String jobId;
@@ -55,6 +56,9 @@ class Job {
 
   final bool isOverdue;
 
+  /// เลขไมล์ขณะรับรถ (กม.) — [BIZ] บังคับตอนเปิดจ๊อบรถในอู่ และก่อนส่งเช็คลิสต์รับรถ
+  final int? mileageAtIntake;
+
   /// 11 = ปิดจ๊อบ (ระบบตั้งเองตอนถึงสถานะจบ)
   bool get isClosedType => jobTypeId == 11;
 
@@ -85,6 +89,7 @@ class Job {
         status: j['status'] as String,
         statusLabel: j['statusLabel'] as String? ?? '',
         isOverdue: j['isOverdue'] as bool? ?? false,
+        mileageAtIntake: (j['mileageAtIntake'] as num?)?.toInt(),
       );
 }
 

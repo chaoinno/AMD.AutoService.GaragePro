@@ -267,6 +267,11 @@ SyncQueueItem (client-side + server ack): localId(TMP-xxxx), entityType,
 
 Notification: id, employeeId, jobId, kind(warn|late|ok), title, body,
          createdAt, readAt, deepLink
+  [ทำจริง 2026-10-07 — svc_Notification] ต่างจากด้านบน: ผู้รับเป็น RecipientStaffId *หรือ* AudienceRoles
+         (bitmask ของ UserRole — CHECK ห้ามมีทั้งคู่) · readAt ย้ายไป svc_NotificationRead(NotificationId, StaffId)
+         เพราะแถวกลุ่มบทบาทหนึ่งแถวมีหลายคนอ่าน · deepLink แทนด้วย JobId/EntityType/EntityId/LinkHint ให้ client
+         สร้าง route เอง · เพิ่ม SubjectKey + ResolvedAt/ResolvedByName ("ดำเนินการแล้ว") และ ActorStaffId
+         (ตัดผู้กระทำออกจากแจ้งเตือนกลุ่ม) · kind เป็นชื่อเหตุการณ์ (chat.mention, purchase.pending …) ไม่ใช่ warn/late/ok
 ```
 
 ### JobChat ([เพิ่ม 2026-09-10] ฟีเจอร์ใหม่ — ไม่มีในเอกสาร design ต้นแบบ)

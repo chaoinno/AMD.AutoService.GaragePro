@@ -13,6 +13,7 @@ import type {
   TransitionJobInput,
   UpdateJobAppointmentInput,
   UpdateJobPromiseInput,
+  UpdateJobMileageInput,
 } from './types'
 
 export type JobsCursor = { beforeCreatedAt: string; beforeJobId: string }
@@ -73,6 +74,14 @@ export function updateJobAppointment(jobId: string, input: UpdateJobAppointmentI
 /// ตั้ง/เลื่อนวันเวลานัดส่งมอบรถ — server บันทึกประวัติ (ActivityEvent job.promise.changed) ทุกครั้งที่ค่าเปลี่ยน
 export function updateJobPromise(jobId: string, input: UpdateJobPromiseInput) {
   return apiRequest<Job>(`/api/v1/jobs/${jobId}/promise`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  })
+}
+
+/// บันทึก/แก้เลขไมล์ขณะรับรถ — ล็อกเมื่อส่งมอบรถแล้วหรือจ๊อบปิดแล้ว (JOB_MILEAGE_LOCKED)
+export function updateJobMileage(jobId: string, input: UpdateJobMileageInput) {
+  return apiRequest<Job>(`/api/v1/jobs/${jobId}/mileage`, {
     method: 'PUT',
     body: JSON.stringify(input),
   })

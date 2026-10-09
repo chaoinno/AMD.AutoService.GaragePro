@@ -2,6 +2,7 @@ using System.Text.Json;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using AMD.AutoService.GaragePro.Domain.StateMachine;
@@ -310,6 +311,156 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             BySeller: bySeller,
             VoidedSales: voided.Select(x => new RetailVoidedSaleDto(
                 x.Id, x.ReceiptNo, x.CompletedAt, x.VoidedAt, x.VoidedByName, x.VoidReason, x.TotalAmount)).ToList()));
+    }
+
+    // ── ประวัติรถ (เพิ่ม 2026-10-08) ─────────────────────────────────────────────
+
+    private const int VehicleSearchMinLength = 3;
+    private const int VehicleSearchJobLimit = 500;
+    private const int VehicleSearchResultLimit = 50;
+
+    /// <summary>[BIZ] ช่าง/หัวหน้าช่างไม่เห็นตัวเงิน (docs/01-workflow.md §4) — ประวัติรถเปิดให้ทุกบทบาท จึง strip ที่ server</summary>
+    private bool CanSeeAmounts => user.Role is not (UserRole.Technician or UserRole.Lead);
+
+    /// <summary>ตัดช่องว่าง/ขีดออก — ให้ "1กก-1234", "1กก 1234", "081-234-5678" ค้นเจอแบบเดียวกับที่พิมพ์ติดกัน</summary>
+    public static string NormalizeSearchTerm(string? term) =>
+        new((term ?? string.Empty).Where(c => !char.IsWhiteSpace(c) && c != '-').ToArray());
+
+    /// <summary>[BIZ] เพิ่ม 2026-10-08 — ค้นรถจากทะเบียนหรือเบอร์โทร เปิดทุกบทบาท (หน้าร้าน/ช่างค้นตอนลูกค้ามาที่เคาน์เตอร์)
+    /// ข้อมูลมาจาก snapshot ใน svc_Job ของสาขาปัจจุบันเท่านั้น (เริ่มใช้ระบบ 2026-08-31) ไม่รวมประวัติระบบเดิม</summary>
+    public async Task<Result<VehicleHistorySearchDto>> SearchVehicleHistoryAsync(
+        string? term, CancellationToken ct = default)
+    {
+        var normalized = NormalizeSearchTerm(term);
+        if (normalized.Length < VehicleSearchMinLength)
+            return Result<VehicleHistorySearchDto>.Fail(
+                "VEHICLE_HISTORY_VALIDATION", $"พิมพ์ทะเบียนรถหรือเบอร์โทรอย่างน้อย {VehicleSearchMinLength} ตัวอักษร", "q");
+
+        var jobs = await repo.SearchJobsByVehicleOrPhoneAsync(
+            user.ShardKey, user.BranchId, normalized, VehicleSearchJobLimit, ct);
+
+        var items = jobs
+            .GroupBy(j => j.VehicleId)
+            .Select(g =>
+            {
+                var latest = g.OrderByDescending(j => j.CreatedAt).First();
+                return new VehicleHistoryMatchDto(
+                    g.Key, latest.VehicleRegistration, latest.VehicleModel, latest.CustomerName, latest.CustomerPhone,
+                    g.Count(), latest.CreatedAt, latest.JobNo);
+            })
+            .OrderByDescending(x => x.LastVisitAt)
+            .ToList();
+
+        return Result<VehicleHistorySearchDto>.Ok(new VehicleHistorySearchDto(
+            items.Take(VehicleSearchResultLimit).ToList(),
+            Truncated: jobs.Count >= VehicleSearchJobLimit || items.Count > VehicleSearchResultLimit));
+    }
+
+    /// <summary>ไทม์ไลน์งานทั้งหมดของรถหนึ่งคันในสาขานี้ (ใหม่สุดก่อน) — รายการซ่อมคือบรรทัดที่ลูกค้าอนุมัติของทุกใบที่ยังใช้อยู่</summary>
+    public async Task<Result<VehicleHistoryDto>> GetVehicleHistoryAsync(long vehicleId, CancellationToken ct = default)
+    {
+        var data = await repo.GetVehicleHistoryAsync(user.ShardKey, user.BranchId, vehicleId, ct);
+        if (data.Jobs.Count == 0)
+            return Result<VehicleHistoryDto>.Fail("VEHICLE_HISTORY_NOT_FOUND", "ไม่พบประวัติงานของรถคันนี้ในสาขานี้");
+
+        var showAmounts = CanSeeAmounts;
+        var quotationsByJob = data.Quotations.ToLookup(q => q.JobId);
+        var receiptsByJob = data.Receipts.ToDictionary(r => r.JobId);
+        var handoversByJob = data.Handovers.ToDictionary(h => h.JobId);
+
+        var visits = data.Jobs.OrderByDescending(j => j.CreatedAt).Select(job =>
+        {
+            var lines = JobQuotations.Active(quotationsByJob[job.Id])
+                .SelectMany(q => q.Lines
+                    .Where(l => l.ApprovalStatus == LineApprovalStatus.Approved)
+                    .OrderBy(l => l.Sequence)
+                    .Select(l => new VehicleHistoryLineDto(
+                        q.Code, l.Name, l.Type == LineType.Part ? "part" : "labor", l.Quantity, l.Unit,
+                        showAmounts ? l.NetAmount : null, l.AssignedTechnicianName)))
+                .ToList();
+            receiptsByJob.TryGetValue(job.Id, out var receipt);
+            handoversByJob.TryGetValue(job.Id, out var handover);
+            var handedOver = handover?.SubmittedAt is not null;
+
+            return new VehicleHistoryVisitDto(
+                job.Id, job.JobNo, job.CreatedAt, handover?.SubmittedAt, job.JobTypeName,
+                JobStateMachine.ToToken(job.Status), JobStateMachine.Describe(job.Status), job.Detail,
+                job.MileageAtIntake, handedOver ? handover!.MileageAtHandover : null,
+                lines,
+                receipt?.DocumentNo, showAmounts ? receipt?.TotalAmount : null,
+                handedOver ? handover!.NextServiceMileage : null, handedOver ? handover!.NextServiceDueOn : null);
+        }).ToList();
+
+        var latestJob = data.Jobs.OrderByDescending(j => j.CreatedAt).First();
+        var lastService = data.Handovers
+            .Where(h => h.SubmittedAt is not null && h.NextServiceDueOn is not null)
+            .OrderByDescending(h => h.SubmittedAt)
+            .FirstOrDefault();
+        var nextService = lastService is null
+            ? null
+            : new VehicleNextServiceDto(
+                data.Jobs.First(j => j.Id == lastService.JobId).JobNo,
+                lastService.NextServiceMileage, lastService.NextServiceDueOn!.Value);
+
+        return Result<VehicleHistoryDto>.Ok(new VehicleHistoryDto(
+            vehicleId, latestJob.VehicleRegistration, latestJob.VehicleModel, latestJob.VehicleVin,
+            latestJob.CustomerName, latestJob.CustomerPhone, showAmounts, nextService, visits));
+    }
+
+    // ── รถใกล้ครบรอบบริการ (เพิ่ม 2026-10-08) ─────────────────────────────────────
+
+    private const int ServiceDueDefaultDays = 30;
+    private const int ServiceDueMaxDays = 366;
+
+    /// <summary>[BIZ] รายชื่อรถที่ถึง/ใกล้ถึงวันนัดเข้ารับบริการครั้งถัดไป (จากใบส่งมอบ) ให้ผู้จัดการ/ธุรการโทรตาม
+    /// เอาเฉพาะการส่งมอบล่าสุดของรถแต่ละคัน และตัดรถที่ไม่ต้องโทรตามแล้ว: (1) กลับมาเปิดจ๊อบใหม่หลังส่งมอบครั้งนั้น
+    /// (ไม่นับจ๊อบที่ยกเลิก) หรือ (2) **ยังมีจ๊อบอื่นที่ยังไม่ปิดอยู่** ไม่ว่าเปิดเมื่อไหร่ (เพิ่ม 2026-10-08 ตามคำขอผู้ใช้ —
+    /// พบตอนทดสอบว่ารถที่มีงานเปิดค้างไว้ก่อนวันส่งมอบยังขึ้นในรายชื่อโทรตาม ทั้งที่รถยังอยู่ในอู่)
+    /// จ๊อบของใบส่งมอบนั้นเองไม่นับ — หลังเซ็นส่งมอบยังอยู่ "พร้อมส่งมอบ" จนกว่าจะปิดงาน
+    /// ใช้วันที่เป็นหลัก — ไม่รู้เลขไมล์ปัจจุบันของรถ ไมล์นัดจึงแสดงประกอบเท่านั้น</summary>
+    public async Task<Result<ServiceDueReportDto>> GetServiceDueAsync(
+        DateOnly? fromDate, DateOnly? toDate, CancellationToken ct = default)
+    {
+        if (!Allowed) return Forbidden<ServiceDueReportDto>();
+
+        var today = ThaiDate(Now);
+        var from = fromDate ?? today.AddDays(-ServiceDueDefaultDays);
+        var to = toDate ?? today.AddDays(ServiceDueDefaultDays);
+        if (from > to)
+            return Result<ServiceDueReportDto>.Fail("REPORTS_VALIDATION", "วันที่เริ่มต้องไม่หลังวันที่สิ้นสุด", "fromDate");
+        if (to.DayNumber - from.DayNumber + 1 > ServiceDueMaxDays)
+            return Result<ServiceDueReportDto>.Fail(
+                "REPORTS_VALIDATION", $"เลือกช่วงวันที่ได้ไม่เกิน {ServiceDueMaxDays} วัน", "toDate");
+
+        var data = await repo.GetServiceDueAsync(user.ShardKey, user.BranchId, from, to, ct);
+        var latestHandoverByVehicle = data.Handovers
+            .GroupBy(h => h.VehicleId)
+            .ToDictionary(g => g.Key, g => g.MaxBy(h => h.SubmittedAt)!.JobId);
+        var visitsByVehicle = data.Visits.ToLookup(v => v.VehicleId);
+
+        var items = data.Candidates
+            .Where(h =>
+            {
+                var vehicleId = h.Job!.VehicleId;
+                var isLatest = !latestHandoverByVehicle.TryGetValue(vehicleId, out var latestJobId) || latestJobId == h.JobId;
+                var otherVisits = visitsByVehicle[vehicleId].Where(v => v.JobId != h.JobId).ToList();
+                var cameBack = otherVisits.Any(v => v.CreatedAt > h.SubmittedAt && v.Status != JobStatus.Cancelled);
+                var hasOpenJob = otherVisits.Any(v => !JobStateMachine.IsTerminal(v.Status));
+                return isLatest && !cameBack && !hasOpenJob;
+            })
+            .Select(h => new ServiceDueItemDto(
+                h.Job!.VehicleId, h.Job.VehicleRegistration, h.Job.VehicleModel, h.Job.CustomerName, h.Job.CustomerPhone,
+                h.JobId, h.Job.JobNo, h.SubmittedAt!.Value, h.MileageAtHandover,
+                h.NextServiceMileage, h.NextServiceDueOn!.Value, h.NextServiceDueOn.Value.DayNumber - today.DayNumber))
+            .OrderBy(x => x.NextServiceDueOn).ThenBy(x => x.VehicleRegistration)
+            .ToList();
+
+        return Result<ServiceDueReportDto>.Ok(new ServiceDueReportDto(
+            from, to, today,
+            OverdueCount: items.Count(x => x.DaysUntilDue < 0),
+            DueWithin7DaysCount: items.Count(x => x.DaysUntilDue is >= 0 and <= 7),
+            DueWithin30DaysCount: items.Count(x => x.DaysUntilDue is >= 0 and <= 30),
+            Items: items));
     }
 
     private static DateOnly ThaiDate(DateTime utc) => DateOnly.FromDateTime(utc.AddHours(7));

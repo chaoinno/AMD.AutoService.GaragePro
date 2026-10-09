@@ -153,3 +153,94 @@ export type RetailSalesReport = {
 /// fromDate/toDate = วันที่ตามปฏิทินไทย yyyy-MM-dd (รวมทั้งสองวัน) — server แปลงเป็นขอบเขต UTC เอง
 export const getRetailSalesReport = (fromDate: string, toDate: string) =>
   apiRequest<RetailSalesReport>(`/api/v1/reports/retail-sales?fromDate=${fromDate}&toDate=${toDate}`)
+
+// ---------- ประวัติรถ (ทุกบทบาท — ช่าง/หัวหน้าช่างไม่เห็นตัวเงิน: amount/receiptTotal ไม่มีใน JSON) ----------
+
+export type VehicleHistoryMatch = {
+  vehicleId: number
+  vehicleRegistration: string
+  vehicleModel?: string | null
+  customerName: string
+  customerPhone?: string | null
+  visitCount: number
+  lastVisitAt: string
+  lastJobNo: string
+}
+export type VehicleHistorySearch = { items: VehicleHistoryMatch[]; truncated: boolean }
+
+export type VehicleHistoryLine = {
+  quotationCode: string
+  name: string
+  type: 'part' | 'labor'
+  quantity: number
+  unit: string
+  /** ยอดก่อน VAT — ไม่มีเมื่อบทบาทนี้ไม่เห็นตัวเงิน */
+  amount?: number | null
+  technicianName?: string | null
+}
+export type VehicleHistoryVisit = {
+  jobId: string
+  jobNo: string
+  openedAt: string
+  handedOverAt?: string | null
+  jobTypeName?: string | null
+  status: string
+  statusLabelTh: string
+  detail?: string | null
+  mileageAtIntake?: number | null
+  mileageAtHandover?: number | null
+  lines: VehicleHistoryLine[]
+  receiptDocumentNo?: string | null
+  receiptTotal?: number | null
+  nextServiceMileage?: number | null
+  /** yyyy-MM-dd */
+  nextServiceDueOn?: string | null
+}
+export type VehicleHistory = {
+  vehicleId: number
+  vehicleRegistration: string
+  vehicleModel?: string | null
+  vehicleVin?: string | null
+  customerName: string
+  customerPhone?: string | null
+  showAmounts: boolean
+  nextService?: { fromJobNo: string; mileage?: number | null; dueOn: string } | null
+  visits: VehicleHistoryVisit[]
+}
+
+export const searchVehicleHistory = (q: string) =>
+  apiRequest<VehicleHistorySearch>(`/api/v1/reports/vehicle-history/search?q=${encodeURIComponent(q)}`)
+
+export const getVehicleHistory = (vehicleId: number) =>
+  apiRequest<VehicleHistory>(`/api/v1/reports/vehicle-history/${vehicleId}`)
+
+// ---------- รถใกล้ครบรอบบริการ (ผู้จัดการ/ธุรการ) ----------
+
+export type ServiceDueItem = {
+  vehicleId: number
+  vehicleRegistration: string
+  vehicleModel?: string | null
+  customerName: string
+  customerPhone?: string | null
+  lastJobId: string
+  lastJobNo: string
+  handedOverAt: string
+  mileageAtHandover?: number | null
+  nextServiceMileage?: number | null
+  /** yyyy-MM-dd */
+  nextServiceDueOn: string
+  /** ติดลบ = เลยกำหนดมาแล้วกี่วัน */
+  daysUntilDue: number
+}
+export type ServiceDueReport = {
+  fromDate: string
+  toDate: string
+  today: string
+  overdueCount: number
+  dueWithin7DaysCount: number
+  dueWithin30DaysCount: number
+  items: ServiceDueItem[]
+}
+
+export const getServiceDueReport = (fromDate: string, toDate: string) =>
+  apiRequest<ServiceDueReport>(`/api/v1/reports/service-due?fromDate=${fromDate}&toDate=${toDate}`)

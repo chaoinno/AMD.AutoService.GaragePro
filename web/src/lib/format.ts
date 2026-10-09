@@ -46,6 +46,21 @@ export function formatDate(value: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date)
 }
 
+/// เวลาแบบสัมพัทธ์สำหรับรายการแจ้งเตือน — เกิน 7 วันกลับไปใช้วันเวลาเต็ม
+export function formatRelativeTime(value: string | null | undefined, now: Date = new Date()): string {
+  if (!value) return 'ไม่ระบุ'
+  const date = parseApiInstant(value)
+  if (Number.isNaN(date.getTime())) return value
+  const minutes = Math.floor((now.getTime() - date.getTime()) / 60_000)
+  if (minutes < 1) return 'เมื่อสักครู่'
+  if (minutes < 60) return `${minutes} นาทีที่แล้ว`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} ชั่วโมงที่แล้ว`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days} วันที่แล้ว`
+  return dateTimeFormatter.format(date)
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return 'ไม่ระบุ'
   const date = parseApiInstant(value)
@@ -108,3 +123,40 @@ export function formatWorkDuration(seconds: number | null | undefined): string {
   if (hours === 0) return `${minutes} นาที`
   return minutes === 0 ? `${hours} ชม.` : `${hours} ชม. ${minutes} นาที`
 }
+
+/// วันที่ล้วน (DateOnly จาก API "yyyy-MM-dd" — วันตามปฏิทินไทย ไม่มีเวลา/โซนเวลา) ห้ามส่งเข้า formatDate
+/// เพราะจะถูกตีความเป็นเวลา UTC เที่ยงคืนแล้วเลื่อนวันได้
+export function formatDateOnly(value: string | null | undefined): string {
+  if (!value) return 'ไม่ระบุ'
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return value
+  return dateFormatter.format(new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+}
+
+/// วันที่ล้วนของวันนี้ + N เดือน (ตามเวลาเครื่อง) — ใช้แสดงพรีวิววันนัดก่อนบันทึก เดือนที่วันไม่พอปัดลงวันสุดท้าย
+/// ให้ตรงกับ DateOnly.AddMonths ฝั่ง server (31 ม.ค. + 1 = 28/29 ก.พ.)
+export function addMonthsToToday(months: number, today: Date = new Date()): string {
+  const target = new Date(today.getFullYear(), today.getMonth() + months, 1)
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()
+  target.setDate(Math.min(today.getDate(), lastDay))
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}`
+}
+
+const kmFormatter = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 0 })
+
+/// เลขไมล์ (กม.) — "45,210 กม."
+export function formatKm(value: number | null | undefined): string {
+  return value == null ? 'ไม่ระบุ' : `${kmFormatter.format(value)} กม.`
+}
+
+/// อ่านเลขไมล์จากช่องกรอก — ยอมรับเครื่องหมายจุลภาค/ช่องว่าง คืน null ถ้าไม่ใช่จำนวนเต็มไม่ติดลบ
+export function parseKmInput(text: string): number | null {
+  const cleaned = text.replace(/[\s,]/g, '')
+  if (!/^\d+$/.test(cleaned)) return null
+  const value = Number(cleaned)
+  return Number.isSafeInteger(value) ? value : null
+}
+
+/// [ASSUME] เพดานเลขไมล์ — ต้องตรงกับ Odometer.MaxKm ฝั่ง backend
+export const MAX_ODOMETER_KM = 9_999_999

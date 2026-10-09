@@ -25,16 +25,25 @@ public sealed record HandoverDto(
     string? SubmittedByUserName,
     bool ReceiptIssued,
     string? ReceiptDocumentNo,
-    IReadOnlyList<HandoverChecklistItemDto> Items);
+    IReadOnlyList<HandoverChecklistItemDto> Items,
+    int? MileageAtIntake = null,
+    int? MileageAtHandover = null,
+    int? NextServiceMileage = null,
+    int? NextServiceMonths = null,
+    DateOnly? NextServiceDueOn = null);
 
 /// <summary>[BIZ] Note บังคับเมื่อ IsReturned = false</summary>
 public sealed record SaveHandoverItemRequest(bool IsReturned, string? Note);
 
 public sealed record SubmitHandoverRequest(string SignatureAttachmentPath);
 
+/// <summary>เลขไมล์ตอนส่งมอบ + นัดครั้งถัดไป (ไมล์ และจำนวนเดือน — ระบบคำนวณวันที่ให้)</summary>
+public sealed record SaveHandoverServiceInfoRequest(int MileageAtHandover, int NextServiceMileage, int NextServiceMonths);
+
 public static class HandoverMapper
 {
-    public static HandoverDto ToDto(HandoverRecord record, Receipt? receipt) => new(
+    /// <param name="job">ใช้เติมไมล์ขณะรับรถให้หน้าส่งมอบเทียบกับไมล์ส่งมอบ</param>
+    public static HandoverDto ToDto(HandoverRecord record, Receipt? receipt, Job job) => new(
         record.Id,
         record.JobId,
         record.IsLocked,
@@ -43,7 +52,12 @@ public static class HandoverMapper
         record.SubmittedByUserName,
         receipt is not null,
         receipt?.DocumentNo,
-        record.Items.OrderBy(i => i.ItemCode).Select(ToItemDto).ToList());
+        record.Items.OrderBy(i => i.ItemCode).Select(ToItemDto).ToList(),
+        job.MileageAtIntake,
+        record.MileageAtHandover,
+        record.NextServiceMileage,
+        record.NextServiceMonths,
+        record.NextServiceDueOn);
 
     public static HandoverChecklistItemDto ToItemDto(HandoverChecklistItem item) => new(
         item.Id, item.ItemCode, item.Name, item.IsReturned, item.Note, item.UpdatedAt, item.UpdatedByUserName);

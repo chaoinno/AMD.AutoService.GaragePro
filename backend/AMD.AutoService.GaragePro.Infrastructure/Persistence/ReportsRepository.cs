@@ -86,6 +86,65 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
         db.Sales.CountAsync(s => s.LegacyShardKey == shardKey && s.LegacyBranchId == branchId
             && s.Status == Domain.Enums.SaleStatus.Draft, ct);
 
+    public Task<IReadOnlyList<Job>> SearchJobsByVehicleOrPhoneAsync(
+        string shardKey, int branchId, string normalizedTerm, int take, CancellationToken ct) =>
+        // REPLACE ทั้งคอลัมน์ทำให้ใช้ index ไม่ได้ — ยอมรับได้เพราะกรองสาขาก่อน (index shard/branch) และจ๊อบต่อสาขาหลักพัน
+        Scope(db.Jobs.AsNoTracking(), shardKey, branchId)
+            .Where(j => j.VehicleRegistration.Replace(" ", "").Replace("-", "").Contains(normalizedTerm)
+                || (j.CustomerPhone != null
+                    && j.CustomerPhone.Replace(" ", "").Replace("-", "").Contains(normalizedTerm)))
+            .OrderByDescending(j => j.CreatedAt)
+            .Take(take)
+            .ToListReadOnlyAsync(ct);
+
+    public async Task<VehicleHistoryData> GetVehicleHistoryAsync(
+        string shardKey, int branchId, long vehicleId, CancellationToken ct)
+    {
+        var jobs = await Scope(db.Jobs.AsNoTracking(), shardKey, branchId)
+            .Where(j => j.VehicleId == vehicleId)
+            .OrderByDescending(j => j.CreatedAt)
+            .ToListAsync(ct);
+        var jobIds = jobs.Select(j => j.Id).ToList();
+        if (jobIds.Count == 0)
+            return new VehicleHistoryData([], [], [], []);
+
+        var quotations = await db.Quotations.AsNoTracking()
+            .Include(q => q.Lines)
+            .Where(q => jobIds.Contains(q.JobId) && q.Status != Domain.Enums.QuotationStatus.Superseded)
+            .AsSplitQuery()
+            .ToListAsync(ct);
+        var receipts = await db.Receipts.AsNoTracking().Where(r => jobIds.Contains(r.JobId)).ToListAsync(ct);
+        var handovers = await db.HandoverRecords.AsNoTracking().Where(h => jobIds.Contains(h.JobId)).ToListAsync(ct);
+
+        return new VehicleHistoryData(jobs, quotations, receipts, handovers);
+    }
+
+    public async Task<ServiceDueData> GetServiceDueAsync(
+        string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var candidates = await db.HandoverRecords.AsNoTracking()
+            .Include(h => h.Job)
+            .Where(h => h.SubmittedAt != null && h.NextServiceDueOn != null
+                && h.NextServiceDueOn >= from && h.NextServiceDueOn <= to
+                && h.Job!.LegacyShardKey == shardKey && h.Job.BranchId == branchId)
+            .ToListAsync(ct);
+        if (candidates.Count == 0)
+            return new ServiceDueData([], [], []);
+
+        var vehicleIds = candidates.Select(h => h.Job!.VehicleId).Distinct().ToList();
+        var vehicleJobs = Scope(db.Jobs, shardKey, branchId).Where(j => vehicleIds.Contains(j.VehicleId));
+
+        var visits = await vehicleJobs
+            .Select(j => new VehicleVisitRef(j.VehicleId, j.Id, j.CreatedAt, j.Status))
+            .ToListAsync(ct);
+        var handovers = await db.HandoverRecords
+            .Where(h => h.SubmittedAt != null && vehicleJobs.Select(j => j.Id).Contains(h.JobId))
+            .Select(h => new VehicleHandoverRef(h.Job!.VehicleId, h.JobId, h.SubmittedAt!.Value))
+            .ToListAsync(ct);
+
+        return new ServiceDueData(candidates, visits, handovers);
+    }
+
     private static IQueryable<Job> Scope(IQueryable<Job> jobs, string shardKey, int branchId) =>
         jobs.Where(j => j.LegacyShardKey == shardKey && j.BranchId == branchId);
 }

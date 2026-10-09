@@ -20,7 +20,7 @@ public sealed class JobServiceTests
         var jobs = new FakeJobRepository();
         var service = CreateService(jobs, customer: null, vehicle: SampleVehicle());
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345));
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be("CUSTOMER_NOT_FOUND");
@@ -32,7 +32,7 @@ public sealed class JobServiceTests
         var jobs = new FakeJobRepository();
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: null);
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345));
 
         result.Success.Should().BeFalse();
         result.Error!.Code.Should().Be("VEHICLE_NOT_FOUND");
@@ -49,7 +49,7 @@ public sealed class JobServiceTests
         });
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345));
 
         result.Success.Should().BeTrue();
         result.Data!.ExistingOpenJobNo.Should().Be("JB2608310105009");
@@ -69,7 +69,7 @@ public sealed class JobServiceTests
         });
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345));
 
         result.Success.Should().BeTrue();
         result.Data!.ExistingOpenJobNo.Should().BeNull();
@@ -81,7 +81,7 @@ public sealed class JobServiceTests
         var jobs = new FakeJobRepository();
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, "สมชาย ใจดี", "0812345678", null));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, "สมชาย ใจดี", "0812345678", null, MileageAtIntake: 12345));
 
         result.Success.Should().BeTrue();
         result.Data!.JobNo.Should().Be("JB2608310105001");
@@ -246,7 +246,7 @@ public sealed class JobServiceTests
         var service = CreateService(jobs);
         var arrival = DateTimeOffset.UtcNow;
 
-        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(arrival));
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(arrival, MileageAtIntake: 12345));
 
         result.Success.Should().BeTrue();
         result.Data!.JobTypeId.Should().Be(9);
@@ -405,7 +405,7 @@ public sealed class JobServiceTests
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
         var promise = DateTimeOffset.UtcNow.AddDays(3);
 
-        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: promise));
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: promise, MileageAtIntake: 12345));
 
         result.Success.Should().BeTrue();
         jobs.Saved.Single().PromiseAt.Should().BeCloseTo(promise.UtcDateTime, TimeSpan.FromSeconds(1));
@@ -419,7 +419,7 @@ public sealed class JobServiceTests
         var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
 
         var result = await service.CreateAsync(
-            new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: DateTimeOffset.UtcNow.AddHours(-1)));
+            new CreateJobRequest(1, 1, 9, null, null, null, PromiseAt: DateTimeOffset.UtcNow.AddHours(-1), MileageAtIntake: 12345));
 
         result.Success.Should().BeFalse();
         result.Error!.Field.Should().Be("promiseAt");
@@ -1341,6 +1341,148 @@ public sealed class JobServiceTests
         Vin: "JT000000000000001", EngineNumber: null, InsuranceId: null, InsuranceName: null,
         InsuranceExpiredDate: null, ImageUrl: null, IsDeleted: false,
         CreatedDate: null, LastUpdated: null, Owners: []);
+
+    // ── เลขไมล์ขณะรับรถ (เพิ่ม 2026-10-08) ─────────────────────────────────────────
+
+    [Fact]
+    public async Task CreateAsync_requires_mileage_for_an_in_shop_job()
+    {
+        var service = CreateService(new FakeJobRepository(), customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_VALIDATION");
+        result.Error!.Field.Should().Be("mileageAtIntake");
+    }
+
+    [Fact]
+    public async Task CreateAsync_does_not_require_mileage_for_an_appointment_job()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(
+            1, 1, 10, null, null, null, DateTimeOffset.UtcNow.AddDays(1)));
+
+        result.Success.Should().BeTrue();
+        jobs.Saved.Single().MileageAtIntake.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(10_000_000)]
+    public async Task CreateAsync_rejects_mileage_out_of_range(int km)
+    {
+        var service = CreateService(new FakeJobRepository(), customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: km));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("mileageAtIntake");
+    }
+
+    [Fact]
+    public async Task CreateAsync_stores_mileage_and_returns_it_in_the_dto()
+    {
+        var jobs = new FakeJobRepository();
+        var service = CreateService(jobs, customer: SampleCustomer(), vehicle: SampleVehicle());
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 45210));
+        var dto = await service.GetAsync(result.Data!.JobId);
+
+        jobs.Saved.Single().MileageAtIntake.Should().Be(45210);
+        dto.Data!.MileageAtIntake.Should().Be(45210);
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_requires_mileage_when_the_job_has_none()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(DateTimeOffset.UtcNow));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Field.Should().Be("mileageAtIntake");
+        jobs.Saved.Single().JobTypeId.Should().Be(10);
+    }
+
+    [Fact]
+    public async Task ConvertToInShopAsync_accepts_mileage_recorded_beforehand()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 10, MileageAtIntake = 30_000,
+            JobNo = "JB1", Status = JobStatus.WaitInspect, AppointmentAt = DateTime.UtcNow.AddDays(1)
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.ConvertToInShopAsync(TestJobId, new ConvertToInShopRequest(DateTimeOffset.UtcNow));
+
+        result.Success.Should().BeTrue();
+        result.Data!.MileageAtIntake.Should().Be(30_000);
+    }
+
+    [Fact]
+    public async Task UpdateMileageAsync_records_an_event_only_when_the_value_changes()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, MileageAtIntake = 1_000,
+            JobNo = "JB1", Status = JobStatus.InProgress
+        });
+        var service = CreateService(jobs);
+
+        var changed = await service.UpdateMileageAsync(TestJobId, new UpdateJobMileageRequest(1_250));
+        var same = await service.UpdateMileageAsync(TestJobId, new UpdateJobMileageRequest(1_250));
+
+        changed.Data!.MileageAtIntake.Should().Be(1_250);
+        same.Success.Should().BeTrue();
+        jobs.Events.Should().ContainSingle(e => e.EventType == "job.mileage.changed"
+            && e.PayloadJson!.Contains("\"from\":1000") && e.PayloadJson.Contains("\"to\":1250"));
+    }
+
+    [Fact]
+    public async Task UpdateMileageAsync_is_locked_after_handover()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 9, MileageAtIntake = 1_000,
+            JobNo = "JB1", Status = JobStatus.Ready
+        });
+        var handover = new FakeHandoverRepository(new HandoverRecord { JobId = TestJobId, SubmittedAt = DateTime.UtcNow });
+        var service = CreateService(jobs, handoverRepo: handover);
+
+        var result = await service.UpdateMileageAsync(TestJobId, new UpdateJobMileageRequest(1_250));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("JOB_MILEAGE_LOCKED");
+    }
+
+    [Fact]
+    public async Task UpdateMileageAsync_is_locked_on_a_closed_job()
+    {
+        var jobs = new FakeJobRepository();
+        jobs.Seed(new Job
+        {
+            Id = TestJobId, LegacyShardKey = "db2", BranchId = 105, JobTypeId = 11,
+            JobNo = "JB1", Status = JobStatus.Cancelled
+        });
+        var service = CreateService(jobs);
+
+        var result = await service.UpdateMileageAsync(TestJobId, new UpdateJobMileageRequest(1_250));
+
+        result.Error!.Code.Should().Be("JOB_MILEAGE_LOCKED");
+    }
 
     private static JobService CreateService(
         FakeJobRepository jobs,

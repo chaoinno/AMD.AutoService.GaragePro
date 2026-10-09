@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -35,6 +36,7 @@ public sealed class QuotationService(
     IPosRepository pos,
     ILegacyReader legacy,
     ICurrentUser user,
+    INotificationPublisher notifications,
     TimeProvider clock) : IQuotationService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
@@ -438,6 +440,8 @@ public sealed class QuotationService(
         QuotationCalculator.ApplyQuotationTotals(revision);
 
         await repository.AddAsync(revision, ct);
+        // ออกฉบับแก้ไขแล้ว = จัดการเรื่อง "ลูกค้าไม่อนุมัติทุกรายการ" ของใบเดิมแล้ว
+        await notifications.ResolveAsync(NotificationSubjects.QuotationAllRejected(previous.Id), ct);
         await LogAsync(revision, "quotation.revised",
             $"ออกฉบับแก้ไข {revision.Code} แทน {previous.Code} · เหตุผล: {request.RevisionReason} " +
             "· การอนุมัติเดิมเป็นโมฆะ", ct);
@@ -469,6 +473,8 @@ public sealed class QuotationService(
         line.ApprovalStatus = request.Decision;
         line.RejectReason = request.Decision == LineApprovalStatus.Rejected ? request.RejectReason : null;
         line.DecidedAt = Now;
+
+        await NotifyIfAllRejectedAsync(q, ct);
 
         return await PersistAsync(q, "quotation.line.decided",
             $"ลูกค้า{(request.Decision == LineApprovalStatus.Approved ? "อนุมัติ" : "ไม่อนุมัติ")} “{line.Name}”", ct);
@@ -515,12 +521,59 @@ public sealed class QuotationService(
 
         q.Status = totals.RejectedCount == 0 ? QuotationStatus.Approved : QuotationStatus.Partial;
 
+        await NotifySignedAsync(q, totals.ApprovedCount, totals.RejectedCount, ct);
+
         return await PersistAsync(q, "quotation.signed",
             $"ลูกค้าเซ็นยืนยัน {q.Code} · อนุมัติ {totals.ApprovedCount} ไม่อนุมัติ {totals.RejectedCount} " +
             $"· {totals.TotalAmount:N2} บาท", ct);
     }
 
     // ---------- helper ----------
+
+    /// <summary>
+    /// [BIZ] แจ้งคนสร้างใบ + ช่างที่ถูกระบุในบรรทัดค่าแรงที่ลูกค้าอนุมัติ (ตกลงกับผู้ใช้ 2026-10-07)
+    /// ช่างของบรรทัดที่ไม่อนุมัติไม่ได้รับ เพราะไม่มีงานให้ทำ · คนที่บันทึกแทนลูกค้าไม่ได้รับ (publisher ตัดให้)
+    /// </summary>
+    private async Task NotifySignedAsync(Quotation q, int approved, int rejected, CancellationToken ct)
+    {
+        var draft = new NotificationDraft(
+            rejected == 0 ? NotificationKinds.QuotationApproved : NotificationKinds.QuotationPartial,
+            rejected == 0
+                ? $"ลูกค้าอนุมัติใบเสนอราคา {q.Code}"
+                : $"ลูกค้าอนุมัติบางรายการ {q.Code}",
+            rejected == 0
+                ? $"{q.JobNo} · {q.VehicleRegistration} · อนุมัติ {approved} รายการ"
+                : $"{q.JobNo} · {q.VehicleRegistration} · อนุมัติ {approved} · ไม่อนุมัติ {rejected} รายการ",
+            nameof(Quotation), q.Id, q.JobId, LinkHint: "quote");
+
+        await notifications.ToUserAsync(draft, q.CreatedByUserId, ct);
+        await notifications.ToStaffAsync(draft, q.Lines
+            .Where(l => l.Type == LineType.Labor && l.ApprovalStatus == LineApprovalStatus.Approved)
+            .Select(l => l.AssignedTechnicianId)
+            .OfType<long>(), ct);
+
+        // ลูกค้าเปลี่ยนใจหลังเคยไม่อนุมัติทุกรายการ — เรื่อง "ต้องปิดจ๊อบ/ออกใบใหม่" จบไปแล้ว
+        await notifications.ResolveAsync(NotificationSubjects.QuotationAllRejected(q.Id), ct);
+    }
+
+    /// <summary>
+    /// [BIZ] ทุกบรรทัดถูกปฏิเสธ = เซ็นไม่ได้ (QUOTE_NOTHING_APPROVED) ใบจะค้างที่ "ส่งแล้ว" ตลอดไป
+    /// จึงเป็นจุดเดียวที่บอกคนสร้างใบได้ว่าต้องตัดสินใจต่อ · แจ้งครั้งเดียวต่อใบจนกว่าเรื่องจะถูกปิด
+    /// (ลูกค้าเปลี่ยนคำตอบไปมาไม่ทำให้แจ้งซ้ำ)
+    /// </summary>
+    private async Task NotifyIfAllRejectedAsync(Quotation q, CancellationToken ct)
+    {
+        if (q.Lines.Count == 0 || q.Lines.Any(l => l.ApprovalStatus != LineApprovalStatus.Rejected)) return;
+
+        var subject = NotificationSubjects.QuotationAllRejected(q.Id);
+        if (await notifications.HasOpenAsync(subject, ct)) return;
+
+        await notifications.ToUserAsync(new NotificationDraft(
+            NotificationKinds.QuotationAllRejected,
+            $"ลูกค้าไม่อนุมัติทุกรายการ {q.Code}",
+            $"{q.JobNo} · {q.VehicleRegistration} · ต้องปิดจ๊อบหรือออกใบเสนอราคาใหม่",
+            nameof(Quotation), q.Id, q.JobId, LinkHint: "quote", SubjectKey: subject), q.CreatedByUserId, ct);
+    }
 
     /// <summary>
     /// [BIZ] ใบเสร็จรวมออกได้ใบเดียวต่อจ๊อบ (Receipt.JobId unique) — หลังออกแล้ว ห้ามสร้าง/ออกฉบับแก้ไข/เซ็นใบเสนอราคา
@@ -548,6 +601,7 @@ public sealed class QuotationService(
         VehicleRegistration = job.VehicleRegistration,
         VehicleModel = job.VehicleModel,
         VehicleVin = job.VehicleVin,
+        VehicleMileage = job.MileageAtIntake,
         BranchName = branch?.Name ?? job.BranchName,
         BranchAddress = branch?.Address,
         BranchTaxId = branch?.TaxId,

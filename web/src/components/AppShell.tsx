@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  AlarmClock,
   BarChart3,
   Boxes,
   Building2,
@@ -12,6 +13,7 @@ import {
   Clock3,
   FileStack,
   FolderTree,
+  History,
   LogOut,
   Package,
   Search,
@@ -27,6 +29,7 @@ import {
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
+import { NotificationBell } from './notifications/NotificationBell'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
@@ -68,6 +71,9 @@ const navGroups = [
       { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
       { to: '/reports/retail-sales', icon: ShoppingCart, label: 'ขายหน้าร้าน' },
       { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
+      // เปิดทุกบทบาท (หน้าร้าน/ช่างค้นตอนลูกค้ามาที่เคาน์เตอร์) — ช่าง/หัวหน้าช่างไม่เห็นยอดเงิน
+      { to: '/reports/vehicle-history', icon: History, label: 'ประวัติรถ' },
+      { to: '/reports/service-due', icon: AlarmClock, label: 'รถใกล้ครบรอบบริการ' },
       // ยังไม่ใช่รายงานประเมินประสิทธิภาพ — เป็นข้อมูลดิบให้หัวหน้าช่าง/ผู้จัดการตรวจและแก้คาบที่ผิด
       // ระหว่างช่วงเก็บข้อมูล (บทบาทอื่นกดแล้วได้ 403 พร้อมเหตุผลจาก QueryState ตามคอนเวนชันของเมนู)
       { to: '/reports/work-intervals', icon: Timer, label: 'เวลาทำงานของช่าง' },
@@ -228,6 +234,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                 <strong>{session?.branchName ?? 'ไม่พบข้อมูลสาขา'}</strong>
               </span>
             </div>
+            <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger className="user-menu" aria-label="เปิดเมนูผู้ใช้งาน">
                 <Avatar>

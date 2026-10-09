@@ -32,6 +32,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/07-quotation-adhoc-line.md](docs/07-quotation-adhoc-line.md) | รายการนอกแคตตาล็อกในใบเสนอราคา (ad-hoc line) · ฟิลด์บังคับ · สิทธิ์ · ผลกระทบต่อเบิกสต็อก/QC |
 | [docs/08-quotation-template.md](docs/08-quotation-template.md) | เทมเพลตใบเสนอราคา · การแปลงเทมเพลต→บรรทัด (ราคาสดจากแคตตาล็อก) · สิทธิ์ · error code ใหม่ |
 | [docs/09-technician-time-tracking.md](docs/09-technician-time-tracking.md) | จับเวลาช่างต่อจ๊อบ · สลับคัน · โหมดโฟกัสบนมือถือ — **เก็บเวลาทำแล้ว · รายงานประเมินยังไม่ได้ทำ** |
+| [docs/03-api-contract.md](docs/03-api-contract.md) §3/§11/§12 | **[เพิ่ม 2026-10-08]** endpoint เลขไมล์ · `handover/service-info` · `reports/vehicle-history` · `reports/service-due` |
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
@@ -84,7 +85,7 @@ Production รันที่ `ssh garage_amd` จาก GitHub branch `main`; �
 | Source บน server | `/home/deployment/sources/AMD.AutoService.GaragePro` |
 | Deployment overlay | `/home/deployment/deployments/garagepro-service` |
 | Secret file (นอก Git, mode 600) | `/home/deployment/config/garagepro-service.env` |
-| Web | `https://gpservice.garage-pro.net` → Nginx → `127.0.0.1:3005` |
+| Web | `https://gpservice.garage-pro.net` และ `https://service.garage-pro.net` (เพิ่ม 2026-10-05 หลัง rebrand — ใช้ได้ทั้งคู่ ไม่ redirect · ต้องอยู่ใน `AllowedOrigins` ของ API ทั้งคู่ · ชื่อใหม่**ไม่มีใบรับรองบน origin** ใช้ใบของ gpservice ไปก่อนเพราะ Cloudflare SSL mode = Full (ไม่ strict) — ติดตั้งด้วย `add-service-domain.sh` ไม่ใช่ certbot · **[RISK] เปลี่ยน Cloudflare เป็น Full (strict) เมื่อไหร่ โดเมนนี้ขึ้น 526**) → Nginx → `127.0.0.1:3005` |
 | API | `https://gpservice-api.garage-pro.net` → Nginx → `127.0.0.1:5081` |
 | Containers | `garagepro_service_web`, `garagepro_service_api` |
 
@@ -315,6 +316,19 @@ maindb 10.10.4.16   = db2 (replica คนละ host)
     · ใบที่สองที่ลูกค้าอนุมัติ **ระหว่างซ่อม** (จ๊อบเลย "อนุมัติแล้ว" ไปแล้ว) ไม่ดันสถานะจ๊อบ — ทั้งเว็บ
     (`CustomerApprovalModal`) และมือถือ (`approval_page.dart` อ่านสถานะจ๊อบก่อน transition)
 
+22. **[เพิ่ม 2026-10-08] เลขไมล์ขณะรับรถ (`Job.MileageAtIntake`) บังคับเมื่อรถอยู่ที่อู่จริง** — ใช้คอลัมน์เดิมที่มีตั้งแต่
+    migration `AddJob` แต่ไม่เคยมีใครเขียน (**ไม่มี migration ใหม่**) · บังคับ 3 จุด: เปิดจ๊อบ `JobTypeId=9` · `convert-to-in-shop`
+    (ส่งมาหรือบันทึกไว้แล้ว) · `IntakeChecklistService.SubmitAsync` (`INTAKE_MILEAGE_REQUIRED` — ครอบจ๊อบเก่า) · **ไม่บังคับตอนเปิดจ๊อบรถนัดหมาย**
+    (รถยังไม่มา) · ค่า 0..9,999,999 (`Domain/Common/Odometer.cs` `[ASSUME]`) · แก้ได้ผ่าน `PUT /jobs/{id}/mileage` จนกว่าจะส่งมอบรถ/จ๊อบปิด
+    (`JOB_MILEAGE_LOCKED`) เขียน `job.mileage.changed` `{from,to}` · ใบเสนอราคาที่สร้างใหม่คัดค่านี้ลง `Quotation.VehicleMileage`
+    (เดิมช่อง "เลขไมล์" ในเอกสารใบเสนอราคาว่างเสมอ)
+23. **[เพิ่ม 2026-10-08] ส่งมอบรถต้องบันทึกไมล์ส่งมอบ + นัดเข้ารับบริการครั้งถัดไปก่อนเซ็น** (`HANDOVER_SERVICE_INFO_REQUIRED`) —
+    3 ค่าบังคับทั้งหมด: ไมล์ตอนส่งมอบ (≥ ไมล์รับรถ) · ไมล์ที่นัด (> ไมล์ส่งมอบ) · **จำนวนเดือน 1–24** (ผู้ใช้ขอให้กรอกเป็นเดือน "ไม่ต้องให้
+    user คำนวณ") · บันทึกแยกผ่าน `PUT .../handover/service-info` ก่อนเซ็นได้ (แบบผลทดลองขับของ QC) · **วันนัด (`NextServiceDueOn`,
+    คอลัมน์ `date`) = วันส่งมอบจริงตามปฏิทินไทย + N เดือน** — ตอนบันทึกเป็นพรีวิวจากวันนี้ `SubmitAsync` คำนวณใหม่จาก `SubmittedAt`
+    (`Domain/Common/ServiceSchedule.cs`, `DateOnly.AddMonths` ปัดลงวันสุดท้ายของเดือน) · `SubmitAsync` ตรวจกติกาไมล์ซ้ำ (ไมล์รับรถอาจถูกแก้หลังบันทึก)
+    · ล็อกพร้อมใบส่งมอบ · พิมพ์ลงใบส่งมอบรถ · migration `AddHandoverServiceInfo` (คอลัมน์ nullable 6 ตัว + filtered index บน `NextServiceDueOn`)
+
 > **[RISK]** `JobsController`/`IntakeChecklistController` ตอนนี้ gate ด้วย `[RequireShiftSession]` เท่านั้น
 > ยังไม่ผูก role ตาม `docs/01-workflow.md §4` (เช่น ใครก็ตามที่ login แล้วมีกะเปิดอยู่สร้าง/เปลี่ยนสถานะ job ได้หมด) — ต้องปิดช่องนี้ก่อน production
 > ปฏิทินนัดหมาย, เทมเพลตใบเสนอราคา และปุ่มแปลงเป็นรถในอู่ที่เพิ่งเพิ่มสืบทอดช่องโหว่นี้เช่นกัน ไม่ได้แก้ในงานนี้
@@ -521,7 +535,7 @@ SQL/FTP จริง) — เทสต์ `Validate()` และ `IsSafeRelative
   · ปรับเฉพาะ Web — `mobile/lib/core/tokens.dart` (Flutter) ไม่ได้แตะ เพราะฟอนต์/ขนาดไม่ได้อยู่ใน `web/src/lib/tokens.ts`
   (มีแค่สี) จึงไม่ขัดกฎ "ต้องแก้ให้ตรงกันทั้งสองที่" ด้านล่าง — ถ้าต้องการให้ mobile ใช้ฟอนต์/ขนาดเดียวกันต้องทำแยก
 - Mobile: touch ≥48px · CTA 54–56px · ฟอร์มยาวใช้ sticky bar + บันทึกร่าง
-- Web: desktop 1440 หลัก · 1024 ย่อ sidebar · **< 1024px ไม่รองรับ**
+- Web: desktop 1440 หลัก · 1024 ย่อ sidebar · **< 1024px ไม่รองรับ** (ยกเว้นหน้าสาธารณะ `/` และ `/login` ที่รองรับมือถือ)
 - ข้อความ UI เป็นภาษาไทยทั้งหมด · โค้ดและตัวแปรเป็นอังกฤษ
 
 ### ตารางจัดการข้อมูล (อัปเดต 2026-09-04 ตามคำขอผู้ใช้)
@@ -1383,12 +1397,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   ความสูงแบบมีเงื่อนไข 108/142 เพราะ `PreferredSize` ไม่ยืดตามลูก · ข้อความ empty state บอกชื่อตัวกรองที่ค้างแทน
   คำว่า "ตัวกรองที่เลือก" ลอยๆ · ทดสอบจริงบน simulator แล้ว: ตั้งตัวกรองจากหน้าหลัก → เห็นแถบ → กด "ล้าง" → งานขึ้นครบ 7 รายการ
 
-- ✅ **[เพิ่ม 2026-09-23] หน้า `/login` เป็น landing page นำเสนอผลิตภัณฑ์** (คำขอผู้ใช้) — navbar 3 เมนู:
-  "เข้าสู่ระบบ" (เลื่อนไปการ์ด login บนสุด + โฟกัสช่องรหัสพนักงาน) · "เกี่ยวกับเรา" (Armadillo Tech Co., Ltd.) ·
-  "ติดต่อ" (ฟอร์มขอ Demo คัดฟิลด์/ช่องทางติดต่อจาก `https://gp.ipongs.com/#contact`)
-  · ไฟล์: `web/src/features/auth/LoginPage.tsx` (layout) · `LoginCard.tsx` (ตรรกะ login เดิมย้ายมาไม่เปลี่ยน) ·
-  `ContactSection.tsx` · `landing.css` · **`App.tsx` แสดง `/login` นอก `desktop-guard`** — หน้าเดียวที่รองรับจอ < 1024px
-  (ผู้สนใจเปิดจากมือถือ) ระบบหลังล็อกอินยังเป็น desktop เท่านั้นตามเดิม
+- ✅ **[เพิ่ม 2026-09-23] หน้า `/login` เป็น landing page นำเสนอผลิตภัณฑ์** (คำขอผู้ใช้) — **[แทนที่ 2026-10-09 ดูหัวข้อถัดไป:
+  หน้าขายย้ายไป `/` และ login เป็น modal]** เดิม navbar 3 เมนู (เข้าสู่ระบบ/เกี่ยวกับเรา/ติดต่อ) การ์ด login อยู่ใน hero
+  · ฟอร์มติดต่อ (`ContactSection.tsx` — ย้ายไป `web/src/features/landing/` แล้ว ตรรกะไม่เปลี่ยน) คัดฟิลด์/ช่องทางจาก `https://gp.ipongs.com/#contact`
   · **[อัปเดต 2026-09-23] ฟอร์มติดต่อส่งเข้ากลุ่ม LINE จริงแล้ว** (ตัดตัวเลือกแพ็กเกจออกตามคำขอ) —
   `POST /api/v1/public/contact-requests` (`PublicContactController` → `ContactRequestService` →
   `IContactNotifier`/`LineContactNotifier` = LINE Messaging API `POST /v2/bot/message/push` ไปที่ groupId)
@@ -1411,6 +1422,33 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ 1440px และ 375px: เมนูเลื่อนถูก section + ไฮไลต์เมนูตามตำแหน่ง,
   เมนูแฮมเบอร์เกอร์บนมือถือ, ไม่มี horizontal scroll, validation ช่องบังคับกันส่ง, ส่งแล้วได้ข้อความสรุปถูกต้อง, ไม่มี console error
   · ยังไม่ได้ทดสอบ login จริงผ่านหน้าใหม่ (ไม่ได้รัน API ในรอบนี้ — ตรรกะ login ไม่ได้แก้)
+
+- ✅ **[เพิ่ม 2026-10-09] หน้าแรก `/` เป็นหน้าขายแพลตฟอร์ม + เข้าสู่ระบบเป็น modal + ส่วนแอปมือถือ** (คำขอผู้ใช้ · วางแผนผ่าน plan mode)
+  · **Routing (`App.tsx` `PublicRoute`)**: `/` และ `/login` แสดง `LandingPage` เดียวกันนอก `desktop-guard` · **modal ผูกกับ URL** — เปิดเมื่อ
+    path = `/login` · ปุ่ม "เริ่มใช้งาน" = `navigate('/login', {state:{fromLanding}})` · ปิด = `navigate(-1)` (เปิดจากปุ่ม) หรือ replace `/`
+    (เปิดจากลิงก์ตรง) → ปุ่ม back ปิด modal ได้ และ 401 (`api/client.ts` → `/login`) กับ `ProtectedRoute` เด้ง modal เองโดยไม่ต้องแก้ client
+    · มีเซสชัน: `/login` → `/jobs` เหมือนเดิม · `/` **ไม่ redirect แล้ว** แสดงหน้าขายโดยปุ่มเปลี่ยนเป็น "เข้าสู่ระบบงาน" ไป `/jobs`
+    (ผลข้างเคียง: พนักงานที่เปิดโดเมนเปล่าต้องกดปุ่มอีกครั้ง) · ลบ `RootRedirect`
+  · **Login**: `features/auth/LoginForm.tsx` (ตรรกะจาก `LoginCard` เดิมไม่เปลี่ยน + `data-dialog-autofocus`) · `LoginDialog.tsx` ใช้ `Dialog` เดิม
+    (focus trap/Escape/คืนโฟกัส) · ระหว่างกำลังเข้าสู่ระบบปิดไม่ได้ (กัน navigate ซ้อน) · ลบ `LoginPage.tsx`/`LoginCard.tsx` และ CSS
+    `.auth-page`/`.login-intro`/`.login-card*` ที่ไม่ใช้แล้วใน `index.css`
+  · **หน้าขาย** `web/src/features/landing/`: `LandingPage.tsx` (nav 5 เมนู + CTA · แฮมเบอร์เกอร์ ≤960px) · `sections/` Hero (+ จุดเด่น 3 ข้อ) ·
+    Features 9 ข้อ · Workflow 7 ขั้น (ใครทำ + เว็บ/แอป) · MobileApp · About (เนื้อหาเดิม) · แถบ CTA โทร/ขอ Demo · Contact เดิม · footer
+    · **[BIZ] ข้อความขายต้องเป็นความสามารถที่มีจริงเท่านั้น ห้ามแต่งจำนวนลูกค้า/รีวิว/สถิติ** — มีคอมเมนต์กำกับในแต่ละ section
+    (POS ขายหน้าร้านถูกอ้างในฟีเจอร์ทั้งที่ยังไม่ได้ทดสอบกับ API จริง — ดู docs/11)
+  · **Mockup** `mockups/WebAppMockup.tsx`/`PhoneMockup.tsx` (queue/handover): HTML/CSS ข้อมูลสมมติ ใช้สี `.job-status-*` เดิม · ขนาดภายในเป็น `em`
+    อิง `font-size` แบบ `cqw` ของกรอบ (`container-type: inline-size`) จึงย่อขยายทั้งก้อนเหมือนรูป · `role="img"` + `aria-label` · คอลัมน์เลขจ๊อบ
+    ในตารางจำลองอยู่ท้ายสุดเพราะภาพมือถือใน hero ซ้อนขอบขวา
+  · **แอปมือถือ**: `appStore.ts` `PLAY_STORE_URL` · badge ทางการ `web/public/store/google-play-badge-th.png` (ดาวน์โหลดจาก play.google.com) ·
+    QR `web/public/store/google-play-qr.svg` (สร้างครั้งเดียวด้วย `qrcode@1.5.4` ใน scratchpad — ไม่ใช่ dependency) ซ่อนที่ < 1024px ·
+    iOS = ป้าย "เร็วๆ นี้" กดไม่ได้ **ไม่ใช้ badge App Store ของ Apple** (guideline ห้ามใช้กับแอปที่ยังไม่อยู่บน store — เปลี่ยนเมื่อขึ้น store จริง) ·
+    footer มีข้อความเครื่องหมายการค้า Google Play
+  · `index.html`: description ใหม่ + `og:*` (og:image ชี้ `https://service.garage-pro.net/servicepro-logo.png`)
+  · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) 16 ผ่าน · เบราว์เซอร์ 1440/1024/375px: ไม่มี horizontal scroll ·
+    เมนูเลื่อนถูก section + ไฮไลต์ · "เริ่มใช้งาน" → `/login` + modal + โฟกัสช่องรหัสพนักงาน · Escape/ปุ่ม X/back ปิดแล้วกลับ `/` ·
+    `/jobs` ไม่มีเซสชัน → `/login` พร้อม modal · ว่าง → ข้อความ validation · ล็อกอินผิด (จำลอง `fetch`) → Alert + traceId ·
+    เซสชันจำลอง: ปุ่มเป็น "เข้าสู่ระบบงาน" และ `/login` → `/jobs` · QR ถอดด้วย `BarcodeDetector` ได้ URL Play Store ตรงตัว ·
+    modal ที่ 375px ขอบ 16px · **ยังไม่ได้ล็อกอินจริงกับ API** (ตรรกะ login ไม่ได้แก้) และยังไม่ได้ตรวจพรีวิวลิงก์ใน LINE/Facebook หลัง deploy
 
 - ✅ **[เพิ่ม 2026-10-02] วันนัดส่งมอบ + ปฏิทินกรองนัดเข้า/นัดส่งมอบ + ลากวางเปลี่ยนวัน** (คำขอผู้ใช้ — ดูกฎข้อ 20)
   · การ์ดจ๊อบ: แถว "วันเวลานัดส่งมอบรถ" + ปุ่มตั้ง/เลื่อน (`ReschedulePromiseModal`) + ป้าย "เกินกำหนดส่งมอบแล้ว"
@@ -1565,6 +1603,74 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ตรวจแล้ว: Web `tsc -b`/`vite build` ผ่าน · ตรวจในเบราว์เซอร์ที่ 375/1024/1280/1440px (landing + sidebar ด้วยเซสชันจำลอง) ·
     `dotnet test` ผ่าน 358 / skipped 5 · **ยังไม่ได้เปิดดูไอคอน/หน้า login บน simulator และยังไม่ได้พิมพ์เอกสารจริง**
 
+- ✅ **[เพิ่ม 2026-10-07] แจ้งเตือนบนเว็บ (กระดิ่ง + ศูนย์แจ้งเตือน)** — คำขอผู้ใช้ · วางแผนผ่าน plan mode
+  · **7 ชนิด** (`Domain/Entities/Notification.cs` `NotificationKinds`): `chat.mention` → StaffId ที่ถูก @ ·
+    `quotation.approved`/`quotation.partial` (ตอนเซ็น) → **คนสร้างใบ + ช่างในบรรทัดค่าแรงที่อนุมัติ** (ผู้ใช้เลือก) ·
+    `quotation.all_rejected` (ตอนตัดสินใจบรรทัดสุดท้ายแล้วไม่มีบรรทัดอนุมัติ — เซ็นไม่ได้ตาม `QUOTE_NOTHING_APPROVED`) → คนสร้างใบ ·
+    `purchase.pending` (submit) → **กลุ่มบทบาท** PR = Manager · PO ≤ `ManagerApprovalThreshold` = Manager+Office (กติกาเดียวกับด่านอนุมัติ) ·
+    `purchase.approved`/`purchase.returned` → คนสร้างเอกสาร
+  · **ไม่แจ้งผู้กระทำเอง** · **"ดำเนินการแล้ว"** (`SubjectKey` + `ResolvedAt`): รออนุมัติปิดเมื่อ approve/return/cancel หรือแก้จนกลับเป็นร่าง ·
+    ไม่อนุมัติทั้งใบปิดเมื่อเซ็นหรือออกฉบับแก้ไข · เรื่องที่ปิดแล้วไม่นับเป็นยังไม่อ่าน แต่ยังแสดงพร้อมชื่อคนจัดการ
+  · **ผู้รับเป็น Staff.Id เสมอ** — คนสร้างเอกสารเก็บเป็น User.Id จึงแปลงผ่าน `ILegacyUserReader.FindByIdAsync` (ทางเดียวที่มี)
+    · **ไม่มีทางดึงพนักงานตามบทบาท** จึงเก็บแถวเดียวพร้อม `AudienceRoles` bitmask แล้วคัดตอนอ่านด้วย role ใน JWT
+    · สถานะอ่านแยกต่อคนที่ `svc_NotificationRead` · กติกาการมองเห็นอยู่ที่เดียว `NotificationRules.VisibleTo` (ใช้ทั้ง EF และเทสต์)
+  · **เขียนใน SaveChanges/transaction เดียวกับ action หลัก** — `INotificationPublisher` ห้าม save เอง (แบบ `IWorkIntervalHook`) ·
+    จัดซื้อต้องเรียก**ภายใน** `AtomicAsync` เพราะ `BranchStockTransaction` ล้าง ChangeTracker ตอนเริ่ม · อ่าน Garage DB ไม่ได้ตอนหาผู้รับ
+    = ข้ามคนนั้น + log warning ไม่ทำให้ action ล้ม · implementation อยู่ Infrastructure (`Notifications/NotificationPublisher.cs`) เพราะ
+    Application ไม่มี logging · ไม่ใช้ unique dedupe key (ชนแล้วพา action หลัก rollback) ใช้เช็คก่อนแทน
+  · `CurrentStaff.ResolveAsync` (`Application/Common/`) = Staff.Id จาก claim → fallback legacy · `WorkTimeService` ย้ายมาใช้ตัวนี้แล้ว
+  · API `NotificationsController`: `GET /notifications` · `GET /notifications/unread-count` · `POST|DELETE /notifications/{id}/read` ·
+    `POST /notifications/read-all` (ดู `docs/03-api-contract.md` §13) · แสดงย้อนหลัง **30 วัน** · ยังไม่มีการลบแถวเก่า (ไม่มี background worker)
+  · migration `AddNotifications` = 2 ตารางใหม่ล้วน — **รันกับ ServiceDb จริงแล้ว 2026-10-07** (ผู้ใช้อนุญาต · ก่อนรันมีค้างตัวเดียว)
+  · เว็บ: `components/notifications/` — กระดิ่งบน topbar poll `unread-count` ทุก 30 วิ (เฉพาะแท็บที่มองอยู่ + ตอนกลับมาที่แท็บ) ·
+    toast "มีการแจ้งเตือนใหม่" เมื่อจำนวนเพิ่มจาก poll (การกดอ่าน/ยังไม่อ่านเองไม่ทำให้เด้ง) · drawer (`Sheet`) แท็บยังไม่อ่าน/ทั้งหมด ·
+    ยังไม่อ่าน = จุด + พื้นฟ้า + หัวเรื่องหนา + ป้าย "ใหม่" · **เปิด drawer เฉยๆ ไม่นับว่าอ่าน** · การ์ดที่เพิ่งอ่านยังอยู่ที่เดิมจนปิด drawer ·
+    ปุ่มซองจดหมายสลับอ่าน/ยังไม่อ่าน · **คลิกการ์ด = อ่าน + เปิดงานนั้น**
+  · **deep link ใหม่** (เดิมไม่มีเลย): `/jobs?job=<id>&stage=quote&chat=1` (`JobCardModal` `initialStage`/`openChat` ·
+    `JobChatWidget` `defaultOpen`) · `/purchasing/:kind?doc=<id>` · ปิดการ์ด/เอกสารแล้วลบพารามิเตอร์ออกจาก URL
+  · ทดสอบแล้ว: `dotnet test` ผ่าน **386 / skipped 5** (เพิ่ม `NotificationTests.cs` 13 + chat 2 + ใบเสนอราคา 3 + จัดซื้อ 4) ·
+    Web `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ (เซสชัน + API จำลองด้วยการแทน `fetch` — ไม่ได้รัน API จริง): badge นับถูก,
+    สลับอ่าน/ยังไม่อ่าน, แท็บทั้งหมดแสดงแบบอ่านแล้ว/ดำเนินการแล้ว, คลิก PO เปิดรายละเอียดเอกสาร, คลิก mention เปิดการ์ดจ๊อบพร้อมแชท,
+    toast เมื่อมีของใหม่, 1024px ไม่ล้น · **ผู้ใช้ทดสอบกับ API + ฐานจริงด้วยบัญชีจริง 2 บัญชี (เว็บ 2 พอร์ต 5173/3000) แล้วยืนยันว่าใช้ได้**
+  · **ข้อจำกัด**: แอปมือถือยังไม่มีกระดิ่ง/push — **ช่างที่ได้แจ้งเตือนเรื่องใบเสนอราคาจะยังไม่เห็น** จนกว่าจะทำฝั่งแอป ·
+    กด "ดู" ใน toast ขณะเปิดการ์ดจ๊อบอยู่ drawer จะซ้อนบนการ์ด และกด Esc จะปิดทั้งคู่ · ไม่มีตั้งค่าปิดแจ้งเตือนรายชนิด ·
+    [RISK] endpoint สืบทอด `[RequireShiftSession]` แต่ข้อมูลกรองตามผู้รับแล้ว
+
+- ✅ **[เพิ่ม 2026-10-08] เลขไมล์รับรถ/ส่งมอบ · นัดบริการครั้งถัดไป · รายงานประวัติรถ + รถใกล้ครบรอบบริการ** (คำขอผู้ใช้ · วางแผนผ่าน plan mode
+  · ดูกฎข้อ 22–23)
+  · **เว็บ**: การ์ดจ๊อบขั้นรับรถมีแถว "เลขไมล์ขณะรับรถ" + ป้ายเตือนเมื่อยังไม่มี + `UpdateMileageModal` (ใช้ซ้ำใน `IntakeChecklistPanel`
+    ซึ่งปิดปุ่มส่งพร้อมเหตุผล) · ฟอร์มเปิดจ๊อบมีช่องไมล์ (บังคับเมื่อรถในอู่) · `ConvertToInShopModal` มีช่องไมล์ · ใบรับรถพิมพ์เลขไมล์ ·
+    ขั้นชำระเงิน/ส่งมอบมี `HandoverServiceInfoSection` (ปุ่มลัด +5,000/+10,000 กม. · 3/6/12 เดือน · พรีวิววันนัด) ก่อนช่องลายเซ็น ·
+    ใบส่งมอบพิมพ์ไมล์รับ/ส่ง + กล่อง "นัดเข้ารับบริการครั้งถัดไป" · `lib/format.ts` เพิ่ม `formatKm`/`parseKmInput`/`formatDateOnly`/
+    `addMonthsToToday` (**DateOnly ห้ามส่งเข้า `formatDate`** — จะถูกตีความเป็น UTC เที่ยงคืน)
+  · **รายงานใหม่**: `/reports/vehicle-history` (**ทุกบทบาท** — ค้นจากทะเบียน/เบอร์โทรใน snapshot ของ `svc_Job` สาขาปัจจุบัน ตัดช่องว่าง/ขีด
+    ทั้งสองฝั่ง → เลือกรถ → timeline: ไมล์ · บรรทัดที่ลูกค้าอนุมัติทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป · คำค้น/รถอยู่ใน URL)
+    **Technician/Lead ได้ยอดเงินเป็น null ที่ server** (docs/01 §4 ช่างไม่เห็นตัวเงิน) · `/reports/service-due` (Manager/Office —
+    ส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · สถานะเลยกำหนด/ใกล้ถึง สี+ไอคอน+ข้อความ ·
+    ส่งออก Excel รายชื่อโทรตาม) · `ReportsController.Render` แปลง `*_NOT_FOUND` เป็น 404
+  · **มือถือ**: ช่องไมล์ในหน้ารับรถ/เปิดจ๊อบ (บังคับเมื่อรถในอู่) · การ์ดไมล์บนหน้าเช็คลิสต์รับรถ (`mileage_dialog.dart`) + ปุ่มส่งบอกเหตุผล ·
+    `handover_service_info.dart` บนหน้าส่งมอบ + เหตุผลปุ่มยืนยัน · `core/mileage.dart` · รายงานไม่ได้ทำบนมือถือ (ตกลงกันไว้)
+  · ทดสอบแล้ว: `dotnet test` ผ่าน **425 / skipped 5** (เพิ่ม: `JobServiceTests` ไมล์ 10 · `IntakeChecklistServiceTests.cs` ใหม่ 2 ·
+    `HandoverServiceTests` 11 รวมวันนัดข้ามเดือน/ปีอธิกสุรทิน/ขอบวันไทย · `ReportsServiceTests` 13) · Web `tsc -b`/`vite build` ผ่าน ·
+    `node --test tests/*.test.mjs` (Node 24) ผ่าน 16 (เพิ่ม `mileage.test.mjs` 2) · Mobile `dart analyze` สะอาด · `flutter test` ผ่าน 63
+    (เพิ่ม `mileage_test.dart` 3) · เบราว์เซอร์ (เซสชัน + API จำลองแทน `fetch`): บันทึกไมล์รับรถจากการ์ด (ค่าผิดได้ข้อความไทย/ปุ่มปิด),
+    ช่องส่งมอบเตือนไมล์ต่ำกว่ารับรถ, ปุ่มลัด/พรีวิววันนัด, บันทึกแล้วเหตุผลปุ่มยืนยันส่งมอบเปลี่ยนเป็นลายเซ็น, ใบส่งมอบพิมพ์ค่าครบ,
+    หน้าประวัติรถ (ค้น → timeline) และหน้ารถใกล้ครบรอบบริการแสดงถูก
+  · **migration `AddHandoverServiceInfo` รันกับ ServiceDb จริงแล้ว 2026-10-08** (ผู้ใช้อนุญาต · ก่อนรันค้างตัวเดียว · `migrations list` ไม่เหลือ Pending)
+  · **ทดสอบกับ API local + ฐานจริงแล้ว 2026-10-08** (ผู้ใช้อนุญาต · สาขา Service Center Demo จ๊อบทดสอบ `JB2609180227001` รถ สส-1335 —
+    ข้อมูลนี้ค้างอยู่ในฐานจริง: ไมล์ 45,210/45,230 · ใบเสร็จ `RC-26-0012` 4,412.68 · ส่งมอบแล้ว **ยังไม่ได้ปิดงาน**): ค้นประวัติ (`REPLACE` แปล SQL ได้) ·
+    แยกใบเสนอราคาสองใบที่เป็นบิลแยกถูก · `HANDOVER_INTAKE_MILEAGE_REQUIRED`/ไมล์ต่ำกว่ารับรถ/เดือน 30 ถูกปฏิเสธ · พรีวิววันนัด 2027-04-08 ·
+    เซ็นส่งมอบแล้ววันนัดคำนวณจากวันส่งมอบ · หลังส่งมอบ `JOB_MILEAGE_LOCKED`/`HANDOVER_LOCKED` · รายงานประวัติ+ใกล้ครบรอบเห็นข้อมูล ·
+    ใบส่งมอบพิมพ์ไมล์/นัด/ลายเซ็นครบ · API ไม่มี error ใน log
+  · **[แก้ 2026-10-08 ตามคำขอผู้ใช้]** รายงานใกล้ครบรอบเดิมตัดเฉพาะจ๊อบที่เปิด**หลัง**ส่งมอบ — รถคันทดสอบมีจ๊อบอื่นเปิดค้างไว้ก่อนวันส่งมอบ
+    จึงยังขึ้นในรายชื่อโทรตาม ตอนนี้ตัดคันที่ยังมีจ๊อบอื่นที่ยังไม่ปิด (`JobStateMachine.IsTerminal`) ด้วยไม่ว่าเปิดเมื่อไหร่
+    (จ๊อบของใบส่งมอบนั้นเองไม่นับ เพราะยังเป็น "พร้อมส่งมอบ" จนกว่าจะปิดงาน)
+  · **ยังไม่ได้ทำ/ข้อจำกัด**: **ยังไม่ได้เดินบน simulator** ·
+    **[RISK] deploy backend ก่อนแอปรุ่นใหม่ถึงมือผู้ใช้ = แอปเก่าเปิดจ๊อบรถในอู่ไม่ได้และส่งมอบรถไม่ได้** ต้องปล่อยพร้อมกัน ·
+    ประวัติรถมีแค่งานในระบบนี้ (ตั้งแต่ 2026-08-31) ไม่รวม legacy · ค้นประวัติใช้ `REPLACE` ทั้งคอลัมน์ (ใช้ index ไม่ได้ — ยอมรับเพราะกรองสาขาก่อน) ·
+    ไม่มีบันทึกผลการโทรตาม/แจ้งเตือนอัตโนมัติ · ไม่รู้ไมล์ปัจจุบันของรถ จึงจัดลำดับตามวันนัด · การ์ดจ๊อบบนมือถือยังไม่แสดงไมล์ ·
+    มือถือเปิดจ๊อบ "รถนัดหมาย" ไม่ได้มาตั้งแต่ก่อนงานนี้ (ไม่ส่ง `appointmentAt` → `JOB_VALIDATION`) — พบระหว่างทำ ไม่ได้แก้
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง
@@ -1582,6 +1688,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 - Offline queue ของ Flutter (`TMP-` + conflict) · หน้า `/sync` — **งานใหญ่ อย่าประเมินต่ำ** (ตกลงกันแล้วว่ารอบนี้ online-only)
 - มือถือ: สแกน QR (`/jobs/by-qr/{code}` ยังไม่มี endpoint) · push notification · พิมพ์เอกสาร A4 (ต้องเพิ่ม `printing`+`pdf`)
 - Realtime (SignalR) · refresh token · หน้าตั้งค่า
+- แจ้งเตือนบนมือถือ (กระดิ่ง + push FCM/APNs) · ลบแจ้งเตือนเก่ากว่า 30 วัน · ตั้งค่าปิดแจ้งเตือนรายชนิด
 - สร้าง/แก้นัดหมายด้วยการคลิกช่องว่างในปฏิทิน (ตอนนี้แก้ได้จากการ์ดจ๊อบเท่านั้น) · จัดลำดับบรรทัดในเทมเพลต
   ใบเสนอราคาแบบลาก (v1 = เรียงตามลำดับที่เพิ่ม) · `RowVersion` ที่ header เทมเพลต (ตอนนี้ last-write-wins)
 - ปฏิทินนัดหมาย/เทมเพลตใบเสนอราคาบนมือถือ (รอบนี้ทำเฉพาะเว็บ — แอป Flutter ยังไม่มีทั้งสองอย่าง)

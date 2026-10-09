@@ -49,7 +49,14 @@ import { Select } from '../../components/ui/select'
 import { Separator } from '../../components/ui/separator'
 import { SignaturePad, type SignaturePadHandle } from '../../components/ui/signature-pad'
 import { Textarea } from '../../components/ui/textarea'
-import { formatDateTime, formatMoney, isoToLocalInput, localInputToIso, nowLocalInputValue } from '../../lib/format'
+import {
+  formatDateTime,
+  formatKm,
+  formatMoney,
+  isoToLocalInput,
+  localInputToIso,
+  nowLocalInputValue,
+} from '../../lib/format'
 import { useSession } from '../../lib/session'
 import { Field, InlineError } from '../master-data/MasterDataCommon'
 import { StockWithdrawalDocumentModal } from '../purchasing/StockWithdrawalDocumentModal'
@@ -58,6 +65,9 @@ import { IntakeChecklistPanel } from './IntakeChecklistPanel'
 import { invalidateJobSchedule } from './scheduleQueries'
 import { IntakeReceiptModal } from './IntakeReceiptModal'
 import { HandoverDocumentModal } from './HandoverDocumentModal'
+import { HandoverServiceInfoSection, handoverServiceInfoMissing } from './HandoverServiceInfoSection'
+import { mileageInputError } from './mileage'
+import { UpdateMileageModal } from './UpdateMileageModal'
 import { BillingDocumentModal } from './billing/BillingDocumentModal'
 import './billing/billing.css'
 import type { BillingKind } from './billing/BillingDocument'
@@ -66,7 +76,7 @@ import { QuotationDocumentModal } from '../quotations/QuotationDocumentModal'
 import { QuotationEditorModal } from '../quotations/QuotationEditorModal'
 import { QuotationTemplatePickerModal } from '../quotations/QuotationTemplatePickerModal'
 
-type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
+export type StageKey = 'intake' | 'inspect' | 'quote' | 'repair' | 'qc' | 'payment'
 
 const STAGES: { key: StageKey; label: string }[] = [
   { key: 'intake', label: 'รับรถ' },
@@ -91,13 +101,26 @@ const STAGE_INDEX_BY_STATUS: Record<JobStatusToken, number> = {
   cancelled: 5,
 }
 
+export function isStageKey(value: string | null): value is StageKey {
+  return STAGES.some((stage) => stage.key === value)
+}
+
 type JobCardModalProps = {
   jobId: string | null
   onClose: () => void
+  /// เปิดมาที่ขั้นนี้แทนขั้นปัจจุบันของจ๊อบ — ใช้กับลิงก์จากแจ้งเตือน (เช่น ผลอนุมัติใบเสนอราคา)
+  initialStage?: StageKey
+  /// เปิดแผงแชทค้างไว้เลย — ใช้กับแจ้งเตือน "ถูกกล่าวถึงในแชท"
+  openChat?: boolean
 }
 
-export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
+export function JobCardModal({ jobId, onClose, initialStage, openChat = false }: JobCardModalProps) {
   const [viewStage, setViewStage] = useState<number | null>(null)
+
+  // ลิงก์ใหม่ (จ๊อบหรือขั้นเปลี่ยน) ต้องพาไปขั้นที่ลิงก์ระบุ แม้ modal จะเปิดค้างอยู่แล้ว
+  useEffect(() => {
+    setViewStage(initialStage ? STAGES.findIndex((stage) => stage.key === initialStage) : null)
+  }, [jobId, initialStage])
 
   const jobQuery = useQuery({
     queryKey: ['job-detail', jobId],
@@ -226,7 +249,7 @@ export function JobCardModal({ jobId, onClose }: JobCardModalProps) {
             <StageContent stageKey={STAGES[stageIndex]?.key ?? 'intake'} job={job} />
             </div>
           )}
-          <JobChatWidget jobId={jobId} />
+          <JobChatWidget key={`${jobId}:${openChat ? 'chat' : ''}`} jobId={jobId} defaultOpen={openChat} />
         </>
       )}
     </ConfirmModal>
@@ -268,6 +291,7 @@ function IntakeStage({ job }: { job: Job }) {
   const [reschedulingAppointment, setReschedulingAppointment] = useState(false)
   const [reschedulingPromise, setReschedulingPromise] = useState(false)
   const [convertingToInShop, setConvertingToInShop] = useState(false)
+  const [editingMileage, setEditingMileage] = useState(false)
   const jobClosed = job.status === 'completed' || job.status === 'cancelled'
 
   const attachmentsQuery = useQuery({
@@ -322,6 +346,28 @@ function IntakeStage({ job }: { job: Job }) {
                 <div><dt>ยี่ห้อ / รุ่น</dt><dd>{job.vehicleModel || 'ไม่ระบุรุ่น'}</dd></div>
                 <div><dt>ทะเบียนรถ</dt><dd>{job.vehicleRegistration || 'ไม่ระบุทะเบียน'}</dd></div>
                 <div><dt>เลขตัวถัง</dt><dd>{job.vehicleVin || 'ไม่ระบุ'}</dd></div>
+                <div>
+                  <dt>เลขไมล์ขณะรับรถ</dt>
+                  <dd className="job-detail-appointment">
+                    {job.mileageAtIntake != null ? (
+                      <span className="job-detail-mileage">{formatKm(job.mileageAtIntake)}</span>
+                    ) : (
+                      <span className="job-detail-overdue" role="status">
+                        <TriangleAlert aria-hidden="true" />
+                        {job.jobTypeId === 10 ? 'บันทึกตอนรถเข้าอู่' : 'ยังไม่ได้บันทึกเลขไมล์'}
+                      </span>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={jobClosed}
+                      title={jobClosed ? 'จ๊อบนี้ปิดแล้ว — แก้ไขเลขไมล์ไม่ได้' : undefined}
+                      onClick={() => setEditingMileage(true)}
+                    >
+                      {job.mileageAtIntake != null ? 'แก้ไขเลขไมล์' : 'บันทึกเลขไมล์'}
+                    </Button>
+                  </dd>
+                </div>
                 <div>
                   <dt>ประเภทงาน</dt>
                   <dd className="job-detail-type">
@@ -395,6 +441,7 @@ function IntakeStage({ job }: { job: Job }) {
         {convertingToInShop ? (
           <ConvertToInShopModal job={job} onClose={() => setConvertingToInShop(false)} />
         ) : null}
+        {editingMileage ? <UpdateMileageModal job={job} onClose={() => setEditingMileage(false)} /> : null}
 
         <Card>
           <CardHeader><CardTitle>รูปถ่าย/เอกสารแนบของงานนี้</CardTitle></CardHeader>
@@ -583,9 +630,16 @@ function RescheduleAppointmentModal({ job, onClose }: { job: Job; onClose: () =>
 function ConvertToInShopModal({ job, onClose }: { job: Job; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [value, setValue] = useState(() => nowLocalInputValue())
+  // [BIZ] รถมาถึงอู่จริงตอนนี้ — ต้องมีเลขไมล์ (API บังคับ) เติมค่าเดิมให้ถ้าบันทึกไว้ก่อนแล้ว
+  const [mileageText, setMileageText] = useState(() =>
+    job.mileageAtIntake != null ? String(job.mileageAtIntake) : '')
+  const mileage = mileageInputError(mileageText)
 
   const mutation = useMutation({
-    mutationFn: () => convertJobToInShop(job.jobId, { actualArrivalAt: localInputToIso(value) }),
+    mutationFn: () => convertJobToInShop(job.jobId, {
+      actualArrivalAt: localInputToIso(value),
+      mileageAtIntake: mileage.km!,
+    }),
     onSuccess: () => {
       toast.success('เปลี่ยนประเภทงานเป็นรถในอู่แล้ว')
       void queryClient.invalidateQueries({ queryKey: ['job-detail', job.jobId] })
@@ -605,7 +659,12 @@ function ConvertToInShopModal({ job, onClose }: { job: Job; onClose: () => void 
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>ยกเลิก</Button>
-          <Button disabled={!value || mutation.isPending} onClick={() => mutation.mutate()}>
+          <Button
+            disabled={!value || mileage.km == null || mutation.isPending}
+            title={!value ? 'กรุณาเลือกวันเวลาที่รถเข้าอู่ก่อน'
+              : mileage.km == null ? (mileage.error ?? 'กรุณากรอกเลขไมล์ขณะรับรถก่อน') : undefined}
+            onClick={() => mutation.mutate()}
+          >
             {mutation.isPending ? 'กำลังบันทึก…' : 'ยืนยันเปลี่ยนเป็นรถในอู่'}
           </Button>
         </>
@@ -618,6 +677,14 @@ function ConvertToInShopModal({ job, onClose }: { job: Job; onClose: () => void 
           max={nowLocalInputValue()}
           value={value}
           onChange={(e) => setValue(e.target.value)}
+        />
+      </Field>
+      <Field label="เลขไมล์ขณะรับรถ (กม.) *" error={mileage.error}>
+        <Input
+          inputMode="numeric"
+          value={mileageText}
+          onChange={(e) => setMileageText(e.target.value)}
+          placeholder="เช่น 45210"
         />
       </Field>
     </ConfirmModal>
@@ -1364,6 +1431,8 @@ function PaymentStage({ job }: { job: Job }) {
     ? 'ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อนจึงจะยืนยันส่งมอบรถได้'
     : !allItemsDecided
       ? 'ตรวจของในรถให้ครบทุกรายการก่อน'
+      : handover && handoverServiceInfoMissing(handover)
+        ? 'บันทึกเลขไมล์ตอนส่งมอบและนัดเข้ารับบริการครั้งถัดไปก่อน'
       : !hasSignature
         ? 'กรุณาเซ็นยืนยันการส่งมอบก่อน'
         : null
@@ -1687,6 +1756,8 @@ function PaymentStage({ job }: { job: Job }) {
                     </tbody>
                   </table>
                 </div>
+
+                <HandoverServiceInfoSection jobId={job.jobId} handover={handover} onSaved={invalidate} />
 
                 {!handover.isLocked ? (
                   <>

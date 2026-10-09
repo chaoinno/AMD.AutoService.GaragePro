@@ -107,7 +107,8 @@ foreach (var candidate in candidates)
         jobTypeId = 9,
         senderName = candidate.CustomerName,
         senderPhoneNumber = (string?)null,
-        detail = (string?)null
+        detail = (string?)null,
+        mileageAtIntake = 45_000 + jobs.Count * 7_300 // รถในอู่ต้องมีเลขไมล์ตอนเปิดจ๊อบ
     });
     if (created is null) continue; // เช่น รถคันนี้มีจ๊อบเปิดค้างอยู่แล้ว — ข้ามไปคันถัดไป
 

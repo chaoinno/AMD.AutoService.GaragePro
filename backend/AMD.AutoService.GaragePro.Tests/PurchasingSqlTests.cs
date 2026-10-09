@@ -29,7 +29,7 @@ public class PurchasingSqlTests
         async Task<Result<T>> Call<T>(Func<PurchasingService, Task<Result<T>>> call)
         {
             await using var db = NewDb();
-            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new(), new ThrowingStaffRepository(), new TestBranchPinVerifier()));
+            return await call(new(new PurchasingRepository(db, user), user, TimeProvider.System, new(), new ThrowingStaffRepository(), new TestBranchPinVerifier(), new FakeNotificationPublisher()));
         }
         var item = new CatalogItem { Code = "TEST-FIFO", Name = "ข้อมูลทดสอบ FIFO ชั่วคราว", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
         var warehouse = new Warehouse { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "คลังทดสอบชั่วคราว", LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };

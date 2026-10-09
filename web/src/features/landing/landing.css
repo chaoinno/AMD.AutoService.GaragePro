@@ -1,0 +1,318 @@
+/* ---- หน้าแรกสาธารณะ / และ /login (หน้าขาย + modal เข้าสู่ระบบ) ----
+ * [UI] หน้านี้เป็นหน้าสาธารณะหน้าเดียวที่รองรับจอ < 1024px (App.tsx แสดงนอก desktop-guard)
+ * เพราะผู้เยี่ยมชมที่มาดูผลิตภัณฑ์มักเปิดจากมือถือ — ส่วนระบบหลังล็อกอินยังเป็น desktop เท่านั้นตามเดิม
+ * สีทั้งหมดใช้ token เดิมใน :root (+ สีสถานะจ๊อบ .job-status-*) ไม่เพิ่ม palette ใหม่ */
+
+.landing { min-height: 100vh; overflow-x: clip; background: var(--navy-900); color: white; }
+.landing-container { width: min(1200px, 100% - 32px); margin-inline: auto; }
+.landing section[id] { scroll-margin-top: 72px; }
+
+/* navbar */
+.landing-nav { position: sticky; top: 0; z-index: 20; border-bottom: 1px solid rgb(255 255 255 / 8%); background: rgb(15 36 64 / 88%); backdrop-filter: blur(12px); }
+.landing-nav__inner { position: relative; display: flex; min-height: 68px; align-items: center; justify-content: space-between; gap: 16px; }
+.landing .auth-brand { color: white; text-decoration: none; }
+.landing .auth-brand__logo { width: 40px; height: 40px; }
+.landing-nav__menu { display: flex; align-items: center; gap: 2px; }
+.landing-nav__link { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0; border-radius: var(--radius-pill); background: transparent; color: #cbd5e1; font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background .15s, color .15s; }
+.landing-nav__link svg { width: 17px; height: 17px; }
+.landing-nav__link:hover { background: rgb(255 255 255 / 8%); color: white; }
+.landing-nav__link[aria-current='true'] { color: white; box-shadow: inset 0 -2px 0 #9ec4fb; border-radius: 0; }
+.landing-nav__link--cta { margin-left: 10px; padding-inline: 18px; background: var(--blue-600); color: white; }
+.landing-nav__link--cta:hover { background: #1552b3; }
+.landing-nav__toggle { display: none; width: 44px; height: 44px; place-items: center; border: 1px solid rgb(255 255 255 / 18%); border-radius: 10px; background: transparent; color: white; cursor: pointer; }
+.landing-nav__toggle svg { width: 20px; height: 20px; }
+.landing a:focus-visible, .landing button:focus-visible { outline: 2px solid #9ec4fb; outline-offset: 2px; }
+.landing-section--light a:focus-visible, .landing-section--light button:focus-visible { outline-color: var(--blue-600); }
+
+/* hero */
+.landing-hero { position: relative; overflow: hidden; padding-bottom: 56px; }
+.landing-hero__inner { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; gap: 56px; min-height: calc(100vh - 68px - 140px); padding-block: 64px 48px; }
+.landing-hero__copy h1 { margin-top: 18px; font-size: clamp(33px, 4vw, 55px); line-height: 1.25; letter-spacing: -.03em; }
+.landing-hero__accent { color: #4c9bff; }
+.landing-hero__copy > p { max-width: 560px; margin-top: 18px; color: #cbd5e1; font-size: 18px; line-height: 1.7; }
+.landing-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.landing-hero__staff-note { margin-top: 22px !important; color: #94a3b8 !important; font-size: 14px !important; }
+.landing-hero__visual { position: relative; padding: 0 12% 9% 0; }
+.landing-hero__phone { position: absolute; right: 0; bottom: 0; width: 27%; }
+
+.landing-highlights { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 0; list-style: none; }
+.landing-highlights li { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border: 1px solid rgb(255 255 255 / 10%); border-radius: var(--radius-card); background: rgb(255 255 255 / 4%); }
+.landing-highlights li > span:last-child { display: flex; flex-direction: column; gap: 3px; line-height: 1.5; }
+.landing-highlights strong { font-size: 16px; }
+.landing-highlights small { color: #cbd5e1; font-size: 14px; }
+.landing-highlights__icon { display: grid; width: 40px; height: 40px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: rgb(27 107 227 / 22%); color: #9ec4fb; }
+.landing-highlights__icon svg { width: 20px; height: 20px; }
+
+/* ปุ่มของหน้า landing — แยกจาก ui/button เพราะอยู่บนพื้นเข้มเป็นส่วนใหญ่ */
+.landing-btn { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 8px; padding: 0 22px; border: 1px solid transparent; border-radius: var(--radius-pill); font: inherit; font-size: 16px; font-weight: 700; text-decoration: none; cursor: pointer; transition: background .15s, border-color .15s; }
+.landing-btn svg { width: 18px; height: 18px; }
+.landing-btn--primary { background: var(--blue-600); color: white; }
+.landing-btn--primary:hover { background: #1552b3; }
+.landing-btn--ghost { border-color: rgb(255 255 255 / 28%); background: transparent; color: white; }
+.landing-btn--ghost:hover { border-color: white; background: rgb(255 255 255 / 6%); }
+.landing-btn--light { background: white; color: var(--navy-900); }
+.landing-btn--light:hover { background: var(--blue-50); }
+
+/* sections */
+.landing-section { padding-block: 88px; }
+.landing-section--light { background: var(--page); color: var(--text); }
+.landing-section--dark { background: #0a1a30; }
+.landing-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: #9ec4fb; font-size: 14px; font-weight: 700; letter-spacing: .06em; }
+.landing-eyebrow svg { width: 16px; height: 16px; }
+.landing-section--light .landing-eyebrow { color: var(--blue-600); }
+.landing-h2 { margin-top: 10px; font-size: clamp(27px, 3vw, 39px); line-height: 1.3; letter-spacing: -.02em; }
+.landing-section__intro { max-width: 720px; margin-top: 14px; color: var(--muted); font-size: 17px; line-height: 1.7; }
+.landing-section__intro--dark { color: #cbd5e1; }
+.landing-lead { margin-top: 18px; font-size: 20px; line-height: 1.7; color: #e2e8f0; }
+.landing-body { margin-top: 12px; color: #cbd5e1; font-size: 16px; line-height: 1.7; }
+
+.landing-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 36px; padding: 0; list-style: none; }
+.landing-feature { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.landing-feature h3 { margin-top: 14px; font-size: 18px; line-height: 1.45; }
+.landing-feature p { margin-top: 6px; color: var(--muted); font-size: 15px; line-height: 1.65; }
+.landing-feature__icon { display: grid; width: 44px; height: 44px; flex: 0 0 auto; place-items: center; border-radius: 12px; background: var(--blue-50); color: var(--blue-600); }
+.landing-feature__icon svg { width: 22px; height: 22px; }
+
+/* workflow — แนวนอนบนจอกว้าง แนวตั้งบนจอแคบ (ดู media query) */
+.landing-flow { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 14px; margin-top: 44px; padding: 0; list-style: none; }
+.landing-flow::before { content: ''; position: absolute; top: 28px; right: calc(100% / 14); left: calc(100% / 14); height: 2px; background: linear-gradient(90deg, rgb(158 196 251 / 50%), rgb(14 159 140 / 50%)); }
+.landing-flow__step { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.landing-flow__marker { position: relative; display: grid; width: 56px; height: 56px; flex: 0 0 auto; place-items: center; border: 2px solid #9ec4fb; border-radius: 50%; background: #0a1a30; color: #9ec4fb; }
+.landing-flow__marker svg { width: 24px; height: 24px; }
+.landing-flow__marker small { position: absolute; top: -6px; right: -8px; display: grid; min-width: 22px; height: 22px; place-items: center; border-radius: var(--radius-pill); background: var(--blue-600); color: white; font-size: 12px; font-weight: 700; }
+.landing-flow__copy { margin-top: 14px; }
+.landing-flow__copy h3 { font-size: 17px; }
+.landing-flow__copy p { margin-top: 6px; color: #cbd5e1; font-size: 14px; line-height: 1.6; }
+.landing-flow__copy .landing-flow__who { display: inline-block; margin-top: 6px; padding: 2px 10px; border-radius: var(--radius-pill); background: rgb(255 255 255 / 8%); color: white; font-size: 13px; font-weight: 600; }
+.landing-flow__copy .landing-flow__where { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 10px; }
+.landing-flow__where span { display: inline-flex; align-items: center; gap: 4px; color: #9ec4fb; font-size: 13px; font-weight: 600; }
+.landing-flow__where svg { width: 14px; height: 14px; }
+
+/* mobile app */
+.landing-mobile { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 56px; align-items: center; }
+.landing-mobile__visual { position: relative; width: min(100%, 440px); aspect-ratio: 440 / 520; margin-inline: auto; }
+.landing-mobile__phone { position: absolute; width: 56%; }
+.landing-mobile__phone--back { top: 0; left: 0; opacity: .92; }
+.landing-mobile__phone--front { right: 0; bottom: 0; }
+.landing-mobile__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin-top: 26px; padding: 0; list-style: none; }
+.landing-mobile__list li { display: flex; align-items: center; gap: 12px; font-size: 15px; line-height: 1.5; }
+.landing-mobile__list .landing-feature__icon { width: 38px; height: 38px; border-radius: 10px; }
+.landing-mobile__list .landing-feature__icon svg { width: 19px; height: 19px; }
+
+.landing-download { margin-top: 32px; padding: 24px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); }
+.landing-download__title { font-size: 17px; font-weight: 700; }
+.landing-download__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 18px; margin-top: 12px; }
+.landing-download__stores { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+/* badge ของ Google มีขอบโปร่งในไฟล์อยู่แล้ว (~8% ทุกด้าน) จึงชดเชยด้วย margin ติดลบให้ขอบตรงกับป้าย iOS */
+.landing-download__play { display: block; margin: -6px -2px; line-height: 0; }
+.landing-download__play img { width: auto; height: 72px; }
+.landing-download__soon { display: inline-flex; min-height: 54px; align-items: center; gap: 10px; padding: 0 16px; border: 1px dashed #94a3b8; border-radius: 10px; background: #f1f5f9; color: var(--muted); cursor: not-allowed; }
+.landing-download__soon > svg { width: 24px; height: 24px; }
+.landing-download__soon > span { display: flex; flex-direction: column; line-height: 1.3; }
+.landing-download__soon small { font-size: 12px; }
+.landing-download__soon strong { display: inline-flex; align-items: center; gap: 5px; color: var(--text); font-size: 15px; }
+.landing-download__soon strong svg { width: 15px; height: 15px; color: var(--muted); }
+.landing-download__qr { display: flex; align-items: center; gap: 12px; margin: 0; }
+.landing-download__qr img { width: 104px; height: 104px; padding: 6px; border: 1px solid var(--border); border-radius: 10px; background: white; image-rendering: pixelated; }
+.landing-download__qr figcaption { max-width: 130px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.landing-download__note { margin-top: 14px; color: var(--muted); font-size: 14px; }
+
+/* about */
+.landing-about { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
+.landing-values { display: grid; gap: 14px; padding: 0; list-style: none; }
+.landing-values li { display: flex; gap: 16px; padding: 20px; border: 1px solid rgb(255 255 255 / 10%); border-radius: var(--radius-card); background: rgb(255 255 255 / 4%); }
+.landing-values h3 { font-size: 17px; }
+.landing-values p { margin-top: 4px; color: #cbd5e1; font-size: 15px; line-height: 1.6; }
+.landing-values .landing-feature__icon { background: rgb(27 107 227 / 22%); color: #9ec4fb; }
+
+/* แถบชวนติดต่อก่อนฟอร์ม */
+.landing-cta { background: linear-gradient(120deg, var(--blue-600), #0b4fb3); }
+.landing-cta__inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px 32px; padding-block: 44px; }
+.landing-cta h2 { font-size: clamp(23px, 2.4vw, 31px); line-height: 1.35; }
+.landing-cta p { margin-top: 6px; color: #dbeafe; font-size: 16px; }
+.landing-cta__actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.landing-cta .landing-btn--ghost { border-color: rgb(255 255 255 / 55%); }
+
+/* contact */
+.landing-contact { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.landing-contact__card { padding: 36px; border-radius: var(--radius-card); background: var(--card); color: var(--text); }
+.landing-contact__card .landing-eyebrow { color: var(--blue-600); }
+.landing-contact__card .landing-body { color: var(--muted); }
+.landing-contact__form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 28px; }
+.landing-contact__wide { grid-column: 1 / -1; }
+.landing-optional { color: var(--muted); font-weight: 400; }
+.landing-segmented { margin: 0; padding: 0; border: 0; }
+.landing-segmented legend { margin-bottom: 8px; font-size: 14px; font-weight: 600; }
+.landing-segmented [role='radiogroup'] { display: flex; flex-wrap: wrap; gap: 8px; }
+.landing-segmented__option { display: inline-flex; min-height: 42px; align-items: center; gap: 6px; padding: 0 16px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: white; color: var(--text); font: inherit; font-size: 15px; cursor: pointer; }
+.landing-segmented__option svg { width: 16px; height: 16px; }
+.landing-segmented__option:hover { border-color: var(--blue-600); }
+.landing-segmented__option[aria-checked='true'] { border-color: var(--blue-600); background: var(--blue-50); color: #1552b3; font-weight: 700; }
+.landing-contact__submit { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding-top: 6px; }
+.landing-contact__submit p { color: var(--muted); font-size: 14px; }
+.landing-contact__done { display: flex; gap: 16px; margin-top: 26px; padding: 22px; border: 1px solid #b7e4dd; border-radius: var(--radius-card); background: #e8f6f3; }
+.landing-contact__done > svg { width: 28px; height: 28px; flex: 0 0 auto; color: var(--teal-500); }
+.landing-contact__done-title { font-size: 17px; font-weight: 700; }
+.landing-contact__done p + p { margin-top: 6px; color: var(--navy-700); line-height: 1.65; }
+.landing-contact__done-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.landing-contact__done .landing-btn--ghost { border-color: var(--border); background: white; color: var(--text); }
+
+.landing-contact__side { display: grid; gap: 24px; }
+.landing-contact__panel { padding: 28px; border: 1px solid rgb(255 255 255 / 10%); border-radius: var(--radius-card); background: rgb(255 255 255 / 4%); }
+.landing-contact__channels { display: grid; gap: 6px; margin-top: 14px; padding: 0; list-style: none; }
+.landing-contact__channels a { display: flex; align-items: center; gap: 14px; padding: 10px; margin-inline: -10px; border-radius: 12px; color: white; text-decoration: none; }
+.landing-contact__channels a:hover { background: rgb(255 255 255 / 6%); }
+.landing-contact__channels a > span:last-child { display: flex; flex-direction: column; line-height: 1.4; }
+.landing-contact__channels small { color: #94a3b8; font-size: 13px; }
+.landing-contact__channels strong { font-size: 16px; }
+.landing-contact__ring { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border: 1px solid rgb(158 196 251 / 30%); border-radius: 50%; color: #9ec4fb; }
+.landing-contact__ring svg { width: 19px; height: 19px; }
+.landing-contact__hours { margin-top: 10px; font-size: 20px; font-weight: 700; }
+
+
+/* honeypot ของฟอร์มติดต่อ — ย้ายออกนอกจอ (ไม่ใช้ display:none เพราะบอทบางตัวข้ามช่องที่ซ่อนด้วยวิธีนั้น) */
+.landing-honeypot { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.landing-contact__card { position: relative; }
+.landing-btn:disabled { opacity: .7; cursor: progress; }
+
+.landing-footer { border-top: 1px solid rgb(255 255 255 / 8%); padding-block: 40px 28px; }
+.landing-footer__inner { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 24px 48px; }
+.landing-footer__brand { max-width: 420px; }
+.landing-footer__brand p { margin-top: 12px; color: #94a3b8; font-size: 14px; line-height: 1.65; }
+.landing-footer__links { display: grid; grid-template-columns: repeat(2, auto); gap: 8px 32px; align-content: start; }
+.landing-footer__links a { color: #cbd5e1; font-size: 14px; text-decoration: none; }
+.landing-footer__links a:hover { color: white; text-decoration: underline; }
+.landing-footer__legal { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; margin-top: 28px; padding-top: 20px; border-top: 1px solid rgb(255 255 255 / 8%); color: #94a3b8; font-size: 13px; }
+
+/* ---- ภาพจำลองหน้าจอ (mockups/) ----
+ * ขนาดทุกอย่างข้างในเป็น em ที่อิง font-size แบบ cqw ของกรอบ — ภาพจึงย่อ/ขยายทั้งก้อนเหมือนรูปภาพตามความกว้างที่ได้
+ * ไม่ต้องเขียน media query แยกให้ภาพจำลอง */
+.mock-web, .mock-phone { margin: 0; container-type: inline-size; }
+.mock-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.mock-num { text-align: right; }
+.mock-chip { display: inline-flex; align-items: center; gap: .35em; padding: .2em .65em; border-radius: 999px; font-size: .86em; font-style: normal; font-weight: 600; white-space: nowrap; }
+.mock-chip svg { width: 1.05em; height: 1.05em; }
+
+.mock-web__screen { overflow: hidden; border: 1px solid rgb(255 255 255 / 18%); border-radius: .9em; background: var(--page); box-shadow: 0 2.4em 6em rgb(0 0 0 / 40%); color: var(--text); font-size: 1.62cqw; line-height: 1.4; }
+.mock-web__chrome { display: flex; align-items: center; gap: 1em; padding: .65em 1em; background: #e2e8f0; }
+.mock-web__dots { display: flex; gap: .4em; }
+.mock-web__dots i { width: .7em; height: .7em; border-radius: 50%; background: #cbd5e1; }
+.mock-web__dots i:first-child { background: #f87171; }
+.mock-web__dots i:nth-child(2) { background: #fbbf24; }
+.mock-web__dots i:last-child { background: #34d399; }
+.mock-web__url { flex: 1; max-width: 26em; padding: .2em .9em; border-radius: 999px; background: white; color: var(--muted); font-size: .86em; }
+.mock-web__app { display: grid; grid-template-columns: 10.5em minmax(0, 1fr); min-height: 30em; }
+.mock-web__side { display: flex; flex-direction: column; gap: .3em; padding: 1em .7em; background: var(--navy-900); color: #cbd5e1; }
+.mock-web__brand { display: flex; align-items: center; gap: .45em; margin-bottom: .9em; color: white; font-size: 1.05em; }
+.mock-web__brand img { width: 1.8em; height: 1.8em; }
+.mock-web__menu { display: flex; align-items: center; gap: .55em; padding: .5em .65em; border-radius: .5em; font-weight: 600; }
+.mock-web__menu svg { width: 1.15em; height: 1.15em; }
+.mock-web__menu--active { background: var(--blue-600); color: white; }
+.mock-web__main { display: flex; flex-direction: column; gap: .9em; padding: 1.1em 1.2em; }
+.mock-web__top { display: flex; align-items: center; gap: 1em; }
+.mock-web__top strong { font-size: 1.3em; }
+.mock-web__search { display: flex; flex: 1; align-items: center; gap: .45em; padding: .35em .8em; border: 1px solid var(--border); border-radius: .55em; background: white; color: var(--muted); font-size: .9em; }
+.mock-web__search svg, .mock-web__bell svg { width: 1.1em; height: 1.1em; }
+.mock-web__bell { position: relative; display: grid; width: 2.2em; height: 2.2em; place-items: center; border: 1px solid var(--border); border-radius: 50%; background: white; color: var(--navy-900); }
+.mock-web__bell i { position: absolute; top: -.35em; right: -.35em; display: grid; min-width: 1.35em; height: 1.35em; place-items: center; border-radius: 999px; background: #dc2626; color: white; font-size: .72em; font-style: normal; font-weight: 700; }
+.mock-web__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .7em; }
+.mock-web__stats span { display: flex; flex-direction: column; padding: .6em .85em; border: 1px solid var(--border); border-radius: .65em; background: white; }
+.mock-web__stats small { color: var(--muted); font-size: .82em; }
+.mock-web__stats b { font-size: 1.45em; }
+.mock-web__table { overflow: hidden; border: 1px solid var(--border); border-radius: .65em; background: white; }
+.mock-web__row { display: grid; grid-template-columns: 5.6em minmax(0, 1fr) 8.6em 5.8em 9.4em; align-items: center; gap: .6em; padding: .6em .9em; border-top: 1px solid var(--border); font-size: .92em; }
+.mock-web__row:nth-child(odd):not(.mock-web__row--head) { background: #f8fafc; }
+.mock-web__row--head { border-top: 0; background: #eef2f7; color: var(--muted); font-size: .8em; font-weight: 700; }
+.mock-web__jobno { color: var(--blue-600); font-size: .86em; }
+
+.mock-phone__screen { display: flex; aspect-ratio: 9 / 19; flex-direction: column; overflow: hidden; border: .55em solid #0b1626; border-radius: 2.5em; background: var(--page); box-shadow: 0 2em 4em rgb(0 0 0 / 35%), 0 0 0 1px rgb(255 255 255 / 12%); color: var(--text); font-size: 5.2cqw; line-height: 1.4; }
+.mock-phone__status { display: flex; align-items: center; justify-content: space-between; padding: .6em 1.4em .3em; background: var(--navy-900); color: white; font-size: .72em; font-weight: 700; }
+.mock-phone__notch { width: 5.5em; height: 1.5em; border-radius: 999px; background: #0b1626; }
+.mock-phone__bar { display: flex; align-items: center; gap: .5em; padding: .55em 1em .8em; background: var(--navy-900); color: white; }
+.mock-phone__bar strong { flex: 1; font-size: 1.02em; }
+.mock-phone__bar svg { width: 1.2em; height: 1.2em; }
+.mock-phone__chat { position: relative; display: grid; }
+.mock-phone__chat i { position: absolute; top: -.1em; right: -.15em; width: .5em; height: .5em; border-radius: 50%; background: #f87171; }
+.mock-phone__body { display: flex; flex: 1; flex-direction: column; gap: .55em; padding: .8em .75em; overflow: hidden; }
+.mock-phone__search { display: flex; align-items: center; gap: .4em; padding: .45em .75em; border: 1px solid var(--border); border-radius: 999px; background: white; color: var(--muted); font-size: .78em; }
+.mock-phone__search svg { width: 1.1em; height: 1.1em; }
+.mock-phone__card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .35em .5em; padding: .65em .75em; border: 1px solid var(--border); border-radius: .8em; background: white; }
+.mock-phone__card > div { display: flex; flex-direction: column; }
+.mock-phone__card b { font-size: .95em; }
+.mock-phone__card small { color: var(--muted); font-size: .68em; }
+.mock-phone__card .mock-chip { font-size: .66em; }
+.mock-phone__card--pinned { border-color: var(--blue-600); box-shadow: 0 0 0 1px var(--blue-600); }
+.mock-phone__note { display: inline-flex; flex-basis: 100%; align-items: center; gap: .35em; color: var(--blue-600); font-size: .66em; font-weight: 600; }
+.mock-phone__note svg { width: 1.1em; height: 1.1em; }
+.mock-phone__timer { display: flex; align-items: center; gap: .6em; margin: 0 .5em .6em; padding: .6em .8em; border-radius: .9em; background: var(--navy-900); color: white; }
+.mock-phone__timer > svg { width: 1.3em; height: 1.3em; color: #34d399; }
+.mock-phone__timer > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; line-height: 1.25; }
+.mock-phone__timer small { color: #cbd5e1; font-size: .62em; }
+.mock-phone__timer b { font-size: 1.05em; }
+.mock-phone__pause { display: grid; width: 2em; height: 2em; place-items: center; border-radius: 50%; background: rgb(255 255 255 / 14%); }
+.mock-phone__pause svg { width: 1em; height: 1em; }
+.mock-phone__label { margin-top: .2em; color: var(--muted); font-size: .7em; font-weight: 700; }
+.mock-phone__check { display: flex; align-items: center; gap: .55em; padding: .4em .6em; border: 1px solid var(--border); border-radius: .65em; background: white; font-size: .78em; }
+.mock-phone__check > span:nth-child(2) { flex: 1; font-weight: 600; }
+.mock-phone__check small { color: #0b6d5e; font-size: .82em; font-weight: 600; }
+.mock-phone__tick { display: grid; width: 1.4em; height: 1.4em; place-items: center; border-radius: .35em; background: var(--teal-500); color: white; }
+.mock-phone__tick svg { width: .95em; height: .95em; }
+.mock-phone__next { display: flex; align-items: center; gap: .55em; padding: .55em .7em; border-radius: .7em; background: var(--blue-50); color: var(--navy-900); }
+.mock-phone__next > svg { width: 1.2em; height: 1.2em; color: var(--blue-600); }
+.mock-phone__next > span { display: flex; flex-direction: column; line-height: 1.3; }
+.mock-phone__next small { color: var(--muted); font-size: .62em; }
+.mock-phone__next b { font-size: .76em; }
+.mock-phone__sign { position: relative; flex: 1; min-height: 4em; border: 1px dashed #94a3b8; border-radius: .7em; background: white; }
+.mock-phone__sign svg:first-child { position: absolute; inset: 15% 8%; width: 84%; height: 70%; stroke: var(--navy-900); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.mock-phone__sign > svg:last-child { position: absolute; right: .5em; bottom: .4em; width: 1em; height: 1em; color: var(--muted); }
+.mock-phone__cta { margin: 0 .75em .8em; padding: .7em; border-radius: .8em; background: var(--blue-600); color: white; font-size: .86em; font-weight: 700; text-align: center; }
+
+/* ---- responsive ---- */
+@media (max-width: 1180px) {
+  /* 7 ขั้นแนวนอนแคบเกินอ่านได้ — เปลี่ยนเป็นไทม์ไลน์แนวตั้ง 2 คอลัมน์ */
+  .landing-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; }
+  .landing-flow::before { display: none; }
+  .landing-flow__step { flex-direction: row; align-items: flex-start; gap: 16px; text-align: left; }
+  .landing-flow__copy { margin-top: 2px; }
+  .landing-flow__copy .landing-flow__where { justify-content: flex-start; }
+}
+
+@media (max-width: 1023px) {
+  .landing-hero__inner { grid-template-columns: minmax(0, 1fr); gap: 40px; min-height: 0; padding-block: 48px 40px; }
+  .landing-hero__visual { max-width: 640px; }
+  .landing-highlights { grid-template-columns: minmax(0, 1fr); }
+  .landing-feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .landing-mobile { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+  .landing-mobile__copy { order: -1; }
+  .landing-about, .landing-contact { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  /* บนมือถือ/แท็บเล็ตสแกน QR จากเครื่องตัวเองไม่ได้ — กดปุ่ม Google Play แทน */
+  .landing-download__qr { display: none; }
+}
+
+@media (max-width: 960px) {
+  .landing-nav__toggle { display: grid; }
+  .landing-nav__menu { position: absolute; top: 100%; right: -16px; left: -16px; display: none; flex-direction: column; align-items: stretch; gap: 4px; padding: 12px 16px 16px; border-bottom: 1px solid rgb(255 255 255 / 8%); background: var(--navy-900); }
+  .landing-nav__menu[data-open='true'] { display: flex; }
+  .landing-nav__link { padding: 12px 14px; border-radius: 10px; }
+  .landing-nav__link[aria-current='true'] { box-shadow: inset 3px 0 0 #9ec4fb; border-radius: 10px; }
+  .landing-nav__link--cta { justify-content: center; margin: 6px 0 0; }
+}
+
+@media (max-width: 720px) {
+  .landing-section { padding-block: 64px; }
+  .landing-hero__actions .landing-btn { flex: 1 1 auto; }
+  .landing-feature-grid, .landing-mobile__list, .landing-flow { grid-template-columns: minmax(0, 1fr); }
+  .landing-download { padding: 18px; }
+  .landing-cta__actions, .landing-cta__actions .landing-btn { width: 100%; }
+  .landing-contact__card { padding: 22px 18px; }
+  .landing-contact__form { grid-template-columns: minmax(0, 1fr); }
+  .landing-contact__done { flex-direction: column; padding: 18px; }
+  .landing-contact__submit .landing-btn { width: 100%; }
+  .landing-footer__links { grid-template-columns: minmax(0, 1fr); }
+  /* modal เข้าสู่ระบบ: ระยะขอบ 24px ของ overlay กินพื้นที่มากบนจอ 375px */
+  .ui-dialog__overlay:has(.login-dialog) { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing * { scroll-behavior: auto !important; transition: none !important; }
+}

@@ -2,6 +2,8 @@
 /// [BIZ] ของที่ไม่ได้คืนต้องมีเหตุผลเสมอ · ส่งมอบแล้วล็อกแก้ไม่ได้
 library;
 
+import '../core/mileage.dart';
+
 class HandoverChecklistItem {
   const HandoverChecklistItem({
     required this.id,
@@ -45,6 +47,11 @@ class Handover {
     required this.receiptIssued,
     this.receiptDocumentNo,
     required this.items,
+    this.mileageAtIntake,
+    this.mileageAtHandover,
+    this.nextServiceMileage,
+    this.nextServiceMonths,
+    this.nextServiceDueOn,
   });
 
   final String id;
@@ -60,6 +67,17 @@ class Handover {
   final String? receiptDocumentNo;
 
   final List<HandoverChecklistItem> items;
+
+  /// [BIZ] ไมล์ส่งมอบ + นัดครั้งถัดไป บังคับก่อนเซ็น (`HANDOVER_SERVICE_INFO_REQUIRED`)
+  /// วันนัดก่อนเซ็นเป็นพรีวิว server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น
+  final int? mileageAtIntake;
+  final int? mileageAtHandover;
+  final int? nextServiceMileage;
+  final int? nextServiceMonths;
+  final DateTime? nextServiceDueOn;
+
+  bool get serviceInfoComplete =>
+      mileageAtHandover != null && nextServiceMileage != null && nextServiceMonths != null;
 
   int get pendingCount => items.where((i) => i.isPending).length;
   bool get allDecided => items.isNotEmpty && pendingCount == 0;
@@ -78,5 +96,10 @@ class Handover {
         items: ((j['items'] as List<dynamic>?) ?? const [])
             .map((e) => HandoverChecklistItem.fromJson(e as Map<String, dynamic>))
             .toList(),
+        mileageAtIntake: (j['mileageAtIntake'] as num?)?.toInt(),
+        mileageAtHandover: (j['mileageAtHandover'] as num?)?.toInt(),
+        nextServiceMileage: (j['nextServiceMileage'] as num?)?.toInt(),
+        nextServiceMonths: (j['nextServiceMonths'] as num?)?.toInt(),
+        nextServiceDueOn: parseDateOnly(j['nextServiceDueOn'] as String?),
       );
 }

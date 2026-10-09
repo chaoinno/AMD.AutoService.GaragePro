@@ -13,6 +13,7 @@ import '../../models/handover.dart';
 import '../../widgets/common.dart';
 import '../attachments/widgets/auth_image.dart';
 import '../jobs/data/jobs_providers.dart';
+import 'handover_service_info.dart';
 
 final handoverProvider = FutureProvider.autoDispose.family<Handover, String>(
   (ref, jobId) => ref.watch(handoverApiProvider).get(jobId),
@@ -124,6 +125,12 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, height: 1.5)),
           const SizedBox(height: T.s8),
           for (final item in handover.items) _item(handover, item),
+          const SizedBox(height: T.s16),
+          HandoverServiceInfo(
+            jobId: widget.jobId,
+            handover: handover,
+            onSaved: () => ref.invalidate(handoverProvider(widget.jobId)),
+          ),
           const SizedBox(height: T.s16),
           _signatureSection(handover),
         ],
@@ -274,6 +281,8 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
         ? 'ยังไม่ได้ออกใบเสร็จ — ต้องรับชำระเงินให้ครบก่อนจึงจะส่งมอบรถได้'
         : !handover.allDecided
             ? 'ยังตรวจของในรถไม่ครบ เหลืออีก ${handover.pendingCount} รายการ'
+            : !handover.serviceInfoComplete
+                ? 'ยังไม่ได้บันทึกเลขไมล์ตอนส่งมอบและนัดครั้งถัดไป'
             : _signature.isEmpty
                 ? 'ยังไม่มีลายเซ็นลูกค้า'
                 : null;

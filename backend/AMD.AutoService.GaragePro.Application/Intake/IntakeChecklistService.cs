@@ -103,6 +103,13 @@ public sealed class IntakeChecklistService(
             return Result<SubmitIntakeChecklistResultDto>.Fail(
                 "INTAKE_INCOMPLETE", $"ยังตรวจไม่ครบ — เหลืออีก {pending.Count} รายการ");
 
+        // [BIZ] เพิ่ม 2026-10-08 — ใบรับรถต้องมีเลขไมล์ (ครอบจ๊อบที่เปิดก่อนมีกฎบังคับไมล์ตอนเปิดจ๊อบ และรถนัดหมาย
+        // ที่ยังไม่ได้แปลง) ValidateJobAsync ผ่านแล้วจึงมีจ๊อบแน่นอน
+        var job = await jobs.GetAsync(jobId, ct);
+        if (job!.MileageAtIntake is null)
+            return Result<SubmitIntakeChecklistResultDto>.Fail(
+                "INTAKE_MILEAGE_REQUIRED", "กรุณาบันทึกเลขไมล์ขณะรับรถก่อนส่ง checklist");
+
         checklist.SubmittedAt = Now;
         checklist.SubmittedByUserId = user.UserId;
         checklist.SubmittedByUserName = user.UserName;

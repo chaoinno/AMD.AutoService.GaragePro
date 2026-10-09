@@ -4,6 +4,7 @@ using System.Text.Json;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -17,7 +18,7 @@ public sealed class PurchasingOptions
 }
 
 public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser user, TimeProvider clock,
-    PurchasingOptions options, IStaffRepository staffRepo, IBranchPinVerifier branchPin)
+    PurchasingOptions options, IStaffRepository staffRepo, IBranchPinVerifier branchPin, INotificationPublisher notifications)
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
     private bool Manager => user.Role == UserRole.Manager;
@@ -71,6 +72,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             var previousTax = (doc.HasVat, doc.VatRate);
             var outstanding = doc.Lines.ToDictionary(x => x.CatalogItemId, PurchasingRules.Outstanding);
             var oldStatus = doc.Status;
+            var linkedOldStatus = linked?.Status;
             await Fill(doc, input, ct);
             var taxChanged = previousTax != (doc.HasVat, doc.VatRate);
             var changed = !previous.Select(x => (x.CatalogItemId, x.Quantity, x.UnitCost)).OrderBy(x => x.CatalogItemId)
@@ -84,6 +86,11 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             if (doc.Status is "draft" or "pending" && doc.ApprovedLinesJson is not null && !PurchaseApproval.NeedsApproval(doc))
                 doc.Status = linked is null ? "approved" : "converted";
             doc.UpdatedAt = Now;
+            // แก้เอกสารที่รออนุมัติอยู่จนกลับเป็นร่าง = คำขออนุมัติเดิมไม่มีผลแล้ว ต้องส่งใหม่ (จะแจ้งใหม่ตอนนั้น)
+            if (oldStatus == "pending" && doc.Status != "pending")
+                await notifications.ResolveAsync(NotificationSubjects.PurchasePending(kind, doc.Id), ct);
+            if (linked is not null && linkedOldStatus == "pending" && linked.Status != "pending")
+                await notifications.ResolveAsync(NotificationSubjects.PurchasePending("PO", linked.Id), ct);
             if (!id.HasValue) repo.Add(doc);
             Audit(doc.Id, kind, id.HasValue ? "updated" : "created", $"บันทึก {doc.Number}");
             return doc;
@@ -189,8 +196,11 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
                             PurchaseApproval.InheritChanges(linked, doc, PurchaseApproval.Changes(doc));
                             if (!PurchaseApproval.NeedsApproval(linked))
                             {
+                                var linkedWasPending = linked.Status == "pending";
                                 linked.Status = "approved"; linked.ApprovedBy = user.UserId; linked.ApprovedAt = Now;
                                 Audit(linked.Id, "PO", "approve", $"รับผลอนุมัติรายการจาก {doc.Number}");
+                                if (linkedWasPending)
+                                    await notifications.ResolveAsync(NotificationSubjects.PurchasePending("PO", linked.Id), ct);
                             }
                             linked.UpdatedAt = Now; next = "converted";
                         }
@@ -245,10 +255,54 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             if (action == "cancel") doc.CancelReason = Clean(input.Reason);
             doc.Status = next!; doc.UpdatedAt = Now;
             Audit(doc.Id, kind, action, $"{doc.Number}: {action} {Clean(input.Reason)}");
+            await NotifyActionAsync(kind, doc, action, Clean(input.Reason), ct);
             return doc;
         }, true, ct);
         if (!result.Success) return Result<PurchaseDto>.Fail(result.Error!);
         return Result<PurchaseDto>.Ok(Map(result.Data!, await repo.ApprovalAsync(kind, id, ct)));
+    }
+
+    /// <summary>
+    /// [BIZ] ส่งขออนุมัติ → แจ้งกลุ่มบทบาทที่อนุมัติเอกสารนี้ได้ตามกติกาเดียวกับด่านอนุมัติด้านบน
+    /// (PR = ผู้จัดการเสมอ · PO ไม่เกินวงเงิน = ผู้จัดการ+ธุรการ) · อนุมัติ/ตีกลับ → แจ้งคนสร้างเอกสาร
+    /// · อนุมัติ/ตีกลับ/ยกเลิก → เรื่อง "รออนุมัติ" กลายเป็น "ดำเนินการแล้ว" ให้ทุกคนในกลุ่ม
+    /// เรียกภายใน AtomicAsync เท่านั้น — BranchStockTransaction ล้าง ChangeTracker ตอนเริ่ม
+    /// </summary>
+    private async Task NotifyActionAsync(string kind, PurchaseDocument doc, string action, string? reason, CancellationToken ct)
+    {
+        var subject = NotificationSubjects.PurchasePending(kind, doc.Id);
+        var docLabel = $"{kind} {doc.Number}";
+        switch (action)
+        {
+            case "submit":
+                // ส่งซ้ำหลังถูกตีกลับ — ปิดแถวเก่า (ถ้าค้าง) ก่อนเปิดเรื่องใหม่ ไม่ให้คนเดียวเห็นสองแถว
+                await notifications.ResolveAsync(subject, ct);
+                var total = PurchasingRules.Totals(doc).Total;
+                UserRole[] approvers = kind == "PO" && total <= options.ManagerApprovalThreshold
+                    ? [UserRole.Manager, UserRole.Office]
+                    : [UserRole.Manager];
+                await notifications.ToRolesAsync(new NotificationDraft(
+                    NotificationKinds.PurchasePending,
+                    $"{docLabel} รออนุมัติ",
+                    $"ส่งโดย {user.UserName} · ยอด {total:N2} บาท" + (doc.SupplierName is { } supplier ? $" · {supplier}" : ""),
+                    kind, doc.Id, SubjectKey: subject), approvers, ct);
+                break;
+            case "approve":
+                await notifications.ResolveAsync(subject, ct);
+                await notifications.ToUserAsync(new NotificationDraft(
+                    NotificationKinds.PurchaseApproved, $"{docLabel} อนุมัติแล้ว", $"อนุมัติโดย {user.UserName}",
+                    kind, doc.Id), doc.CreatedBy, ct);
+                break;
+            case "return":
+                await notifications.ResolveAsync(subject, ct);
+                await notifications.ToUserAsync(new NotificationDraft(
+                    NotificationKinds.PurchaseReturned, $"{docLabel} ถูกตีกลับให้แก้ไข",
+                    $"โดย {user.UserName} · เหตุผล: {reason}", kind, doc.Id), doc.CreatedBy, ct);
+                break;
+            case "cancel":
+                await notifications.ResolveAsync(subject, ct);
+                break;
+        }
     }
 
     public async Task<Result<PurchaseDto>> ConvertAsync(Guid id, ConvertPurchaseInput input, CancellationToken ct)

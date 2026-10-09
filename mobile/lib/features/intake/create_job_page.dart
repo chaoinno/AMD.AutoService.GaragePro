@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../app/routes.dart';
+import '../../core/mileage.dart';
 import '../../core/tokens.dart';
 import '../../models/customer.dart';
 import '../../models/job.dart';
@@ -33,6 +34,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
   CustomerVehicleSummary? _vehicle;
   int _jobTypeId = JobType.inGarage;
   final _detailCtrl = TextEditingController();
+  final _mileageCtrl = TextEditingController();
   bool _busy = false;
 
   @override
@@ -40,7 +42,21 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
     _debounce?.cancel();
     _searchCtrl.dispose();
     _detailCtrl.dispose();
+    _mileageCtrl.dispose();
     super.dispose();
+  }
+
+  /// [BIZ] รถในอู่ต้องมีเลขไมล์ตอนเปิดจ๊อบ (API ตอบ JOB_VALIDATION ถ้าไม่ส่ง) · รถนัดหมายบันทึกตอนรถเข้าอู่
+  bool get _needsMileage => _jobTypeId == JobType.inGarage;
+
+  String? get _createBlockedReason {
+    if (_vehicle == null) return 'เลือกรถของลูกค้าก่อน';
+    if (_needsMileage) {
+      if (_mileageCtrl.text.trim().isEmpty) return 'กรอกเลขไมล์ขณะรับรถ';
+      final error = kmInputError(_mileageCtrl.text);
+      if (error != null) return error;
+    }
+    return null;
   }
 
   @override
@@ -64,8 +80,8 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
           ? null
           : StickyActionBar(
               label: 'เปิดจ๊อบ',
-              disabledReason: _vehicle == null ? 'เลือกรถของลูกค้าก่อน' : null,
-              onPressed: _busy || _vehicle == null ? null : _createJob,
+              disabledReason: _createBlockedReason,
+              onPressed: _busy || _createBlockedReason != null ? null : _createJob,
             ),
     );
   }
@@ -271,6 +287,22 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
               ),
           ],
         ),
+        if (_needsMileage) ...[
+          const SizedBox(height: T.s16),
+          TextField(
+            controller: _mileageCtrl,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+            style: const TextStyle(fontSize: 16, height: 1.6),
+            decoration: InputDecoration(
+              labelText: 'เลขไมล์ขณะรับรถ (กม.) *',
+              hintText: 'เช่น 45210',
+              errorText: kmInputError(_mileageCtrl.text),
+              prefixIcon: const Icon(Icons.speed),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(T.rInput)),
+            ),
+          ),
+        ],
         const SizedBox(height: T.s16),
         TextField(
           controller: _detailCtrl,
@@ -400,6 +432,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
             senderName: customer.fullName,
             senderPhoneNumber: customer.phoneNumber1,
             detail: _detailCtrl.text.trim().isEmpty ? null : _detailCtrl.text.trim(),
+            mileageAtIntake: _needsMileage ? parseKm(_mileageCtrl.text) : null,
           );
 
       await ref.read(jobListProvider.notifier).load();

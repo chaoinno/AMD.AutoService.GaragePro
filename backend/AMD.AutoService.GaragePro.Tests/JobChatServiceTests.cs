@@ -1,6 +1,7 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Application.JobChat;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using FluentAssertions;
@@ -121,6 +122,38 @@ public sealed class JobChatServiceTests
     }
 
     [Fact]
+    public async Task SendAsync_notifies_each_mentioned_staff_with_a_plain_text_preview_linked_to_the_chat()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var service = CreateService(out _, out _, notifications: notifications,
+            staff: [new(1, "สมชาย", "ใจดี", 105, true), new(2, "สมหญิง", "ขยัน", 105, true)]);
+
+        var result = await service.SendAsync(TestJobId, new SendJobChatMessageRequest(
+            "@[1:สมชาย ใจดี] กับ @[2:สมหญิง ขยัน] ช่วยดูที", null, [1, 2, 1], null));
+
+        result.Success.Should().BeTrue();
+        notifications.ToStaff.Select(x => x.StaffId).Should().BeEquivalentTo(new long[] { 1, 2 });
+        var draft = notifications.ToStaff[0].Draft;
+        draft.Kind.Should().Be(NotificationKinds.ChatMention);
+        draft.BodyTh.Should().Be("@สมชาย ใจดี กับ @สมหญิง ขยัน ช่วยดูที");
+        draft.JobId.Should().Be(TestJobId);
+        draft.EntityId.Should().Be(result.Data!.Id);
+        draft.LinkHint.Should().Be("chat");
+        draft.TitleTh.Should().Contain("JB0000");
+    }
+
+    [Fact]
+    public async Task SendAsync_without_mentions_creates_no_notification()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var service = CreateService(out _, out _, notifications: notifications);
+
+        await service.SendAsync(TestJobId, new SendJobChatMessageRequest("สวัสดี", null, null, null));
+
+        notifications.ToStaff.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task SendAsync_rejects_reply_to_a_message_from_another_job()
     {
         var service = CreateService(out var chats, out _);
@@ -226,13 +259,13 @@ public sealed class JobChatServiceTests
 
     private static JobChatService CreateService(
         out FakeJobChatRepository chats, out FakeAttachmentRepository attachments,
-        int jobBranchId = 105, IReadOnlyList<Staff>? staff = null)
+        int jobBranchId = 105, IReadOnlyList<Staff>? staff = null, FakeNotificationPublisher? notifications = null)
     {
         chats = new FakeJobChatRepository();
         attachments = new FakeAttachmentRepository();
         return new JobChatService(
             chats, new FakeJobRepository(jobBranchId), attachments,
-            new FakeStaffRepository(staff ?? []), new StubCurrentUser(), TimeProvider.System);
+            new FakeStaffRepository(staff ?? []), new StubCurrentUser(), notifications ?? new FakeNotificationPublisher(), TimeProvider.System);
     }
 
     private sealed record Staff(long Id, string FirstName, string LastName, int BranchId, bool IsActive);

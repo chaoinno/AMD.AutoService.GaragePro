@@ -442,12 +442,15 @@ export type Job = {
   status: JobStatusToken
   statusLabel: string
   isOverdue: boolean
+  /** เลขไมล์ขณะรับรถ (กม.) — ไม่มีใน JSON เมื่อยังไม่บันทึก (API ตัด null ทิ้ง) ห้ามเช็ค === null */
+  mileageAtIntake?: number | null
 }
 
 export type TransitionJobInput = { toStatus: JobStatusToken | string; reason?: string }
 export type JobTransitionResult = { status: JobStatusToken; statusLabel: string }
 export type UpdateJobAppointmentInput = { appointmentAt: string }
 export type UpdateJobPromiseInput = { promiseAt: string }
+export type UpdateJobMileageInput = { mileageAtIntake: number }
 /// ปฏิทินวางจ๊อบตามวันไหน — appointment = วันที่นัดเข้า (AppointmentAt) · promise = วันที่นัดส่งมอบ (PromiseAt)
 export type JobCalendarDateField = 'appointment' | 'promise'
 /// ประวัติการเปลี่ยนวันนัด — from เป็น null เมื่อเป็นการตั้งค่าครั้งแรก
@@ -461,7 +464,8 @@ export type JobScheduleChange = {
   source: string
   occurredAt: string
 }
-export type ConvertToInShopInput = { actualArrivalAt: string }
+/** mileageAtIntake บังคับถ้าจ๊อบยังไม่มีเลขไมล์ (รถนัดหมายเปิดจ๊อบตอนรถยังไม่มา) */
+export type ConvertToInShopInput = { actualArrivalAt: string; mileageAtIntake?: number }
 export type JobCalendarResult = { items: Job[]; truncated: boolean; limit: number }
 
 export type JobStatusOption = { token: string; label: string }
@@ -573,6 +577,8 @@ export type CreateJobInput = {
   detail?: string
   appointmentAt?: string
   promiseAt?: string
+  /** บังคับเมื่อ jobTypeId = 9 (รถในอู่) — รถนัดหมายบันทึกตอนแปลงเป็นรถในอู่ */
+  mileageAtIntake?: number
 }
 
 export type CreatedJob = {
@@ -920,4 +926,42 @@ export type VehicleReferenceData = {
   driveSystems: LookupItem[]
   primaryColors: LookupItem[]
   colorMixes: LookupItem[]
+}
+
+// ---------- แจ้งเตือน (กระดิ่ง) ----------
+
+export type NotificationKind =
+  | 'chat.mention'
+  | 'quotation.approved'
+  | 'quotation.partial'
+  | 'quotation.all_rejected'
+  | 'purchase.pending'
+  | 'purchase.approved'
+  | 'purchase.returned'
+
+/// ฟิลด์ที่อาจเป็น null ประกาศเป็น optional — API ตัดฟิลด์ null ทิ้ง (WhenWritingNull) ห้ามเช็ค === null
+export type AppNotification = {
+  id: string
+  kind: NotificationKind | string
+  titleTh: string
+  bodyTh?: string
+  jobId?: string
+  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO'
+  entityType: string
+  entityId?: string
+  linkHint?: string
+  actorName: string
+  createdAt: string
+  readAt?: string
+  resolvedAt?: string
+  resolvedByName?: string
+}
+
+export type NotificationPage = {
+  items: AppNotification[]
+  hasMore: boolean
+}
+
+export type NotificationCount = {
+  unread: number
 }

@@ -53,3 +53,47 @@
 .jobs-calendar__day--drop-disabled { background: repeating-linear-gradient(135deg, #f4f6f9 0 6px, #eceff4 6px 12px); opacity: 0.75; }
 .jobs-calendar__legend-lock { gap: 4px; color: var(--muted); }
 .jobs-calendar__legend-lock svg { width: 12px; height: 12px; }
+
+/* เลขไมล์ — ตัวเลขเรียงหลักแบบเดียวกับตัวเงิน */
+.job-detail-mileage,
+.handover-service__compare {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.intake-checklist__mileage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+
+/* ส่งมอบรถ: เลขไมล์ + นัดครั้งถัดไป */
+.handover-service { display: grid; gap: 10px; margin: 16px 0; }
+.handover-service h4 { display: flex; align-items: center; gap: 6px; margin: 0; }
+.handover-service h4 svg,
+.handover-service__preview svg { width: 17px; height: 17px; }
+.handover-service__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: start; gap: 12px; }
+.handover-service__presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.handover-service__preview { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+.handover-service__summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.handover-service__summary dt { color: var(--muted); font-size: 14px; }
+.handover-service__summary dd { margin: 2px 0 0; font-weight: 600; }
+
+/* ใบส่งมอบรถ: กล่องนัดครั้งถัดไป — พิมพ์ขาวดำได้ (เส้นขอบ + ตัวหนา ไม่พึ่งสี) */
+.document-next-service {
+  display: grid;
+  gap: 2px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+}
+.document-next-service span { font-size: 13px; }
+.document-next-service strong { font-size: 17px; }
+.document-next-service small { font-size: 12px; }
+.handover-service__intake { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }

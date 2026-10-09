@@ -55,6 +55,7 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | PUT | `/api/v1/jobs/{id}/appointment` | **[เพิ่ม 2026-09-16]** เลื่อน/แก้วันเวลานัดหมาย — เฉพาะ `jobTypeId=10` และยังไม่ถึงสถานะจบ · เขียน `ActivityEvent` `job.appointment.changed` เสมอ |
 | GET | `/api/v1/jobs/calendar?from=&to=&q=&status=` | **[เพิ่ม 2026-09-16]** มุมมองปฏิทินนัดหมายของหน้า `/jobs`(W) — คืนทุกจ๊อบที่มี `appointmentAt` ในช่วง (ไม่ใช่ keyset cursor แบบ `/jobs/search`) ช่วงสูงสุด 92 วัน คืน `{ items, truncated, limit }` |
 | PUT | `/api/v1/jobs/{id}/convert-to-in-shop` | **[เพิ่ม 2026-09-17]** แปลงงานนัดหมาย (`jobTypeId=10`) เป็นรถในอู่ (`jobTypeId=9`) พร้อม `{ actualArrivalAt }` — ไม่ผูกกับวันนัดที่ตั้งไว้ (มาก่อน/หลังนัดก็แปลงได้) `AppointmentAt` เดิมไม่ถูกล้าง เขียน `ActivityEvent` `job.converted_to_in_shop` |
+| PUT | `/api/v1/jobs/{id}/mileage` | **[เพิ่ม 2026-10-08]** บันทึก/แก้เลขไมล์ขณะรับรถ `{ mileageAtIntake }` (0..9,999,999) — ล็อกเมื่อส่งมอบรถแล้ว/จ๊อบปิด (`JOB_MILEAGE_LOCKED` 409) · เขียน `job.mileage.changed` payload `{from,to}` เมื่อค่าเปลี่ยนจริง · `POST /jobs` รับ `mileageAtIntake` (บังคับเมื่อ `jobTypeId=9`) · `convert-to-in-shop` รับ `mileageAtIntake` (บังคับถ้าจ๊อบยังไม่มีค่า) · `POST .../intake-checklist/submit` ปฏิเสธ `INTAKE_MILEAGE_REQUIRED` ถ้ายังไม่มี |
 | POST | `/jobs/{id}/cancel` | **ต้องมี** reason + approvedBy · แจ้งอะไหล่ที่สั่งไปแล้ว |
 | GET | `/jobs/counts` | `/home`(M) 5 ตัวเลข · `/dashboard`(W) 9 KPI |
 | GET | `/jobs/board` | กระดานโรงซ่อม 7 คอลัมน์ |
@@ -202,6 +203,12 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/jobs/{id}/handover/photos` |
 | POST | `/jobs/{id}/handover/signature` → ปิดงาน |
 
+ของจริงที่ implement: `GET /api/v1/jobs/{id}/handover` · `PUT .../handover/items/{itemId}` · `PUT .../handover/submit`
+· **[เพิ่ม 2026-10-08]** `PUT /api/v1/jobs/{id}/handover/service-info` `{ mileageAtHandover, nextServiceMileage, nextServiceMonths }`
+— ไมล์ส่งมอบ ≥ ไมล์รับรถ · ไมล์นัด > ไมล์ส่งมอบ · เดือน 1–24 (`HANDOVER_VALIDATION`) · จ๊อบยังไม่มีไมล์รับรถ → `HANDOVER_INTAKE_MILEAGE_REQUIRED`
+· `submit` ปฏิเสธ `HANDOVER_SERVICE_INFO_REQUIRED` ถ้ายังไม่บันทึก · `HandoverDto` เพิ่ม `mileageAtIntake`/`mileageAtHandover`/
+`nextServiceMileage`/`nextServiceMonths`/`nextServiceDueOn` (yyyy-MM-dd ตามปฏิทินไทย = วันส่งมอบจริง + N เดือน — ก่อนเซ็นเป็นพรีวิว)
+
 ---
 
 ## 12 · Reports
@@ -217,15 +224,26 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/reports/exports` → GET `/reports/exports/{id}` (สถานะไฟล์) |
 | GET | `/reports/{key}/drilldown?...` | ทุกตัวเลขต้องเจาะได้ |
 
+ของจริงเพิ่ม 2026-10-08:
+| GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
+| GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
+| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+
 ---
 
 ## 13 · Notifications & Realtime
 
-| Method | Endpoint |
-|---|---|
-| GET | `/notifications?unreadOnly=` |
-| POST | `/notifications/{id}/read` · `/read-all` |
-| POST | `/devices` (FCM/APNs token) |
+| Method | Endpoint | สถานะ |
+|---|---|---|
+| GET | `/notifications?unreadOnly=&beforeAt=&beforeId=&take=` | **ทำแล้ว 2026-10-07** · keyset ใหม่→เก่า ย้อนหลัง 30 วัน · คืน `{items, hasMore}` |
+| GET | `/notifications/unread-count` | **ทำแล้ว** · คืน `{unread}` (ไม่นับเรื่องที่มีคนดำเนินการแล้ว) |
+| POST | `/notifications/{id}/read` · `/read-all` | **ทำแล้ว** · ทำซ้ำได้ · คืน `{unread}` ล่าสุด |
+| DELETE | `/notifications/{id}/read` | **ทำแล้ว** · กลับเป็นยังไม่อ่าน |
+| POST | `/devices` (FCM/APNs token) | ยังไม่ทำ (ยังไม่มี push) |
+
+ผู้รับเป็น **รายบุคคล (Staff.Id)** หรือ **กลุ่มบทบาท (bitmask ของ UserRole)** — ไม่มีทางดึงรายชื่อพนักงานตามบทบาท
+จาก legacy จึงคัดตอนอ่านด้วย role ใน JWT · สถานะอ่านแยกต่อคน (`svc_NotificationRead`) · ชนิด/ผู้รับ/การปิดเรื่อง
+ดูที่ `CLAUDE.md` หัวข้อ "แจ้งเตือนบนเว็บ" · client poll `unread-count` ทุก 30 วิ จนกว่าจะมี realtime
 
 **Realtime (Open Question #2)** — แนะนำ **SignalR** เพราะทีมใช้ .NET อยู่แล้ว
 ```
