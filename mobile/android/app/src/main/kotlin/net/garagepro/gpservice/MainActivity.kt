@@ -1,4 +1,4 @@
-package net.garagepro.garage_pro_service_ops
+package net.garagepro.gpservice
 
 import io.flutter.embedding.android.FlutterActivity
 

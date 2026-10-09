@@ -3,7 +3,7 @@
 ## Signing
 
 Use Flutter with Dart >= 3.10.7 (this release was built with Flutter 3.41.2).
-Keep the existing application ID: `net.garagepro.garage_pro_service_ops`.
+Application ID: `net.garagepro.gpservice` (ServicePro).
 
 The release build uses `android/key.properties`, not the debug signing key.
 The prepared local credentials have been moved from `android/gradle.properties`

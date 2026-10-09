@@ -16,7 +16,7 @@ fun signingValue(name: String): String? =
     System.getenv(name) ?: releaseKeys.getProperty(name) ?: providers.gradleProperty(name).orNull
 
 android {
-    namespace = "net.garagepro.garage_pro_service_ops"
+    namespace = "net.garagepro.gpservice"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "net.garagepro.garage_pro_service_ops"
+        applicationId = "net.garagepro.gpservice"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
