@@ -4129,18 +4129,6 @@ img {
 .user-dropdown small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Authentication */
-.auth-page {
-  position: relative;
-  display: grid;
-  min-height: 100vh;
-  grid-template-columns: minmax(0, 1fr) 460px;
-  align-items: center;
-  gap: 72px;
-  overflow: hidden;
-  padding: 48px clamp(48px, 8vw, 132px);
-  background: var(--navy-900);
-  color: white;
-}
 
 .auth-page__ambient { position: absolute; border-radius: var(--radius-pill); filter: blur(2px); pointer-events: none; }
 .auth-page__ambient--one { top: -260px; left: 18%; width: 620px; height: 620px; background: radial-gradient(circle, rgb(27 107 227 / 26%), transparent 68%); }
@@ -4153,17 +4141,13 @@ img {
 .auth-brand small { color: #94a3b8; font-size: 11px; letter-spacing: .08em; }
 .auth-brand--dark { color: var(--navy-900); }
 
-.login-intro { position: relative; z-index: 1; align-self: stretch; display: flex; justify-content: space-between; flex-direction: column; padding-block: 10px; }
-.login-intro__copy { max-width: 620px; margin-block: auto; padding: 70px 0; }
 .login-intro__eyebrow { display: inline-flex; align-items: center; gap: 7px; color: #9ec4fb; font-size: 13px; font-weight: 700; letter-spacing: .04em; }
 .login-intro__eyebrow svg { width: 17px; height: 17px; }
-.login-intro h1 { margin-top: 18px; font-size: clamp(37px, 4vw, 59px); line-height: 1.25; letter-spacing: -.03em; }
-.login-intro p { max-width: 510px; margin-top: 18px; color: #cbd5e1; font-size: 17px; }
 
-.login-card { position: relative; z-index: 1; width: 100%; color: var(--text); box-shadow: 0 34px 100px rgb(0 0 0 / 32%); }
-.login-card .ui-card__header { padding-bottom: 18px; }
-.login-card__icon { display: grid; width: 46px; height: 46px; margin-bottom: 8px; place-items: center; border-radius: var(--radius-input); background: var(--blue-50); color: var(--blue-600); }
-.login-card__icon svg { width: 22px; height: 22px; }
+/* modal เข้าสู่ระบบบนหน้าแรก (features/auth/LoginDialog.tsx) */
+.ui-dialog__overlay:has(.login-dialog) { background: rgb(5 10 21 / 72%); }
+.login-dialog__icon { display: grid; width: 46px; height: 46px; margin-bottom: 8px; place-items: center; border-radius: var(--radius-input); background: var(--blue-50); color: var(--blue-600); }
+.login-dialog__icon svg { width: 22px; height: 22px; }
 .auth-form { display: grid; gap: 18px; }
 .form-field { display: grid; gap: 7px; }
 .input-with-icon { position: relative; }
@@ -4172,7 +4156,7 @@ img {
 .input-with-action > .ui-input { padding-right: 48px; }
 .input-action { position: absolute; z-index: 2; top: 2px; right: 3px; }
 .auth-submit { width: 100%; margin-top: 2px; }
-.login-card__notice { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
+.login-dialog__notice { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; text-align: center; }
 
 /* Branch and shift selection */
 .branch-page { min-height: 100vh; background: var(--page); }
@@ -4635,8 +4619,6 @@ img {
   .money-summary { padding-inline: 10px; }
   .money-summary__total { margin-inline: -10px; padding-inline: 10px; }
 
-  .auth-page { grid-template-columns: minmax(0, 1fr) 420px; gap: 42px; padding: 38px 52px; }
-  .login-intro h1 { font-size: 39px; }
   .branch-page__content { width: calc(100% - 48px); }
   .branch-grid { gap: 12px; }
   .shift-grid { gap: 10px; }
