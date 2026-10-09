@@ -1,5 +1,15 @@
 # CLAUDE.md
 
+## Android release build — 2026-10-09
+
+- ผู้ใช้ยืนยัน Play Console ล่าสุดเป็น version code 1; เพิ่ม `mobile/pubspec.yaml` เป็น `1.0.1+2` สำหรับอัปเดต
+- Build AAB release สำเร็จด้วย Flutter 3.41.2 / Dart 3.11.0 และ `API_BASE_URL=https://gpservice-api.garage-pro.net`
+- ไฟล์ส่งมอบ: `artifacts/android-release/GPService-1.0.1+2.aab`; เก็บ manifest, resolved pubspec และ SHA-256 ในโฟลเดอร์เดียวกัน
+- ตรวจ manifest: package `net.garagepro.gpservice`, version name `1.0.1`, version code `2`, target SDK `36`
+- `jarsigner -verify` ผ่าน และ SHA-256 ของ upload certificate ตรงกับ AAB รุ่น `1.0.0+1` ที่มีอยู่เดิม
+- ใช้ upload key เดิม; ยังไม่ได้อัปโหลด Play Console หรือทดสอบ flow ในแอป release
+- Flutter SDK ของ release resolve dependency ต่างจาก SDK dev; เก็บ resolved lock ของ build ไว้กับ artifact และคืน `mobile/pubspec.lock` เดิม
+
 คำแนะนำสำหรับ Claude Code เมื่อทำงานกับ repository นี้
 
 ## ภาพรวม

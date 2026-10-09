@@ -24,11 +24,11 @@ From `mobile`, using the compatible Flutter SDK:
 
 Output: `build/app/outputs/bundle/release/app-release.aab`.
 The app name is GPService and the target SDK is Android 36.
-Version name/code come from `pubspec.yaml` (currently `1.0.0+1`).
+Version name/code come from `pubspec.yaml` (currently `1.0.1+2`).
 For every subsequent Play upload, use a higher build number, for example:
 
 ```powershell
-flutter build appbundle --release --build-name=1.0.1 --build-number=2 --dart-define=API_BASE_URL=https://gpservice-api.garage-pro.net
+flutter build appbundle --release --build-name=1.0.2 --build-number=3 --dart-define=API_BASE_URL=https://gpservice-api.garage-pro.net
 ```
 
 Upload the AAB to the internal testing track first and verify login, branch/shift
