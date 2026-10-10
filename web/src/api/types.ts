@@ -468,6 +468,26 @@ export type JobScheduleChange = {
 export type ConvertToInShopInput = { actualArrivalAt: string; mileageAtIntake?: number }
 export type JobCalendarResult = { items: Job[]; truncated: boolean; limit: number }
 
+/// บอร์ดสถานะรถในอู่ (ดูอย่างเดียว) — คอลัมน์ครบทุกสถานะที่ยังเปิดอยู่เสมอแม้ว่าง
+export type JobBoardWorker = { technicianName: string; kind: 'work' | 'pause'; startedAt: string }
+export type JobBoardCard = {
+  job: Job
+  /// เวลาที่เข้าสถานะปัจจุบัน
+  statusSince: string
+  activeWorkers: JobBoardWorker[]
+  awaitingCustomerQuotationCodes: string[]
+  /// API ตัดฟิลด์ null ทิ้ง — เช็คแบบ truthy
+  latestChatMessageId?: string
+}
+export type JobBoardColumn = { status: JobStatusToken; statusLabel: string; cards: JobBoardCard[] }
+export type JobBoard = {
+  columns: JobBoardColumn[]
+  total: number
+  truncated: boolean
+  limit: number
+  generatedAt: string
+}
+
 export type JobStatusOption = { token: string; label: string }
 
 export type JobChatMention = { staffId: number; staffName: string }

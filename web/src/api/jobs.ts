@@ -4,6 +4,7 @@ import type {
   CreateJobInput,
   CreatedJob,
   Job,
+  JobBoard,
   JobCalendarDateField,
   JobCalendarResult,
   JobScheduleChange,
@@ -113,4 +114,12 @@ export function getJobCalendar(args: {
   if (args.query?.trim()) params.set('q', args.query.trim())
   if (args.status) params.set('status', args.status)
   return apiRequest<JobCalendarResult>(`/api/v1/jobs/calendar?${params}`)
+}
+
+/// บอร์ดสถานะรถในอู่ — ทุกจ๊อบรถในอู่ที่ยังไม่ปิด (ไม่ใช่ keyset cursor) เพดาน 300 แถว
+export function getJobBoard(query?: string) {
+  const params = new URLSearchParams()
+  if (query?.trim()) params.set('q', query.trim())
+  const search = params.toString()
+  return apiRequest<JobBoard>(`/api/v1/jobs/board${search ? `?${search}` : ''}`)
 }

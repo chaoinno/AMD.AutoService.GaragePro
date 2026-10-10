@@ -941,10 +941,10 @@ img {
 }
 
 .job-status-waitinspect { background: #fdf3e2; color: #8a5a00; }
-.job-status-waitquote { background: #e6effc; color: #1552b3; }
+.job-status-waitquote { background: #e8edf4; color: #1b3557; }
 .job-status-waitapprove { background: #fdf1e6; color: #c1691f; }
 .job-status-approved { background: #e3f5f1; color: #0b6d5e; }
-.job-status-inprogress { background: #fdf1e6; color: #c1691f; }
+.job-status-inprogress { background: #e6effc; color: #1552b3; }
 .job-status-waitparts { background: #fbe9e9; color: #a31d1d; }
 .job-status-qc { background: #f3e8fd; color: #6d28d9; }
 .job-status-ready { background: #e8f7ec; color: #1a7f37; }

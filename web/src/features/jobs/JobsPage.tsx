@@ -37,7 +37,8 @@ import { formatDateTime, localInputToIso, nowLocalInputValue } from '../../lib/f
 import { isStageKey, JobCardModal } from './JobCardModal'
 import { JobsCalendar } from './JobsCalendar'
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs'
-import { CalendarDays, List as ListIcon } from 'lucide-react'
+import { CalendarDays, Columns3, List as ListIcon } from 'lucide-react'
+import { JOB_BOARD_QUERY_KEY, JobsBoard } from './JobsBoard'
 import { mileageInputError } from './mileage'
 import './jobs.css'
 
@@ -51,6 +52,12 @@ const JOB_TYPE_OPTIONS = [
 const JOB_TYPE_FILTER_OPTIONS = [...JOB_TYPE_OPTIONS, { value: 11, label: 'ปิดจ๊อบ' }] as const
 
 const PAGE_SIZE = 50
+
+type JobsView = 'list' | 'calendar' | 'board'
+
+function parseJobsView(value: string | null): JobsView {
+  return value === 'calendar' || value === 'board' ? value : 'list'
+}
 
 function useDebounced<T>(value: T, delay = 350) {
   const [debounced, setDebounced] = useState(value)
@@ -66,13 +73,22 @@ export function JobsPage() {
   const [searchText, setSearchText] = useState('')
   const [typeFilter, setTypeFilter] = useState(9)
   const [statusFilter, setStatusFilter] = useState<JobStatusToken | ''>('')
-  const [view, setView] = useState<'list' | 'calendar'>('list')
   const [calendarDateField, setCalendarDateField] = useState<JobCalendarDateField>('appointment')
   const [createOpen, setCreateOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   // ลิงก์จากแจ้งเตือน: /jobs?job=<id>&stage=quote&chat=1 — จ๊อบที่คลิกเองจากตารางมาก่อนลิงก์เสมอ
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  // มุมมองอยู่ใน URL (?view=board) — เปิดบอร์ดค้างบนจอมอนิเตอร์หรือบุ๊กมาร์กไว้ได้ รีโหลดแล้วไม่เด้งกลับเป็นรายการ
+  const view = parseJobsView(searchParams.get('view'))
+  const setView = (next: JobsView) => {
+    const params = new URLSearchParams(window.location.search)
+    if (next === 'list') params.delete('view')
+    else params.set('view', next)
+    const search = params.toString()
+    navigate({ search: search ? `?${search}` : '' }, { replace: true })
+  }
   const linkedJobId = searchParams.get('job')
   const linkedStage = searchParams.get('stage')
   const linkedChat = searchParams.get('chat') === '1'
@@ -95,6 +111,8 @@ export function JobsPage() {
   const closeJob = () => {
     clearJobLink()
     setSelectedJobId(null)
+    // สถานะ/ช่าง/ใบเสนอราคาอาจเปลี่ยนในการ์ดจ๊อบ — ให้บอร์ดสะท้อนทันทีไม่ต้องรอรอบรีเฟรชถัดไป
+    if (view === 'board') void queryClient.invalidateQueries({ queryKey: [JOB_BOARD_QUERY_KEY] })
   }
   const [autoLoadEnabled, setAutoLoadEnabled] = useState(false)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
@@ -304,9 +322,10 @@ export function JobsPage() {
           <p>ดูรายการรถที่เข้ารับบริการและเปิดจ๊อบใหม่</p>
         </div>
         <div className="jobs-view-toggle">
-          <Tabs value={view} onValueChange={(value) => setView(value as 'list' | 'calendar')}>
+          <Tabs value={view} onValueChange={(value) => setView(parseJobsView(value))}>
             <TabsList>
               <TabsTrigger value="list"><ListIcon aria-hidden="true" /> รายการ</TabsTrigger>
+              <TabsTrigger value="board"><Columns3 aria-hidden="true" /> บอร์ดรถในอู่</TabsTrigger>
               <TabsTrigger value="calendar"><CalendarDays aria-hidden="true" /> ปฏิทินนัดหมาย</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -364,6 +383,8 @@ export function JobsPage() {
               ))}
             </Select>
           </Label>
+        ) : view === 'board' ? (
+          <p className="jobs-filter-note">แสดงเฉพาะรถในอู่ที่ยังไม่ปิดงาน · คลิกการ์ดเพื่อเปิดการ์ดจ๊อบ</p>
         ) : (
           <Label className="field jobs-filter">
             <span className="sr-only">ปฏิทินแสดงตามวันที่</span>
@@ -377,6 +398,7 @@ export function JobsPage() {
           </Label>
         )}
 
+        {view === 'board' ? null : (
         <Label className="field jobs-filter">
           <span className="sr-only">กรองตามสถานะ</span>
           <Select
@@ -392,9 +414,12 @@ export function JobsPage() {
             ))}
           </Select>
         </Label>
+        )}
       </form>
 
-      {view === 'list' ? content : (
+      {view === 'list' ? content : view === 'board' ? (
+        <JobsBoard query={searchText} onSelectJob={openJob} />
+      ) : (
         <JobsCalendar
           query={searchText}
           status={statusFilter || undefined}

@@ -258,7 +258,7 @@ public sealed class JobService(
     /// คืนสถานะที่ยังเดินต่อได้ **ครบทุกตัวเสมอ รวมที่เป็นศูนย์** เพื่อให้หน้าจอมีรายการคงที่
     /// ไม่กระโดดสลับตำแหน่งเวลาจำนวนเปลี่ยน · เรียงตามลำดับ lifecycle ไม่ใช่ตามจำนวน
     /// </summary>
-    private static readonly JobStatus[] OpenStatusOrder =
+    internal static readonly JobStatus[] OpenStatusOrder =
     [
         JobStatus.WaitInspect, JobStatus.WaitQuote, JobStatus.WaitApprove, JobStatus.Approved,
         JobStatus.InProgress, JobStatus.WaitParts, JobStatus.Qc, JobStatus.Ready
