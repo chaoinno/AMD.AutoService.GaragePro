@@ -19,6 +19,7 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 public sealed class JobsController(
     ILegacyReader legacy,
     IJobService jobService,
+    JobBoardService jobBoard,
     ICurrentUser user) : ControllerBase
 {
     /// <summary>
@@ -86,6 +87,17 @@ public sealed class JobsController(
     public async Task<IActionResult> Counts([FromQuery] int? jobTypeId, CancellationToken ct)
     {
         var result = await jobService.CountsAsync(jobTypeId, ct);
+        return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
+    }
+
+    /// <summary>
+    /// บอร์ดสถานะรถในอู่ (ดูอย่างเดียว) — จ๊อบรถในอู่ที่ยังไม่ปิดทุกงาน จัดเป็นคอลัมน์ตามสถานะ
+    /// ไม่ใช่ keyset cursor (คนละ contract กับ /search) · เพดาน 300 แถว เกินคืน truncated = true
+    /// </summary>
+    [HttpGet("board")]
+    public async Task<IActionResult> Board([FromQuery] string? q, CancellationToken ct)
+    {
+        var result = await jobBoard.GetAsync(q, ct);
         return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
     }
 

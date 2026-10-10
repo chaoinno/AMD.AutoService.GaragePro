@@ -74,6 +74,8 @@ public static class DependencyInjection
             ?? new AMD.AutoService.GaragePro.Application.Purchasing.PurchasingOptions());
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
+        services.AddScoped<IJobBoardRepository, JobBoardRepository>();
+        services.AddScoped<JobBoardService>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();
         services.AddScoped<IIntakeChecklistService, IntakeChecklistService>();
         services.AddScoped<IQcChecklistRepository, QcChecklistRepository>();

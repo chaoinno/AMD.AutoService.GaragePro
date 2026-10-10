@@ -61,6 +61,22 @@ export function formatRelativeTime(value: string | null | undefined, now: Date =
   return dateTimeFormatter.format(date)
 }
 
+/// อยู่ในสถานะปัจจุบันมานานเท่าไร (บอร์ดรถในอู่) — ไม่มีคำว่า "ที่แล้ว" และไม่ตัดเป็นวันที่เมื่อนาน
+/// เพราะการ์ดที่ค้างเป็นสัปดาห์คือสิ่งที่บอร์ดต้องการให้เห็นที่สุด
+export function formatStatusAge(value: string | null | undefined, now: Date = new Date()): string {
+  if (!value) return 'ไม่ทราบ'
+  const date = parseApiInstant(value)
+  if (Number.isNaN(date.getTime())) return 'ไม่ทราบ'
+  const minutes = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 60_000))
+  if (minutes < 1) return 'ไม่ถึง 1 นาที'
+  if (minutes < 60) return `${minutes} นาที`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} ชม.`
+  const days = Math.floor(hours / 24)
+  const restHours = hours % 24
+  return restHours === 0 ? `${days} วัน` : `${days} วัน ${restHours} ชม.`
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return 'ไม่ระบุ'
   const date = parseApiInstant(value)

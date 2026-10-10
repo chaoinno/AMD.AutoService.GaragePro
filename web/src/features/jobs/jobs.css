@@ -97,3 +97,43 @@
 .document-next-service strong { font-size: 17px; }
 .document-next-service small { font-size: 12px; }
 .handover-service__intake { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+
+/* ---- บอร์ดสถานะรถในอู่ (ดูอย่างเดียว) ---- */
+.jobs-board { display: grid; gap: 12px; margin-top: 4px; min-width: 0; }
+.jobs-board__toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.jobs-board__toolbar p { font-size: 14px; color: var(--text); }
+.jobs-board__updated { margin-left: 6px; font-size: 13px; color: var(--muted); }
+.jobs-board__toolbar .ui-button svg { width: 15px; height: 15px; }
+.jobs-board__stale { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #fdf3e2; border: 1px solid #e0930c; color: #8a5a00; font-size: 13px; }
+.jobs-board__stale svg { width: 16px; height: 16px; flex: 0 0 auto; }
+/* [UI] เลื่อนแนวนอนภายในกล่องบอร์ด ไม่ทำให้ทั้งหน้าล้น · คอลัมน์สูงพอดีจอแล้วเลื่อนการ์ดในคอลัมน์เอง */
+.jobs-board__columns { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(160px, 1fr); gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.jobs-board__column { display: flex; flex-direction: column; min-width: 0; max-height: calc(100vh - 290px); min-height: 240px; border-radius: var(--radius-card); background: #f1f4f8; border: 1px solid var(--border); }
+.jobs-board__column-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+.jobs-board__column-head h3 { font-size: inherit; min-width: 0; }
+.jobs-board__column-head .job-status-chip { white-space: nowrap; }
+.jobs-board__count { min-width: 26px; padding: 2px 8px; border-radius: var(--radius-pill); background: var(--card); border: 1px solid var(--border); font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; font-size: 13px; font-weight: 600; text-align: center; color: var(--navy-900); }
+.jobs-board__column-empty { padding: 14px 10px; font-size: 13px; color: var(--muted); text-align: center; }
+.jobs-board__cards { list-style: none; display: grid; gap: 6px; padding: 6px; overflow-y: auto; align-content: start; }
+
+.jobs-board-card { width: 100%; display: grid; gap: 4px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); text-align: left; font: inherit; color: var(--text); cursor: pointer; box-shadow: 0 1px 2px rgb(15 36 64 / 6%); }
+.jobs-board-card:hover { border-color: var(--blue-600); }
+.jobs-board-card:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.jobs-board-card--overdue { border-left: 4px solid var(--red-600); }
+.jobs-board-card__head { display: flex; gap: 8px; align-items: center; min-width: 0; }
+.jobs-board-card__car { flex: 0 0 auto; display: block; width: 44px; height: 34px; border: 1px solid #dbe3ee; border-radius: 6px; object-fit: cover; background: #eef3f8; }
+.jobs-board-card__car--empty { display: grid; place-items: center; color: #91a0b3; }
+.jobs-board-card__car--empty svg { width: 18px; height: 18px; }
+.jobs-board-card__vehicle { display: grid; min-width: 0; line-height: 1.3; }
+.jobs-board-card__vehicle strong { font-size: 14px; color: var(--navy-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-board-card__vehicle span { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-board-card__job-no { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+.jobs-board-card__customer { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jobs-board-card__facts { list-style: none; display: grid; gap: 3px; }
+.jobs-board-card__facts li { display: flex; align-items: flex-start; gap: 5px; font-size: 12px; line-height: 1.35; color: var(--muted); overflow-wrap: anywhere; }
+.jobs-board-card__facts svg { width: 13px; height: 13px; flex: 0 0 auto; margin-top: 2px; }
+.jobs-board-card__facts .jobs-board-card__fact--danger { color: var(--red-600); font-weight: 700; }
+.jobs-board-card__facts .jobs-board-card__fact--working { color: #0b6d5e; font-weight: 600; }
+.jobs-board-card__facts .jobs-board-card__fact--paused { color: #8a5a00; font-weight: 600; }
+.jobs-board-card__facts .jobs-board-card__fact--waiting { color: #c1691f; font-weight: 600; }
+.jobs-board-card__facts .jobs-board-card__fact--chat { color: var(--blue-600); font-weight: 600; }
