@@ -1706,7 +1706,10 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     `node --test tests/*.test.mjs` (Node 24) ผ่าน 18 (เพิ่ม `statusAge.test.mjs` 2) · เบราว์เซอร์ (เซสชัน + API จำลองแทน `fetch`):
     1440px 7 คอลัมน์ไม่ล้น · 1024px เลื่อนในกล่อง · คลิกการ์ดเปิดการ์ดจ๊อบ/ปิดแล้วบอร์ดโหลดใหม่ · รีโหลดยังอยู่บอร์ด · ค้นหาส่ง `q` ·
     ผลค้นว่างแสดงข้อความถูก · คอลัมน์รออะไหล่โผล่เมื่อมีงาน · รีเฟรชล้มแสดงแถบเตือนโดยไม่ล้างบอร์ด · สีสามสถานะต่างกันจริง
-  · **ยังไม่ได้ทดสอบกับ API + ฐานจริง** (query `GROUP BY`/`Include` บน SQL Server จริง, ข้อมูลจริงของสาขา) · มือถือไม่มีบอร์ด ·
+  · **Deploy production แล้ว 2026-10-10** (PR #5 · commit `689b829` — ติด `42ba730` แก้เวอร์ชันแอป Android/เอกสารไปด้วย ไม่กระทบเว็บ/API):
+    `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` ผ่าน · ไม่มี migration ค้าง · container API/web healthy ·
+    public health ผ่าน · `GET /api/v1/jobs/board` ไม่ล็อกอินตอบ 401 (route ใหม่ขึ้นจริง ไม่ใช่ 404) · bundle ของ `service.garage-pro.net` มีโค้ดบอร์ด
+  · **ยังไม่ได้เปิดบอร์ดด้วยบัญชีจริงบน production / ยังไม่ได้ทดสอบกับฐานจริง** (query `GROUP BY`/`Include` บน SQL Server จริง, ข้อมูลจริงของสาขา) · มือถือไม่มีบอร์ด ·
     ป้ายแชทใหม่ขึ้นกับทุกจ๊อบที่มีแชทแต่เครื่องนี้ไม่เคยเปิดอ่าน (พฤติกรรมเดียวกับ widget) · [RISK] endpoint สืบทอด `[RequireShiftSession]` เท่านั้น
 
 ### ยังไม่ได้ทำ
