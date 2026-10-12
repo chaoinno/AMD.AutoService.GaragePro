@@ -62,6 +62,13 @@ export type LoginResult = {
   requiresShiftSelection: boolean
 }
 
+export type SwitchableBranch = {
+  branchId: number
+  name: string
+  address?: string | null
+  isCurrent: boolean
+}
+
 export type MeResult = {
   user: AuthUser
   sessionId: string | null

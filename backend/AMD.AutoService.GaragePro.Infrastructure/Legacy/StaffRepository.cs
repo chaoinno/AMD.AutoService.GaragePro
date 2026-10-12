@@ -14,12 +14,12 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
 {
     private readonly LegacyShardOptions _options = options.Value;
 
-    public async Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator,
+    public async Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope,
         StaffSearchQuery query, CancellationToken ct = default)
     {
         var parameters = new DynamicParameters(new
         {
-            scope.BranchId, IsAdministrator = isAdministrator, query.DepartmentId, query.SectorId,
+            scope.BranchId, query.DepartmentId, query.SectorId,
             query.PositionId, query.ProvinceId, query.AmphureId, query.DistrictId, query.IncludeInactive,
             Keyword = string.IsNullOrWhiteSpace(query.Keyword) ? null : $"%{EscapeLike(query.Keyword.Trim())}%",
             StartRow = (query.Page - 1) * query.PageSize + 1, EndRow = query.Page * query.PageSize
@@ -32,8 +32,9 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
                 FROM Staff s WITH (READUNCOMMITTED)
                 WHERE s.BranchId=@BranchId
                   AND (@IncludeInactive=1 OR ISNULL(s.Status,1)<>0)
-                  AND (@IsAdministrator=1 OR NOT EXISTS (SELECT 1 FROM [User] hiddenUser WITH (READUNCOMMITTED)
-                       WHERE hiddenUser.StaffId=s.Id AND ISNULL(hiddenUser.IsAdministrator,0)=1))
+                  -- [BIZ] บัญชีผู้ดูแลระบบจัดการที่ระบบอื่น — ไม่แสดงในรายการนี้แม้ผู้เรียกเป็น admin (คำขอผู้ใช้ 2026-10-12)
+                  AND NOT EXISTS (SELECT 1 FROM [User] hiddenUser WITH (READUNCOMMITTED)
+                       WHERE hiddenUser.StaffId=s.Id AND ISNULL(hiddenUser.IsAdministrator,0)=1)
                   AND (@Keyword IS NULL OR s.Code LIKE @Keyword ESCAPE '\' OR s.IdCard LIKE @Keyword ESCAPE '\'
                        OR s.FirstName LIKE @Keyword ESCAPE '\' OR s.LastName LIKE @Keyword ESCAPE '\'
                        OR s.PhoneNumber1 LIKE @Keyword ESCAPE '\' OR s.PhoneNumber2 LIKE @Keyword ESCAPE '\')

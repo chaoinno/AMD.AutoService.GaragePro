@@ -4,7 +4,7 @@ namespace AMD.AutoService.GaragePro.Application.Abstractions;
 
 public interface IStaffRepository
 {
-    Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator,
+    Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope,
         StaffSearchQuery query, CancellationToken ct = default);
     Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         CancellationToken ct = default);

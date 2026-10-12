@@ -48,6 +48,18 @@ public sealed class AuthController(IAuthService service) : ControllerBase
     public async Task<IActionResult> Me(CancellationToken ct) =>
         Render(await service.GetMeAsync(ct));
 
+    /// <summary>สาขาที่ผู้ดูแลระบบสลับไปได้ — บัญชีผู้ดูแลระบบชื่อเดียวกันในสาขาอื่น</summary>
+    [HttpGet("switchable-branches")]
+    [Authorize]
+    public async Task<IActionResult> GetSwitchableBranches(CancellationToken ct) =>
+        Render(await service.GetSwitchableBranchesAsync(ct));
+
+    /// <summary>สลับสาขา — คืน token ใหม่ในนามบัญชีของสาขาที่เลือก (รูปเดียวกับ login)</summary>
+    [HttpPost("switch-branch")]
+    [Authorize]
+    public async Task<IActionResult> SwitchBranch([FromBody] SwitchBranchRequest request, CancellationToken ct) =>
+        Render(await service.SwitchBranchAsync(request, ct));
+
     private IActionResult Render<T>(Result<T> result)
     {
         if (result.Success) return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
@@ -55,7 +67,7 @@ public sealed class AuthController(IAuthService service) : ControllerBase
         var status = result.Error!.Code switch
         {
             "AUTH_INVALID_CREDENTIALS" => StatusCodes.Status401Unauthorized,
-            "AUTH_NOT_STAFF" or "AUTH_BRANCH_FORBIDDEN" or "SHIFT_CLOSE_FORBIDDEN"
+            "AUTH_NOT_STAFF" or "AUTH_BRANCH_FORBIDDEN" or "AUTH_SWITCH_FORBIDDEN" or "SHIFT_CLOSE_FORBIDDEN"
                 => StatusCodes.Status403Forbidden,
             "AUTH_USER_NOT_FOUND" or "SHIFT_NOT_FOUND" or "SHIFT_SESSION_NOT_FOUND"
                 => StatusCodes.Status404NotFound,

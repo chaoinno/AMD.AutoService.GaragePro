@@ -1712,6 +1712,25 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **ยังไม่ได้เปิดบอร์ดด้วยบัญชีจริงบน production / ยังไม่ได้ทดสอบกับฐานจริง** (query `GROUP BY`/`Include` บน SQL Server จริง, ข้อมูลจริงของสาขา) · มือถือไม่มีบอร์ด ·
     ป้ายแชทใหม่ขึ้นกับทุกจ๊อบที่มีแชทแต่เครื่องนี้ไม่เคยเปิดอ่าน (พฤติกรรมเดียวกับ widget) · [RISK] endpoint สืบทอด `[RequireShiftSession]` เท่านั้น
 
+- ✅ **[เพิ่ม 2026-10-12] ซ่อนผู้ดูแลระบบในหน้าพนักงาน + ผู้ดูแลระบบสลับสาขาจากชื่อสาขาบน topbar** (คำขอผู้ใช้)
+  · **หน้าพนักงาน**: `StaffRepository.SearchAsync` ตัดพนักงานที่ `User.IsAdministrator=1` ออกเสมอ (เดิมซ่อนเฉพาะตอนผู้เรียกไม่ใช่ admin)
+    — ลบพารามิเตอร์ `isAdministrator` ออกจาก `IStaffRepository.SearchAsync` · ผลพ่วง: @mention ในแชท/ช่องผู้เบิกค้นจาก endpoint เดียวกัน จึงไม่เจอผู้ดูแลระบบด้วย ·
+    detail/update/status/รูปตาม id ยังเป็นกฎเดิม (admin เข้าได้) — ดู [docs/staff-api.md](docs/staff-api.md)
+  · **สลับสาขา**: `GET /auth/switchable-branches` · `POST /auth/switch-branch` (`AuthService` · `ILegacyUserReader.GetSwitchableAccountsAsync`
+    เป็น default member) · เว็บ `components/BranchSwitcher.tsx` แทนป้ายสาขาใน `AppShell` — admin เห็นเป็นปุ่ม เปิดหน้าต่างรายชื่อสาขา (ค้นหาได้เมื่อ > 6 สาขา) ·
+    สลับสำเร็จ = `queryClient.clear()` + `saveSession` + อยู่หน้าเดิมโดยตัด query string (`?job=`/`?doc=` เป็น id ของสาขาเดิม) + toast บอกบัญชีที่ใช้
+  · **กติกา (SQL `LegacyUserReader.SwitchableAccountsSql`)**: `Staff.FirstName` (trim) ตรงกับพนักงานของผู้เรียก · User/Staff `Status=1` · `IsStaff=1` ·
+    สาขา active กลุ่ม Service (7) · สาขาละหนึ่งบัญชี (User.Id น้อยสุด) · **[SECURITY] บัญชีปลายทางต้องเป็น `IsAdministrator=1` ด้วย — เพิ่มจากสเปกผู้ใช้**
+    ไม่งั้นผู้ดูแลจะสวมบัญชีพนักงานทั่วไปที่ชื่อซ้ำได้โดยไม่ใช้รหัสผ่าน และเข้าไปแล้วสลับกลับไม่ได้ (ไม่ใช่ admin) · ถ้าข้อมูลจริงบัญชีของ admin ในสาขาอื่นไม่ได้ติดธง admin
+    รายการจะว่าง ต้องตัดสินใจใหม่ · server หาบัญชีปลายทางเองจากชื่อผู้เรียก client ส่งแค่ `branchId` · สถานะ admin อ่านจาก Garage DB ใหม่ทุกครั้ง ·
+    token ใหม่ออกในนามบัญชีปลายทาง จึงผ่าน `SessionRevocationMiddleware` (สาขา/role ของบัญชีนั้นตรง claim) · `ActivityEvent` `auth.branch_switched`
+    (EntityType `User`, payload from/to userId+branchId) บันทึกในนามบัญชีเดิม · token เดิมไม่ถูกเพิกถอน (หมดอายุเองตามปกติ)
+  · ทดสอบแล้ว: `dotnet test` ผ่าน **439 / skipped 5** (เพิ่ม 6 ใน `AuthServiceTests`) · Web `tsc -b`/`vite build` ผ่าน · เบราว์เซอร์ (เซสชัน admin + API จำลองแทน `fetch`)
+    ที่ 1440px: ปุ่มเปิดหน้าต่าง, สาขาปัจจุบันมีป้าย+กดไม่ได้, กดสลับแล้วแสดง "กำลังสลับ…" → topbar/เซสชันเป็นสาขาและบัญชีใหม่ ยิง `switch-branch` ด้วย `{branchId}` เท่านั้น,
+    ผู้ใช้ไม่ใช่ admin เห็นป้ายเดิม (ไม่ใช่ปุ่ม), 403 แสดง StateBlock พร้อม traceId
+  · **ยังไม่ได้ทดสอบกับ Garage DB จริง** (เครื่องนี้ต่อ VPN ไม่ได้) — SQL จับคู่ชื่อยังไม่เคยรันจริง และยังไม่รู้ว่าบัญชี admin ในสาขาอื่นติดธง admin หรือชื่อซ้ำกับคนอื่นแค่ไหน ·
+    มือถือไม่มีฟีเจอร์นี้ · [RISK] จับคู่ด้วยชื่อจริงอย่างเดียว — admin สองคนชื่อเดียวกันจะสลับเข้าบัญชีของกันและกันได้
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง

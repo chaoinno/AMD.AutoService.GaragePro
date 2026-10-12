@@ -25,7 +25,7 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
     public async Task<Result<PagedResult<StaffSummaryDto>>> SearchAsync(StaffSearchQuery query, CancellationToken ct = default)
     {
         var normalized = query with { Page = Math.Max(1, query.Page), PageSize = Math.Clamp(query.PageSize, 1, 100) };
-        return Result<PagedResult<StaffSummaryDto>>.Ok(await repository.SearchAsync(Scope, currentUser.IsAdministrator, normalized, ct));
+        return Result<PagedResult<StaffSummaryDto>>.Ok(await repository.SearchAsync(Scope, normalized, ct));
     }
 
     public async Task<Result<StaffDetailDto>> GetAsync(long id, CancellationToken ct = default)

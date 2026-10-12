@@ -18,6 +18,12 @@ public interface IAuthService
     Task<Result<bool>> CloseShiftAsync(Guid sessionId, CancellationToken ct = default);
     Task<Result<MeDto>> GetMeAsync(CancellationToken ct = default);
 
+    /// <summary>สาขาที่ผู้ดูแลระบบสลับไปได้ (บัญชีชื่อเดียวกันในสาขาอื่น) — ไม่ใช่ admin ได้ AUTH_SWITCH_FORBIDDEN</summary>
+    Task<Result<IReadOnlyList<SwitchableBranchDto>>> GetSwitchableBranchesAsync(CancellationToken ct = default);
+
+    /// <summary>สลับไปบัญชีของสาขาที่เลือก — คืน token ใหม่ในนามบัญชีนั้น รูปเดียวกับ login</summary>
+    Task<Result<LoginResultDto>> SwitchBranchAsync(SwitchBranchRequest request, CancellationToken ct = default);
+
     /// <summary>
     /// null = token ของผู้เรียกยังใช้ได้ · มีค่า = ข้อความไทยที่บอกว่าทำไมต้องออกจากระบบ
     /// เรียกจาก middleware ทุกคำขอ (มี cache) — token มือถือไม่หมดอายุ จึงต้องมีที่ตัดสิทธิ์
@@ -255,6 +261,109 @@ public sealed class AuthService(
             ShiftId: session?.ShiftId,
             ShiftName: session?.ShiftName,
             OpenedAt: session?.OpenedAt));
+    }
+
+    public async Task<Result<IReadOnlyList<SwitchableBranchDto>>> GetSwitchableBranchesAsync(
+        CancellationToken ct = default)
+    {
+        var accounts = await LoadSwitchableAccountsAsync(ct);
+        if (!accounts.Success)
+            return Result<IReadOnlyList<SwitchableBranchDto>>.Fail(accounts.Error!.Code, accounts.Error.MessageTh);
+
+        return Result<IReadOnlyList<SwitchableBranchDto>>.Ok(accounts.Data!
+            .Select(a => new SwitchableBranchDto(a.BranchId, a.Name,
+                string.IsNullOrWhiteSpace(a.Address) ? null : a.Address,
+                IsCurrent: a.BranchId == currentUser.BranchId))
+            .ToList());
+    }
+
+    public async Task<Result<LoginResultDto>> SwitchBranchAsync(
+        SwitchBranchRequest request, CancellationToken ct = default)
+    {
+        var accounts = await LoadSwitchableAccountsAsync(ct);
+        if (!accounts.Success)
+            return Result<LoginResultDto>.Fail(accounts.Error!.Code, accounts.Error.MessageTh);
+
+        // [SECURITY] รับแค่ BranchId จาก client — บัญชีปลายทางหาใหม่จากชื่อของผู้เรียกเสมอ
+        // ส่ง UserId มาเองไม่ได้ ไม่งั้นผู้ดูแลระบบสวมบัญชีใครก็ได้
+        var target = accounts.Data!.FirstOrDefault(a => a.BranchId == request.BranchId);
+        if (target is null)
+            return Result<LoginResultDto>.Fail("AUTH_BRANCH_FORBIDDEN",
+                "คุณไม่มีบัญชีผู้ดูแลระบบที่เปิดใช้งานในสาขานี้");
+
+        var shardKey = currentUser.ShardKey;
+        var targetUser = await legacyUsers.FindByIdAsync(shardKey, target.UserId, ct);
+        if (targetUser is null || !targetUser.IsStaff || targetUser.StaffId is null
+            || targetUser.BranchId != target.BranchId)
+            return Result<LoginResultDto>.Fail("AUTH_BRANCH_FORBIDDEN",
+                "บัญชีของสาขานี้ใช้งานไม่ได้แล้ว — ลองเปิดรายการสาขาใหม่อีกครั้ง");
+
+        var role = await ResolveRoleAsync(shardKey, targetUser, ct);
+        var authUser = ToAuthUser(targetUser, role, shardKey);
+
+        // ไม่ใช้ BuildBranchOptionsAsync — ของ admin วนนับงานค้างทุกสาขาใน shard ทั้งที่ client ใช้แค่สาขาปลายทาง
+        var counts = await repository.GetBranchWorkloadAsync(shardKey, target.BranchId, ct);
+        var branchOption = new BranchOptionDto(target.BranchId, target.Name,
+            string.IsNullOrWhiteSpace(target.Address) ? null : target.Address, null,
+            counts.PendingQuotations, counts.WaitingApproval);
+
+        // [BIZ] เปลี่ยนตัวตนผู้ใช้ต้องมีร่องรอย — บันทึกในนามบัญชีเดิม (คนที่กดจริง)
+        await quotations.AddEventAsync(new ActivityEvent
+        {
+            JobId = null,
+            EntityId = null,
+            EntityType = "User",
+            EventType = "auth.branch_switched",
+            DescriptionTh = $"สลับสาขาไป {target.Name} (บัญชี {targetUser.UserName})",
+            PerformedByUserId = currentUser.UserId,
+            PerformedByName = currentUser.UserName,
+            Source = currentUser.Source,
+            OccurredAt = Now,
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                fromUserId = currentUser.UserId,
+                fromBranchId = currentUser.BranchId,
+                toUserId = targetUser.UserId,
+                toBranchId = target.BranchId
+            })
+        }, ct);
+        await repository.SaveChangesAsync(ct);
+
+        var (token, expiresAt) = currentUser.Source == EventSource.Mobile
+            ? tokens.IssueMobileToken(authUser, target.BranchId)
+            : tokens.IssueBranchToken(authUser, target.BranchId);
+
+        return Result<LoginResultDto>.Ok(new LoginResultDto(
+            AccessToken: token,
+            ExpiresAt: expiresAt,
+            User: authUser,
+            BranchId: target.BranchId,
+            BranchName: target.Name,
+            Branches: [branchOption],
+            RequiresShiftSelection: false));
+    }
+
+    /// <summary>
+    /// อ่านสถานะ admin จาก Garage DB ใหม่ทุกครั้ง ไม่เชื่อ claim — ถูกถอดสิทธิ์ admin แล้วต้องสลับไม่ได้ทันที
+    /// ไม่ต้องรอ middleware ตัด token
+    /// </summary>
+    private async Task<Result<IReadOnlyList<LegacySwitchableAccountDto>>> LoadSwitchableAccountsAsync(
+        CancellationToken ct)
+    {
+        var user = await legacyUsers.FindByIdAsync(currentUser.ShardKey, currentUser.UserId, ct);
+        if (user is null)
+            return Result<IReadOnlyList<LegacySwitchableAccountDto>>.Fail(
+                "AUTH_USER_NOT_FOUND", "ไม่พบบัญชีผู้ใช้นี้แล้ว");
+
+        if (!user.IsAdministrator)
+            return Result<IReadOnlyList<LegacySwitchableAccountDto>>.Fail(
+                "AUTH_SWITCH_FORBIDDEN", "สลับสาขาได้เฉพาะผู้ดูแลระบบ");
+
+        if (user.StaffId is not long staffId)
+            return Result<IReadOnlyList<LegacySwitchableAccountDto>>.Ok([]);
+
+        return Result<IReadOnlyList<LegacySwitchableAccountDto>>.Ok(
+            await legacyUsers.GetSwitchableAccountsAsync(currentUser.ShardKey, staffId, ct));
     }
 
     public async Task<string?> GetSessionRevocationReasonAsync(CancellationToken ct = default)

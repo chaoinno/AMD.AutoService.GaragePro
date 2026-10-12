@@ -657,7 +657,7 @@ public class PurchasingServiceTests
     // Minimal stand-in for the legacy Dapper reader — only GetAsync is exercised by withdrawal tests.
     private sealed class FakeStaffRepository(IReadOnlyList<Staff> staff) : IStaffRepository
     {
-        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default)
         {
             var s = staff.SingleOrDefault(x => x.Id == id);

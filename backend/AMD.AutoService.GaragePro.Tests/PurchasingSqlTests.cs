@@ -118,7 +118,7 @@ public class PurchasingSqlTests
     // This suite never exercises withdrawal (Manager/Office staff lookup) — only PR/PO/GRN/opening/issue FIFO.
     private sealed class ThrowingStaffRepository : IStaffRepository
     {
-        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, bool isAdministrator, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<PagedResult<StaffSummaryDto>> SearchAsync(LegacyRequestScope scope, StaffSearchQuery query, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();
         public Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default) => throw new NotImplementedException();

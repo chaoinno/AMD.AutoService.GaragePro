@@ -104,6 +104,51 @@ public sealed class LegacyUserReader(IOptions<LegacyShardOptions> options) : ILe
         return rows.ToList();
     }
 
+    public async Task<IReadOnlyList<LegacySwitchableAccountDto>> GetSwitchableAccountsAsync(
+        string shardKey, long staffId, CancellationToken ct = default)
+    {
+        await using var db = Open(shardKey);
+
+        var rows = await db.QueryAsync<LegacySwitchableAccountDto>(
+            new CommandDefinition(SwitchableAccountsSql, new { staffId }, cancellationToken: ct));
+
+        return rows.ToList();
+    }
+
+    /// <summary>
+    /// [SECURITY] สลับสาขาแล้ว token ออกในนามบัญชีปลายทางโดยไม่ถามรหัสผ่าน จึงคัดให้แคบที่สุดที่สเปกยอม:
+    /// ชื่อจริงตรงกัน (คำขอผู้ใช้) + บัญชีปลายทางต้องเป็นผู้ดูแลระบบด้วย — ไม่งั้นผู้ดูแลจะสวมบัญชีพนักงาน
+    /// ทั่วไปที่ชื่อซ้ำได้ (ชื่ออย่าง "สมชาย" ซ้ำข้ามสาขาแน่นอน) และพอเข้าไปแล้วก็สลับกลับไม่ได้เพราะไม่ใช่ admin
+    /// · สถานะ User/Staff = 1 กฎเดียวกับ login (FindByIdAsync) · สาขากลุ่ม Service เท่านั้นเหมือนทุกที่
+    /// · สาขาเดียวมีหลายบัญชีที่ตรง → เลือก User.Id น้อยสุด ให้ได้ผลเดิมทุกครั้ง
+    /// </summary>
+    internal static readonly string SwitchableAccountsSql = $"""
+        SELECT x.UserId, x.BranchId, x.Name, x.Address
+        FROM (
+            SELECT
+                u.Id AS UserId,
+                b.Id AS BranchId,
+                b.Name AS Name,
+                LTRIM(RTRIM(ISNULL(b.Address1, N'') + N' ' + ISNULL(b.Address2, N''))) AS Address,
+                ROW_NUMBER() OVER (PARTITION BY b.Id ORDER BY u.Id) AS rn
+            FROM Staff me WITH (READUNCOMMITTED)
+            JOIN Staff s WITH (READUNCOMMITTED)
+              ON LTRIM(RTRIM(s.FirstName)) = LTRIM(RTRIM(me.FirstName))
+            JOIN [User] u WITH (READUNCOMMITTED) ON u.StaffId = s.Id
+            JOIN Branch b WITH (READUNCOMMITTED) ON b.Id = s.BranchId
+            WHERE me.Id = @staffId
+              AND NULLIF(LTRIM(RTRIM(me.FirstName)), N'') IS NOT NULL
+              AND ISNULL(s.Status, 0) = 1
+              AND ISNULL(u.Status, 0) = 1
+              AND ISNULL(u.IsStaff, 0) = 1
+              AND ISNULL(u.IsAdministrator, 0) = 1
+              AND ISNULL(b.Status, 0) = 1
+              AND b.BranchGroupId = {ServiceBranchGroupId}
+        ) x
+        WHERE x.rn = 1
+        ORDER BY x.Name
+        """;
+
     /// <summary>
     /// แยกเป็น static method เพื่อให้ SQL test (BranchScopeSqlTests) รัน query จริงตรงกันเป๊ะกับ production
     /// ผ่านตารางชั่วคราวได้ ไม่ต้องก็อปปี้ SQL ซ้ำ

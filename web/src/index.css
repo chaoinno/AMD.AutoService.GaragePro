@@ -4123,6 +4123,27 @@ img {
 .branch-button > svg { width: 18px; height: 18px; color: var(--blue-600); }
 .branch-button > span { display: flex; flex-direction: column; line-height: 1.3; }
 .branch-button small { color: var(--muted); font-size: 11px; }
+/* ผู้ดูแลระบบ: ชื่อสาขาเป็นปุ่มเปิดหน้าต่างสลับสาขา (BranchSwitcher.tsx) */
+.branch-button--switchable { cursor: pointer; font: inherit; color: inherit; text-align: left; transition: border-color 120ms ease, background 120ms ease; }
+.branch-button--switchable:hover { border-color: var(--blue-600); background: var(--blue-50); }
+.branch-button--switchable:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.branch-button__chevron { width: 15px; height: 15px; color: var(--muted); }
+.branch-switcher { display: flex; flex-direction: column; gap: 12px; }
+.branch-switcher__search { width: 100%; }
+.branch-switcher__empty { margin: 0; padding: 16px; color: var(--muted); text-align: center; }
+.branch-switcher__list { display: flex; flex-direction: column; gap: 8px; max-height: 420px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.branch-switcher__item { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; background: white; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color 120ms ease, background 120ms ease; }
+.branch-switcher__item:hover:not(:disabled) { border-color: var(--blue-600); background: var(--blue-50); }
+.branch-switcher__item:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.branch-switcher__item:disabled { cursor: default; }
+.branch-switcher__item--current { border-color: var(--blue-600); background: var(--blue-50); }
+.branch-switcher__icon { width: 20px; height: 20px; flex: 0 0 auto; color: var(--blue-600); }
+.branch-switcher__text { display: flex; min-width: 0; flex: 1; flex-direction: column; line-height: 1.35; }
+.branch-switcher__text small { overflow: hidden; color: var(--muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.branch-switcher__badge { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--blue-600); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.branch-switcher__badge svg { width: 15px; height: 15px; }
+.branch-switcher__badge--pending { color: var(--muted); }
+.branch-switcher__action { flex: 0 0 auto; color: var(--blue-600); font-size: 13px; font-weight: 600; white-space: nowrap; }
 .user-menu { min-height: 46px; padding: 3px 0 3px 12px; border: 0; border-left: 1px solid var(--border); background: transparent; cursor: pointer; text-align: left; }
 .user-menu > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; line-height: 1.35; white-space: nowrap; }
 .user-menu > svg { width: 15px; height: 15px; color: var(--muted); }

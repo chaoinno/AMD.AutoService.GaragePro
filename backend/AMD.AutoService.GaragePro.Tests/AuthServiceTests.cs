@@ -170,13 +170,117 @@ public sealed class AuthServiceTests
         closed.AutoCapped.Should().BeFalse();
     }
 
+    // ---------- สลับสาขา (ผู้ดูแลระบบ) ----------
+
+    [Fact]
+    public async Task Switchable_branches_are_refused_for_non_administrators()
+    {
+        var reader = new SwitchingLegacyUserReader(ActiveUser(105));
+        var service = CreateService(reader, new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105));
+
+        var result = await service.GetSwitchableBranchesAsync();
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("AUTH_SWITCH_FORBIDDEN");
+    }
+
+    // [SECURITY] สถานะ admin อ่านจาก Garage DB ใหม่ ไม่เชื่อ claim — ถูกถอดสิทธิ์แล้วต้องสลับไม่ได้ทันที
+    [Fact]
+    public async Task Switch_is_refused_once_admin_rights_are_removed_even_with_an_admin_claim()
+    {
+        var reader = new SwitchingLegacyUserReader(ActiveUser(105) with { IsAdministrator = false },
+            Admin(userId: 8, branchId: 227));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", null));
+        var service = CreateService(reader, new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager));
+
+        var result = await service.SwitchBranchAsync(new SwitchBranchRequest(227));
+
+        result.Error!.Code.Should().Be("AUTH_SWITCH_FORBIDDEN");
+    }
+
+    [Fact]
+    public async Task Switchable_branches_mark_the_current_branch()
+    {
+        var reader = new SwitchingLegacyUserReader(Admin(userId: 7, branchId: 105));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(7, 105, "อู่สาขาหนึ่ง", " "));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", "ถนนสอง"));
+        var service = CreateService(reader, new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager));
+
+        var result = await service.GetSwitchableBranchesAsync();
+
+        result.Data.Should().BeEquivalentTo(new[]
+        {
+            new SwitchableBranchDto(105, "อู่สาขาหนึ่ง", null, IsCurrent: true),
+            new SwitchableBranchDto(227, "อู่สาขาสอง", "ถนนสอง", IsCurrent: false),
+        });
+        reader.RequestedStaffId.Should().Be(77, "ต้องหาบัญชีจากพนักงานของผู้เรียก ไม่ใช่ค่าจาก client");
+    }
+
+    [Fact]
+    public async Task Switch_issues_a_token_for_the_target_branch_account_and_audits_it()
+    {
+        var reader = new SwitchingLegacyUserReader(Admin(userId: 7, branchId: 105), Admin(userId: 8, branchId: 227));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", null));
+        var tokens = new CapturingTokenIssuer();
+        var quotations = new StubQuotationRepository();
+        var service = CreateService(reader, tokens,
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager), quotations: quotations);
+
+        var result = await service.SwitchBranchAsync(new SwitchBranchRequest(227));
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        result.Data!.BranchId.Should().Be(227);
+        result.Data.BranchName.Should().Be("อู่สาขาสอง");
+        result.Data.User.UserId.Should().Be(8, "token ต้องออกในนามบัญชีของสาขาปลายทาง ไม่ใช่บัญชีเดิม");
+        result.Data.AccessToken.Should().Be("branch-token");
+        tokens.IssuedBranchId.Should().Be(227);
+        var evt = quotations.Events.Should().ContainSingle().Subject;
+        evt.EventType.Should().Be("auth.branch_switched");
+        evt.PerformedByUserId.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task Switch_to_a_branch_without_a_matching_account_is_refused()
+    {
+        var reader = new SwitchingLegacyUserReader(Admin(userId: 7, branchId: 105), Admin(userId: 8, branchId: 227));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", null));
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(reader, tokens,
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager));
+
+        var result = await service.SwitchBranchAsync(new SwitchBranchRequest(999));
+
+        result.Error!.Code.Should().Be("AUTH_BRANCH_FORBIDDEN");
+        tokens.IssuedBranchId.Should().BeNull();
+    }
+
+    // บัญชีปลายทางถูกปิด/ย้ายสาขาระหว่างที่หน้าต่างเปิดอยู่ — ห้ามออก token ที่ middleware จะตัดทิ้งทันที
+    [Fact]
+    public async Task Switch_is_refused_when_the_target_account_moved_to_another_branch()
+    {
+        var reader = new SwitchingLegacyUserReader(Admin(userId: 7, branchId: 105), Admin(userId: 8, branchId: 300));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", null));
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(reader, tokens,
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager));
+
+        var result = await service.SwitchBranchAsync(new SwitchBranchRequest(227));
+
+        result.Error!.Code.Should().Be("AUTH_BRANCH_FORBIDDEN");
+        tokens.IssuedBranchId.Should().BeNull();
+    }
+
     private static AuthService CreateService(
         ILegacyUserReader users,
         ITokenIssuer tokens,
         ICurrentUser? currentUser = null,
         FakeWorkIntervalHook? workHook = null,
-        ShiftSession? session = null) =>
-        new(users, new StubAuthRepository(session), new StubQuotationRepository(), tokens,
+        ShiftSession? session = null,
+        StubQuotationRepository? quotations = null) =>
+        new(users, new StubAuthRepository(session), quotations ?? new StubQuotationRepository(), tokens,
             workHook ?? new FakeWorkIntervalHook(),
             currentUser ?? new StubCurrentUser(), TimeProvider.System);
 
@@ -197,6 +301,37 @@ public sealed class AuthServiceTests
         SectorName: null,
         DepartmentName: null,
         SkillLevel: null);
+
+    private static LegacyUserDto Admin(long userId, int branchId) => ActiveUser(branchId) with
+    {
+        UserId = userId,
+        UserName = $"admin{userId}",
+        IsAdministrator = true,
+    };
+
+    /// <summary>หาผู้ใช้ตาม id จริง — การสลับสาขาอ่านทั้งบัญชีผู้เรียกและบัญชีปลายทาง</summary>
+    private sealed class SwitchingLegacyUserReader(params LegacyUserDto[] users) : ILegacyUserReader
+    {
+        public List<LegacySwitchableAccountDto> Accounts { get; } = [];
+        public long? RequestedStaffId { get; private set; }
+
+        public Task<LegacyUserDto?> FindByUserNameAsync(string shardKey, string userName, CancellationToken ct = default) =>
+            Task.FromResult(users.FirstOrDefault(u => u.UserName == userName));
+
+        public Task<LegacyUserDto?> FindByIdAsync(string shardKey, long userId, CancellationToken ct = default) =>
+            Task.FromResult(users.FirstOrDefault(u => u.UserId == userId));
+
+        public Task<IReadOnlyList<LegacyBranchSummaryDto>> GetAccessibleBranchesAsync(
+            string shardKey, LegacyUserDto user, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<LegacyBranchSummaryDto>>([]);
+
+        public Task<IReadOnlyList<LegacySwitchableAccountDto>> GetSwitchableAccountsAsync(
+            string shardKey, long staffId, CancellationToken ct = default)
+        {
+            RequestedStaffId = staffId;
+            return Task.FromResult<IReadOnlyList<LegacySwitchableAccountDto>>(Accounts);
+        }
+    }
 
     private sealed class StubLegacyUserReader(
         LegacyUserDto? user,
@@ -276,7 +411,12 @@ public sealed class AuthServiceTests
             Task.FromResult<IReadOnlyList<Quotation>>([]);
         public Task<int> GetNextVersionAsync(Guid jobId, CancellationToken ct = default) => Task.FromResult(1);
         public Task AddAsync(Quotation quotation, CancellationToken ct = default) => Task.CompletedTask;
-        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
+        public List<ActivityEvent> Events { get; } = [];
+        public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default)
+        {
+            Events.Add(evt);
+            return Task.CompletedTask;
+        }
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 }

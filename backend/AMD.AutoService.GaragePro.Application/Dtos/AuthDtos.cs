@@ -24,11 +24,20 @@ public sealed record LegacyBranchSummaryDto(
     string? Address,
     string? Phone);
 
+/// <summary>บัญชีปลายทางของการสลับสาขา — UserId ใช้ภายใน backend เท่านั้น ห้ามส่งให้ client</summary>
+public sealed record LegacySwitchableAccountDto(
+    long UserId,
+    int BranchId,
+    string Name,
+    string? Address);
+
 // ---------- คำขอ ----------
 
 public sealed record LoginRequest(string UserName, string Password);
 
 public sealed record OpenShiftRequest(int BranchId, Guid ShiftId);
+
+public sealed record SwitchBranchRequest(int BranchId);
 
 // ---------- คำตอบ ----------
 
@@ -67,6 +76,13 @@ public sealed record BranchOptionDto(
     string? Phone,
     int PendingQuotationCount,
     int WaitingApprovalCount);
+
+/// <summary>สาขาที่ผู้ดูแลระบบสลับไปได้ — ไม่มี UserId ของบัญชีปลายทาง (server หาใหม่ทุกครั้งที่สลับ)</summary>
+public sealed record SwitchableBranchDto(
+    int BranchId,
+    string Name,
+    string? Address,
+    bool IsCurrent);
 
 public sealed record ShiftOptionDto(
     Guid ShiftId,

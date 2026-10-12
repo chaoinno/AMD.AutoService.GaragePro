@@ -14,6 +14,16 @@ public interface ILegacyUserReader
     /// </summary>
     Task<IReadOnlyList<LegacyBranchSummaryDto>> GetAccessibleBranchesAsync(
         string shardKey, LegacyUserDto user, CancellationToken ct = default);
+
+    /// <summary>
+    /// บัญชีผู้ดูแลระบบในสาขาอื่นที่ "เป็นคนเดียวกัน" กับพนักงาน <paramref name="staffId"/> — ใช้สลับสาขาบนเว็บ
+    /// (คำขอผู้ใช้ 2026-10-12) ระบบเดิมสร้าง User+Staff แยกต่อสาขา จึงจับคู่ด้วย Staff.FirstName
+    /// คืนสาขาละไม่เกินหนึ่งบัญชี รวมบัญชีของตัวเองด้วยถ้าเข้าเงื่อนไข
+    /// · default member เพื่อไม่ต้องแก้ fake ในเทสต์ที่ไม่เกี่ยวข้อง
+    /// </summary>
+    Task<IReadOnlyList<LegacySwitchableAccountDto>> GetSwitchableAccountsAsync(
+        string shardKey, long staffId, CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyList<LegacySwitchableAccountDto>>([]);
 }
 
 public sealed record BranchWorkload(int PendingQuotations, int WaitingApproval);

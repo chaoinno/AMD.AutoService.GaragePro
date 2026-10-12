@@ -24,6 +24,8 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/shift-sessions` | `/auth/shift` | เปิดกะ → กำหนด branch+shift context ทั้งวัน |
 | POST | `/shift-sessions/{id}/close` | `/profile` | ❌ role `technician` (403 + StateBlock "ไม่มีสิทธิ์") |
 | GET | `/me` | `/profile`, AppShell | role, branch, shift, permissions[], pendingSyncCount |
+| GET | `/auth/switchable-branches` | AppShell (W) | **[เพิ่ม 2026-10-12]** ผู้ดูแลระบบเท่านั้น (อ่าน `User.IsAdministrator` จาก Garage DB ใหม่ทุกครั้ง ไม่เชื่อ claim — อื่นได้ 403 `AUTH_SWITCH_FORBIDDEN`) · สาขา active กลุ่ม Service ที่มีบัญชี**ผู้ดูแลระบบ** active ซึ่ง `Staff.FirstName` ตรงกับพนักงานของผู้เรียก · `{branchId,name,address,isCurrent}` ไม่ส่ง UserId ปลายทาง |
+| POST | `/auth/switch-branch` | AppShell (W) | `{branchId}` → `LoginResult` ในนามบัญชีของสาขานั้น (ไม่ถามรหัสผ่าน) · server หาบัญชีปลายทางใหม่เองเสมอ · ไม่มีบัญชีที่ตรง/บัญชีถูกปิดหรือย้ายสาขา → 403 `AUTH_BRANCH_FORBIDDEN` · เขียน `ActivityEvent` `auth.branch_switched` ในนามบัญชีเดิม |
 
 ---
 

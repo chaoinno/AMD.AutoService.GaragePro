@@ -3,7 +3,6 @@ import {
   AlarmClock,
   BarChart3,
   Boxes,
-  Building2,
   CarFront,
   ChevronDown,
   ChevronsLeft,
@@ -30,6 +29,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
 import { NotificationBell } from './notifications/NotificationBell'
+import { BranchSwitcher } from './BranchSwitcher'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
@@ -228,12 +228,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
               <span className="sr-only">ค้นหาทั่วทั้งระบบ</span>
               <Input type="search" placeholder="ค้นหางาน ลูกค้า ทะเบียน" />
             </label>
-            <div className="branch-button" aria-label="สาขาปัจจุบัน">
-              <Building2 aria-hidden="true" />
-              <span>
-                <strong>{session?.branchName ?? 'ไม่พบข้อมูลสาขา'}</strong>
-              </span>
-            </div>
+            <BranchSwitcher />
             <NotificationBell />
             <DropdownMenu>
               <DropdownMenuTrigger className="user-menu" aria-label="เปิดเมนูผู้ใช้งาน">
