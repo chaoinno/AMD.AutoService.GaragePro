@@ -1730,6 +1730,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     ผู้ใช้ไม่ใช่ admin เห็นป้ายเดิม (ไม่ใช่ปุ่ม), 403 แสดง StateBlock พร้อม traceId
   · **ยังไม่ได้ทดสอบกับ Garage DB จริง** (เครื่องนี้ต่อ VPN ไม่ได้) — SQL จับคู่ชื่อยังไม่เคยรันจริง และยังไม่รู้ว่าบัญชี admin ในสาขาอื่นติดธง admin หรือชื่อซ้ำกับคนอื่นแค่ไหน ·
     มือถือไม่มีฟีเจอร์นี้ · [RISK] จับคู่ด้วยชื่อจริงอย่างเดียว — admin สองคนชื่อเดียวกันจะสลับเข้าบัญชีของกันและกันได้
+  · **Deploy production แล้ว 2026-10-12** (commit `5aa442d` push ตรง `main`): `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` ผ่าน ·
+    ไม่มี migration ค้าง · container API/web healthy · public health ผ่าน · `switchable-branches`/`switch-branch` ไม่ล็อกอินตอบ 401 (route ขึ้นจริง ไม่ใช่ 404) ·
+    bundle ของ `service.garage-pro.net` มีโค้ดสลับสาขา · **ยังไม่ได้ลองด้วยบัญชีผู้ดูแลระบบจริงบน production**
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
