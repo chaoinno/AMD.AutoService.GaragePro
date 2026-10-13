@@ -13,6 +13,7 @@ import '../features/intake/intake_checklist_page.dart';
 import '../features/jobs/chat/job_chat_page.dart';
 import '../features/jobs/job_detail_page.dart';
 import '../features/jobs/job_list_page.dart';
+import '../features/notifications/notifications_page.dart';
 import '../features/pos/payment_page.dart';
 import '../features/qc/qc_page.dart';
 import '../features/reports/reports_page.dart';
@@ -76,6 +77,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, state) =>
             ApprovalPage(quotationId: state.pathParameters['quotationId']!),
+      ),
+      GoRoute(
+        path: Routes.notifications,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const NotificationsPage(),
       ),
       GoRoute(
         path: Routes.newJob,

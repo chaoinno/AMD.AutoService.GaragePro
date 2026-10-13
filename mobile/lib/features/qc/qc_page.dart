@@ -84,7 +84,9 @@ class _QcPageState extends ConsumerState<QcPage> {
                 children: [
                   Text(item.name,
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.6)),
-                  Text('${item.isLabor ? 'ค่าแรง' : 'อะไหล่'} · ${item.catalogCode}',
+                  // รายการนอกแคตตาล็อกไม่มีรหัส — ไม่ให้เหลือ "อะไหล่ · " ห้อยท้าย
+                  Text([item.isLabor ? 'ค่าแรง' : 'อะไหล่', if (item.catalogCode.isNotEmpty) item.catalogCode]
+                          .join(' · '),
                       style: const TextStyle(fontSize: 13, color: T.muted, height: 1.5)),
                   if (item.note?.trim().isNotEmpty ?? false)
                     Text(item.note!.trim(),

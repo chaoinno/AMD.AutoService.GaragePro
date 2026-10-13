@@ -17,6 +17,8 @@ class Job {
     required this.createdAt,
     required this.createdAtRaw,
     this.promiseAt,
+    this.appointmentAt,
+    this.actualArrivalAt,
     required this.jobTypeId,
     this.jobTypeName,
     required this.status,
@@ -45,6 +47,12 @@ class Job {
   final String createdAtRaw;
 
   final DateTime? promiseAt;
+
+  /// วันเวลาที่ลูกค้าจะนำรถเข้า — มีเสมอสำหรับรถนัดหมาย และ **ไม่ถูกล้าง** หลังแปลงเป็นรถในอู่ (เก็บเป็นประวัติ)
+  final DateTime? appointmentAt;
+
+  /// วันเวลาที่รถเข้าอู่จริง — บันทึกตอนแปลงรถนัดหมายเป็นรถในอู่
+  final DateTime? actualArrivalAt;
   final int jobTypeId;
   final String? jobTypeName;
 
@@ -61,6 +69,9 @@ class Job {
 
   /// 11 = ปิดจ๊อบ (ระบบตั้งเองตอนถึงสถานะจบ)
   bool get isClosedType => jobTypeId == 11;
+
+  /// 10 = รถนัดหมายที่รถยังไม่ได้ยืนยันว่ามาถึง (แปลงแล้วจะเป็น 9)
+  bool get isAppointment => jobTypeId == JobType.appointment;
 
   String get vehicleTitle =>
       vehicleModel == null || vehicleModel!.trim().isEmpty
@@ -81,9 +92,9 @@ class Job {
         vehicleVin: j['vehicleVin'] as String?,
         createdAt: DateTime.parse(j['createdAt'] as String).toLocal(),
         createdAtRaw: j['createdAt'] as String,
-        promiseAt: j['promiseAt'] == null
-            ? null
-            : DateTime.tryParse(j['promiseAt'] as String)?.toLocal(),
+        promiseAt: _date(j['promiseAt']),
+        appointmentAt: _date(j['appointmentAt']),
+        actualArrivalAt: _date(j['actualArrivalAt']),
         jobTypeId: (j['jobTypeId'] as num).toInt(),
         jobTypeName: j['jobTypeName'] as String?,
         status: j['status'] as String,
@@ -92,6 +103,8 @@ class Job {
         mileageAtIntake: (j['mileageAtIntake'] as num?)?.toInt(),
       );
 }
+
+DateTime? _date(Object? v) => v == null ? null : DateTime.tryParse(v as String)?.toLocal();
 
 /// cursor ของ keyset pagination — ต้องส่งคู่กันเสมอ (server tie-break ด้วย jobId)
 class JobCursor {

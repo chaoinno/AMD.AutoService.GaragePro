@@ -6,6 +6,7 @@ import '../../core/tokens.dart';
 import '../../models/quotation.dart';
 import '../../widgets/common.dart';
 import 'approval_page.dart';
+import '../notifications/widgets/notification_bell.dart';
 
 /// คิวใบเสนอราคาที่รอลูกค้าอนุมัติ — จุดเข้าของหน้าร้าน
 final queueProvider = FutureProvider.autoDispose<List<QuotationSummary>>(
@@ -38,6 +39,7 @@ class QueuePage extends ConsumerWidget {
           ],
         ),
         actions: [
+          const NotificationBell(),
           IconButton(
             onPressed: () => ref.invalidate(queueProvider),
             icon: const Icon(Icons.refresh),

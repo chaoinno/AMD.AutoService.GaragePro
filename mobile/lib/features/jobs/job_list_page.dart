@@ -15,6 +15,7 @@ import 'chat/data/chat_unread_provider.dart';
 import '../work/data/work_providers.dart';
 import 'data/jobs_providers.dart';
 import 'widgets/job_card.dart';
+import '../notifications/widgets/notification_bell.dart';
 
 /// คิวงานของสาขา — keyset infinite scroll + ค้นหา + กรองประเภท/สถานะ
 class JobListPage extends ConsumerStatefulWidget {
@@ -78,6 +79,7 @@ class _JobListPageState extends ConsumerState<JobListPage> {
           : null,
       appBar: AppBar(
         title: const Text('คิวงาน'),
+        actions: const [NotificationBell()],
         bottom: PreferredSize(
           // เผื่อความสูงให้แถบ "กรองเฉพาะสถานะ" เพราะ PreferredSize สูงคงที่ ไม่ยืดตามลูกเอง
           preferredSize: Size.fromHeight(state.filter.status == null ? 108 : 142),

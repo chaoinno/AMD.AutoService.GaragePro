@@ -6,11 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../app/routes.dart';
+import '../../core/format.dart';
+import '../../core/job_schedule.dart';
 import '../../core/mileage.dart';
 import '../../core/tokens.dart';
 import '../../models/customer.dart';
 import '../../models/job.dart';
 import '../../widgets/common.dart';
+import '../../widgets/date_time_wheel_sheet.dart';
 import '../jobs/data/jobs_providers.dart';
 
 /// รับรถ — ค้นหาลูกค้า → เลือกรถ → เปิดจ๊อบ
@@ -35,6 +38,12 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
   int _jobTypeId = JobType.inGarage;
   final _detailCtrl = TextEditingController();
   final _mileageCtrl = TextEditingController();
+
+  /// วันเวลาที่ลูกค้าจะนำรถเข้า — ใช้เฉพาะรถนัดหมาย (ส่งพร้อมรถในอู่แล้ว server ปฏิเสธ)
+  DateTime? _appointmentAt;
+
+  /// วันเวลานัดส่งมอบ — ไม่บังคับทุกประเภท
+  DateTime? _promiseAt;
   bool _busy = false;
 
   @override
@@ -49,15 +58,17 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
   /// [BIZ] รถในอู่ต้องมีเลขไมล์ตอนเปิดจ๊อบ (API ตอบ JOB_VALIDATION ถ้าไม่ส่ง) · รถนัดหมายบันทึกตอนรถเข้าอู่
   bool get _needsMileage => _jobTypeId == JobType.inGarage;
 
-  String? get _createBlockedReason {
-    if (_vehicle == null) return 'เลือกรถของลูกค้าก่อน';
-    if (_needsMileage) {
-      if (_mileageCtrl.text.trim().isEmpty) return 'กรอกเลขไมล์ขณะรับรถ';
-      final error = kmInputError(_mileageCtrl.text);
-      if (error != null) return error;
-    }
-    return null;
-  }
+  /// [BIZ] รถนัดหมายต้องมีวันนัดเข้า (กฎข้อ 15) — เดิมแอปไม่ส่งค่านี้เลย เปิดจ๊อบรถนัดหมายจึงพังทุกครั้ง
+  bool get _needsAppointment => _jobTypeId == JobType.appointment;
+
+  String? get _createBlockedReason => createJobBlockedReason(
+        hasVehicle: _vehicle != null,
+        jobTypeId: _jobTypeId,
+        mileageText: _mileageCtrl.text,
+        appointmentAt: _appointmentAt,
+        promiseAt: _promiseAt,
+        now: DateTime.now(),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -266,7 +277,11 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
                   child: SizedBox(
                     height: T.touchMin,
                     child: OutlinedButton(
-                      onPressed: () => setState(() => _jobTypeId = option.id),
+                      onPressed: () => setState(() {
+                        _jobTypeId = option.id;
+                        // ส่งวันนัดเข้ามากับรถในอู่ server ปฏิเสธ — ล้างทิ้งตอนเปลี่ยนประเภท
+                        if (option.id != JobType.appointment) _appointmentAt = null;
+                      }),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: _jobTypeId == option.id ? T.blue50 : null,
                         side: BorderSide(
@@ -286,6 +301,27 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
                 ),
               ),
           ],
+        ),
+        if (_needsAppointment) ...[
+          const SizedBox(height: T.s16),
+          _ScheduleField(
+            icon: Icons.event_available_outlined,
+            label: 'วันเวลาที่ลูกค้าจะนำรถเข้า *',
+            value: _appointmentAt,
+            placeholder: 'แตะเพื่อเลือกวันเวลานัด',
+            error: _appointmentAt == null ? null : appointmentError(_appointmentAt, now: DateTime.now()),
+            onTap: _pickAppointment,
+          ),
+        ],
+        const SizedBox(height: T.s16),
+        _ScheduleField(
+          icon: Icons.schedule,
+          label: 'วันเวลานัดส่งมอบรถ (ไม่บังคับ)',
+          value: _promiseAt,
+          placeholder: 'แตะเพื่อเลือก — เว้นว่างได้',
+          error: promiseError(_promiseAt, arrival: _appointmentAt, now: DateTime.now()),
+          onTap: _pickPromise,
+          onClear: _promiseAt == null ? null : () => setState(() => _promiseAt = null),
         ),
         if (_needsMileage) ...[
           const SizedBox(height: T.s16),
@@ -433,6 +469,8 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
             senderPhoneNumber: customer.phoneNumber1,
             detail: _detailCtrl.text.trim().isEmpty ? null : _detailCtrl.text.trim(),
             mileageAtIntake: _needsMileage ? parseKm(_mileageCtrl.text) : null,
+            appointmentAt: _needsAppointment ? _appointmentAt : null,
+            promiseAt: _promiseAt,
           );
 
       await ref.read(jobListProvider.notifier).load();
@@ -465,6 +503,34 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _pickAppointment() async {
+    final now = DateTime.now();
+    // ค่าเริ่มต้น พรุ่งนี้ 09:00 — นัดล่วงหน้าเป็นเรื่องปกติ นัดภายในวันนี้ก็เลื่อนวงล้อกลับได้
+    final picked = await showDateTimeWheel(
+      context,
+      title: 'วันเวลาที่ลูกค้าจะนำรถเข้า',
+      initial: _appointmentAt ?? DateTime(now.year, now.month, now.day + 1, 9),
+      firstDay: now,
+      lastDay: scheduleLatest(now),
+      validate: (v) => appointmentError(v, now: DateTime.now()),
+    );
+    if (picked != null && mounted) setState(() => _appointmentAt = picked);
+  }
+
+  Future<void> _pickPromise() async {
+    final now = DateTime.now();
+    final base = _appointmentAt ?? now;
+    final picked = await showDateTimeWheel(
+      context,
+      title: 'วันเวลานัดส่งมอบรถ',
+      initial: _promiseAt ?? DateTime(base.year, base.month, base.day + 1, 17),
+      firstDay: _appointmentAt ?? now,
+      lastDay: scheduleLatest(now),
+      validate: (v) => promiseError(v, arrival: _appointmentAt, now: DateTime.now()),
+    );
+    if (picked != null && mounted) setState(() => _promiseAt = picked);
   }
 
   void _toast(ApiException e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -766,4 +832,82 @@ class _NewVehiclePageState extends ConsumerState<_NewVehiclePage> {
       if (mounted) setState(() => _busy = false);
     }
   }
+}
+
+/// เหตุผลที่ยังเปิดจ๊อบไม่ได้ — null = กดได้ · แยกเป็นฟังก์ชันเพื่อทดสอบได้โดยไม่ต้องสร้างหน้าจอ
+/// ลำดับตามที่ผู้ใช้กรอกจากบนลงล่าง ให้บอกสิ่งแรกที่ต้องทำก่อน
+String? createJobBlockedReason({
+  required bool hasVehicle,
+  required int jobTypeId,
+  required String mileageText,
+  required DateTime? appointmentAt,
+  required DateTime? promiseAt,
+  required DateTime now,
+}) {
+  if (!hasVehicle) return 'เลือกรถของลูกค้าก่อน';
+
+  final isAppointment = jobTypeId == JobType.appointment;
+  if (isAppointment) {
+    final error = appointmentError(appointmentAt, now: now);
+    if (error != null) return error;
+  }
+
+  final promise = promiseError(promiseAt, arrival: isAppointment ? appointmentAt : null, now: now);
+  if (promise != null) return promise;
+
+  if (jobTypeId == JobType.inGarage) {
+    if (mileageText.trim().isEmpty) return 'กรอกเลขไมล์ขณะรับรถ';
+    final error = kmInputError(mileageText);
+    if (error != null) return error;
+  }
+  return null;
+}
+
+/// ช่องเลือกวันเวลาที่หน้าตาเหมือน TextField — แตะแล้วเปิดวงล้อ
+class _ScheduleField extends StatelessWidget {
+  const _ScheduleField({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.placeholder,
+    required this.error,
+    required this.onTap,
+    this.onClear,
+  });
+
+  final IconData icon;
+  final String label;
+  final DateTime? value;
+  final String placeholder;
+  final String? error;
+  final VoidCallback onTap;
+  final VoidCallback? onClear;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(T.rInput),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            // ป้ายลอยไว้ด้านบนเสมอ — ไม่งั้นตอนยังไม่เลือกค่า ป้ายจะทับข้อความ "แตะเพื่อเลือก"
+            floatingLabelBehavior: FloatingLabelBehavior.always,
+            errorText: error,
+            errorMaxLines: 3,
+            prefixIcon: Icon(icon),
+            suffixIcon: onClear == null
+                ? const Icon(Icons.expand_more)
+                : IconButton(
+                    tooltip: 'ล้างวันเวลา',
+                    onPressed: onClear,
+                    icon: const Icon(Icons.close),
+                  ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(T.rInput)),
+          ),
+          child: Text(
+            value == null ? placeholder : '${fullDateTime(value!)} น.',
+            style: TextStyle(fontSize: 16, height: 1.6, color: value == null ? T.faint : T.text),
+          ),
+        ),
+      );
 }

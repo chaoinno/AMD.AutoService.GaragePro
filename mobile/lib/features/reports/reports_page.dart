@@ -10,6 +10,7 @@ import '../../core/tokens.dart';
 import '../../models/reports.dart';
 import '../../widgets/common.dart';
 import 'widgets/report_bar.dart';
+import '../notifications/widgets/notification_bell.dart';
 
 final dashboardReportProvider =
     FutureProvider.autoDispose<DashboardReport>((ref) => ref.watch(reportsApiProvider).dashboard());
@@ -49,6 +50,7 @@ class ReportsPage extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('รายงาน'),
+          actions: const [NotificationBell()],
           bottom: const TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
@@ -312,7 +314,8 @@ class _SalesMarginTab extends ConsumerWidget {
               else
                 for (final type in report.byType)
                   ReportBar(
-                    label: type.type == 'labor' ? 'ค่าแรง' : 'อะไหล่',
+                    // server ส่งชื่อ enum ตรงๆ ("Labor"/"Part") ไม่ใช่ token ตัวเล็กแบบใบเสนอราคา — เทียบแบบไม่สนตัวพิมพ์
+                    label: type.type.toLowerCase() == 'labor' ? 'ค่าแรง' : 'อะไหล่',
                     value: type.netAmount,
                     max: report.netAmount,
                   ),

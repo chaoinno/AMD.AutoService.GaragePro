@@ -55,6 +55,9 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
 
   Widget _buildBody(Quotation q) {
     final signed = q.approval != null;
+    // [BIZ] ตัดสินใจรายบรรทัดได้เฉพาะใบที่ส่งให้ลูกค้าแล้ว (QUOTE_NOT_OPEN_FOR_DECISION) — ใบร่างเปิดดูได้
+    // แต่ห้ามโชว์ปุ่มอนุมัติ ไม่งั้นกดแล้วค่อยเจอ error · จ๊อบหนึ่งมีใบร่างคู่กับใบที่เซ็นแล้วได้ (กฎข้อ 21)
+    final readOnly = signed || !q.isOpenForDecision;
 
     return Column(
       children: [
@@ -84,6 +87,17 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                 ),
                 const SizedBox(height: T.s16),
               ],
+              if (!signed && !q.isOpenForDecision) ...[
+                InfoBanner(
+                  icon: Icons.lock_outline,
+                  title: 'ยังไม่เปิดให้ลูกค้าตัดสินใจ (${q.statusLabelTh})',
+                  body: q.status == 'draft'
+                      ? 'ใบนี้ยังเป็นร่าง — ธุรการต้องกด "ส่งให้ลูกค้าอนุมัติ" จากเว็บก่อน'
+                      : 'ใบเสนอราคานี้ไม่อยู่ในสถานะที่ลูกค้าอนุมัติได้แล้ว',
+                  tone: StateTone.neutral,
+                ),
+                const SizedBox(height: T.s16),
+              ],
               if (q.isExpired) ...[
                 const InfoBanner(
                   icon: Icons.schedule,
@@ -99,7 +113,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                 tagBg: const Color(0xFFFDF3E2),
                 tagFg: const Color(0xFF8A5A00),
                 lines: q.customerRequested,
-                readOnly: signed,
+                readOnly: readOnly,
                 busyLines: _busyLines,
                 onDecide: (line, approve) => _decide(q, line, approve),
               ),
@@ -110,7 +124,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                 tagBg: T.blue50,
                 tagFg: const Color(0xFF1552B3),
                 lines: q.technicianSuggested,
-                readOnly: signed,
+                readOnly: readOnly,
                 busyLines: _busyLines,
                 onDecide: (line, approve) => _decide(q, line, approve),
               ),
@@ -136,6 +150,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
     final approved = q.totals.approved?.approvedCount ?? 0;
 
     final reason = switch (0) {
+      _ when !q.isOpenForDecision => 'ใบเสนอราคายังไม่ได้ส่งให้ลูกค้า (${q.statusLabelTh})',
       _ when q.isExpired => 'ใบเสนอราคาหมดอายุ — ต้องออกฉบับใหม่ก่อน',
       _ when pending > 0 => 'ยังเหลือ $pending รายการที่ยังไม่ได้ตัดสินใจ',
       _ when approved == 0 => 'ยังไม่มีรายการที่อนุมัติ — เลือกอย่างน้อย 1 รายการ',
@@ -521,7 +536,8 @@ class _LineCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       [
-                        line.catalogCode,
+                        // รายการนอกแคตตาล็อก (ad-hoc) ไม่มีรหัส — ไม่ใส่ช่องว่างให้เหลือ " · " ลอยหน้าบรรทัด
+                        if (line.catalogCode.isNotEmpty) line.catalogCode,
                         '${_qty(line.quantity)} ${line.unit}',
                         if (line.standardHours != null)
                           '${_qty(line.standardHours!)} ชม.',

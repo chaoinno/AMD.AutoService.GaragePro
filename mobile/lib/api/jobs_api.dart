@@ -55,6 +55,8 @@ class JobsApi {
     String? senderPhoneNumber,
     String? detail,
     int? mileageAtIntake,
+    DateTime? appointmentAt,
+    DateTime? promiseAt,
   }) async {
     final data = await _c.post<Map<String, dynamic>>('/jobs', body: {
       'customerId': customerId,
@@ -64,8 +66,26 @@ class JobsApi {
       'senderPhoneNumber': senderPhoneNumber,
       'detail': detail,
       'mileageAtIntake': ?mileageAtIntake,
+      // [BIZ] รถนัดหมายต้องมีวันนัดเข้า · ประเภทอื่นห้ามส่งมา (JOB_VALIDATION ทั้งสองทาง — กฎข้อ 15)
+      // ส่งเป็น UTC พร้อม Z — server รับ DateTimeOffset จึงไม่ตีความเป็นเวลาท้องถิ่นของเครื่องผิด
+      'appointmentAt': ?appointmentAt?.toUtc().toIso8601String(),
+      'promiseAt': ?promiseAt?.toUtc().toIso8601String(),
     });
     return CreatedJob.fromJson(data);
+  }
+
+  /// รถนัดหมายมาถึงอู่แล้ว → เปลี่ยนเป็นรถในอู่ (กฎข้อ 17) · ไม่ใช่ state transition แค่เปลี่ยนประเภท + บันทึกเวลา
+  /// [BIZ] ต้องมีเลขไมล์ (ส่งมา หรือบันทึกไว้แล้ว) · เวลาที่รถเข้าห้ามเป็นอนาคต · วันนัดเดิมไม่ถูกล้าง
+  Future<Job> convertToInShop(
+    String jobId, {
+    required DateTime actualArrivalAt,
+    int? mileageAtIntake,
+  }) async {
+    final data = await _c.put<Map<String, dynamic>>('/jobs/$jobId/convert-to-in-shop', body: {
+      'actualArrivalAt': actualArrivalAt.toUtc().toIso8601String(),
+      'mileageAtIntake': ?mileageAtIntake,
+    });
+    return Job.fromJson(data);
   }
 
   /// บันทึก/แก้เลขไมล์ขณะรับรถ — ล็อกเมื่อส่งมอบรถแล้ว (`JOB_MILEAGE_LOCKED`)

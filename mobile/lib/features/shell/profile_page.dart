@@ -6,6 +6,7 @@ import '../../core/roles.dart';
 import '../../core/tokens.dart';
 import '../../models/auth.dart';
 import '../../widgets/common.dart';
+import '../notifications/widgets/notification_bell.dart';
 
 /// แถวข้อมูล: ไอคอน · ป้ายกำกับคอลัมน์เดียวกันทุกแถว · ค่าชิดซ้าย
 ///
@@ -75,7 +76,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final role = AppRole.parse(user.role);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('โปรไฟล์')),
+      appBar: AppBar(title: const Text('โปรไฟล์'), actions: const [NotificationBell()]),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(T.s16, T.s16, T.s16, T.s32),
         children: [

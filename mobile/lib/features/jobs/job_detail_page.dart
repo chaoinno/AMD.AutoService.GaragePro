@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +22,7 @@ import '../attachments/widgets/auth_image.dart';
 import 'chat/data/chat_unread_provider.dart';
 import '../work/data/work_providers.dart';
 import 'data/jobs_providers.dart';
+import 'widgets/convert_to_in_shop_sheet.dart';
 import 'widgets/job_stage_strip.dart';
 
 final _jobAttachmentsProvider =
@@ -131,7 +134,14 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
             _row(Icons.person_outline, 'ลูกค้า', job.customerName),
             if (job.customerPhone?.trim().isNotEmpty ?? false)
               _row(Icons.phone_outlined, 'โทรศัพท์', job.customerPhone!, mono: true),
+            if (job.jobTypeName?.trim().isNotEmpty ?? false)
+              _row(Icons.category_outlined, 'ประเภทงาน', job.jobTypeName!.trim()),
             _row(Icons.event_outlined, 'เปิดงาน', fullDateTime(job.createdAt)),
+            // วันนัดเดิมยังแสดงหลังแปลงเป็นรถในอู่แล้ว — เก็บเป็นประวัติว่าเดิมนัดวันไหน (เหมือนเว็บ)
+            if (job.appointmentAt != null)
+              _row(Icons.event_available_outlined, 'นัดรถเข้า', fullDateTime(job.appointmentAt!)),
+            if (job.actualArrivalAt != null)
+              _row(Icons.login, 'รถเข้าอู่จริง', fullDateTime(job.actualArrivalAt!)),
             if (job.promiseAt != null)
               _row(Icons.schedule, 'นัดส่งมอบ', fullDateTime(job.promiseAt!)),
             if (job.isOverdue) ...[
@@ -152,6 +162,17 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
   /// ทางเข้าหน้างานของขั้นตอนปัจจุบัน — แสดงเฉพาะสิ่งที่ทำได้จริงบนมือถือและตามบทบาท
   Widget _stageTasks(Job job, AppRole role) {
     final tasks = <Widget>[
+      // [BIZ] รถนัดหมายต้องยืนยันว่ารถมาถึงก่อน — ขั้นนี้บันทึกเวลาเข้าอู่จริง + เลขไมล์ (กฎข้อ 17/22)
+      // ขึ้นเป็นรายการแรกเพราะเช็คลิสต์รับรถข้างล่างควรทำหลังรถอยู่ที่อู่จริงแล้ว
+      if (job.isAppointment && job.status != 'completed' && job.status != 'cancelled')
+        _task(
+          icon: Icons.directions_car_filled_outlined,
+          label: 'รถมาถึงแล้ว → เปลี่ยนเป็นรถในอู่',
+          description: job.appointmentAt == null
+              ? 'บันทึกเวลาที่รถเข้าอู่จริงและเลขไมล์'
+              : 'นัดไว้ ${fullDateTime(job.appointmentAt!)} · บันทึกเวลาที่รถเข้าจริงและเลขไมล์',
+          onTap: () => _convertToInShop(job),
+        ),
       // เช็คลิสต์รับรถเปิดดูได้เสมอ (หลังส่งแล้วเป็นอ่านอย่างเดียว) เพราะเป็นหลักฐานสภาพรถตอนรับ
       _task(
         icon: Icons.fact_check_outlined,
@@ -186,6 +207,15 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
       title: 'งานในขั้นตอนนี้',
       child: Column(children: tasks),
     );
+  }
+
+  Future<void> _convertToInShop(Job job) async {
+    final updated = await showConvertToInShopSheet(context, job);
+    if (updated == null || !mounted) return;
+    ref.invalidate(jobDetailProvider(job.jobId));
+    // คิวงานกรองตามประเภท — ไม่รีโหลดแล้วจ๊อบนี้จะค้างอยู่ใต้ตัวกรอง "รถนัดหมาย"
+    unawaited(ref.read(jobListProvider.notifier).load());
+    showAppMessage('เปลี่ยน ${updated.vehicleRegistration} เป็นรถในอู่แล้ว');
   }
 
   Widget _task({

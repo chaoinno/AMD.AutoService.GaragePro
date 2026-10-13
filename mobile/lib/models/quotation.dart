@@ -45,6 +45,9 @@ class Quotation {
 
   bool get isRevision => revisionReason != null;
 
+  /// ลูกค้าตัดสินใจรายบรรทัด/เซ็นได้เฉพาะใบที่ส่งแล้ว — ตรงกับ QuotationService (DecideLineAsync/SignAsync)
+  bool get isOpenForDecision => status == 'sent' || status == 'partial';
+
   /// รายการที่ลูกค้ายังไม่ตัดสินใจ — ปิดการเซ็นจนกว่าจะเป็น 0
   int get pendingCount => lines.where((l) => l.isPending).length;
 
@@ -135,7 +138,8 @@ class QuotationLine {
   factory QuotationLine.fromJson(Map<String, dynamic> j) => QuotationLine(
         id: j['id'] as String,
         sequence: j['sequence'] as int? ?? 0,
-        catalogCode: j['catalogCode'] as String,
+        // ad-hoc line = รหัสว่าง (server ถือว่าว่างหรือ null ก็คือ ad-hoc) — อ่านแบบ nullable กันพัง
+        catalogCode: j['catalogCode'] as String? ?? '',
         name: j['name'] as String,
         type: j['type'] as String,
         source: j['source'] as String,

@@ -8,6 +8,7 @@ abstract final class Routes {
   static const reports = '/reports';
   static const newJob = '/intake/new';
   static const profile = '/profile';
+  static const notifications = '/notifications';
 
   static String job(String jobId) => '/jobs/$jobId';
   static String jobChat(String jobId) => '/jobs/$jobId/chat';

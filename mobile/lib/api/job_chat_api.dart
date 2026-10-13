@@ -31,12 +31,24 @@ class JobChatApi {
   Future<Map<String, String>> latestPerJob(List<String> jobIds) async {
     if (jobIds.isEmpty) return const {};
 
-    final data = await _c.get<List<dynamic>>('/jobs/chat/latest', query: {'jobIds': jobIds});
+    // server รับได้ครั้งละไม่เกิน [maxLatestJobIds] (CHAT_VALIDATION) — คิวงานโหลดเพิ่มทีละ 25 จนเกินได้
+    // ถ้ายิงก้อนเดียว ป้าย "มีข้อความใหม่" ทุกใบจะหายเงียบๆ ทันทีที่เลื่อนเกินหน้าที่ 4
+    final batches = [
+      for (var i = 0; i < jobIds.length; i += maxLatestJobIds)
+        jobIds.sublist(i, (i + maxLatestJobIds).clamp(0, jobIds.length)),
+    ];
+    final results = await Future.wait(batches.map(
+      (batch) => _c.get<List<dynamic>>('/jobs/chat/latest', query: {'jobIds': batch}),
+    ));
     return {
-      for (final e in data.cast<Map<String, dynamic>>())
-        e['jobId'] as String: e['messageId'] as String,
+      for (final data in results)
+        for (final e in data.cast<Map<String, dynamic>>())
+          e['jobId'] as String: e['messageId'] as String,
     };
   }
+
+  /// ต้องตรงกับ `MaxLatestJobIds` ใน JobChatService.cs
+  static const maxLatestJobIds = 100;
 
   /// รูปต้องอัปโหลดผ่าน /attachments (kind=chat) ให้เสร็จก่อน แล้วส่ง id เข้ามาที่นี่
   Future<JobChatMessage> send(

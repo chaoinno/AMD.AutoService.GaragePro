@@ -9,6 +9,7 @@ import '../../core/tokens.dart';
 import '../../models/job.dart';
 import '../../widgets/common.dart';
 import '../jobs/data/jobs_providers.dart';
+import '../notifications/widgets/notification_bell.dart';
 
 /// หน้าหลักตามบทบาท — ตัวเลขงานค้าง + ทางลัดไปงานที่บทบาทนี้ต้องทำ
 class HomePage extends ConsumerWidget {
@@ -46,6 +47,7 @@ class HomePage extends ConsumerWidget {
             ),
           ],
         ),
+        actions: const [NotificationBell()],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
