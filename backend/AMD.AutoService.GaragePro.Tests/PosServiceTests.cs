@@ -111,6 +111,42 @@ public sealed class PosServiceTests
         repo.Receipts.Should().ContainSingle();
     }
 
+    // ---------- เลขใบเสร็จนับต่อ (ชาร์ด, สาขา) — unique ต้องอยู่ในขอบเขตเดียวกัน (2026-10-13) ----------
+
+    [Fact]
+    public async Task IssueReceiptAsync_stamps_the_receipt_with_the_callers_shard_and_branch()
+    {
+        var repo = new FakePosRepository(payments: [new Payment { JobId = TestJobId, Amount = 963m }]);
+        var receiptNumbers = new FakeReceiptNumberGenerator();
+        var service = CreateService(repo, quotation: ApprovedQuotation(), receiptNumbers: receiptNumbers);
+
+        var result = await service.IssueReceiptAsync(TestJobId);
+
+        result.Success.Should().BeTrue();
+        // ขอบเขตที่เก็บบนแถวต้องเป็นอันเดียวกับที่ใช้ออกเลข — ไม่งั้น UX_svc_Receipt_Scope_DocumentNo คุ้มกันคนละอย่างกับตัวนับ
+        var receipt = repo.Receipts.Single();
+        receipt.LegacyShardKey.Should().Be("db2");
+        receipt.LegacyBranchId.Should().Be(105);
+        receiptNumbers.LastShardKey.Should().Be("db2");
+        receiptNumbers.LastBranchId.Should().Be(105);
+    }
+
+    [Fact]
+    public async Task IssueReceiptAsync_maps_a_unique_conflict_on_save_to_a_retryable_error_instead_of_throwing()
+    {
+        var repo = new FakePosRepository(payments: [new Payment { JobId = TestJobId, Amount = 963m }])
+        {
+            SaveException = new UniqueConstraintViolationException("UX_svc_Receipt_Scope_DocumentNo")
+        };
+        var service = CreateService(repo, quotation: ApprovedQuotation());
+
+        var result = await service.IssueReceiptAsync(TestJobId);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("POS_RECEIPT_CONFLICT");
+        result.Error.MessageTh.Should().Contain("ลองใหม่");
+    }
+
     // ---------- ใบเสนอราคาหลายใบต่อจ๊อบ: บิลแยกเฉพาะใบเสนอราคา ใบเสร็จรวม (2026-10-02) ----------
 
     private static Quotation SignedQuotation(string code, decimal unitPrice, int version)
@@ -251,12 +287,12 @@ public sealed class PosServiceTests
 
     private static PosService CreateService(
         FakePosRepository repo, Quotation? quotation = null, UserRole role = UserRole.Cashier,
-        FakeJobRepository? jobs = null, params Quotation[] others)
+        FakeJobRepository? jobs = null, FakeReceiptNumberGenerator? receiptNumbers = null, params Quotation[] others)
     {
         var quotations = new FakeQuotationRepository(quotation);
         quotations.Others.AddRange(others);
         return new(repo, jobs ?? new FakeJobRepository(), quotations,
-            new FakeReceiptNumberGenerator(), new StubCurrentUser(role), TimeProvider.System);
+            receiptNumbers ?? new FakeReceiptNumberGenerator(), new StubCurrentUser(role), TimeProvider.System);
     }
 
     private sealed class StubCurrentUser(UserRole role) : ICurrentUser
@@ -320,8 +356,15 @@ public sealed class PosServiceTests
     private sealed class FakeReceiptNumberGenerator : IReceiptNumberGenerator
     {
         private int _sequence;
-        public Task<string> NextAsync(string shardKey, int branchId, DateTime nowLocal, CancellationToken ct = default) =>
-            Task.FromResult($"RC-26-{++_sequence:D4}");
+        public string? LastShardKey { get; private set; }
+        public int? LastBranchId { get; private set; }
+
+        public Task<string> NextAsync(string shardKey, int branchId, DateTime nowLocal, CancellationToken ct = default)
+        {
+            LastShardKey = shardKey;
+            LastBranchId = branchId;
+            return Task.FromResult($"RC-26-{++_sequence:D4}");
+        }
     }
 
     private sealed class FakePosRepository(
@@ -361,6 +404,11 @@ public sealed class PosServiceTests
         }
 
         public Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) => Task.CompletedTask;
-        public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+
+        /// <summary>จำลอง repository จริงที่แปลง SqlException 2601/2627 เป็น UniqueConstraintViolationException ตอน SaveChanges</summary>
+        public Exception? SaveException { get; set; }
+
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) =>
+            SaveException is null ? Task.FromResult(0) : Task.FromException<int>(SaveException);
     }
 }
