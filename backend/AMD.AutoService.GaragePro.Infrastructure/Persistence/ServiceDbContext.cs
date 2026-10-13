@@ -365,6 +365,7 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
             e.ToTable("svc_Receipt");
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
             e.Property(x => x.DocumentNo).HasMaxLength(40).IsRequired();
             e.Property(x => x.IssuedByName).HasMaxLength(200);
             e.Property(x => x.NetAmount).HasColumnType("decimal(18,2)");
@@ -373,7 +374,11 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
 
             // 1 job ออกใบเสร็จได้ใบเดียว (MVP — ไม่มี reprint/void)
             e.HasIndex(x => x.JobId).IsUnique();
-            e.HasIndex(x => x.DocumentNo).IsUnique();
+            // [BIZ] RC-{yy}-{seq} ออกต่อ (ชาร์ด, สาขา, ปี) ตาม ReceiptNumberCounter — unique ต้องอยู่ในขอบเขตเดียวกัน
+            // เดิม HasIndex(DocumentNo).IsUnique() เป็นทั้งตาราง ทำให้สาขาที่สองออกใบแรก RC-26-0001 ไม่ได้ (SqlException 2601)
+            e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.DocumentNo })
+             .IsUnique()
+             .HasDatabaseName("UX_svc_Receipt_Scope_DocumentNo");
         });
 
         b.Entity<ReceiptNumberCounter>(e =>

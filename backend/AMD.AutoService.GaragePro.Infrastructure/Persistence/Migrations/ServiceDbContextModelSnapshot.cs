@@ -1839,6 +1839,14 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("JobId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<decimal>("NetAmount")
                         .HasColumnType("decimal(18,2)");
 
@@ -1850,11 +1858,12 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DocumentNo")
-                        .IsUnique();
-
                     b.HasIndex("JobId")
                         .IsUnique();
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "DocumentNo")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_Receipt_Scope_DocumentNo");
 
                     b.ToTable("svc_Receipt", (string)null);
                 });

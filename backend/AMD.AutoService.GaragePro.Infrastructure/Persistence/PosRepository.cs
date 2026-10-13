@@ -1,5 +1,6 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Domain.Entities;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace AMD.AutoService.GaragePro.Infrastructure.Persistence;
@@ -33,5 +34,28 @@ public sealed class PosRepository(ServiceDbContext db) : IPosRepository
     public async Task AddEventAsync(ActivityEvent evt, CancellationToken ct = default) =>
         await db.ActivityEvents.AddAsync(evt, ct);
 
-    public Task<int> SaveChangesAsync(CancellationToken ct = default) => db.SaveChangesAsync(ct);
+    /// <summary>
+    /// ชน unique ของตารางในโมดูลนี้ (เลขใบเสร็จซ้ำในสาขาเดียวกัน · ออกใบเสร็จงานเดิมพร้อมกันสองคำขอ · RequestId
+    /// ของการชำระเงินซ้ำ) — แปลงเป็น exception ของ Application แทนที่จะหลุดไปเป็น HTTP 500 ดิบ
+    /// (pattern เดียวกับ MasterDataRepository.SaveChangesAsync)
+    /// </summary>
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            return await db.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 2601 or 2627 } sql)
+        {
+            var constraint = KnownConstraints.FirstOrDefault(sql.Message.Contains) ?? "UNIQUE_CONSTRAINT";
+            throw new UniqueConstraintViolationException(constraint, ex);
+        }
+    }
+
+    private static readonly string[] KnownConstraints =
+    [
+        "UX_svc_Receipt_Scope_DocumentNo",
+        "IX_svc_Receipt_JobId",
+        "IX_svc_Payment_RequestId"
+    ];
 }

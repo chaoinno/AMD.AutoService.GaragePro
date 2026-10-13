@@ -220,6 +220,9 @@ public sealed class PosService(
         var receipt = new Receipt
         {
             JobId = jobId,
+            // [BIZ] ขอบเขตเดียวกับที่ออกเลข — unique ของ DocumentNo อยู่ที่ (ชาร์ด, สาขา) ไม่ใช่ทั้งตาราง
+            LegacyShardKey = user.ShardKey,
+            LegacyBranchId = user.BranchId,
             DocumentNo = docNo,
             NetAmount = summary.NetAmount,
             VatAmount = summary.VatAmount,
@@ -242,7 +245,19 @@ public sealed class PosService(
             Source = user.Source,
             OccurredAt = Now
         }, ct);
-        await repo.SaveChangesAsync(ct);
+
+        try
+        {
+            await repo.SaveChangesAsync(ct);
+        }
+        catch (UniqueConstraintViolationException)
+        {
+            // ชน UX_svc_Receipt_Scope_DocumentNo (ตัวนับกับแถวจริงไม่ตรงกัน) หรือ IX_svc_Receipt_JobId (สองคำขอออกใบเสร็จ
+            // งานเดิมพร้อมกัน) — ทั้งสองกรณีลองใหม่แล้วจบได้: รอบถัดไปได้เลขใหม่ หรือเจอใบที่ออกไปแล้วผ่าน GetReceiptByJobAsync
+            // (เลขที่ขอไปแล้วถูกข้ามเป็นช่องว่าง — MERGE ของตัวนับ commit ไปก่อน SaveChanges นี้)
+            return Result<PaymentReceiptDto>.Fail(
+                "POS_RECEIPT_CONFLICT", "ออกเลขใบเสร็จชนกับใบอื่น กรุณาลองใหม่อีกครั้ง");
+        }
 
         return Result<PaymentReceiptDto>.Ok(PosMapper.ToDto(receipt));
     }

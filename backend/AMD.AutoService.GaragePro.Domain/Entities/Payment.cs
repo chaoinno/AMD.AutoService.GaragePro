@@ -29,6 +29,11 @@ public class Receipt
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid JobId { get; set; }
+
+    // [BIZ] เลขใบเสร็จนับต่อ (ชาร์ด, สาขา, ปี) ที่ ReceiptNumberCounter — ขอบเขต unique ของ DocumentNo จึงต้องเป็น
+    // (ชาร์ด, สาขา) เดียวกัน ไม่ใช่ทั้งตาราง (เดิมสาขาที่สองออก RC-26-0001 ไม่ได้ ชน IX_svc_Receipt_DocumentNo → 500)
+    public string LegacyShardKey { get; set; } = "";
+    public int LegacyBranchId { get; set; }
     public string DocumentNo { get; set; } = "";
     public decimal NetAmount { get; set; }
     public decimal VatAmount { get; set; }

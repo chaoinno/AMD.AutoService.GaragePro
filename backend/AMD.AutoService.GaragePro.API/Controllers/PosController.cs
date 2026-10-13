@@ -64,7 +64,8 @@ public sealed class PosController(IPosService service, ITaxInvoiceService taxInv
         {
             "JOB_NOT_FOUND" or "POS_PAYMENT_NOT_FOUND" => StatusCodes.Status404NotFound,
             "JOB_OTHER_BRANCH" or "POS_FORBIDDEN" => StatusCodes.Status403Forbidden,
-            "POS_RECEIPT_ISSUED" or "POS_VAT_LOCKED" or "TAX_INVOICE_TOTAL_MISMATCH" => StatusCodes.Status409Conflict,
+            "POS_RECEIPT_ISSUED" or "POS_VAT_LOCKED" or "POS_RECEIPT_CONFLICT" or "TAX_INVOICE_TOTAL_MISMATCH"
+                => StatusCodes.Status409Conflict,
             "POS_VALIDATION" or "POS_NO_QUOTATION" or "POS_BALANCE_NOT_SETTLED" or "POS_CONFLICT"
                 or "POS_QUOTATION_AWAITING_CUSTOMER" or "TAX_INVOICE_VALIDATION" or "TAX_INVOICE_RECEIPT_REQUIRED"
                 or "TAX_INVOICE_NO_VAT" or "TAX_INVOICE_SELLER_TAX_ID_MISSING"
