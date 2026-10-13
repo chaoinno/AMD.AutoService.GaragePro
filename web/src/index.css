@@ -4270,6 +4270,8 @@ img {
 .state-block__icon svg { width: 25px; height: 25px; }
 .state-block--error .state-block__icon,
 .state-block--forbidden .state-block__icon { background: #fbe9e9; color: var(--red-600); }
+/* ล็อกตามแพ็กเกจไม่ใช่ error — โทนอำพันแบบเดียวกับสถานะ "รอ" ไม่ใช่แดง */
+.state-block--locked .state-block__icon { background: #fdf3e2; color: #8a5a00; }
 .state-block__content::before { display: none; content: none; }
 .state-block p { margin-inline: 0; }
 .state-block .trace-id { margin-inline: 0; }

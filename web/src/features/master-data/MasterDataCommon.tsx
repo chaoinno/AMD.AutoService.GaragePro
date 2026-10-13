@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleOff, LockKeyhole } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { isApiError, isForbiddenError } from '../../api/client'
+import { isApiError, isForbiddenError, isPlanLockedError } from '../../api/client'
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -29,6 +29,8 @@ export function QueryState({ query, loadingTitle, emptyTitle, emptyReason, onRet
   children: ReactNode
 }) {
   if (query.isPending) return <StateBlock variant="loading" title={loadingTitle} reason="ระบบกำลังอ่านข้อมูลจากฐานข้อมูลบริการ" actionLabel="โหลดใหม่" onAction={onRetry}><SkeletonRows /></StateBlock>
+  // ฟีเจอร์ล็อกตามแพ็กเกจ (403 PLAN_FEATURE_LOCKED) ต้องมาก่อน forbidden — ไม่ใช่เรื่องสิทธิ์ของบทบาท เหตุผลใช้ข้อความ server
+  if (query.isError && isPlanLockedError(query.error)) return <StateBlock variant="locked" title="ฟีเจอร์นี้เปิดในแพ็กเกจเต็ม" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={onRetry} />
   if (query.isError && isForbiddenError(query.error)) return <StateBlock variant="forbidden" title="ไม่มีสิทธิ์ดูข้อมูลนี้" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={onRetry} />
   if (query.isError) return <StateBlock variant="error" title="โหลดข้อมูลไม่สำเร็จ" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={onRetry} />
   if (!query.data || (Array.isArray(query.data) && query.data.length === 0)) return <StateBlock variant="empty" title={emptyTitle} reason={emptyReason} traceId="คำขอสำเร็จและไม่พบรายการ" actionLabel="ลองใหม่" onAction={onRetry} />

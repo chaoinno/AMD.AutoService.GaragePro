@@ -17,6 +17,38 @@ export type ApiError = Error & {
   field?: string
   details?: unknown
   status?: number
+  /** วินาทีจาก header Retry-After เมื่อถูกจำกัดอัตรา (429) — ให้หน้าจอบอกได้ว่าลองใหม่ได้เมื่อไหร่ */
+  retryAfterSeconds?: number
+}
+
+/** แพ็กเกจของอู่ — legacy = ลูกค้าเดิม (เปิดทุกอย่าง) · trial = ทดลองใช้ · suspended = ถูกระงับ */
+export type PlanKind = 'trial' | 'paid' | 'legacy' | 'suspended'
+
+export type PlanLimits = {
+  staff?: number | null
+  catalogItems?: number | null
+  customers?: number | null
+  jobs?: number | null
+}
+
+/**
+ * ข้อมูลแพ็กเกจจาก login/me — API ตัดฟิลด์ที่เป็น null ทิ้ง (ดู CLAUDE.md) จึงเป็น optional ไม่ใช่ `| null`
+ * ลูกค้าเดิม (db2) ไม่ส่งฟิลด์นี้เลย → `plan` ทั้งก้อนเป็น undefined = เปิดทุกฟีเจอร์ตามเดิม
+ */
+export type PlanInfo = {
+  kind: PlanKind
+  trialEndsAt?: string
+  daysLeft?: number
+  /** หมดอายุแล้ว: ดู/พิมพ์ได้ แต่ทุกคำขอเขียนถูกปฏิเสธด้วย TRIAL_EXPIRED */
+  readOnly: boolean
+  /** feature key ที่เปิดอยู่ (camelCase ตรงกับ `lib/plan.ts` FEATURES) */
+  features: string[]
+  limits?: PlanLimits
+}
+
+export type WorkspaceInfo = {
+  workspaceNo: string
+  name: string
 }
 
 export type AuthUser = {
@@ -32,6 +64,8 @@ export type AuthUser = {
   departmentName: string | null
   canSeeCost: boolean
   canCloseShift: boolean
+  plan?: PlanInfo
+  workspace?: WorkspaceInfo
 }
 
 export type BranchOption = {
@@ -77,6 +111,8 @@ export type MeResult = {
   shiftId: string | null
   shiftName: string | null
   openedAt: string | null
+  plan?: PlanInfo
+  workspace?: WorkspaceInfo
 }
 
 export type QuotationStatus =
