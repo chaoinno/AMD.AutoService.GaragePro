@@ -1,3 +1,5 @@
+using AMD.AutoService.GaragePro.Domain.Enums;
+
 namespace AMD.AutoService.GaragePro.Application.Dtos;
 
 public sealed record StaffSearchQuery(
@@ -36,7 +38,17 @@ public sealed record StaffSectorPositionDto(
     string PositionName,
     bool IsMain);
 
-public sealed record StaffAccountDto(long Id, string UserName, bool IsAdministrator, bool IsActive);
+/// <summary>
+/// บัญชี [User] ของพนักงาน — <paramref name="InitialPassword"/> มีค่าเฉพาะในคำตอบของการสร้างพนักงาน sp1 ครั้งเดียว
+/// (รหัสสุ่มที่ระบบตั้งให้ เจ้าของอู่คัดลอกส่งให้ช่างเข้าแอป — docs/12 §3.3) · legacy และการอ่านซ้ำเป็น null เสมอ
+/// [SECURITY] ห้ามเก็บ/log ค่านี้ และห้ามคืนในการอ่านครั้งต่อไป
+/// </summary>
+public sealed record StaffAccountDto(
+    long Id,
+    string UserName,
+    bool IsAdministrator,
+    bool IsActive,
+    string? InitialPassword = null);
 
 public sealed record StaffDetailDto(
     long Id,
@@ -103,7 +115,14 @@ public sealed record StaffUpsertRequest(
     int PositionId,
     IReadOnlyList<int>? AdditionalSectorIds,
     string? UserName,
-    string? Password);
+    string? Password,
+    UserRole? Role = null);
+
+/// <summary>
+/// บัญชี [User] ที่ระบุเองตอนสร้างพนักงาน (sp1 — B5): username ตามแบบ <c>SP0000.T00</c> + รหัสผ่านที่ hash แล้ว
+/// · <paramref name="StoredPassword"/> = ค่าที่ลงคอลัมน์ Password ตรงๆ (ผู้เรียก hash ก่อนเสมอ ห้ามส่ง plaintext)
+/// </summary>
+public sealed record StaffAccountSpec(string UserName, string StoredPassword);
 
 public sealed record StaffStatusRequest(bool IsActive, DateTime? EndJobDate);
 public sealed record StaffCodePreviewDto(string Code, string UserName, string Password);

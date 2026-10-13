@@ -40,6 +40,14 @@ public interface IAuthRepository
 
     Task<UserRoleOverride?> GetRoleOverrideAsync(string shardKey, long userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// ตั้ง/แก้บทบาทของผู้ใช้รายคน (svc_UserRoleOverride) — ตารางนี้มีมาตั้งแต่แรกแต่ไม่เคยมีใครเขียน
+    /// self-serve ใช้ทำให้เจ้าของอู่เป็น Manager และพนักงานที่เจ้าของเพิ่มได้บทบาทที่เลือก โดยไม่พึ่งชื่อตำแหน่งไทยใน RoleMapper
+    /// · ผู้เรียกต้อง SaveChangesAsync เอง (เหมือนเมธอดอื่นของ repository นี้)
+    /// · default member เพื่อไม่ต้องแก้ fake ในเทสต์ที่ไม่เกี่ยวข้อง — AuthRepository ตัวจริง (B5) ต้อง override
+    /// </summary>
+    Task UpsertRoleOverrideAsync(UserRoleOverride entry, CancellationToken ct = default) => Task.CompletedTask;
+
     Task<BranchWorkload> GetBranchWorkloadAsync(string shardKey, int branchId, CancellationToken ct = default);
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);

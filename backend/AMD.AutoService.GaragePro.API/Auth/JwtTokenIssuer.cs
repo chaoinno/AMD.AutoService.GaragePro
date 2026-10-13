@@ -54,6 +54,12 @@ public static class GarageClaims
     /// (QuotationLine.AssignedTechnicianId) และการไป lookup legacy ทุกคำขอจะไปเพิ่ม lock convoy ของ Garage DB
     /// </summary>
     public const string StaffId = "staff";
+
+    /// <summary>แพ็กเกจของ workspace: <c>trial|paid|legacy|suspended</c> — fast path ของ filter อ่านอย่างเดียว/ล็อกฟีเจอร์ (ยืนยันกับ IWorkspacePolicy เสมอ)</summary>
+    public const string Plan = "plan";
+
+    /// <summary>วันหมดอายุทดลองใช้ (unix seconds, UTC) — เฉพาะ trial</summary>
+    public const string PlanExpiresAt = "plan_exp";
 }
 
 public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider clock) : ITokenIssuer

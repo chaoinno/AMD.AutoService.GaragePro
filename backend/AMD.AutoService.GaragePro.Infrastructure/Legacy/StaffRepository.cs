@@ -79,8 +79,11 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
     }
 
     public async Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator,
-        StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
+        StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default,
+        StaffAccountSpec? account = null)
     {
+        // TODO(B5): เมื่อ account ไม่ null ให้ INSERT [User] ด้วย account.UserName/account.StoredPassword (hash)
+        //           แทน @Code/@Code ด้านล่าง — รอบ C0 รับพารามิเตอร์ไว้เฉยๆ พฤติกรรมเดิมไม่เปลี่ยน
         if (request.BranchId != scope.BranchId) return null;
         await using var db = Open(scope.ShardKey);
         await db.OpenAsync(ct);

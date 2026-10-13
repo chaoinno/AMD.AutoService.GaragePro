@@ -28,6 +28,16 @@ public interface ICurrentUser
     /// </summary>
     long? StaffId => null;
 
+    /// <summary>
+    /// แพ็กเกจของ workspace จาก JWT claim <c>plan</c> — null = ไม่มี claim (token ที่ออกก่อนมี self-serve หรือ stub)
+    /// ใช้เป็น fast path เท่านั้น การตัดสินจริงต้องถาม <c>IWorkspacePolicy</c> (ค่าใน token อาจค้างจนกว่าจะ login ใหม่)
+    /// · default member เพื่อไม่ให้ stub ในชุดทดสอบ 19 ไฟล์ต้องแก้ตาม
+    /// </summary>
+    PlanKind? Plan => null;
+
+    /// <summary>วันหมดอายุทดลองใช้จาก claim <c>plan_exp</c> (UTC) — มีเฉพาะ trial</summary>
+    DateTime? PlanExpiresAt => null;
+
     /// <summary>[BIZ] ต้นทุน/กำไร/คอมมิชชัน เห็นได้เฉพาะผู้จัดการ</summary>
     bool CanSeeCost => Role == UserRole.Manager;
 }

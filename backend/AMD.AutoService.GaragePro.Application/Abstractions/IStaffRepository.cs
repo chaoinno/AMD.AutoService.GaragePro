@@ -8,8 +8,14 @@ public interface IStaffRepository
         StaffSearchQuery query, CancellationToken ct = default);
     Task<StaffDetailDto?> GetAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         CancellationToken ct = default);
+    /// <summary>
+    /// <paramref name="account"/> = บัญชี [User] ที่ระบุเอง (sp1: username <c>SP0000.T00</c> + รหัสผ่านที่ hash แล้ว — B5)
+    /// · null = พฤติกรรมเดิม (UserName = Password = Code plaintext ของ legacy)
+    /// · อยู่หลัง <paramref name="ct"/> โดยตั้งใจ เพื่อให้ผู้เรียกเดิมที่ส่ง ct แบบ positional ยังคอมไพล์ผ่าน
+    /// </summary>
     Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator,
-        StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default);
+        StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default,
+        StaffAccountSpec? account = null);
     Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default);
     Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id,
