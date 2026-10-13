@@ -11,6 +11,7 @@
 | [03-api-contract.md](03-api-contract.md) | Endpoint map ทุกหน้าจอ 15 หมวด · SignalR event · sync contract · cross-cutting | เขียน OpenAPI spec · แบ่งงาน client |
 | [04-project-plan.md](04-project-plan.md) | Repo layout · stack 3 project + เหตุผล · shared contract · **10 phase vertical slice** · ความเสี่ยง · DoD | วางแผน sprint · ประเมินงาน |
 | [06-customer-vehicle-management.md](06-customer-vehicle-management.md) | Customer/Vehicle CRUD · Garage mapping · privacy · API · validation · ผลทดสอบ | ดู contract และข้อจำกัดของโมดูลลูกค้า/รถ |
+| [12-self-serve-trial-proposal.md](12-self-serve-trial-proposal.md) | **ร่างเพื่อรีวิว (2026-10-13)** — ServicePro แบบทดลองใช้ด้วยตัวเอง: shard `sp1` + ฐาน `GarageSelfServe` · signup Google/อีเมล · 30 วัน · กันอีเมลซ้ำ/ปลอม · ฟีเจอร์ล็อก · SEO/sitemap · สิ่งที่ต้องแก้ก่อนเปิดรับคนนอก · 12 คำถามที่ต้องตัดสินใจ | ก่อนวางแผนโครงการ self-serve trial |
 
 ## ลำดับการอ่าน (แนะนำตาม Handoff doc ของ design)
 1. เปิด prototype `GaragePro Demo.dc.html` → เข้าใจลำดับงานจริง 13 ขั้น
