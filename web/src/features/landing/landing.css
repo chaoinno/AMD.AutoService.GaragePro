@@ -1,5 +1,5 @@
-/* ---- หน้าแรกสาธารณะ / และ /login (หน้าขาย + modal เข้าสู่ระบบ) ----
- * [UI] หน้านี้เป็นหน้าสาธารณะหน้าเดียวที่รองรับจอ < 1024px (App.tsx แสดงนอก desktop-guard)
+/* ---- หน้าสาธารณะ (หน้าขาย + modal เข้าสู่ระบบ) ----
+ * [UI] ทุกหน้าสาธารณะรองรับจอ < 1024px (App.tsx แสดงนอก desktop-guard)
  * เพราะผู้เยี่ยมชมที่มาดูผลิตภัณฑ์มักเปิดจากมือถือ — ส่วนระบบหลังล็อกอินยังเป็น desktop เท่านั้นตามเดิม
  * สีทั้งหมดใช้ token เดิมใน :root (+ สีสถานะจ๊อบ .job-status-*) ไม่เพิ่ม palette ใหม่ */
 
@@ -13,13 +13,14 @@
 .landing .auth-brand { color: white; text-decoration: none; }
 .landing .auth-brand__logo { width: 40px; height: 40px; }
 .landing-nav__menu { display: flex; align-items: center; gap: 2px; }
-.landing-nav__link { display: inline-flex; align-items: center; gap: 6px; padding: 9px 12px; border: 0; border-radius: var(--radius-pill); background: transparent; color: #cbd5e1; font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer; transition: background .15s, color .15s; }
+.landing-nav__link { display: inline-flex; min-height: 48px; align-items: center; gap: 6px; padding: 9px 10px; border: 0; border-radius: var(--radius-pill); background: transparent; color: #cbd5e1; font: inherit; font-size: 15px; font-weight: 600; text-decoration: none; white-space: nowrap; cursor: pointer; transition: background .15s, color .15s; }
 .landing-nav__link svg { width: 17px; height: 17px; }
 .landing-nav__link:hover { background: rgb(255 255 255 / 8%); color: white; }
-.landing-nav__link[aria-current='true'] { color: white; box-shadow: inset 0 -2px 0 #9ec4fb; border-radius: 0; }
+.landing-nav__link[aria-current='page'] { color: white; box-shadow: inset 0 -2px 0 #9ec4fb; border-radius: 0; }
+.landing-nav__link--login { margin-left: 10px; }
 .landing-nav__link--cta { margin-left: 10px; padding-inline: 18px; background: var(--blue-600); color: white; }
 .landing-nav__link--cta:hover { background: #1552b3; }
-.landing-nav__toggle { display: none; width: 44px; height: 44px; place-items: center; border: 1px solid rgb(255 255 255 / 18%); border-radius: 10px; background: transparent; color: white; cursor: pointer; }
+.landing-nav__toggle { display: none; width: 48px; height: 48px; flex-shrink: 0; place-items: center; border: 1px solid rgb(255 255 255 / 18%); border-radius: 10px; background: transparent; color: white; cursor: pointer; }
 .landing-nav__toggle svg { width: 20px; height: 20px; }
 .landing a:focus-visible, .landing button:focus-visible { outline: 2px solid #9ec4fb; outline-offset: 2px; }
 .landing-section--light a:focus-visible, .landing-section--light button:focus-visible { outline-color: var(--blue-600); }
@@ -28,10 +29,10 @@
 .landing-hero { position: relative; overflow: hidden; padding-bottom: 56px; }
 .landing-hero__inner { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr); align-items: center; gap: 56px; min-height: calc(100vh - 68px - 140px); padding-block: 64px 48px; }
 .landing-hero__copy h1 { margin-top: 18px; font-size: clamp(33px, 4vw, 55px); line-height: 1.25; letter-spacing: -.03em; }
-.landing-hero__accent { color: #4c9bff; }
 .landing-hero__copy > p { max-width: 560px; margin-top: 18px; color: #cbd5e1; font-size: 18px; line-height: 1.7; }
 .landing-hero__actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
 .landing-hero__staff-note { margin-top: 22px !important; color: #94a3b8 !important; font-size: 14px !important; }
+.landing-hero__staff-note a { color: #9ec4fb; text-underline-offset: 3px; }
 .landing-hero__visual { position: relative; padding: 0 12% 9% 0; }
 .landing-hero__phone { position: absolute; right: 0; bottom: 0; width: 27%; }
 
@@ -267,8 +268,35 @@
 .mock-phone__sign > svg:last-child { position: absolute; right: .5em; bottom: .4em; width: 1em; height: 1em; color: var(--muted); }
 .mock-phone__cta { margin: 0 .75em .8em; padding: .7em; border-radius: .8em; background: var(--blue-600); color: white; font-size: .86em; font-weight: 700; text-align: center; }
 
+/* ---- Public route content: reuse the landing palette, cards and 16px phone gutters ---- */
+.landing-page-heading { padding-block: 64px 48px; }
+.landing-page-heading h1 { max-width: 960px; font-size: clamp(30px, 4vw, 48px); line-height: 1.35; overflow-wrap: anywhere; }
+.landing-page-heading .landing-lead { max-width: 800px; }
+.landing-page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.landing-text-link { display: inline-flex; min-height: 48px; align-items: center; margin-top: 24px; color: var(--blue-600); font-size: 17px; font-weight: 700; text-underline-offset: 4px; }
+.landing-faq { display: grid; gap: 12px; max-width: 880px; margin-top: 32px; }
+.landing-faq details { padding: 0 20px; border: 1px solid rgb(255 255 255 / 18%); border-radius: var(--radius-card); }
+.landing-faq summary { padding-block: 18px; font-size: 17px; font-weight: 600; cursor: pointer; }
+.landing-faq summary:focus-visible { outline: 2px solid #9ec4fb; outline-offset: 3px; }
+.landing-faq details p { padding-bottom: 20px; color: #cbd5e1; font-size: 16px; line-height: 1.7; }
+.landing-pricing { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.landing-pricing__card { padding: 32px; }
+.landing-pricing__card .landing-h2 { font-size: clamp(25px, 2.5vw, 32px); }
+.landing-pricing__card .landing-eyebrow { color: var(--blue-600); }
+.landing-pricing__card > p { font-size: 16px; }
+.landing-section--light .landing-btn--ghost { border-color: var(--border); color: var(--text); }
+.landing-section--light .landing-btn--ghost:hover { border-color: var(--blue-600); background: var(--blue-50); }
+.landing-package-list { display: grid; gap: 14px; margin-top: 24px; padding: 0; list-style: none; }
+.landing-package-list li { display: flex; align-items: center; gap: 10px; font-size: 16px; }
+.landing-package-list svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--blue-600); }
+.landing-legal { display: grid; gap: 32px; }
+.landing-legal h2 { font-size: 23px; }
+.landing-legal p { margin-top: 12px; color: var(--muted); font-size: 16px; }
+
 /* ---- responsive ---- */
 @media (max-width: 1180px) {
+  .landing-nav__link { padding-inline: 7px; font-size: 14px; }
+  .landing-nav__link--login, .landing-nav__link--cta { margin-left: 2px; }
   /* 7 ขั้นแนวนอนแคบเกินอ่านได้ — เปลี่ยนเป็นไทม์ไลน์แนวตั้ง 2 คอลัมน์ */
   .landing-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 28px; }
   .landing-flow::before { display: none; }
@@ -291,14 +319,19 @@
 
 @media (max-width: 960px) {
   .landing-nav__toggle { display: grid; }
-  .landing-nav__menu { position: absolute; top: 100%; right: -16px; left: -16px; display: none; flex-direction: column; align-items: stretch; gap: 4px; padding: 12px 16px 16px; border-bottom: 1px solid rgb(255 255 255 / 8%); background: var(--navy-900); }
+  .landing-nav__menu { position: absolute; top: 100%; right: -16px; left: -16px; display: none; max-height: calc(100dvh - 68px); overflow-y: auto; flex-direction: column; align-items: stretch; gap: 4px; padding: 12px 16px 16px; border-bottom: 1px solid rgb(255 255 255 / 8%); background: var(--navy-900); }
   .landing-nav__menu[data-open='true'] { display: flex; }
-  .landing-nav__link { padding: 12px 14px; border-radius: 10px; }
-  .landing-nav__link[aria-current='true'] { box-shadow: inset 3px 0 0 #9ec4fb; border-radius: 10px; }
+  .landing-nav__link { padding: 12px 14px; border-radius: 10px; font-size: 15px; }
+  .landing-nav__link[aria-current='page'] { box-shadow: inset 3px 0 0 #9ec4fb; border-radius: 10px; }
+  .landing-nav__link--login { margin-left: 0; }
   .landing-nav__link--cta { justify-content: center; margin: 6px 0 0; }
 }
 
 @media (max-width: 720px) {
+  .landing-page-heading { padding-block: 40px 32px; }
+  .landing-page-actions .landing-btn { width: 100%; min-height: 54px; }
+  .landing-pricing { grid-template-columns: minmax(0, 1fr); }
+  .landing-pricing__card { padding: 24px 20px; }
   .landing-section { padding-block: 64px; }
   .landing-hero__actions .landing-btn { flex: 1 1 auto; }
   .landing-feature-grid, .landing-mobile__list, .landing-flow { grid-template-columns: minmax(0, 1fr); }

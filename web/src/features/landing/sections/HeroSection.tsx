@@ -1,4 +1,6 @@
-import { Database, LogIn, MonitorSmartphone, ShieldCheck, Sparkles } from 'lucide-react'
+import { Database, MonitorSmartphone, ShieldCheck, Sparkles } from 'lucide-react'
+import { Link } from 'react-router'
+import { findPublicRoute } from '../../../routes/publicRoutes'
 import { PhoneMockup } from '../mockups/PhoneMockup'
 import { WebAppMockup } from '../mockups/WebAppMockup'
 
@@ -9,13 +11,7 @@ const HIGHLIGHTS = [
   { icon: ShieldCheck, title: 'ทุกขั้นตอนมีหลักฐาน', body: 'รูปถ่าย ลายเซ็นลูกค้า และประวัติทุกการเปลี่ยนสถานะ' },
 ] as const
 
-type Props = {
-  startLabel: string
-  onStart: () => void
-  onRequestDemo: () => void
-}
-
-export function HeroSection({ startLabel, onStart, onRequestDemo }: Props) {
+export function HeroSection({ hasSession }: { hasSession: boolean }) {
   return (
     <section id="top" className="landing-hero" aria-labelledby="landing-hero-title">
       <div className="auth-page__ambient auth-page__ambient--one" />
@@ -25,25 +21,23 @@ export function HeroSection({ startLabel, onStart, onRequestDemo }: Props) {
           <span className="login-intro__eyebrow">
             <Sparkles aria-hidden="true" /> แพลตฟอร์มบริหารงานบริการสำหรับอู่ซ่อมบำรุงรถยนต์
           </span>
-          <h1 id="landing-hero-title">
-            ทุกคันในอู่ <span className="landing-hero__accent">ชัดเจน</span>
-            <br />
-            ตั้งแต่รับรถจนส่งมอบ
-          </h1>
+          <h1 id="landing-hero-title">{findPublicRoute('/')?.h1}</h1>
           <p>
             ServicePro รวมงานรับรถ ใบเสนอราคา งานซ่อม QC ชำระเงิน และส่งมอบรถไว้ในระบบเดียว
             หน้าร้าน ช่าง แคชเชียร์ และผู้บริหารทำงานบนข้อมูลชุดเดียวกัน ทั้งบนเว็บและแอปมือถือ
           </p>
           <div className="landing-hero__actions">
-            <button type="button" className="landing-btn landing-btn--primary" onClick={onStart}>
-              <LogIn aria-hidden="true" /> {startLabel}
-            </button>
-            <button type="button" className="landing-btn landing-btn--ghost" onClick={onRequestDemo}>
+            <Link className="landing-btn landing-btn--primary" to="/signup">
+              ทดลองใช้ฟรี
+            </Link>
+            <Link className="landing-btn landing-btn--ghost" to="/contact">
               ขอ Demo
-            </button>
+            </Link>
           </div>
           <p className="landing-hero__staff-note">
-            พนักงานอู่: กด “{startLabel}” แล้วเข้าสู่ระบบด้วยรหัสพนักงานและรหัสผ่านเดิมของ GaragePro
+            พนักงานอู่: <Link to={hasSession ? '/jobs' : '/login'} state={hasSession ? undefined : { fromLanding: true }}>
+              {hasSession ? 'เข้าสู่ระบบงาน' : 'เข้าสู่ระบบ'}
+            </Link> ด้วยรหัสพนักงานและรหัสผ่านเดิมของ GaragePro
           </p>
         </div>
         <div className="landing-hero__visual">
