@@ -12,6 +12,7 @@ using AMD.AutoService.GaragePro.Application.Contact;
 using AMD.AutoService.GaragePro.Infrastructure.Legacy;
 using AMD.AutoService.GaragePro.Infrastructure.Notifications;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
+using AMD.AutoService.GaragePro.Infrastructure.SelfServe;
 using AMD.AutoService.GaragePro.Infrastructure.Storage;
 using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Attachments;
@@ -125,6 +126,9 @@ public static class DependencyInjection
         services.AddScoped<IStaffRepository, StaffRepository>();
         services.AddScoped<IStaffService, StaffService>();
         services.AddSingleton(TimeProvider.System);
+
+        // self-serve (shard sp1) — ต้องอยู่ท้ายสุด เพื่อให้ WP ถัดไปแทนที่ implementation ได้ที่ไฟล์เดียว
+        services.AddSelfServeInfrastructure(configuration);
 
         return services;
     }

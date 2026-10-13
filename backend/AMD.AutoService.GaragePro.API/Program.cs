@@ -6,6 +6,7 @@ using AMD.AutoService.GaragePro.API;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.API.Controllers;
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Infrastructure;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -111,10 +112,16 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUser, CurrentUser>();
+// ICurrentUser มาจาก JWT ของคำขอเสมอ — ยกเว้นโค้ดนอก HTTP (IShardScopeFactory.RunAsAsync: signup provisioning ·
+// hosted job · ตัวสร้างข้อมูลตัวอย่าง) ที่ตั้ง CurrentUserOverride ไว้ใน scope ของตัวเองก่อน resolve อะไรทั้งสิ้น
+// CurrentUserOverride ลงทะเบียนใน AddSelfServeInfrastructure (ผ่าน AddGarageProInfrastructure ด้านล่าง)
+builder.Services.AddScoped<ICurrentUser>(sp =>
+    sp.GetRequiredService<CurrentUserOverride>().User
+    ?? new CurrentUser(sp.GetRequiredService<IHttpContextAccessor>()));
 builder.Services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
 builder.Services.AddMemoryCache();
 builder.Services.AddGarageProInfrastructure(builder.Configuration);
+builder.Services.AddSelfServeApi();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()

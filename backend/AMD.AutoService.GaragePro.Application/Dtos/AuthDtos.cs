@@ -1,3 +1,5 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
+
 namespace AMD.AutoService.GaragePro.Application.Dtos;
 
 // ---------- อ่านจาก Garage DB เดิม ----------
@@ -66,7 +68,25 @@ public sealed record AuthUserDto(
     string? PositionName,
     string? DepartmentName,
     bool CanSeeCost,
-    bool CanCloseShift);
+    bool CanCloseShift,
+    WorkspacePlanDto? Plan = null,
+    WorkspaceInfoDto? Workspace = null);
+
+/// <summary>
+/// แพ็กเกจของอู่ที่ login (self-serve เท่านั้น) — legacy ไม่ส่ง (null → ถูกตัดจาก JSON) เว็บ/แอปต้องอ่านแบบ optional
+/// · <paramref name="Kind"/> = <c>trial|paid|legacy|suspended</c> (PlanKindNames) · <paramref name="Features"/> = ชื่อ camelCase (PlanFeatureNames)
+/// · <paramref name="DaysLeft"/> นับจากวันนี้ถึง TrialEndsAt (ติดลบได้ = หมดอายุแล้ว) · <paramref name="ReadOnly"/> = เขียนไม่ได้แล้ว
+/// </summary>
+public sealed record WorkspacePlanDto(
+    string Kind,
+    DateTime? TrialEndsAt,
+    int? DaysLeft,
+    bool ReadOnly,
+    string[] Features,
+    PlanLimits? Limits = null);
+
+/// <summary>อู่ที่สมัครเอง — <paramref name="WorkspaceNo"/> แสดงผล (เช่น "SP1001") ไม่ใช่ BranchId</summary>
+public sealed record WorkspaceInfoDto(string WorkspaceNo, string Name);
 
 /// <summary>สาขาที่เลือกได้ พร้อมตัวเลขงานค้าง — ตรงกับหน้าเลือกสาขาใน design</summary>
 public sealed record BranchOptionDto(
@@ -111,4 +131,6 @@ public sealed record MeDto(
     string? BranchName,
     Guid? ShiftId,
     string? ShiftName,
-    DateTime? OpenedAt);
+    DateTime? OpenedAt,
+    WorkspacePlanDto? Plan = null,
+    WorkspaceInfoDto? Workspace = null);
