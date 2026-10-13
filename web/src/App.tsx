@@ -28,12 +28,14 @@ import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
 import { useSession } from './lib/session'
+import { isPublicPath } from './routes/publicRoutes'
 
 export default function App() {
   const { pathname } = useLocation()
-  // [UI] หน้าแรก (หน้าขาย) และ /login (หน้าเดียวกัน + modal เข้าสู่ระบบ) เป็นหน้าสาธารณะที่ต้องเปิดบนมือถือได้
+  // [UI] หน้าสาธารณะ (หน้าขาย `/` และ /login ที่เป็นหน้าเดียวกัน + modal เข้าสู่ระบบ) ต้องเปิดบนมือถือได้
   // (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard — ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
-  if (pathname === '/' || pathname === '/login') {
+  // รายการหน้าอยู่ที่ routes/publicRoutes.ts ที่เดียว (ใช้ร่วมกับ meta/prerender/sitemap)
+  if (isPublicPath(pathname)) {
     return (
       <AppErrorBoundary>
         <PublicRoute />

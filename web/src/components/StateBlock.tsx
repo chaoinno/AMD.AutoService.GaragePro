@@ -2,6 +2,7 @@ import {
   CircleAlert,
   FileQuestion,
   LoaderCircle,
+  Lock,
   LockKeyhole,
   type LucideIcon,
 } from 'lucide-react'
@@ -9,13 +10,15 @@ import type { ReactNode } from 'react'
 import { Button } from './ui/button'
 import { Skeleton } from './ui/skeleton'
 
-type StateVariant = 'loading' | 'empty' | 'error' | 'forbidden'
+// locked = ฟีเจอร์ถูกล็อกตามแพ็กเกจ (PLAN_FEATURE_LOCKED) — คนละความหมายกับ forbidden (ไม่มีสิทธิ์ตามบทบาท)
+type StateVariant = 'loading' | 'empty' | 'error' | 'forbidden' | 'locked'
 
 const icons: Record<StateVariant, LucideIcon> = {
   loading: LoaderCircle,
   empty: FileQuestion,
   error: CircleAlert,
   forbidden: LockKeyhole,
+  locked: Lock,
 }
 
 type StateBlockProps = {
