@@ -1,117 +1,64 @@
-import { Component, type ErrorInfo, type ReactElement, type ReactNode } from 'react'
-import { Monitor, RefreshCw, TriangleAlert } from 'lucide-react'
-import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router'
-import { AppShell } from './components/AppShell'
+import { Component, lazy, Suspense, type ErrorInfo, type ReactElement, type ReactNode } from 'react'
+import { RefreshCw, TriangleAlert } from 'lucide-react'
+import { Route, Routes, useLocation } from 'react-router'
 import { StateBlock } from './components/StateBlock'
 import { Button } from './components/ui/button'
-import { LandingPage } from './features/landing/LandingPage'
-import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
-import { JobsPage } from './features/jobs/JobsPage'
-import { CustomerPage } from './features/customers/CustomerPage'
-import { VehiclePage } from './features/customers/VehiclePage'
-import { StaffPage } from './features/staff/StaffPage'
-import { CatalogPage } from './features/catalog/CatalogPage'
-import { SupplierPage } from './features/master-data/SupplierPage'
-import { WarehousePage } from './features/master-data/WarehousePage'
-import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
-import { QuotationTemplatePage } from './features/master-data/QuotationTemplatePage'
-import { PurchasingPage } from './features/purchasing/PurchasingPage'
-import { InventoryPage } from './features/purchasing/InventoryPage'
-import { DashboardReportPage } from './features/reports/DashboardReportPage'
-import { CycleTimeReportPage } from './features/reports/CycleTimeReportPage'
-import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
-import { StockReportPage } from './features/reports/StockReportPage'
-import { RetailSalesReportPage } from './features/reports/RetailSalesReportPage'
-import { ServiceDueReportPage } from './features/reports/ServiceDueReportPage'
-import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryReportPage'
-import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
-import { SalesPage } from './features/sales/SalesPage'
-import { PromotionPage } from './features/master-data/PromotionPage'
-import { useSession } from './lib/session'
-import { isPublicPath } from './routes/publicRoutes'
+import { PublicLayout } from './features/landing/PublicLayout'
+import { HomePage } from './features/landing/pages/HomePage'
+import { FeaturesPage } from './features/landing/pages/FeaturesPage'
+import { MobileAppPage } from './features/landing/pages/MobileAppPage'
+import { PricingPage } from './features/landing/pages/PricingPage'
+import { AboutPage } from './features/landing/pages/AboutPage'
+import { ContactPage } from './features/landing/pages/ContactPage'
+import { PrivacyPage } from './features/landing/pages/PrivacyPage'
+import { TermsPage } from './features/landing/pages/TermsPage'
+import { SignupComingSoonPage } from './features/landing/pages/SignupComingSoonPage'
+import { isPublicPath, PUBLIC_ROUTES } from './routes/publicRoutes'
+
+// Do not import protected pages here: public visits must not download the internal app.
+const AppRoutes = lazy(() => import('./AppRoutes'))
+
+const PUBLIC_PAGES: Record<string, ReactElement> = {
+  '/': <HomePage />,
+  '/login': <HomePage />,
+  '/features': <FeaturesPage />,
+  '/mobile-app': <MobileAppPage />,
+  '/pricing': <PricingPage />,
+  '/about': <AboutPage />,
+  '/contact': <ContactPage />,
+  '/privacy': <PrivacyPage />,
+  '/terms': <TermsPage />,
+  '/signup': <SignupComingSoonPage />,
+}
 
 export default function App() {
   const { pathname } = useLocation()
-  // [UI] หน้าสาธารณะ (หน้าขาย `/` และ /login ที่เป็นหน้าเดียวกัน + modal เข้าสู่ระบบ) ต้องเปิดบนมือถือได้
-  // (ผู้สนใจผลิตภัณฑ์) จึงไม่ผ่าน desktop-guard — ระบบหลังล็อกอินยังรองรับเฉพาะ ≥ 1024px ตามกฎ UI เดิม
-  // รายการหน้าอยู่ที่ routes/publicRoutes.ts ที่เดียว (ใช้ร่วมกับ meta/prerender/sitemap)
-  if (isPublicPath(pathname)) {
-    return (
-      <AppErrorBoundary>
-        <PublicRoute />
-      </AppErrorBoundary>
-    )
-  }
   return (
     <AppErrorBoundary>
-      <div className="desktop-guard" role="alert">
-        <div>
-          <span aria-hidden="true"><Monitor /></span>
-          <h1>กรุณาเปิดบนเดสก์ท็อป</h1>
-          <p>ระบบงานบริการรองรับหน้าจอกว้างตั้งแต่ 1024 พิกเซลขึ้นไป</p>
-        </div>
-      </div>
-      <div className="desktop-app">
+      {isPublicPath(pathname) ? (
         <Routes>
-          <Route path="/jobs" element={<ProtectedRoute><JobsPage /></ProtectedRoute>} />
-          <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
-          <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
-          <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
-          <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
-          <Route path="/products" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
-          <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
-          <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
-          <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
-          <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
-          <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
-          <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
-          <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
-          <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
-          <Route path="/sales/:id" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
-          <Route path="/promotions" element={<ProtectedRoute><PromotionPage /></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute><Navigate to="/reports/dashboard" replace /></ProtectedRoute>} />
-          <Route path="/reports/dashboard" element={<ProtectedRoute><DashboardReportPage /></ProtectedRoute>} />
-          <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
-          <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
-          <Route path="/reports/retail-sales" element={<ProtectedRoute><RetailSalesReportPage /></ProtectedRoute>} />
-          <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
-          <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
-          <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
-          <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
-          <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
+          {/* Public pages work on phones; the protected tree retains its desktop guard. */}
+          <Route element={<PublicLayout />}>
+            {PUBLIC_ROUTES.map(({ path }) => (
+              <Route key={path} path={path} element={PUBLIC_PAGES[path]} />
+            ))}
+          </Route>
         </Routes>
-      </div>
+      ) : (
+        <Suspense fallback={
+          <StateBlock
+            variant="loading"
+            title="กำลังโหลดระบบงาน"
+            reason="กำลังเตรียมหน้าจอสำหรับพนักงานอู่"
+            traceId="ไม่ใช่คำขอ API"
+            actionLabel="โหลดหน้าใหม่"
+            onAction={() => window.location.reload()}
+          />
+        }>
+          <AppRoutes />
+        </Suspense>
+      )}
     </AppErrorBoundary>
-  )
-}
-
-function PublicRoute() {
-  const { pathname } = useLocation()
-  const { session } = useSession()
-  // มีเซสชันแล้วไม่ต้องเห็นฟอร์มเข้าสู่ระบบ — ส่วนหน้าแรก `/` ยังเปิดดูได้ (ปุ่มหลักพาเข้า /jobs)
-  if (pathname === '/login' && session) return <Navigate to="/jobs" replace />
-  return <LandingPage loginOpen={pathname === '/login'} hasSession={Boolean(session)} />
-}
-
-function ProtectedRoute({ children }: { children: ReactElement }) {
-  const { session } = useSession()
-  if (!session) return <Navigate to="/login" replace />
-  return children
-}
-
-function NotFoundPage() {
-  const navigate = useNavigate()
-  return (
-    <AppShell title="ไม่พบหน้า">
-      <StateBlock
-        variant="empty"
-        title="ไม่พบหน้าที่ต้องการ"
-        reason="ที่อยู่นี้ไม่มีอยู่ในระบบงานบริการ"
-        traceId="ไม่ใช่คำขอ API"
-        actionLabel="กลับไปหน้าจ๊อบ"
-        onAction={() => navigate('/jobs')}
-      />
-    </AppShell>
   )
 }
 
