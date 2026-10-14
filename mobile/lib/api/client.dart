@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -58,15 +60,53 @@ class SessionNotifier extends Notifier<Session?> {
     state = null;
     await ref.read(sharedPrefsProvider).remove(_key);
   }
+
+  /// แทนแพ็กเกจ/อู่ด้วยค่าล่าสุดจาก `/auth/me` โดยไม่ต้องเข้าสู่ระบบใหม่ (แถบทดลองใช้เปลี่ยนตามทันที)
+  ///
+  /// [expectedToken] กันคำตอบที่มาช้าเขียนทับเซสชันของคนถัดไป (ออกจากระบบ/สลับบัญชีระหว่างรอ)
+  /// · ค่าเดิมทุกตัว = ไม่บันทึก ไม่แจ้ง listener (ถูกเรียกทุก 5 นาที)
+  Future<void> updatePlan(PlanInfo? plan, WorkspaceInfo? workspace,
+      {required String expectedToken}) async {
+    final current = state;
+    if (current == null || current.accessToken != expectedToken) return;
+
+    final unchanged = jsonEncode(current.user.plan?.toJson()) == jsonEncode(plan?.toJson()) &&
+        jsonEncode(current.user.workspace?.toJson()) == jsonEncode(workspace?.toJson());
+    if (unchanged) return;
+
+    await save(current.withUser(current.user.withPlan(plan, workspace)));
+  }
+
+  /// server เพิ่งตอบ TRIAL_EXPIRED กับคำขอเขียน = อู่อยู่ในช่วงอ่านอย่างเดียวแล้ว
+  /// เปลี่ยนแถบเป็นสีแดงทันทีโดยไม่ต้องรอ SessionGuard รอบถัดไป (ซึ่งจะยืนยันค่าจริงตามมา)
+  Future<void> markReadOnly() async {
+    final current = state;
+    final plan = current?.user.plan;
+    if (current == null || plan == null || plan.readOnly) return;
+    await save(current.withUser(current.user.withPlan(plan.copyWith(readOnly: true), current.user.workspace)));
+  }
 }
 
 /// client เดียวของทั้งแอป — ไม่สร้าง Dio ใหม่ทุกครั้งที่เซสชันเปลี่ยน เพราะอ่าน token ตอนยิงคำขอ
 final apiClientProvider = Provider<ApiClient>((ref) {
-  return ApiClient(
+  final client = ApiClient(
     readToken: () => ref.read(sessionProvider)?.accessToken,
     onAuthFailure: (error) => _handleAuthFailure(ref, error),
   );
+  client.dio.interceptors.add(InterceptorsWrapper(onError: (e, handler) {
+    if (_isTrialExpiredWrite(e)) unawaited(ref.read(sessionProvider.notifier).markReadOnly());
+    handler.next(e);
+  }));
+  return client;
 });
+
+/// TRIAL_EXPIRED ที่ /auth/login หมายถึง "อู่ถูกปิดการใช้งาน" (หน้า login แสดงเอง) ไม่ใช่อ่านอย่างเดียว
+bool _isTrialExpiredWrite(DioException e) {
+  if (e.requestOptions.path.startsWith('/auth/')) return false;
+  final body = e.response?.data;
+  final error = body is Map ? body['error'] : null;
+  return error is Map && error['code'] == 'TRIAL_EXPIRED';
+}
 
 /// เซสชันใช้ไม่ได้แล้ว — token มือถือไม่หมดอายุ (2026-10-05) จึงเกิดเมื่อ server ตัดสิทธิ์:
 /// พนักงานถูกปิดใช้งาน/ย้ายสาขา/เปลี่ยนสิทธิ์ (SessionRevocationMiddleware) หรือ token เสีย

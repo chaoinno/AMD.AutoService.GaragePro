@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../api/client.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
+import '../../widgets/trial_banner.dart';
 
 /// แท็บของแอปตามบทบาท — branch index ตรงกับลำดับใน StatefulShellRoute
 /// (0 หน้าหลัก · 1 คิวงาน · 2 คิวอนุมัติ · 3 รายงาน · 4 โปรไฟล์)
@@ -45,8 +46,26 @@ class AppShell extends ConsumerWidget {
 
     final selected = tabs.indexWhere((t) => t.branchIndex == navigationShell.currentIndex);
 
+    // อู่ที่สมัครเอง: แถบทดลองใช้อยู่บนสุดของทุกแท็บ (ลูกค้าเดิมไม่มีแพ็กเกจ = ไม่มีแถบ เหมือนเดิมทุกอย่าง)
+    // หน้าที่ push นอก shell (การ์ดจ๊อบ ฯลฯ) ไม่มีแถบ — ที่นั่นคำขอเขียนที่ถูกปฏิเสธแสดง messageTh ของ server เอง
+    final trial = trialBannerSpec(session?.user.plan);
+
     return Scaffold(
-      body: navigationShell,
+      // โครงเดียวกันทั้งมี/ไม่มีแถบ — แถบโผล่ระหว่างใช้งานได้ (SessionGuard อ่านแพ็กเกจใหม่) ถ้าสลับโครง
+      // navigation shell จะถูกย้ายตำแหน่งใน tree ทั้งที่ไม่จำเป็น
+      body: Column(
+        children: [
+          if (trial != null) TrialBanner(spec: trial),
+          // แถบกินช่อง status bar ไปแล้ว — ตัด padding บนออก ไม่งั้น AppBar ของแต่ละแท็บเว้นซ้ำอีกชั้น
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: trial != null,
+              child: navigationShell,
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: selected < 0 ? 0 : selected,
         onDestinationSelected: (i) => navigationShell.goBranch(

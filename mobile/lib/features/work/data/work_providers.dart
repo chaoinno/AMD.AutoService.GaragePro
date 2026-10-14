@@ -58,12 +58,16 @@ class CurrentWorkController extends Notifier<CurrentWorkState> {
   /// watch ไม่ใช่ read โดยตั้งใจ — provider นี้ไม่ autoDispose จึงต้องรีเซ็ตตัวเองเมื่อ session
   /// เปลี่ยน ครอบทั้งปิดกะ ออกจากระบบ และสลับไปบัญชีช่างคนอื่นบนเครื่องเดียวกัน
   /// ไม่งั้นแถบจะค้างโชว์คาบของคนก่อนหน้า
+  ///
+  /// select เฉพาะ token + บทบาท — เซสชันถูกเขียนใหม่ระหว่างใช้งานด้วย (แพ็กเกจของอู่จาก SessionGuard
+  /// ทุกวันที่ "เหลือ N วัน" เปลี่ยน) ถ้า watch ทั้งก้อน แถบจับเวลาจะถูกล้างและนาฬิกากระพริบทุกครั้ง
   @override
   CurrentWorkState build() {
-    final session = ref.watch(sessionProvider);
+    final session = ref.watch(
+        sessionProvider.select((s) => (token: s?.accessToken, role: s?.user.role)));
 
     // ธุรการ/แคชเชียร์/หน้าร้าน/หัวหน้าช่างไม่เคยมีคาบ — ไม่ต้องยิง /work/current ให้เปลืองเน็ตมือถือ
-    if (session != null && AppRole.parse(session.user.role).canTrackWorkTime) {
+    if (session.token != null && AppRole.parse(session.role).canTrackWorkTime) {
       // ต้องกู้สถานะจาก server เสมอตอนเปิดแอป — ห้ามเชื่อ state ที่ค้างในเครื่อง (docs/09 §9)
       Future.microtask(refresh);
     }
