@@ -8,6 +8,9 @@
     <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="FluentFTP" Version="50.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.11" />
+    <!-- design-time factory อ่าน appsettings + user-secrets ของ API แบบเดียวกับแอป (dotnet ef database update บนเครื่อง dev) -->
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
   </ItemGroup>

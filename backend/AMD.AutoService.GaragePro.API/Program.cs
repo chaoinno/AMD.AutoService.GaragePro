@@ -170,6 +170,34 @@ if (app.Environment.IsDevelopment())
             "เริ่มต้นฐานข้อมูลไม่สำเร็จ — API จะรันต่อแต่ endpoint ที่ต้องใช้ DB จะคืน error " +
             "(ตรวจ VPN และ ConnectionStrings:ServiceDb)");
     }
+
+    // ฐาน self-serve (shard sp1 → GarageSelfServe_Dev) มี migration 2 ชุด: svc_* ชุดเดียวกับ GarageService + sp_*
+    // ServiceDbContext เลือกฐานตาม shard ของ ICurrentUser จึงต้อง migrate ภายใต้ ScopedCurrentUser ของ sp1
+    // ไม่งั้น scope ปกติ (ไม่มี HttpContext = db2) จะ migrate GarageService ซ้ำแทน
+    // (ชื่อเต็มแทน using เพื่อให้การแก้ของงานนี้อยู่ในบล็อกนี้บล็อกเดียว — หัวไฟล์มีหลาย WP แก้พร้อมกัน)
+    if (AMD.AutoService.GaragePro.Infrastructure.SelfServe.SelfServeInfrastructure.IsConfigured(app.Configuration))
+    {
+        try
+        {
+            var selfServe = app.Services
+                .GetRequiredService<Microsoft.Extensions.Options.IOptions<AMD.AutoService.GaragePro.Application.SelfServe.SelfServeOptions>>()
+                .Value;
+            await app.Services.GetRequiredService<IShardScopeFactory>().RunAsAsync(
+                new ScopedCurrentUser(selfServe.ShardKey, 0, 0, "system"),
+                async (sp, ct) =>
+                {
+                    await sp.GetRequiredService<ServiceDbContext>().Database.MigrateAsync(ct);
+                    await sp.GetRequiredService<AMD.AutoService.GaragePro.Infrastructure.SelfServe.SelfServeDbContext>()
+                        .Database.MigrateAsync(ct);
+                });
+        }
+        catch (Exception ex)
+        {
+            app.Logger.LogWarning(ex,
+                "เริ่มต้นฐาน self-serve ไม่สำเร็จ — อู่ทดลองใช้ (sp1) จะใช้งานไม่ได้จนกว่าจะแก้ " +
+                "(ตรวจ SelfServe:ConnectionString และว่ารัน deploy/selfserve/provision-selfserve-db.sh แล้ว)");
+        }
+    }
 }
 
 app.UseCors();

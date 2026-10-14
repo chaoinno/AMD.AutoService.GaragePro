@@ -51,8 +51,21 @@ jq -r '
   (select(.["LineMessaging:ChannelAccessToken"] // "" | length > 0)
     | "LineMessaging__ChannelAccessToken=" + .["LineMessaging:ChannelAccessToken"]),
   (select(.["LineMessaging:ContactGroupId"] // "" | length > 0)
-    | "LineMessaging__ContactGroupId=" + .["LineMessaging:ContactGroupId"])
+    | "LineMessaging__ContactGroupId=" + .["LineMessaging:ContactGroupId"]),
+  # self-serve (shard sp1) — ไม่บังคับ: ไม่ตั้ง = ไม่มีบรรทัดเหล่านี้ = deployment ทำงานแบบไม่มี self-serve
+  # [SECURITY] อ่านจากคีย์ Production:SelfServe:* ไม่ใช่ SelfServe:ConnectionString ของ Mac (นั่นชี้ GarageSelfServe_Dev)
+  # ถ้าคัดลอกคีย์ dev มาตรงๆ production จะไปเขียนฐาน dev โดยไม่มีอะไรฟ้อง
+  (select(.["Production:SelfServe:ConnectionString"] // "" | length > 0)
+    | "SelfServe__ConnectionString=" + .["Production:SelfServe:ConnectionString"],
+      "LegacyShards__ConnectionStrings__sp1=" + .["Production:SelfServe:ConnectionString"]),
+  (select(.["Production:SelfServe:MigrationConnectionString"] // "" | length > 0)
+    | "SelfServe__MigrationConnectionString=" + .["Production:SelfServe:MigrationConnectionString"])
 ' "$input_json" > "$temp_env"
+if grep -Eq '^(SelfServe__ConnectionString|LegacyShards__ConnectionStrings__sp1|SelfServe__MigrationConnectionString)=.*GarageSelfServe_Dev' "$temp_env"; then
+  rm -f "$temp_env" "$input_json"
+  echo "Production self-serve connection points at GarageSelfServe_Dev - fix Production:SelfServe:* in user-secrets" >&2
+  exit 1
+fi
 jq -r '
   "Ftp__Host=" + (.Ftp.Host | tostring),
   "Ftp__Port=" + ((.Ftp.Port // 21) | tostring),

@@ -16,16 +16,27 @@ RUN dotnet publish backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GarageP
     --no-restore \
  && rm -f /app/publish/appsettings.Development.json
 
-# Bundle EF migrations into the runtime image. Deployment runs this executable
-# as a one-off job before replacing the API container.
+# Bundle EF migrations into the runtime image. Deployment runs these executables
+# as one-off jobs before replacing the API container.
+#  - efbundle            : ServiceDbContext (svc_*) — GarageService, and GarageSelfServe via env override
+#  - efbundle-selfserve  : SelfServeDbContext (sp_*, history table __EFMigrationsHistory_SelfServe)
+# Both contexts have IDesignTimeDbContextFactory implementations (Infrastructure/SelfServe/DesignTimeFactories.cs)
+# that read the connection string from the environment at run time, so building the bundles no longer needs
+# a placeholder Jwt__Key or connection string (EF logs that the API host could not start and uses the factory).
 RUN dotnet tool install --tool-path /tools dotnet-ef --version 8.0.11 \
- && Jwt__Key=build-only-placeholder-key-32-characters \
-    ConnectionStrings__ServiceDb='Server=localhost;Database=GarageService;User Id=build;Password=build;TrustServerCertificate=True' \
-    /tools/dotnet-ef migrations bundle \
+ && /tools/dotnet-ef migrations bundle \
     --project backend/AMD.AutoService.GaragePro.Infrastructure/AMD.AutoService.GaragePro.Infrastructure.csproj \
     --startup-project backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
+    --context ServiceDbContext \
     --configuration Release \
     --output /app/efbundle \
+    --force \
+ && /tools/dotnet-ef migrations bundle \
+    --project backend/AMD.AutoService.GaragePro.Infrastructure/AMD.AutoService.GaragePro.Infrastructure.csproj \
+    --startup-project backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
+    --context SelfServeDbContext \
+    --configuration Release \
+    --output /app/efbundle-selfserve \
     --force
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -41,6 +52,7 @@ RUN apt-get update \
 
 COPY --from=build --chown=appuser:appgroup /app/publish ./
 COPY --from=build --chown=appuser:appgroup /app/efbundle ./efbundle
+COPY --from=build --chown=appuser:appgroup /app/efbundle-selfserve ./efbundle-selfserve
 
 USER appuser
 EXPOSE 8080
