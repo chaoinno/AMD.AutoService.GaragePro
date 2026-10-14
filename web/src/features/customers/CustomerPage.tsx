@@ -25,6 +25,8 @@ import {
 import { isApiError, isForbiddenError } from '../../api/client'
 import type { CustomerDuplicate, CustomerInput, CustomerSummary } from '../../api/types'
 import { AppShell } from '../../components/AppShell'
+import { PlanLockNote } from '../plan/PlanLockNote'
+import { useFeatureLock } from '../plan/usePlan'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
 import { Pagination } from '../../components/Pagination'
@@ -99,6 +101,8 @@ export function CustomerPage() {
     mutationFn: (id: number) => deleteCustomer(id),
     onSuccess: () => { toast.success('ลบลูกค้าเรียบร้อยแล้ว'); setDeleting(null); void queryClient.invalidateQueries({ queryKey: ['customers'] }) },
   })
+  // แพ็กเกจทดลองใช้ล็อกการส่งออก — ปุ่มปิดพร้อมเหตุผล (server ตอบ 403 PLAN_FEATURE_LOCKED อยู่แล้ว)
+  const exportLock = useFeatureLock('export')
   const download = useMutation({
     mutationFn: () => exportCustomers(effectiveFilters),
     onSuccess: (blob) => triggerDownload(blob, `customers-${new Date().toISOString().slice(0, 10)}.csv`),
@@ -125,7 +129,7 @@ export function CustomerPage() {
 
   return (
     <AppShell title="ลูกค้า">
-      <section className="page-heading"><div><p className="eyebrow">ข้อมูลลูกค้าและรถ</p><h2>จัดการลูกค้า</h2><p>ค้นหา เพิ่ม แก้ไข และดูรถของลูกค้าในสาขาปัจจุบัน</p></div><div className="heading-actions"><Button variant="outline" disabled={download.isPending} onClick={() => download.mutate()}><Download /> {download.isPending ? 'กำลังส่งออก…' : 'ส่งออก CSV'}</Button><Button onClick={() => setFormId('new')}><Plus /> เพิ่มลูกค้า</Button></div></section>
+      <section className="page-heading"><div><p className="eyebrow">ข้อมูลลูกค้าและรถ</p><h2>จัดการลูกค้า</h2><p>ค้นหา เพิ่ม แก้ไข และดูรถของลูกค้าในสาขาปัจจุบัน</p></div><div className="heading-actions"><PlanLockNote feature="export" /><Button variant="outline" disabled={download.isPending || exportLock.locked} title={exportLock.locked ? exportLock.reason : undefined} onClick={() => download.mutate()}><Download /> {download.isPending ? 'กำลังส่งออก…' : 'ส่งออก CSV'}</Button><Button onClick={() => setFormId('new')}><Plus /> เพิ่มลูกค้า</Button></div></section>
       <Card className="management-filters management-filters--customer">
         <div className="filter-search input-with-icon"><Search /><Input value={keyword} onChange={(e) => { setKeyword(e.target.value); setFilters((f) => ({ ...f, page: 1 })) }} placeholder="ค้นหาชื่อ นามสกุล เบอร์โทร หรือเลขบัตร" /></div>
         <Select value={filters.brandId ?? ''} onChange={(e) => setFilters((f) => ({ ...f, brandId: Number(e.target.value) || undefined, modelId: undefined, page: 1 }))}><option value="">ทุกยี่ห้อ</option>{refs.data?.brands.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>

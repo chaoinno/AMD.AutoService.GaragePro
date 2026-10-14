@@ -12,7 +12,7 @@ import {
   createStaff, getStaff, getStaffCodePreview, getStaffImage, getStaffReferenceData, getStaffs,
   getStaffSectors, setStaffStatus, updateStaff, type StaffFilters,
 } from '../../api/staffs'
-import type { StaffInput, StaffSummary } from '../../api/types'
+import type { StaffDetail, StaffInput, StaffSummary } from '../../api/types'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
@@ -28,6 +28,9 @@ import { Select } from '../../components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs'
 import { Textarea } from '../../components/ui/textarea'
 import { useSession } from '../../lib/session'
+import { isSelfServePlan } from '../plan/trialUx'
+import { SimpleStaffCreateDialog } from './SimpleStaffCreateDialog'
+import { StaffCredentialsDialog, type StaffCredentials } from './StaffCredentialsDialog'
 
 const schema = z.object({
   branchId: z.string().min(1, 'กรุณาเลือกสาขา'),
@@ -67,6 +70,14 @@ export function StaffPage() {
   const [filters, setFilters] = useState<StaffFilters>({ page: 1, pageSize: 25 })
   const [formId, setFormId] = useState<number | 'new' | null>(null)
   const [statusTarget, setStatusTarget] = useState<StaffSummary | null>(null)
+  // อู่ที่สมัครเอง: เพิ่มพนักงานด้วยฟอร์มง่าย แล้วโชว์รหัสเข้าแอปครั้งเดียว · ลูกค้าเดิมใช้ฟอร์มเต็มเหมือนเดิม
+  const simpleCreate = isSelfServePlan(useSession().session?.user.plan)
+  const [credentials, setCredentials] = useState<StaffCredentials | null>(null)
+  const showCredentials = (detail: StaffDetail) => {
+    const initialPassword = detail.account?.initialPassword
+    if (!initialPassword) return
+    setCredentials({ staffName: `${detail.firstName} ${detail.lastName}`.trim(), userName: detail.account.userName, initialPassword })
+  }
   const debounced = useDebounced(keyword)
   const effective = { ...filters, keyword: debounced || undefined }
   const refs = useQuery({ queryKey: ['staff-reference'], queryFn: getStaffReferenceData })
@@ -104,12 +115,14 @@ export function StaffPage() {
       <label className="filter-check"><input type="checkbox" checked={Boolean(filters.includeInactive)} onChange={(e) => setFilters((f) => ({ ...f, includeInactive: e.target.checked, page: 1 }))} /> แสดงรายการที่ปิดใช้งาน</label>
     </Card>
     {content}
-    <StaffFormDialog open={formId !== null} staffId={formId === 'new' ? null : formId} onClose={() => setFormId(null)} />
+    <StaffFormDialog open={formId !== null && !(formId === 'new' && simpleCreate)} staffId={formId === 'new' ? null : formId} onClose={() => setFormId(null)} onCreated={showCredentials} />
+    <SimpleStaffCreateDialog open={formId === 'new' && simpleCreate} onClose={() => setFormId(null)} onCreated={showCredentials} />
+    <StaffCredentialsDialog credentials={credentials} onClose={() => setCredentials(null)} />
     <StatusDialog target={statusTarget} onClose={() => setStatusTarget(null)} />
   </AppShell>
 }
 
-function StaffFormDialog({ open, staffId, onClose }: { open: boolean; staffId: number | null; onClose: () => void }) {
+function StaffFormDialog({ open, staffId, onClose, onCreated }: { open: boolean; staffId: number | null; onClose: () => void; onCreated?: (detail: StaffDetail) => void }) {
   const { session } = useSession()
   const isAdmin = Boolean(session?.user.isAdministrator)
   const queryClient = useQueryClient()
@@ -147,7 +160,7 @@ function StaffFormDialog({ open, staffId, onClose }: { open: boolean; staffId: n
 
   const save = useMutation({
     mutationFn: ({ input, file }: { input: StaffInput; file: File | null }) => staffId ? updateStaff(staffId, input, file) : createStaff(input, file),
-    onSuccess: () => { toast.success(staffId ? 'แก้ไขข้อมูลพนักงานแล้ว' : 'เพิ่มพนักงานและสร้างบัญชีผู้ใช้แล้ว'); void queryClient.invalidateQueries({ queryKey: ['staffs'] }); void queryClient.invalidateQueries({ queryKey: ['staff'] }); close() },
+    onSuccess: (detail) => { toast.success(staffId ? 'แก้ไขข้อมูลพนักงานแล้ว' : 'เพิ่มพนักงานและสร้างบัญชีผู้ใช้แล้ว'); void queryClient.invalidateQueries({ queryKey: ['staffs'] }); void queryClient.invalidateQueries({ queryKey: ['staff'] }); if (!staffId) onCreated?.(detail); close() },
   })
   const close = () => { save.reset(); if (preview) URL.revokeObjectURL(preview); setPreview(null); setImage(null); onClose() }
   const submit = handleSubmit((v) => save.mutate({ input: {

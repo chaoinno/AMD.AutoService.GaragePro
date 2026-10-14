@@ -4982,3 +4982,189 @@ img {
   font-size: 14px;
   pointer-events: none;
 }
+
+/* ==== แพ็กเกจทดลองใช้ (W2 — อู่ที่สมัครเอง) ====================================================
+   ทุกกฎในส่วนนี้มีผลเฉพาะเมื่อมี .trial-banner/.sidebar__lock ใน DOM หรือ body[data-plan='trial']
+   (usePlan ใน AppShell ตั้งให้) — ลูกค้าเดิมไม่มี plan จึงหน้าตาและเอกสารพิมพ์เหมือนเดิมทุกอย่าง */
+
+/* แถบทดลองใช้: อยู่เหนือ topbar แบบ static (topbar sticky ต่อด้านบนเมื่อเลื่อน) — สี + ไอคอน + ข้อความ */
+.trial-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 9px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.trial-banner__icon { display: grid; flex: 0 0 auto; place-items: center; }
+.trial-banner__icon svg { width: 20px; height: 20px; }
+
+.trial-banner__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 460px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 12px;
+}
+
+.trial-banner__copy strong { font-weight: 700; }
+.trial-banner__copy span { opacity: 0.88; }
+
+.trial-banner__actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  /* จอแคบ (1024) ปุ่มตกลงบรรทัดใหม่ชิดขวา แทนการบีบข้อความสถานะให้เหลือคอลัมน์แคบหลายบรรทัด */
+  margin-left: auto;
+}
+
+.trial-banner__line {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.trial-banner__line svg { width: 14px; height: 14px; }
+
+.trial-banner__sent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #0b6d5e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.trial-banner__sent svg { width: 15px; height: 15px; }
+
+.trial-banner--neutral .trial-banner__icon { color: #475569; }
+
+.trial-banner--warn {
+  border-color: #edcf8e;
+  background: #fff8e8;
+  color: #8a5a00;
+}
+
+.trial-banner--expired {
+  border-color: #efb7b7;
+  background: #fff5f5;
+  color: #a31d1d;
+}
+
+.trial-banner--expired .trial-banner__sent { color: #0b6d5e; }
+
+/* กุญแจในเมนู — อยู่ช่องเดียวกับตัวเลข แต่คนละ class เพราะตัวเลขถูกซ่อนตอนย่อเมนู ส่วนกุญแจต้องเห็นเสมอ */
+.sidebar__link--locked { position: relative; }
+
+.sidebar__lock {
+  display: inline-grid;
+  width: 26px;
+  height: 22px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  place-items: center;
+  border: 1px solid rgb(245 196 107 / 45%);
+  border-radius: var(--radius-pill);
+  background: rgb(224 147 12 / 20%);
+  color: #f5c46b;
+}
+
+.sidebar__lock svg { width: 13px; height: 13px; }
+
+.sidebar__link--active .sidebar__lock {
+  border-color: rgb(255 255 255 / 28%);
+  background: rgb(255 255 255 / 18%);
+  color: #fff;
+}
+
+.app-shell--sidebar-collapsed .sidebar__lock {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 2px solid var(--navy-900);
+  border-radius: 50%;
+  background: #c98208;
+  color: #fff;
+}
+
+.app-shell--sidebar-collapsed .sidebar__lock svg { width: 9px; height: 9px; }
+
+@media (max-width: 1150px) and (min-width: 1024px) {
+  .sidebar__lock {
+    position: absolute;
+    top: 2px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    border: 2px solid var(--navy-900);
+    border-radius: 50%;
+    background: #c98208;
+    color: #fff;
+  }
+
+  .sidebar__lock svg { width: 9px; height: 9px; }
+
+  .trial-banner { padding-inline: 12px; }
+}
+
+/* ลายน้ำเอกสารทดลองใช้ — ครอบเอกสารทั้ง 7 แบบที่ใช้ .quotation-document/.document-footer โดยไม่แตะ component
+   "ทดลองใช้" เอียงจางๆ หลังเนื้อหา (isolation + z-index -1 = อยู่เหนือพื้นขาวของเอกสาร แต่ใต้ข้อความ/ตาราง)
+   วางกลางหน้าแรก (min กับ 148mm) — เอกสารยาวหลายหน้าไม่ไหลไปกลางหน้าที่สอง */
+body[data-plan='trial'] .quotation-document {
+  position: relative;
+  isolation: isolate;
+}
+
+body[data-plan='trial'] .quotation-document::before {
+  content: 'ทดลองใช้';
+  position: absolute;
+  z-index: -1;
+  top: min(50%, 148mm);
+  left: 50%;
+  color: rgb(15 36 64 / 7%);
+  font-size: 120px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  transform: translate(-50%, -50%) rotate(-30deg);
+}
+
+body[data-plan='trial'] .document-footer::after {
+  content: 'เอกสารจากระบบทดลองใช้ ServicePro — service.garage-pro.net';
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+@media print {
+  /* สีจางของลายน้ำ/ท้ายกระดาษต้องพิมพ์ออกแม้ผู้ใช้ปิด "กราฟิกพื้นหลัง" — แบบเดียวกับ .sale-receipt-watermark */
+  body[data-plan='trial'] .quotation-document::before,
+  body[data-plan='trial'] .document-footer::after {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

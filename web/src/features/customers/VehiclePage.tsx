@@ -28,6 +28,8 @@ import {
 } from '../../api/customerVehicles'
 import type { CustomerSummary, VehicleInput, VehicleSummary } from '../../api/types'
 import { AppShell } from '../../components/AppShell'
+import { PlanLockNote } from '../plan/PlanLockNote'
+import { useFeatureLock } from '../plan/usePlan'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
 import { Pagination } from '../../components/Pagination'
@@ -78,6 +80,8 @@ export function VehiclePage() {
   const models = useQuery({ queryKey: ['models', filters.brandId], queryFn: () => getModels(filters.brandId!), enabled: Boolean(filters.brandId) })
   const nicknames = useQuery({ queryKey: ['nicknames', filters.modelId], queryFn: () => getNicknames(filters.modelId!), enabled: Boolean(filters.modelId) })
   const remove = useMutation({ mutationFn: deleteVehicle, onSuccess: () => { toast.success('ลบรถเรียบร้อยแล้ว'); setDeleting(null); void queryClient.invalidateQueries({ queryKey: ['vehicles'] }) } })
+  // แพ็กเกจทดลองใช้ล็อกการส่งออก — ปุ่มปิดพร้อมเหตุผล (server ตอบ 403 PLAN_FEATURE_LOCKED อยู่แล้ว)
+  const exportLock = useFeatureLock('export')
   const download = useMutation({
     mutationFn: () => exportVehicles(effective),
     onSuccess: (blob) => triggerDownload(blob, `vehicles-${new Date().toISOString().slice(0, 10)}.csv`),
@@ -109,7 +113,7 @@ export function VehiclePage() {
   else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} onRowClick={(row) => setFormId(row.id)} getRowLabel={(row) => `เปิดข้อมูลรถ ${row.registration}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((f) => ({ ...f, page }))} /></Card>
 
   return <AppShell title="รถลูกค้า">
-    <section className="page-heading"><div><p className="eyebrow">ข้อมูลลูกค้าและรถ</p><h2>จัดการรถลูกค้า</h2><p>รถใหม่จะแสดงทันที พร้อมค้นหาจากทะเบียน เจ้าของ VIN และเลขเครื่อง</p></div><div className="heading-actions"><Button variant="outline" disabled={download.isPending} onClick={() => download.mutate()}><Download /> {download.isPending ? 'กำลังส่งออก…' : 'ส่งออก CSV'}</Button><Button onClick={() => setFormId('new')}><Plus /> เพิ่มรถ</Button></div></section>
+    <section className="page-heading"><div><p className="eyebrow">ข้อมูลลูกค้าและรถ</p><h2>จัดการรถลูกค้า</h2><p>รถใหม่จะแสดงทันที พร้อมค้นหาจากทะเบียน เจ้าของ VIN และเลขเครื่อง</p></div><div className="heading-actions"><PlanLockNote feature="export" /><Button variant="outline" disabled={download.isPending || exportLock.locked} title={exportLock.locked ? exportLock.reason : undefined} onClick={() => download.mutate()}><Download /> {download.isPending ? 'กำลังส่งออก…' : 'ส่งออก CSV'}</Button><Button onClick={() => setFormId('new')}><Plus /> เพิ่มรถ</Button></div></section>
     <Card className="management-filters management-filters--vehicle">
       <div className="filter-search input-with-icon"><Search /><Input value={keyword} onChange={(e) => { setKeyword(e.target.value); setFilters((f) => ({ ...f, page: 1 })) }} placeholder="ค้นหาทะเบียน ลูกค้า เบอร์โทร VIN หรือเลขเครื่อง" /></div>
       <Select value={filters.brandId ?? ''} onChange={(e) => setFilters((f) => ({ ...f, brandId: Number(e.target.value) || undefined, modelId: undefined, nicknameId: undefined, page: 1 }))}><option value="">ทุกยี่ห้อ</option>{refs.data?.brands.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>

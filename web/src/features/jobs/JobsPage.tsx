@@ -22,6 +22,7 @@ import {
 import type { CustomerSummary, CustomerVehicleSummary, Job, JobCalendarDateField, JobStatusToken } from '../../api/types'
 import { isApiError } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
+import { WelcomeChecklist } from '../plan/WelcomeChecklist'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
 import { JobStatusChip } from '../../components/JobStatusChip'
@@ -316,6 +317,8 @@ export function JobsPage() {
 
   return (
     <AppShell title="จ๊อบ">
+      {/* อู่ทดลองใช้: การ์ดเริ่มต้นใช้งาน (ลูกค้าเดิมไม่ render อะไร) */}
+      <WelcomeChecklist onCreateJob={() => setCreateOpen(true)} />
       <section className="page-heading">
         <div>
           <h2>จ๊อบ</h2>

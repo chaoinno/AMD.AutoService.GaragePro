@@ -13,6 +13,7 @@ import {
   FileStack,
   FolderTree,
   History,
+  Lock,
   LogOut,
   Package,
   Search,
@@ -33,6 +34,11 @@ import { BranchSwitcher } from './BranchSwitcher'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
+import { TrialBanner } from '../features/plan/TrialBanner'
+import { TrialDialogProvider } from '../features/plan/TrialDialog'
+import { lockedNavLabel } from '../features/plan/trialUx'
+import { usePlan } from '../features/plan/usePlan'
+import { isFeatureLocked, lockedFeatureForPath } from '../lib/plan'
 import { clearStoredSession, useSession } from '../lib/session'
 import { BRAND_NAME, BrandWordmark } from './Brand'
 import { Avatar, AvatarFallback } from './ui/avatar'
@@ -112,7 +118,11 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     setSidebarCollapsed(next)
     window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
   }
+  // แพ็กเกจของอู่ (อ่านสดจาก /auth/me) — ลูกค้าเดิมไม่มี plan: ไม่มีกุญแจ/แถบ/ลายน้ำ พฤติกรรมเดิมทุกอย่าง
+  const { plan } = usePlan()
+  // ฟีเจอร์ที่ล็อกไม่ต้องนับเอกสาร — ไม่งั้นทุกหน้าจะยิงคำขอที่รู้อยู่แล้วว่าได้ 403 PLAN_FEATURE_LOCKED
   const canUsePurchasing = ['manager', 'office'].includes(session?.user.role.toLowerCase() || '')
+    && !isFeatureLocked(plan, 'purchasing')
   const prCount = useQuery({
     queryKey: ['purchase-count', 'PR'],
     queryFn: () => purchases('PR', '', '', 1, 100),
@@ -137,7 +147,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
   const saleDraftCount = useQuery({
     queryKey: ['sale-draft-count'],
     queryFn: countDraftSales,
-    enabled: canUseRetailSale(session?.user.role),
+    enabled: canUseRetailSale(session?.user.role) && !isFeatureLocked(plan, 'pos'),
     staleTime: 30_000,
   })
 
@@ -150,6 +160,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
   const displayName = session?.user.displayName ?? 'ผู้ใช้งาน'
 
   return (
+    <TrialDialogProvider>
     <div className={`app-shell ${documentMode ? 'app-shell--document' : ''} ${sidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}>
       <aside className="sidebar print-hidden">
         <div className="brand">
@@ -164,7 +175,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
               <span className="sidebar__group-label">{group.label}</span>
               {group.items.map((item) => {
                 const Icon = item.icon
-                const count = item.purchaseKind === 'PR'
+                // path ของฟีเจอร์มาจาก lib/plan.ts ที่เดียว (ชุดเดียวกับ FeatureGate ใน AppRoutes)
+                const lockedFeature = lockedFeatureForPath(plan, item.to)
+                const count = lockedFeature ? undefined : item.purchaseKind === 'PR'
                   ? prCount.data?.totalItems
                   : item.purchaseKind === 'PO' ? poCount.data
                   : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
@@ -177,17 +190,22 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   : 'saleDrafts' in item && item.saleDrafts
                   ? `บิลขายร่างที่ยังไม่ชำระเงิน ${count} บิล`
                   : `เอกสารทั้งหมด ${count} รายการ`
+                const linkLabel = lockedFeature ? lockedNavLabel(item.label) : item.label
                 return (
                   <NavLink
                     key={item.to}
                     to={item.to}
-                    className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}`}
-                    aria-label={item.label}
-                    title={sidebarCollapsed ? item.label : undefined}
+                    className={({ isActive }) => `sidebar__link ${isActive ? 'sidebar__link--active' : ''}${lockedFeature ? ' sidebar__link--locked' : ''}`}
+                    aria-label={linkLabel}
+                    title={sidebarCollapsed || lockedFeature ? linkLabel : undefined}
                   >
                     <Icon className="sidebar__icon" aria-hidden="true" />
                     <span className="sidebar__label">{item.label}</span>
-                    {count !== undefined ? (
+                    {lockedFeature ? (
+                      <span className="sidebar__lock" aria-hidden="true">
+                        <Lock />
+                      </span>
+                    ) : count !== undefined ? (
                       <span className="sidebar__count" title={countTitle} aria-label={`${count} รายการ`}>
                         {count > 999 ? '999+' : count}
                       </span>
@@ -217,6 +235,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
       </aside>
 
       <div className="app-shell__body">
+        <TrialBanner />
         <header className="topbar print-hidden">
           <div>
             <span className="topbar__eyebrow">{BRAND_NAME}</span>
@@ -258,6 +277,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
       </div>
 
     </div>
+    </TrialDialogProvider>
   )
 }
 

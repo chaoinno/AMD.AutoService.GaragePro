@@ -1,5 +1,5 @@
 import { apiDownload, apiRequest } from './client'
-import type { LookupItem, PagedResult, StaffCodePreview, StaffDetail, StaffInput, StaffReferenceData, StaffSummary } from './types'
+import type { LookupItem, PagedResult, StaffCodePreview, StaffDetail, StaffInput, StaffQuickInput, StaffReferenceData, StaffSummary } from './types'
 
 export type StaffFilters = {
   keyword?: string
@@ -23,7 +23,7 @@ function queryString(values: Record<string, unknown>) {
   return params.size ? `?${params}` : ''
 }
 
-function staffForm(input: StaffInput, image?: File | null) {
+function staffForm(input: StaffInput | StaffQuickInput, image?: File | null) {
   const form = new FormData()
   Object.entries(input).forEach(([key, value]) => {
     if (value === undefined || value === null || value === '') return
@@ -37,6 +37,8 @@ function staffForm(input: StaffInput, image?: File | null) {
 export const getStaffs = (filters: StaffFilters) => apiRequest<PagedResult<StaffSummary>>(`/api/v1/staffs${queryString(filters)}`)
 export const getStaff = (id: number) => apiRequest<StaffDetail>(`/api/v1/staffs/${id}`)
 export const createStaff = (input: StaffInput, image?: File | null) => apiRequest<StaffDetail>('/api/v1/staffs', { method: 'POST', body: staffForm(input, image) })
+/** อู่ที่สมัครเอง: ส่งแค่ชื่อ/นามสกุล/เบอร์/บทบาท — คำตอบมี `account.initialPassword` ครั้งเดียว */
+export const createStaffQuick = (input: StaffQuickInput) => apiRequest<StaffDetail>('/api/v1/staffs', { method: 'POST', body: staffForm(input) })
 export const updateStaff = (id: number, input: StaffInput, image?: File | null) => apiRequest<StaffDetail>(`/api/v1/staffs/${id}`, { method: 'PUT', body: staffForm(input, image) })
 export const setStaffStatus = (id: number, isActive: boolean, endJobDate?: string) => apiRequest<boolean>(`/api/v1/staffs/${id}/status`, { method: 'PATCH', body: JSON.stringify({ isActive, endJobDate: endJobDate || null }) })
 export const getStaffReferenceData = () => apiRequest<StaffReferenceData>('/api/v1/staffs/reference-data')

@@ -25,6 +25,7 @@ import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryRepor
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
+import { FeatureGate } from './features/plan/LockedFeaturePage'
 import { useSession } from './lib/session'
 
 export default function AppRoutes() {
@@ -45,25 +46,25 @@ export default function AppRoutes() {
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
           <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
-          <Route path="/suppliers" element={<ProtectedRoute><SupplierPage /></ProtectedRoute>} />
-          <Route path="/warehouses" element={<ProtectedRoute><WarehousePage /></ProtectedRoute>} />
+          <Route path="/suppliers" element={<ProtectedRoute><FeatureGate><SupplierPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/warehouses" element={<ProtectedRoute><FeatureGate><WarehousePage /></FeatureGate></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
           <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
-          <Route path="/purchasing/:kind" element={<ProtectedRoute><PurchasingPage /></ProtectedRoute>} />
-          <Route path="/inventory" element={<ProtectedRoute><InventoryPage /></ProtectedRoute>} />
-          <Route path="/sales" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
-          <Route path="/sales/:id" element={<ProtectedRoute><SalesPage /></ProtectedRoute>} />
-          <Route path="/promotions" element={<ProtectedRoute><PromotionPage /></ProtectedRoute>} />
+          <Route path="/purchasing/:kind" element={<ProtectedRoute><FeatureGate><PurchasingPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/inventory" element={<ProtectedRoute><FeatureGate><InventoryPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/sales" element={<ProtectedRoute><FeatureGate><SalesPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/sales/:id" element={<ProtectedRoute><FeatureGate><SalesPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/promotions" element={<ProtectedRoute><FeatureGate><PromotionPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><Navigate to="/reports/dashboard" replace /></ProtectedRoute>} />
           <Route path="/reports/dashboard" element={<ProtectedRoute><DashboardReportPage /></ProtectedRoute>} />
-          <Route path="/reports/cycle-time" element={<ProtectedRoute><CycleTimeReportPage /></ProtectedRoute>} />
-          <Route path="/reports/sales-margin" element={<ProtectedRoute><SalesMarginReportPage /></ProtectedRoute>} />
-          <Route path="/reports/retail-sales" element={<ProtectedRoute><RetailSalesReportPage /></ProtectedRoute>} />
+          <Route path="/reports/cycle-time" element={<ProtectedRoute><FeatureGate><CycleTimeReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/sales-margin" element={<ProtectedRoute><FeatureGate><SalesMarginReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/retail-sales" element={<ProtectedRoute><FeatureGate><RetailSalesReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
           <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
-          <Route path="/reports/stock" element={<ProtectedRoute><StockReportPage /></ProtectedRoute>} />
-          <Route path="/reports/work-intervals" element={<ProtectedRoute><WorkIntervalsPage /></ProtectedRoute>} />
+          <Route path="/reports/stock" element={<ProtectedRoute><FeatureGate><StockReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/work-intervals" element={<ProtectedRoute><FeatureGate><WorkIntervalsPage /></FeatureGate></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>
@@ -71,6 +72,8 @@ export default function AppRoutes() {
   )
 }
 
+// FeatureGate: route ของฟีเจอร์ที่แพ็กเกจทดลองใช้ล็อก (path ตรงกับ lib/plan.ts FEATURES) → หน้าอธิบาย + ติดต่อเรา
+// ลูกค้าเดิมผ่านตลอด จึงไม่มีอะไรเปลี่ยน
 function ProtectedRoute({ children }: { children: ReactElement }) {
   const { session } = useSession()
   if (!session) return <Navigate to="/login" replace />

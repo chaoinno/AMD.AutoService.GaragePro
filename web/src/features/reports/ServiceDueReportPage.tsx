@@ -12,6 +12,8 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { formatDate, formatDateOnly, formatKm, formatNumber } from '../../lib/format'
 import { QueryState } from '../master-data/MasterDataCommon'
+import { PlanLockNote } from '../plan/PlanLockNote'
+import { useFeatureLock } from '../plan/usePlan'
 import { exportServiceDue } from './serviceDueExport'
 import './reports.css'
 
@@ -88,6 +90,8 @@ function DueStatus({ item }: { item: ServiceDueItem }) {
 
 function ReportBody({ report }: { report: ServiceDueReport }) {
   const [exporting, setExporting] = useState(false)
+  // ส่งออกทำฝั่งเว็บล้วน (ไม่มีคำขอ API ให้ server ล็อก) — แพ็กเกจทดลองใช้ปิดปุ่มที่นี่พร้อมเหตุผล
+  const exportLock = useFeatureLock('export')
   const exportExcel = async () => {
     setExporting(true)
     try {
@@ -110,15 +114,18 @@ function ReportBody({ report }: { report: ServiceDueReport }) {
 
       <div className="report-section-title service-due-toolbar">
         <span>รายชื่อรถที่ต้องติดตาม</span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!report.items.length || exporting}
-          title={!report.items.length ? 'ไม่มีรายการสำหรับส่งออก' : undefined}
-          onClick={() => void exportExcel()}
-        >
-          <Download aria-hidden="true" /> {exporting ? 'กำลังส่งออก…' : 'ส่งออก Excel'}
-        </Button>
+        <span className="plan-lock-group">
+          <PlanLockNote feature="export" />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!report.items.length || exporting || exportLock.locked}
+            title={exportLock.locked ? exportLock.reason : !report.items.length ? 'ไม่มีรายการสำหรับส่งออก' : undefined}
+            onClick={() => void exportExcel()}
+          >
+            <Download aria-hidden="true" /> {exporting ? 'กำลังส่งออก…' : 'ส่งออก Excel'}
+          </Button>
+        </span>
       </div>
       {report.items.length === 0 ? (
         <p className="purchase-empty">ไม่มีรถที่ครบกำหนดในช่วงนี้ — ลองขยายช่วงวันนัด (นัดมาจากใบส่งมอบที่บันทึกตั้งแต่ 2026-10-08 เท่านั้น)</p>
