@@ -40,11 +40,13 @@ ssh "$REMOTE_HOST" "mkdir -p '$REMOTE_DEPLOY_DIR'"
 rsync -az --delete "$ROOT_DIR/deploy/production/" "$REMOTE_HOST:$REMOTE_DEPLOY_DIR/"
 
 echo "Building, migrating, and restarting GaragePro Service..."
-ssh "$REMOTE_HOST" 'bash -s' -- "$REMOTE_SOURCE_DIR" "$REMOTE_DEPLOY_DIR" "$REMOTE_SECRETS_FILE" <<'REMOTE'
+# SELFSERVE_ENABLED=true เปิดรับสมัครทดลองใช้ (ค่าเริ่มต้นปิด — อู่ทดลองที่มีอยู่ยังทำงาน/หมดอายุตามปกติ)
+ssh "$REMOTE_HOST" 'bash -s' -- "$REMOTE_SOURCE_DIR" "$REMOTE_DEPLOY_DIR" "$REMOTE_SECRETS_FILE" "${SELFSERVE_ENABLED:-false}" <<'REMOTE'
 set -Eeuo pipefail
 source_dir="$1"
 deploy_dir="$2"
 secrets_file="$3"
+export SELFSERVE_ENABLED="${4:-false}"
 
 test -s "$secrets_file" || {
   echo "Production secrets file is missing: $secrets_file" >&2
@@ -55,6 +57,12 @@ test -s "$secrets_file" || {
 export GARAGEPRO_SOURCE_DIR="$source_dir"
 export GARAGEPRO_DEPLOY_DIR="$deploy_dir"
 export GARAGEPRO_SECRETS_FILE="$secrets_file"
+
+# ค่าสาธารณะที่ต้องฝังใน bundle เว็บตอน build (ไม่ใช่ความลับ: Google client id · Turnstile site key) —
+# อ่านจาก env file เดียวกับ API เพื่อไม่ต้องตั้งสองที่ · ว่าง = เว็บซ่อนปุ่ม Google/วิดเจ็ต Turnstile
+public_value() { sed -n "s/^$1=//p" "$secrets_file" | tail -n 1; }
+export VITE_GOOGLE_CLIENT_ID="$(public_value SelfServe__Google__ClientId)"
+export VITE_TURNSTILE_SITE_KEY="$(public_value SelfServe__Turnstile__SiteKey)"
 
 compose=(docker compose --project-directory "$deploy_dir" -f "$deploy_dir/docker-compose.yml")
 "${compose[@]}" config --quiet
