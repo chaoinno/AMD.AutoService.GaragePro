@@ -5,30 +5,22 @@ using FluentAssertions;
 namespace AMD.AutoService.GaragePro.Tests;
 
 /// <summary>
-/// กติกา normalize ต้องตรงกับ EmailNormalizer ของ B5 (login ด้วยอีเมลค้น sp_Account.NormalizedEmail) — ถ้าเทสต์นี้เปลี่ยน
-/// ต้องเปลี่ยนของ B5 ให้ตรงกันด้วย ไม่งั้นคนที่สมัครแล้วจะ login ด้วยอีเมลไม่ได้
+/// ตรวจรูปแบบอีเมลตอนสมัคร — normalize ใช้ EmailNormalizer ตัวเดียวกับ login (login ด้วยอีเมลค้น sp_Account.NormalizedEmail)
 /// </summary>
 public sealed class SignupEmailTests
 {
     [Theory]
-    [InlineData("  Somchai@Example.COM ", "somchai@example.com")]
-    [InlineData("A.b+1@gmail.com", "ab@gmail.com")]
-    [InlineData("a.b.c+tag+more@GoogleMail.com", "abc@gmail.com")]
-    [InlineData("first.last+news@outlook.com", "first.last+news@outlook.com")] // +tag ตัดเฉพาะ gmail
-    [InlineData("user@example.com.", "user@example.com")]
-    public void Normalizes_like_the_login_resolver(string input, string expected) =>
-        SignupEmail.Normalize(input).Should().Be(expected);
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("no-at-sign")]
-    [InlineData("two@@example.com")]
-    [InlineData("@example.com")]
-    [InlineData("user@")]
-    [InlineData("+tag@gmail.com")] // ตัด +tag แล้ว local ว่าง
-    public void Normalize_returns_null_for_unusable_input(string? input) =>
-        SignupEmail.Normalize(input).Should().BeNull();
+    [InlineData("  Somchai@Example.COM ")]
+    [InlineData("A.b+1@gmail.com")]
+    [InlineData("a.b.c+tag+more@GoogleMail.com")]
+    [InlineData("first.last+news@outlook.com")]
+    [InlineData("user@example.com.")]
+    public void TryParse_normalizes_with_the_same_EmailNormalizer_as_login(string input)
+    {
+        // กติกา normalize มีที่เดียว (EmailNormalizer — ทดสอบละเอียดใน EmailNormalizerTests) · ที่นี่ล็อกแค่ว่า signup ใช้ตัวเดียวกัน
+        SignupEmail.TryParse(input, out var normalized, out _, out _).Should().BeTrue();
+        normalized.Should().Be(EmailNormalizer.Normalize(input));
+    }
 
     [Theory]
     [InlineData("user@localhost")]

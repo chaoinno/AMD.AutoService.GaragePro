@@ -21,6 +21,55 @@
 
 .plan-lock-group { display: inline-flex; align-items: center; gap: 10px; }
 
+/* ---- ส่วนของฟีเจอร์ที่ล็อกภายในหน้าที่เปิดอยู่ (การ์ดจ๊อบ · ฟอร์มสินค้า) — กุญแจ + เหตุผล + ทางติดต่อ แทนการเรียก API ---- */
+.plan-locked-panel {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid #edcf8e;
+  border-radius: var(--radius-input);
+  background: #fffaf0;
+}
+
+.plan-locked-panel__icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--radius-input);
+  background: #fdf3e2;
+  color: #8a5a00;
+}
+
+.plan-locked-panel__icon svg { width: 20px; height: 20px; }
+.plan-locked-panel__copy { display: grid; gap: 4px; min-width: 0; }
+.plan-locked-panel__copy > strong { color: #8a5a00; font-size: 15px; }
+.plan-locked-panel__copy > span { color: var(--muted); font-size: 14px; }
+
+.plan-locked-panel__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+
+.plan-locked-panel__copy > .plan-locked-panel__actions { margin-top: 6px; }
+.plan-locked-panel__actions a svg,
+.plan-locked-panel__actions button svg { width: 14px; height: 14px; }
+
+.plan-locked-panel__sent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0b6d5e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.plan-locked-panel__sent svg { width: 16px; height: 16px; }
+
 /* ---- หน้าฟีเจอร์ที่ล็อก ---- */
 .locked-feature {
   max-width: 880px;

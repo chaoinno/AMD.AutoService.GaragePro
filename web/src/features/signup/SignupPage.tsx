@@ -18,7 +18,7 @@ import { DoneStep } from './DoneStep'
 import { GoogleIdentityButton } from './GoogleIdentityButton'
 import { SignupError } from './SignupError'
 import { initialSignupFlow, persistSignupFlow, resendSecondsRemaining, restoreSignupFlow, SAMPLE_CREDENTIALS_KEY, signupReducer, type SignupAction, type SignupFlow } from './signupFlow'
-import { accountSchema, consentSchema, otpSchema, workspaceSchema, type AccountValues, type OtpValues, type WorkspaceValues } from './signupSchema'
+import { accountSchema, consentSchema, otpCodeOnlySchema, otpWithPasswordSchema, SIGNUP_PASSWORD_HINT, workspaceSchema, type AccountValues, type OtpValues, type WorkspaceValues } from './signupSchema'
 import { useTurnstile } from './useTurnstile'
 import './signup.css'
 
@@ -34,6 +34,9 @@ export function SignupPage() {
   const [error, setError] = useState<unknown>()
   const [disabled, setDisabled] = useState(false)
   const [result, setResult] = useState<SignupResult>()
+  // [SECURITY] รหัสผ่านของขั้นแรก ใช้ส่งคู่กับ OTP ตอนยืนยันอีเมล — อยู่ใน state ของหน้านี้เท่านั้น ไม่ลง sessionStorage
+  // (signupFlow เก็บเฉพาะฟิลด์ที่ allowlist) · โหลดหน้าใหม่ = หาย → ขั้น OTP ให้กรอกเอง
+  const [password, setPassword] = useState<string>()
   const requestRef = useRef<string | undefined>(undefined)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const send = (action: SignupAction) => setFlow((current) => signupReducer(current, action))
@@ -62,12 +65,14 @@ export function SignupPage() {
     setError(next)
     if (isApiError(next) && next.code === 'SIGNUP_TOKEN_INVALID') {
       requestRef.current = undefined
+      setPassword(undefined)
       send({ type: 'restart' })
     }
     if (isApiError(next) && next.code === 'SIGNUP_DISABLED') setDisabled(true)
   }
   function verified(ticket: SignupTicket) {
     requestRef.current = undefined
+    setPassword(undefined)
     setError(undefined)
     send({ type: 'verified', ...ticket })
   }
@@ -124,9 +129,9 @@ export function SignupPage() {
               <h2 ref={headingRef} tabIndex={-1}>{flow.step === 'account' ? 'สร้างบัญชีเจ้าของอู่' : flow.step === 'otp' ? 'ยืนยันอีเมลของคุณ' : 'บอกเราเกี่ยวกับอู่ของคุณ'}</h2>
               <SignupError error={config.error ?? error} restartNotice={isApiError(error) && error.code === 'SIGNUP_TOKEN_INVALID'} />
               {config.isError ? <button className="signup-secondary" type="button" onClick={() => void config.refetch()}>โหลดการสมัครอีกครั้ง</button> : !config.data || !restored ? <p className="signup-hint" role="status"><LoaderCircle size={18} className="spin" aria-hidden="true" /> กำลังโหลดช่องทางสมัคร…</p> : flow.step === 'account' ? (
-                <AccountStep config={config.data} email={flow.email} onError={onError} onEdit={onEdit} requestId={requestId} onStarted={(email, resendAfterSeconds) => { setError(undefined); send({ type: 'emailStarted', email, resendAfterSeconds, now: Date.now() }) }} onVerified={verified} />
+                <AccountStep config={config.data} email={flow.email} onError={onError} onEdit={onEdit} requestId={requestId} onStarted={(email, resendAfterSeconds, startedPassword) => { setError(undefined); setPassword(startedPassword); send({ type: 'emailStarted', email, resendAfterSeconds, now: Date.now() }) }} onVerified={verified} />
               ) : flow.step === 'otp' ? (
-                <OtpStep flow={flow} onError={onError} onVerified={verified} onResend={(seconds) => send({ type: 'resendScheduled', resendAfterSeconds: seconds, now: Date.now() })} onBack={() => { requestRef.current = undefined; setError(undefined); send({ type: 'changeEmail' }) }} />
+                <OtpStep flow={flow} password={password} onError={onError} onVerified={verified} onResend={(seconds) => send({ type: 'resendScheduled', resendAfterSeconds: seconds, now: Date.now() })} onBack={() => { requestRef.current = undefined; setPassword(undefined); setError(undefined); send({ type: 'changeEmail' }) }} />
               ) : flow.step === 'workspace' ? (
                 <WorkspaceStep signupToken={flow.signupToken ?? ''} onError={onError} onEdit={onEdit} requestId={requestId} onCompleted={completed} />
               ) : null}
@@ -139,7 +144,7 @@ export function SignupPage() {
   )
 }
 
-function AccountStep({ config, email, onStarted, onVerified, onError, onEdit, requestId }: StepProps & { config: SignupConfig; email: string; onStarted: (email: string, seconds: number) => void; onVerified: (ticket: SignupTicket) => void }) {
+function AccountStep({ config, email, onStarted, onVerified, onError, onEdit, requestId }: StepProps & { config: SignupConfig; email: string; onStarted: (email: string, seconds: number, password: string) => void; onVerified: (ticket: SignupTicket) => void }) {
   const [showPassword, setShowPassword] = useState(false)
   const form = useForm<AccountValues>({ resolver: zodResolver(accountSchema), defaultValues: { email, password: '', consent: false, website: '' } })
   const turnstile = useTurnstile(config.turnstileSiteKey ?? import.meta.env.VITE_TURNSTILE_SITE_KEY ?? '')
@@ -148,7 +153,7 @@ function AccountStep({ config, email, onStarted, onVerified, onError, onEdit, re
     onError(error)
     if (isApiError(error) && ['email', 'password', 'consent', 'website'].includes(error.field ?? '')) form.setError(error.field as keyof AccountValues, { message: error.messageTh }, { shouldFocus: true })
   }
-  const start = useMutation({ mutationFn: startSignupEmail, onSuccess: (data, input) => { form.resetField('password'); onStarted(input.email, data.resendAfterSeconds) }, onError: failed, onSettled: () => { pendingRef.current = false; turnstile.reset() } })
+  const start = useMutation({ mutationFn: startSignupEmail, onSuccess: (data, input) => { form.resetField('password'); onStarted(input.email, data.resendAfterSeconds, input.password) }, onError: failed, onSettled: () => { pendingRef.current = false; turnstile.reset() } })
   const google = useMutation({ mutationFn: signupWithGoogle, onSuccess: onVerified, onError: failed, onSettled: () => { pendingRef.current = false; turnstile.reset() } })
   const pending = start.isPending || google.isPending
   const botReason = turnstile.available && !turnstile.token ? 'กรุณายืนยันว่าคุณไม่ใช่บอทก่อนดำเนินการ' : undefined
@@ -189,23 +194,39 @@ function AccountStep({ config, email, onStarted, onVerified, onError, onEdit, re
   )
 }
 
-function OtpStep({ flow, onError, onVerified, onResend, onBack }: { flow: SignupFlow; onError: (error: unknown) => void; onVerified: (ticket: SignupTicket) => void; onResend: (seconds: number) => void; onBack: () => void }) {
-  const form = useForm<OtpValues>({ resolver: zodResolver(otpSchema), defaultValues: { code: '' } })
+function OtpStep({ flow, password, onError, onVerified, onResend, onBack }: { flow: SignupFlow; password?: string; onError: (error: unknown) => void; onVerified: (ticket: SignupTicket) => void; onResend: (seconds: number) => void; onBack: () => void }) {
+  // ช่องรหัสผ่านโผล่เมื่อไม่มีรหัสผ่านของขั้นแรกในหน้า (โหลดหน้าใหม่ตรงขั้นนี้) หรือ server ตอบว่าไม่ตรง
+  const [askPassword, setAskPassword] = useState(!password)
+  const [showPassword, setShowPassword] = useState(false)
+  const focusPasswordRef = useRef(false)
+  const form = useForm<OtpValues>({ resolver: zodResolver(askPassword ? otpWithPasswordSchema : otpCodeOnlySchema), defaultValues: { code: '', password: '' } })
   const [now, setNow] = useState(Date.now())
   useEffect(() => { const interval = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(interval) }, [])
+  // ช่องเพิ่งถูก render หลัง setAskPassword — โฟกัสหลัง commit ไม่งั้น setError({ shouldFocus }) หา ref ไม่เจอ
+  useEffect(() => { if (askPassword && focusPasswordRef.current) { focusPasswordRef.current = false; form.setFocus('password') } }, [askPassword, form])
   function failed(error: unknown) {
     onError(error)
+    if (isApiError(error) && (error.code === 'SIGNUP_PASSWORD_MISMATCH' || error.field === 'password')) {
+      // รหัสผ่านที่ถืออยู่ใช้ไม่ได้แล้ว (อาจมีคนเริ่มสมัครอีเมลนี้ใหม่ทับ) — ให้กรอกเองหรือกด "เปลี่ยนอีเมล" เพื่อเริ่มใหม่
+      form.setValue('password', '')
+      form.setError('password', { message: error.messageTh })
+      if (askPassword) form.setFocus('password')
+      else { focusPasswordRef.current = true; setAskPassword(true) }
+      return
+    }
     if (isApiError(error) && (error.field === 'code' || error.code === 'SIGNUP_OTP_INVALID' || error.code === 'SIGNUP_OTP_EXPIRED' || error.code === 'SIGNUP_OTP_LOCKED')) form.setError('code', { message: error.messageTh }, { shouldFocus: true })
     if (isRateLimitedError(error) && error.retryAfterSeconds !== undefined) { setNow(Date.now()); onResend(error.retryAfterSeconds) }
   }
-  const verify = useMutation({ mutationFn: (values: OtpValues) => verifySignupEmail(flow.email, values.code), onSuccess: onVerified, onError: failed })
+  const verify = useMutation({ mutationFn: (values: OtpValues) => verifySignupEmail(flow.email, values.code, values.password), onSuccess: onVerified, onError: failed })
   const resend = useMutation({ mutationFn: () => resendSignupEmail(flow.email), onSuccess: (data) => { setNow(Date.now()); onResend(data.resendAfterSeconds); form.clearErrors(); onError(undefined); toast.success('ส่งรหัสยืนยันไปที่อีเมลแล้ว') }, onError: failed })
   const pending = verify.isPending || resend.isPending
   const remaining = resendSecondsRemaining(flow, Math.max(now, Date.now()))
+  const errors = form.formState.errors
   return (
-    <form className="signup-form" noValidate onSubmit={form.handleSubmit((values) => { if (!pending) verify.mutate(values) })}>
+    <form className="signup-form" noValidate onSubmit={form.handleSubmit((values) => { if (!pending) verify.mutate({ code: values.code, password: askPassword ? values.password : password ?? '' }) })}>
       <p className="signup-hint" role="status">ส่งรหัสยืนยันไปที่อีเมลแล้ว<br /><strong className="signup-email-address">{flow.email}</strong></p>
-      <div className="form-field"><Label htmlFor="signup-code">รหัสยืนยัน 6 หลัก</Label><Input id="signup-code" className="signup-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} aria-invalid={Boolean(form.formState.errors.code)} aria-describedby={form.formState.errors.code ? 'signup-code-error' : undefined} {...form.register('code')} />{form.formState.errors.code ? <p id="signup-code-error" className="field-error">{form.formState.errors.code.message}</p> : null}</div>
+      <div className="form-field"><Label htmlFor="signup-code">รหัสยืนยัน 6 หลัก</Label><Input id="signup-code" className="signup-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} aria-invalid={Boolean(errors.code)} aria-describedby={errors.code ? 'signup-code-error' : undefined} {...form.register('code')} />{errors.code ? <p id="signup-code-error" className="field-error">{errors.code.message}</p> : null}</div>
+      {askPassword ? <div className="form-field"><Label htmlFor="signup-otp-password">รหัสผ่าน *</Label><div className="signup-password"><Input id="signup-otp-password" type={showPassword ? 'text' : 'password'} autoComplete="current-password" aria-invalid={Boolean(errors.password)} aria-describedby="signup-otp-password-help" {...form.register('password')} /><button type="button" aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'} onClick={() => setShowPassword((value) => !value)}>{showPassword ? <EyeOff size={20} aria-hidden="true" /> : <Eye size={20} aria-hidden="true" />}</button></div><p id="signup-otp-password-help" className={errors.password ? 'field-error' : 'signup-hint'}>{errors.password?.message ?? SIGNUP_PASSWORD_HINT}</p></div> : null}
       {pending ? <p className="signup-hint" role="status">กำลัง{verify.isPending ? 'ตรวจสอบรหัส' : 'ส่งรหัสอีกครั้ง'} กรุณารอสักครู่…</p> : null}
       <button type="submit" className="landing-btn landing-btn--primary signup-submit" disabled={pending}>{verify.isPending ? 'กำลังยืนยันอีเมล…' : 'ยืนยันอีเมล'}</button>
       <button type="button" className="signup-secondary" disabled={pending || remaining > 0} onClick={() => resend.mutate()}>ส่งรหัสอีกครั้ง</button>

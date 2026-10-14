@@ -162,7 +162,7 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
 
 [ApiController, Authorize, RequireShiftSession, Produces("application/json")]
 [Route("api/v1/inventory")]
-[RequireFeature(PlanFeature.Inventory)]    // ยอดยกมา · เบิก (issues/withdrawals) · สต็อก FIFO
+[RequireFeature(PlanFeature.Inventory)]    // ยอดยกมา · เบิก (issues/withdrawals) · สต็อก FIFO — GET ก็ล็อก (การอ่านสต็อก/ใบเบิกคือตัวฟีเจอร์) · การ์ดจ๊อบของแพ็กเกจทดลองใช้ไม่เรียก by-job แต่แสดงกุญแจแทน
 public sealed class StockFIFOController(PurchasingService service) : PurchasingApiController
 {
     /// <summary>ค้นหาสต็อกอะไหล่ของสาขาปัจจุบัน — พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</summary>

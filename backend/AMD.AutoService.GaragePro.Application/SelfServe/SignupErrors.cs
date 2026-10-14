@@ -19,11 +19,24 @@ public static class SignupErrors
     public static ApiError LookupUnavailable() => new(LookupUnavailableCode,
         "โหลดรายชื่อจังหวัดไม่ได้ในขณะนี้ — เว้นช่องจังหวัดไว้แล้วสมัครต่อได้ (ไม่บังคับ)");
 
+    /// <summary>
+    /// email/verify: รหัส OTP ถูกแต่รหัสผ่านไม่ตรงกับที่ตั้งตอน email/start (422 · field <c>password</c>) — นับเป็นการลองผิด
+    /// หนึ่งครั้งเหมือนรหัสผิด (ครบ 5 ครั้ง = SIGNUP_OTP_LOCKED) · เกิดได้เมื่อมีคนเริ่มสมัครอีเมลนี้ใหม่ด้วยรหัสผ่านอื่น
+    /// ระหว่างที่เจ้าของรอรหัส หรือเจ้าของพิมพ์รหัสผ่านผิดเองหลังโหลดหน้าใหม่
+    /// </summary>
+    public const string PasswordMismatchCode = "SIGNUP_PASSWORD_MISMATCH";
+
+    public static ApiError PasswordMismatch(int? attemptsLeft = null) => new(PasswordMismatchCode,
+        "รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร — กรุณาตรวจสอบหรือเริ่มสมัครใหม่",
+        "password",
+        attemptsLeft is null ? null : new { attemptsLeft });
+
     /// <summary>HTTP status ของทุกรหัสที่ signup คืน — ไม่รู้จัก = 422 (validation)</summary>
     public static int StatusCodeFor(string? code) => code switch
     {
         EmailSendFailedCode => 503,
         LookupUnavailableCode => 503,
+        PasswordMismatchCode => 422,
         _ => SelfServeErrors.StatusCodeFor(code) ?? 422
     };
 

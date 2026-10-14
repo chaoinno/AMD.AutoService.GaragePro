@@ -332,7 +332,7 @@ public sealed class SignupServiceTests
     private static async Task<string> VerifiedTokenAsync(Harness h, string email = Email)
     {
         (await h.Service.StartEmailAsync(StartRequest(email), Client)).Success.Should().BeTrue();
-        var verified = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(email, h.LastCode), Client);
+        var verified = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(email, h.LastCode, Password), Client);
         verified.Success.Should().BeTrue();
         return verified.Data!.SignupToken;
     }
@@ -492,7 +492,7 @@ public sealed class SignupServiceTests
         h.Repo.Attempts.Should().ContainSingle(a => a.Outcome == SignupService.OutcomeAccountExists);
 
         // [SECURITY] verify ตอบเหมือนอีเมลใหม่ (รหัสผิด เหลืออีก N ครั้ง) — ไม่เปิดเผยว่ามีบัญชีแล้ว
-        var verify = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, "123456"), Client);
+        var verify = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, "123456", "new-password9"), Client);
         verify.Error!.Code.Should().Be(SelfServeErrors.SignupOtpInvalidCode);
         verify.Error.MessageTh.Should().Contain("ลองได้อีก 4 ครั้ง");
     }
@@ -579,15 +579,15 @@ public sealed class SignupServiceTests
 
         for (var left = 4; left >= 1; left--)
         {
-            var attempt = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, wrong), Client);
+            var attempt = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, wrong, Password), Client);
             attempt.Error!.Code.Should().Be(SelfServeErrors.SignupOtpInvalidCode);
             attempt.Error.MessageTh.Should().Contain($"ลองได้อีก {left} ครั้ง");
         }
 
-        var fifth = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, wrong), Client);
+        var fifth = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, wrong, Password), Client);
         fifth.Error!.Code.Should().Be(SelfServeErrors.SignupOtpLockedCode);
 
-        var right = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code), Client);
+        var right = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code, Password), Client);
         right.Error!.Code.Should().Be(SelfServeErrors.SignupOtpLockedCode);
         h.Repo.Account(Normalized).Status.Should().Be(SelfServeAccountStatus.Pending);
     }
@@ -599,7 +599,7 @@ public sealed class SignupServiceTests
         (await h.Service.StartEmailAsync(StartRequest(), Client)).Success.Should().BeTrue();
         h.Clock.Advance(TimeSpan.FromMinutes(SignupService.OtpMinutes) + TimeSpan.FromSeconds(1));
 
-        var result = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, h.LastCode), Client);
+        var result = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, h.LastCode, Password), Client);
 
         result.Error!.Code.Should().Be(SelfServeErrors.SignupOtpExpiredCode);
     }
@@ -611,7 +611,7 @@ public sealed class SignupServiceTests
         (await h.Service.StartEmailAsync(StartRequest(), Client)).Success.Should().BeTrue();
         var code = h.LastCode;
 
-        var verified = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(" " + Email.ToUpperInvariant(), code), Client);
+        var verified = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(" " + Email.ToUpperInvariant(), code, Password), Client);
 
         verified.Success.Should().BeTrue();
         var token = verified.Data!.SignupToken;
@@ -623,8 +623,110 @@ public sealed class SignupServiceTests
         account.SetupTokenHash.Should().Be(SignupService.HashToken(token)).And.NotContain(token);
 
         // รหัสเดิมใช้ซ้ำไม่ได้
-        var again = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code), Client);
+        var again = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code, Password), Client);
         again.Error!.Code.Should().Be(SelfServeErrors.SignupOtpExpiredCode);
+    }
+
+    // ---------------------------------------------------------------- password ผูกกับการยืนยันอีเมล
+
+    [Fact]
+    public async Task Attacker_restarting_with_another_password_cannot_bind_it_to_the_owners_verification()
+    {
+        // [SECURITY] ใครก็ email/start ด้วยอีเมลของคนอื่นได้ (ยังไม่ได้พิสูจน์เจ้าของ) และ start ล่าสุดทับรหัสผ่านของแถว Pending —
+        // ถ้า verify ดูแค่ OTP เจ้าของอีเมลที่กรอกรหัสล่าสุดจะเปิดอู่ที่ล็อกอินด้วยรหัสผ่านของผู้โจมตี
+        const string victimPassword = "victim-pass1";
+        const string attackerPassword = "attacker123";
+        var h = Create();
+        (await h.Service.StartEmailAsync(StartRequest(password: victimPassword), Client)).Success.Should().BeTrue();
+
+        h.Clock.Advance(TimeSpan.FromSeconds(61));
+        (await h.Service.StartEmailAsync(StartRequest(password: attackerPassword), Client)).Success.Should().BeTrue();
+        h.Repo.Account(Normalized).PasswordHash.Should().Be("h$" + attackerPassword, "start ล่าสุดยังทับรหัสผ่านได้ตามเดิม");
+        var newestCode = h.LastCode;
+
+        // เจ้าของอีเมลกรอกรหัสล่าสุด (ที่ผู้โจมตีสั่งส่ง) พร้อมรหัสผ่านของตัวเอง → ไม่ผ่าน และไม่มี token ให้เปิดอู่
+        var victim = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, newestCode, victimPassword), Client);
+        victim.Error!.Code.Should().Be(SignupErrors.PasswordMismatchCode);
+        victim.Error.Field.Should().Be("password");
+        victim.Error.MessageTh.Should().Be("รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร — กรุณาตรวจสอบหรือเริ่มสมัครใหม่");
+        SignupErrors.StatusCodeFor(victim.Error.Code).Should().Be(422);
+        var pending = h.Repo.Account(Normalized);
+        pending.Status.Should().Be(SelfServeAccountStatus.Pending);
+        pending.SetupTokenHash.Should().BeNull();
+        h.Repo.Otps.Single().Attempts.Should().Be(1, "รหัสผ่านผิดนับเป็นการลองผิดหนึ่งครั้ง");
+
+        // ผู้โจมตีไม่มีรหัสจากกล่องจดหมายของเจ้าของ — เห็นแค่ "รหัสไม่ถูกต้อง"
+        var wrongCode = newestCode == "000000" ? "111111" : "000000";
+        var attacker = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, wrongCode, attackerPassword), Client);
+        attacker.Error!.Code.Should().Be(SelfServeErrors.SignupOtpInvalidCode);
+
+        // เจ้าของเริ่มสมัครใหม่ → รหัสผ่านของตัวเองกลับมา แล้วยืนยันผ่าน เปิดอู่ด้วยรหัสผ่านของเจ้าของ
+        h.Clock.Advance(TimeSpan.FromSeconds(61));
+        (await h.Service.StartEmailAsync(StartRequest(password: victimPassword), Client)).Success.Should().BeTrue();
+        var verified = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, h.LastCode, victimPassword), Client);
+        verified.Success.Should().BeTrue();
+        (await h.Service.CreateWorkspaceAsync(WorkspaceRequest(verified.Data!.SignupToken), Client)).Success.Should().BeTrue();
+        h.Provisioner.Requests.Single().OwnerStoredPassword.Should().Be("h$" + victimPassword);
+    }
+
+    [Fact]
+    public async Task Password_mismatch_counts_down_and_locks_like_a_wrong_code()
+    {
+        var h = Create();
+        (await h.Service.StartEmailAsync(StartRequest(), Client)).Success.Should().BeTrue();
+        var code = h.LastCode;
+
+        for (var left = 4; left >= 1; left--)
+        {
+            var attempt = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code, "not-mine99"), Client);
+            attempt.Error!.Code.Should().Be(SignupErrors.PasswordMismatchCode);
+            attempt.Error.Details.Should().BeEquivalentTo(new { attemptsLeft = left });
+        }
+
+        var fifth = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code, "not-mine99"), Client);
+        fifth.Error!.Code.Should().Be(SelfServeErrors.SignupOtpLockedCode);
+
+        var right = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, code, Password), Client);
+        right.Error!.Code.Should().Be(SelfServeErrors.SignupOtpLockedCode, "ล็อกแล้วต้องขอรหัสใหม่ แม้รหัสและรหัสผ่านถูก");
+        h.Repo.Account(Normalized).Status.Should().Be(SelfServeAccountStatus.Pending);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task Verify_requires_the_password_without_spending_an_attempt(string? password)
+    {
+        var h = Create();
+        (await h.Service.StartEmailAsync(StartRequest(), Client)).Success.Should().BeTrue();
+
+        var result = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, h.LastCode, password), Client);
+
+        result.Error!.Code.Should().Be(SelfServeErrors.SignupValidationCode);
+        result.Error.Field.Should().Be("password");
+        h.Repo.Otps.Single().Attempts.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Wrong_password_with_a_wrong_code_never_reveals_whether_the_email_has_an_account()
+    {
+        // [SECURITY] ตรวจ OTP ก่อนรหัสผ่าน — คนที่ไม่มีรหัสจากอีเมลได้คำตอบเดียวกันทั้งอีเมลใหม่และอีเมลที่มีบัญชีแล้ว
+        // (บัญชีที่มีอยู่ไม่เก็บรหัสผ่านจาก start ถ้าตรวจรหัสผ่านก่อนจะตอบต่างกันแล้วไล่เช็คอีเมลได้)
+        var h = Create();
+        h.Repo.Accounts.Add(new SelfServeAccount
+        {
+            NormalizedEmail = "taken@example.com", Email = "taken@example.com", Status = SelfServeAccountStatus.Active,
+            PasswordHash = "h$old-password1", CreatedAt = Start.UtcDateTime,
+        });
+        (await h.Service.StartEmailAsync(StartRequest("taken@example.com", "probe-pass1"), Client)).Success.Should().BeTrue();
+        (await h.Service.StartEmailAsync(StartRequest("fresh@example.com", "probe-pass1"), Client)).Success.Should().BeTrue();
+        var wrongCode = h.LastCode == "000000" ? "111111" : "000000";
+
+        var taken = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest("taken@example.com", wrongCode, "other-pass2"), Client);
+        var fresh = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest("fresh@example.com", wrongCode, "other-pass2"), Client);
+
+        taken.Error!.Code.Should().Be(SelfServeErrors.SignupOtpInvalidCode);
+        fresh.Error!.Code.Should().Be(SelfServeErrors.SignupOtpInvalidCode);
+        taken.Error.MessageTh.Should().Be(fresh.Error.MessageTh);
     }
 
     // ---------------------------------------------------------------- google

@@ -35,6 +35,21 @@
   color: var(--teal-500);
 }
 
+/* ล็อกตามแพ็กเกจ (ใบกำกับภาษีของแพ็กเกจทดลองใช้) — กุญแจ + ข้อความ ไม่ใช่สีอย่างเดียว · โทนเดียวกับ .plan-lock-note */
+.billing-doc-row--locked {
+  border-color: #edcf8e;
+  background: #fffaf0;
+}
+
+.billing-doc-row--locked .billing-doc-row__icon {
+  color: #8a5a00;
+}
+
+.billing-doc-row--locked .billing-doc-row__actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .billing-doc-row__text {
   display: grid;
   min-width: 0;

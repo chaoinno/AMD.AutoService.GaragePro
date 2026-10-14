@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, CheckCircle2, Circle, Printer, TriangleAlert, Trash2 } from 'lucide-react'
+import { CalendarClock, CheckCircle2, Circle, Lock, Printer, TriangleAlert, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 import { getJobAttachments, uploadAttachment } from '../../api/attachments'
@@ -57,7 +57,10 @@ import {
   localInputToIso,
   nowLocalInputValue,
 } from '../../lib/format'
+import { isFeatureLocked } from '../../lib/plan'
 import { useSession } from '../../lib/session'
+import { PlanInterestActions, PlanLockedPanel } from '../plan/PlanLockedPanel'
+import { useSessionPlan } from '../plan/usePlan'
 import { Field, InlineError } from '../master-data/MasterDataCommon'
 import { StockWithdrawalDocumentModal } from '../purchasing/StockWithdrawalDocumentModal'
 import { StockWithdrawalModal } from '../purchasing/StockWithdrawalModal'
@@ -933,12 +936,16 @@ function RepairStage({ job }: { job: Job }) {
   const { session } = useSession()
   const role = session?.user.role.toLowerCase() ?? ''
   const canWithdraw = ['office', 'manager'].includes(role)
+  // [BIZ] แพ็กเกจทดลองใช้ไม่มีสต็อก — ไม่เรียก API ใบเบิก (ล็อกทั้งอ่าน/เขียนที่ server) แสดงกุญแจแทน · ลูกค้าเดิมไม่มีอะไรเปลี่ยน
+  const { plan } = useSessionPlan()
+  const inventoryLocked = isFeatureLocked(plan, 'inventory')
   const [creating, setCreating] = useState(false)
   const [printingOperationId, setPrintingOperationId] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: ['job-withdrawals', job.jobId],
     queryFn: () => getJobWithdrawals(job.jobId),
+    enabled: !inventoryLocked,
   })
 
   const canCreateWithdrawal = REPAIR_ACTIVE_STATUSES.includes(job.status)
@@ -975,7 +982,7 @@ function RepairStage({ job }: { job: Job }) {
     <Card>
       <CardHeader className="job-card-panel-header">
         <CardTitle>เบิกสินค้า / ดำเนินการซ่อม</CardTitle>
-        <Button
+        {inventoryLocked ? null : <Button
           size="sm"
           disabled={!canWithdraw || !canCreateWithdrawal}
           title={
@@ -988,10 +995,23 @@ function RepairStage({ job }: { job: Job }) {
           onClick={() => setCreating(true)}
         >
           + สร้างใบเบิกสินค้า
-        </Button>
+        </Button>}
       </CardHeader>
       <CardContent>
-        {!started ? (
+        {inventoryLocked ? (
+          <>
+            {!started ? (
+              <div className="job-detail-empty">
+                <p>ยังไม่ถึงขั้นตอนนี้ — ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
+              </div>
+            ) : null}
+            <PlanLockedPanel
+              feature="inventory"
+              title="เบิกสินค้าจากสต็อกเปิดในแพ็กเกจเต็ม"
+              detail="ใบเบิกสินค้าตามรายการที่ลูกค้าอนุมัติ ตัดสต็อกตามล็อต (FIFO) — แพ็กเกจทดลองใช้ทำงานซ่อมและส่งตรวจ QC ได้ตามปกติ"
+            />
+          </>
+        ) : !started ? (
           <div className="job-detail-empty">
             <p>ยังไม่ถึงขั้นตอนนี้ — ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
           </div>
@@ -1034,7 +1054,7 @@ function RepairStage({ job }: { job: Job }) {
         ) : null}
       </CardContent>
 
-      {creating && (
+      {creating && !inventoryLocked && (
         <StockWithdrawalModal
           jobId={job.jobId}
           jobNo={job.jobNo}
@@ -1250,11 +1270,11 @@ const PAYMENT_STARTED_STATUSES: JobStatusToken[] = ['ready', 'completed']
 // ลูกหนี้/reprint-void ออกทั้งหมดตามที่ยืนยันไว้แล้ว ดูรายละเอียดในแผนงาน
 /// แถวเอกสารในขั้นชำระเงิน — [UI] สถานะสื่อด้วย ไอคอน + ข้อความ (ไม่ใช่สีอย่างเดียว) และบอกเหตุผลเมื่อยังทำไม่ได้เสมอ
 function BillingDocRow({
-  title, status, done, children,
-}: { title: string; status: string; done: boolean; children: ReactNode }) {
-  const Icon = done ? CheckCircle2 : Circle
+  title, status, done, locked = false, children,
+}: { title: string; status: string; done: boolean; locked?: boolean; children: ReactNode }) {
+  const Icon = locked ? Lock : done ? CheckCircle2 : Circle
   return (
-    <li className={`billing-doc-row${done ? ' billing-doc-row--done' : ''}`}>
+    <li className={`billing-doc-row${done ? ' billing-doc-row--done' : ''}${locked ? ' billing-doc-row--locked' : ''}`}>
       <Icon className="billing-doc-row__icon" aria-hidden="true" />
       <div className="billing-doc-row__text">
         <strong>{title}</strong>
@@ -1409,10 +1429,13 @@ function PaymentStage({ job }: { job: Job }) {
       : null
 
   // ใบกำกับภาษีออกได้หลังออกใบเสร็จเท่านั้น — ไม่ถามสถานะก่อนหน้านั้น (คำขอนี้อ่านข้อมูลสาขา/ลูกค้าจากฐานเดิม)
+  // [BIZ] แพ็กเกจทดลองใช้ไม่มีใบกำกับภาษีเต็มรูป — ไม่ถามเลย (server ล็อกทั้งอ่าน/เขียน) แถวแสดงกุญแจแทน
+  const { plan } = useSessionPlan()
+  const taxInvoiceLocked = isFeatureLocked(plan, 'taxInvoice')
   const taxInvoiceQuery = useQuery({
     queryKey: ['tax-invoice', job.jobId],
     queryFn: () => getTaxInvoiceState(job.jobId),
-    enabled: started && canUsePos && Boolean(summary?.receipt),
+    enabled: started && canUsePos && Boolean(summary?.receipt) && !taxInvoiceLocked,
   })
   const taxInvoice = taxInvoiceQuery.data?.issued ?? null
   const taxInvoiceBlockedReason = !summary?.receipt
@@ -1655,7 +1678,16 @@ function PaymentStage({ job }: { job: Job }) {
                 )}
               </BillingDocRow>
 
-              <BillingDocRow
+              {taxInvoiceLocked ? (
+                <BillingDocRow
+                  title="ใบกำกับภาษี (เต็มรูป)"
+                  done={false}
+                  locked
+                  status="ใบกำกับภาษีเต็มรูปเปิดในแพ็กเกจเต็ม — ใบแจ้งยอดและใบเสร็จรับเงินใช้ได้ตามปกติ"
+                >
+                  <PlanInterestActions feature="taxInvoice" />
+                </BillingDocRow>
+              ) : <BillingDocRow
                 title="ใบกำกับภาษี (เต็มรูป)"
                 done={Boolean(taxInvoice)}
                 status={taxInvoice
@@ -1675,7 +1707,7 @@ function PaymentStage({ job }: { job: Job }) {
                     ออกใบกำกับภาษี
                   </Button>
                 )}
-              </BillingDocRow>
+              </BillingDocRow>}
 
               <BillingDocRow
                 title="ใบส่งมอบรถ"
@@ -1820,7 +1852,7 @@ function PaymentStage({ job }: { job: Job }) {
         onClose={() => setDocumentKind(null)}
       />
       <TaxInvoiceIssueModal
-        open={taxInvoiceFormOpen}
+        open={taxInvoiceFormOpen && !taxInvoiceLocked}
         job={job}
         onClose={() => setTaxInvoiceFormOpen(false)}
         onIssued={() => { setTaxInvoiceFormOpen(false); setDocumentKind('taxInvoice') }}
