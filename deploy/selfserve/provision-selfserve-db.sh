@@ -38,6 +38,10 @@ fi
 
 command -v sqlcmd >/dev/null || { echo "sqlcmd is required (brew install sqlcmd / mssql-tools18)" >&2; exit 1; }
 
+# go-sqlcmd (brew install sqlcmd) อ่านไฟล์เป็น UTF-8 อยู่แล้วและไม่รู้จัก -f · ODBC sqlcmd (mssql-tools18) ต้องใช้ -f 65001
+# [แก้ 2026-10-14] เครื่อง dev ที่ Homebrew ชี้ opt/openssl ไป openssl@4 — ODBC Driver 18 โหลด OpenSSL ไม่ได้ ต้องใช้ go-sqlcmd แทน
+if sqlcmd --version >/dev/null 2>&1; then CODEPAGE_ARGS=(); else CODEPAGE_ARGS=(-f 65001); fi
+
 SQL_USER="${SQLCMD_USER:-sa}"
 GARAGE_DB="${GARAGE_DB:-Garage}"
 APP_LOGIN="${SELFSERVE_APP_LOGIN:-gp_selfserve_app}"
@@ -75,7 +79,7 @@ fi
 sql() {
   local database="$1"
   shift
-  sqlcmd -S "$SERVER" -U "$SQL_USER" -d "$database" -b -C -I -f 65001 \
+  sqlcmd -S "$SERVER" -U "$SQL_USER" -d "$database" -b -C -I "${CODEPAGE_ARGS[@]}" \
     -v DbName="$DB_NAME" GarageDb="$GARAGE_DB" AppLogin="$APP_LOGIN" MigrateLogin="$MIGRATE_LOGIN" \
     "$@"
 }
@@ -116,7 +120,7 @@ if [[ "${SKIP_LOGINS:-0}" != "1" ]]; then
   step master 06-logins.sql
   echo
   echo "==> 07-smoke.sql  (database: $DB_NAME, as $APP_LOGIN)"
-  SQLCMDPASSWORD="$SELFSERVE_APP_PASSWORD" sqlcmd -S "$SERVER" -U "$APP_LOGIN" -d "$DB_NAME" -b -C -I -f 65001 \
+  SQLCMDPASSWORD="$SELFSERVE_APP_PASSWORD" sqlcmd -S "$SERVER" -U "$APP_LOGIN" -d "$DB_NAME" -b -C -I "${CODEPAGE_ARGS[@]}" \
     -i "$SCRIPT_DIR/07-smoke.sql"
 else
   step "$DB_NAME" 07-smoke.sql

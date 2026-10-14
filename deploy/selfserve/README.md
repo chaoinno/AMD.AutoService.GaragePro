@@ -20,7 +20,7 @@ GarageSelfServe (instance เดียวกับ Garage = 10.10.4.11 · COLLAT
 |---|---|
 | ผู้รัน | เจ้าของระบบ/DBA เท่านั้น (agent ห้ามรัน — เป็นการสร้างฐานบน instance production) |
 | บัญชี | sysadmin (`sa`) ผ่าน Garage Pro VPN · รหัสผ่านทาง env `SQLCMDPASSWORD` หรือพิมพ์ตอนสคริปต์ถาม (ไม่แสดงผล) |
-| เครื่องมือ | `sqlcmd` (mssql-tools18 หรือ go-sqlcmd — ต้องรองรับ env เป็น scripting variable ซึ่งทั้งสองรองรับ) · `bash` |
+| เครื่องมือ | `sqlcmd` — go-sqlcmd (`brew install sqlcmd`, แนะนำ) หรือ mssql-tools18 (ODBC Driver 18 ต้องโหลด OpenSSL 3 ได้: ถ้า `/opt/homebrew/opt/openssl` ชี้ openssl@4 จะได้ "OpenSSL library could not be loaded") · `bash` |
 | รหัสผ่าน login ใหม่ | `SELFSERVE_APP_PASSWORD`, `SELFSERVE_MIGRATE_PASSWORD` (ห้ามมี `'` หรือ `$(` · ผ่าน CHECK_POLICY ของ Windows/SQL) |
 
 ## ลำดับ
