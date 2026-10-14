@@ -54,9 +54,11 @@ public static class DependencyInjection
         services.Configure<StaffImageOptions>(
             configuration.GetSection(StaffImageOptions.SectionName));
 
-        services.AddDbContext<ServiceDbContext>(options =>
+        // ฐานของ svc_* เลือกตาม shard ของผู้ใช้ใน scope นี้ (sp1 → GarageSelfServe · อื่นๆ → GarageService)
+        // options เป็น Scoped (ค่าเริ่มต้นของ overload นี้) จึงอ่าน ICurrentUser ของ scope ได้ — รวม override จาก ShardScopeFactory
+        services.AddDbContext<ServiceDbContext>((sp, options) =>
             options.UseSqlServer(
-                configuration.GetConnectionString("ServiceDb"),
+                sp.GetRequiredService<IServiceDbConnectionResolver>().Resolve(sp.GetRequiredService<ICurrentUser>().ShardKey),
                 sql => sql.EnableRetryOnFailure(3)));
 
         services.AddScoped<IQuotationRepository, QuotationRepository>();

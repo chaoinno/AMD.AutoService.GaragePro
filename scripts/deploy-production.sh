@@ -60,6 +60,26 @@ compose=(docker compose --project-directory "$deploy_dir" -f "$deploy_dir/docker
 "${compose[@]}" config --quiet
 "${compose[@]}" build --pull api web
 "${compose[@]}" run --rm --no-deps --entrypoint /app/efbundle api </dev/null
+
+# Self-serve shard (sp1 -> GarageSelfServe): only when the env file configures it, so deployments without
+# self-serve keep the single migration above. Two targets in the same database:
+#   svc_* : the same efbundle, pointed at GarageSelfServe by overriding ConnectionStrings__ServiceDb inside the
+#           container (the design-time factory reads it) - the secret never appears on a command line
+#   sp_*  : efbundle-selfserve (SelfServeDbContext, history table __EFMigrationsHistory_SelfServe)
+# Uses SelfServe__MigrationConnectionString (gp_selfserve_migrate, has DDL rights) when present, otherwise
+# SelfServe__ConnectionString. Provision the database first: deploy/selfserve/provision-selfserve-db.sh
+if grep -Eq '^SelfServe__ConnectionString=.+' "$secrets_file"; then
+  echo "Migrating self-serve database (svc_* and sp_*)..."
+  "${compose[@]}" run --rm --no-deps --entrypoint /bin/sh api -c '
+    set -e
+    cs="${SelfServe__MigrationConnectionString:-$SelfServe__ConnectionString}"
+    ConnectionStrings__ServiceDb="$cs" /app/efbundle
+    SelfServe__ConnectionString="$cs" /app/efbundle-selfserve
+  ' </dev/null
+else
+  echo "SelfServe__ConnectionString not set - skipping self-serve migrations."
+fi
+
 "${compose[@]}" up -d --remove-orphans --wait
 
 curl --fail --silent --show-error http://127.0.0.1:5081/health >/dev/null
