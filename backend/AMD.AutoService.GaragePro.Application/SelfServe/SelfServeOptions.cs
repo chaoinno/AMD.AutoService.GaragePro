@@ -83,6 +83,9 @@ public sealed class SelfServeOptions
     {
         /// <summary>ว่าง = ข้ามการตรวจเฉพาะนอก Production</summary>
         public string SecretKey { get; set; } = "";
+
+        /// <summary>site key สาธารณะของ widget — ส่งให้เว็บทาง GET /public/signup/config (ว่าง = เว็บไม่แสดง widget)</summary>
+        public string SiteKey { get; set; } = "";
     }
 
     public sealed class EmailOptions

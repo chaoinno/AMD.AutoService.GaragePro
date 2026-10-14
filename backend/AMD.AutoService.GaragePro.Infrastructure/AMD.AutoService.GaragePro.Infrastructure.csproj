@@ -22,6 +22,14 @@
                       LogicalName="AMD.AutoService.GaragePro.Infrastructure.SelfServe.Resources.sample-signature.png" />
   </ItemGroup>
 
+  <!-- signup self-serve (S1): MX lookup (BCL ไม่มี DNS client · ไม่มี dependency บน net8.0) ·
+       ตรวจ Google ID token ด้วยไลบรารีเดียวกับ JwtBearer (เวอร์ชันเดียวกับที่ API ใช้อยู่แล้ว ไม่ใช่แพ็กเกจใหม่ใน graph) -->
+  <ItemGroup>
+    <PackageReference Include="DnsClient" Version="1.8.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="7.1.2" />
+    <EmbeddedResource Include="SelfServe\Resources\disposable-domains.txt" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
