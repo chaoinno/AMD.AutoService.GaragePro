@@ -15,6 +15,13 @@
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- ลายเซ็นจำลองของข้อมูลตัวอย่างอู่ทดลองใช้ (S3 StarterDataRepository) — ระบุไฟล์ตรงๆ ห้ามใช้ glob ทั้งโฟลเดอร์
+         (ไฟล์อื่นใน Resources ลงทะเบียนแยกของใครของมัน glob จะฝังซ้ำแล้ว build ล้มด้วย CS1508) -->
+    <EmbeddedResource Include="SelfServe\Resources\sample-signature.png"
+                      LogicalName="AMD.AutoService.GaragePro.Infrastructure.SelfServe.Resources.sample-signature.png" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
