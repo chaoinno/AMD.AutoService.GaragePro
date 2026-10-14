@@ -990,6 +990,35 @@ public sealed class SignupServiceTests
         h.Provisioner.Requests.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Typed_owner_name_beats_the_email_local_part_and_splits_first_and_last_name()
+    {
+        var h = Create();
+        var token = await VerifiedTokenAsync(h);
+
+        var result = await h.Service.CreateWorkspaceAsync(
+            WorkspaceRequest(token) with { OwnerName = "  สมชาย   ใจดี มาก " }, Client);
+
+        result.Success.Should().BeTrue();
+        var request = h.Provisioner.Requests.Single();
+        request.OwnerFirstName.Should().Be("สมชาย");
+        request.OwnerLastName.Should().Be("ใจดี มาก");
+    }
+
+    [Theory]
+    [InlineData("ก")]
+    public async Task Too_short_owner_name_is_rejected_before_touching_the_token(string ownerName)
+    {
+        var h = Create();
+        var token = await VerifiedTokenAsync(h);
+
+        var result = await h.Service.CreateWorkspaceAsync(WorkspaceRequest(token) with { OwnerName = ownerName }, Client);
+
+        result.Error!.Code.Should().Be(SelfServeErrors.SignupValidationCode);
+        result.Error.Field.Should().Be("ownerName");
+        h.Provisioner.Requests.Should().BeEmpty();
+    }
+
     [Theory]
     [InlineData("0212", "phone")]
     [InlineData("0812345678", "size")]

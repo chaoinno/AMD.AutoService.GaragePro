@@ -18,6 +18,10 @@ export const otpCodeOnlySchema = otpSchema.extend({ password: z.string() })
 export const garageNameSchema = z.string().trim()
   .min(2, 'ชื่ออู่ต้องมีอย่างน้อย 2 ตัวอักษร')
   .max(100, 'ชื่ออู่ต้องไม่เกิน 100 ตัวอักษร')
+// ชื่อเจ้าของอู่ขึ้นบนใบเสนอราคา/ใบเสร็จ/ประวัติงาน — ไม่ถามแล้ว API ใช้ส่วนหน้าของอีเมลแทน (เช่น "ipongdev")
+export const ownerNameSchema = z.string().trim()
+  .min(2, 'กรุณากรอกชื่อ-นามสกุลของคุณ')
+  .max(100, 'ชื่อ-นามสกุลต้องไม่เกิน 100 ตัวอักษร')
 export const phoneSchema = z.string().transform((value) => value.replace(/[\s-]/g, ''))
   .pipe(z.string().regex(/^(?:0[689]\d{8}|0[2-7]\d{7})$/, 'กรุณากรอกเบอร์โทรศัพท์ไทยให้ถูกต้อง'))
 export const sizeSchema = z.enum(['1-3', '4-10', '10+'], { error: 'กรุณาเลือกขนาดอู่' })
@@ -29,6 +33,7 @@ export const accountSchema = z.object({
   website: z.string(),
 })
 export const workspaceSchema = z.object({
+  ownerName: ownerNameSchema,
   garageName: garageNameSchema,
   phone: phoneSchema,
   provinceId: z.number().int().positive('กรุณาเลือกจังหวัด').optional(),

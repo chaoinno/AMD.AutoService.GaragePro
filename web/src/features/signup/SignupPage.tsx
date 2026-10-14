@@ -238,14 +238,15 @@ function OtpStep({ flow, password, onError, onVerified, onResend, onBack }: { fl
 
 function WorkspaceStep({ signupToken, onError, onEdit, requestId, onCompleted }: StepProps & { signupToken: string; onCompleted: (result: SignupResult) => void }) {
   const provinces = useQuery({ queryKey: ['signup', 'provinces'], queryFn: getSignupProvinces, retry: false })
-  const form = useForm<WorkspaceValues, unknown, z.output<typeof workspaceSchema>>({ resolver: zodResolver(workspaceSchema), defaultValues: { garageName: '', phone: '', sampleData: true } })
+  const form = useForm<WorkspaceValues, unknown, z.output<typeof workspaceSchema>>({ resolver: zodResolver(workspaceSchema), defaultValues: { ownerName: '', garageName: '', phone: '', sampleData: true } })
   const create = useMutation({ mutationFn: createSignupWorkspace, onSuccess: onCompleted, onError: (error) => {
     onError(error)
-    if (isApiError(error) && ['garageName', 'phone', 'provinceId', 'size', 'sampleData'].includes(error.field ?? '')) form.setError(error.field as keyof WorkspaceValues, { message: error.messageTh }, { shouldFocus: true })
+    if (isApiError(error) && ['ownerName', 'garageName', 'phone', 'provinceId', 'size', 'sampleData'].includes(error.field ?? '')) form.setError(error.field as keyof WorkspaceValues, { message: error.messageTh }, { shouldFocus: true })
   } })
   const errors = form.formState.errors
   return (
     <form className="signup-form" noValidate onChange={onEdit} onSubmit={form.handleSubmit((values) => { if (!create.isPending) create.mutate({ ...values, requestId: requestId(), signupToken }) })}>
+      <div className="form-field"><Label htmlFor="signup-owner">ชื่อ-นามสกุลของคุณ *</Label><Input id="signup-owner" autoComplete="name" maxLength={100} placeholder="เช่น สมชาย ใจดี" aria-invalid={Boolean(errors.ownerName)} aria-describedby="signup-owner-help" {...form.register('ownerName')} /><p id="signup-owner-help" className={errors.ownerName ? 'field-error' : 'signup-hint'}>{errors.ownerName?.message ?? 'แสดงบนใบเสนอราคา ใบเสร็จ และประวัติงาน'}</p></div>
       <div className="form-field"><Label htmlFor="signup-garage">ชื่ออู่ *</Label><Input id="signup-garage" autoComplete="organization" maxLength={100} placeholder="เช่น อู่ช่างเอก" aria-invalid={Boolean(errors.garageName)} aria-describedby={errors.garageName ? 'signup-garage-error' : undefined} {...form.register('garageName')} />{errors.garageName ? <p id="signup-garage-error" className="field-error">{errors.garageName.message}</p> : null}</div>
       <div className="form-field"><Label htmlFor="signup-phone">เบอร์โทร *</Label><Input id="signup-phone" type="tel" autoComplete="tel" placeholder="08x-xxx-xxxx หรือ 02-xxx-xxxx" aria-invalid={Boolean(errors.phone)} aria-describedby={errors.phone ? 'signup-phone-error' : undefined} {...form.register('phone')} />{errors.phone ? <p id="signup-phone-error" className="field-error">{errors.phone.message}</p> : null}</div>
       {provinces.data?.length ? <div className="form-field"><Label htmlFor="signup-province">จังหวัด <span className="signup-hint">(ไม่บังคับ)</span></Label><Select id="signup-province" aria-invalid={Boolean(errors.provinceId)} {...form.register('provinceId', { setValueAs: (value: string) => value ? Number(value) : undefined })}><option value="">เลือกจังหวัด</option>{provinces.data.map((province) => <option value={province.id} key={province.id}>{province.name}</option>)}</Select>{errors.provinceId ? <p className="field-error">{errors.provinceId.message}</p> : null}</div> : null}

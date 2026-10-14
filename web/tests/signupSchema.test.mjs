@@ -38,7 +38,9 @@ test('email and consent validation use the required Thai messages', () => {
   assert.equal(accountSchema.safeParse({ email: 'owner@gmail.com', password: 'valid123', consent: true, website: '' }).success, true)
 })
 test('workspace optional fields and default sample data follow the contract', () => {
-  const input = { garageName: 'อู่ช่างเอก', phone: '0812345678' }
+  const input = { ownerName: ' สมชาย ใจดี ', garageName: 'อู่ช่างเอก', phone: '0812345678' }
+  assert.equal(workspaceSchema.parse(input).ownerName, 'สมชาย ใจดี')
+  assert.equal(workspaceSchema.safeParse({ ...input, ownerName: ' ก ' }).success, false, 'ต้องกรอกชื่อเจ้าของอู่')
   assert.equal(workspaceSchema.parse(input).sampleData, true)
   assert.equal(workspaceSchema.parse({ ...input, sampleData: false, size: '10+', provinceId: 1 }).sampleData, false)
   assert.equal(workspaceSchema.safeParse({ ...input, size: 'invalid' }).success, false)

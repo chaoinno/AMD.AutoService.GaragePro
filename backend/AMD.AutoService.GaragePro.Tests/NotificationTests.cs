@@ -164,6 +164,22 @@ public sealed class NotificationTests
     }
 
     [Fact]
+    public async Task Publisher_sends_one_row_when_the_creator_is_also_the_assigned_technician()
+    {
+        // ใบเสนอราคาอนุมัติ: แจ้งคนสร้างใบ (ToUser) แล้วแจ้งช่างในบรรทัดค่าแรง (ToStaff) — คนเดียวกันต้องได้แถวเดียว
+        var repo = new FakeNotificationRepository();
+        var legacy = new FakeLegacyUsers { [31] = 501 };
+        var publisher = Publisher(repo, actorStaffId: 10, legacy);
+
+        var approved = Draft();
+        await publisher.ToUserAsync(approved, 31);
+        await publisher.ToStaffAsync(approved, [501, 502]);
+        await publisher.ToStaffAsync(Draft(), [501]);   // เรื่องอื่น (คนละ entity) ยังได้ตามปกติ
+
+        Assert.Equal([501L, 502L, 501L], repo.Added.Select(n => n.RecipientStaffId!.Value));
+    }
+
+    [Fact]
     public async Task Publisher_resolves_user_to_staff_and_skips_when_legacy_lookup_fails()
     {
         var repo = new FakeNotificationRepository();

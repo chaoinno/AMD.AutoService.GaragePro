@@ -33,6 +33,10 @@ public sealed record GoogleSignupRequest(string? IdToken, string? TurnstileToken
 
 /// <param name="Size">ขนาดอู่ <c>1-3</c> · <c>4-10</c> · <c>10+</c> (ไม่บังคับ)</param>
 /// <param name="SampleData">ใส่ข้อมูลตัวอย่างให้ (แนะนำ) — best effort ล้มแล้วสมัครยังสำเร็จ</param>
+/// <param name="OwnerName">
+/// ชื่อ-นามสกุลเจ้าของอู่ (คำแรก = ชื่อ ที่เหลือ = นามสกุล) แสดงบนเอกสาร/ประวัติงาน · ไม่ส่ง = ชื่อจาก Google
+/// ไม่งั้นส่วนหน้าของอีเมล (เดิมขึ้นเป็น "ipongdev" บนใบเสนอราคา/ใบเสร็จ: พบตอนทดสอบมือ) · เว็บบังคับกรอก
+/// </param>
 public sealed record CreateWorkspaceRequest(
     string? RequestId,
     string? SignupToken,
@@ -40,7 +44,8 @@ public sealed record CreateWorkspaceRequest(
     string? Phone,
     int? ProvinceId,
     string? Size,
-    bool SampleData);
+    bool SampleData,
+    string? OwnerName = null);
 
 /// <summary>ข้อมูลประกอบจาก HTTP (controller เติม) — ลง sp_SignupAttempt/sp_Account เท่านั้น ไม่ใช้ตัดสินสิทธิ์</summary>
 public sealed record SignupClientInfo(string? Ip, string? Country, string? UserAgent)

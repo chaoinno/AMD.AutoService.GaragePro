@@ -21,6 +21,8 @@ export type EmailStartInput = {
 export type WorkspaceInput = {
   requestId: string
   signupToken: string
+  /** ชื่อ-นามสกุลเจ้าของอู่ (เว็บบังคับกรอก · API ไม่ส่งได้ = ใช้ชื่อจาก Google/ส่วนหน้าของอีเมล) */
+  ownerName?: string
   garageName: string
   phone: string
   provinceId?: number

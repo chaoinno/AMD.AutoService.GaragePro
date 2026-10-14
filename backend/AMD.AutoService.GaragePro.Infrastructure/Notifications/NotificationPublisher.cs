@@ -22,11 +22,16 @@ public sealed class NotificationPublisher(
     private bool actorResolved;
     private long? actorStaffId;
 
+    // คนเดียวกันได้เรื่องเดียวกันครั้งเดียวต่อ request แม้ผู้เรียกจะยิงหลายรอบ เช่นใบเสนอราคาอนุมัติแจ้ง "คนสร้างใบ" แล้วแจ้ง
+    // "ช่างในบรรทัดค่าแรง" อีกรอบ ถ้าเป็นคนเดียวกันเคยได้ 2 แถว (พบตอนทดสอบมือ) · publisher เป็น scoped จึงหมดอายุพร้อม request
+    private readonly HashSet<(string Kind, Guid? EntityId, long StaffId)> queued = [];
+
     public async Task ToStaffAsync(NotificationDraft draft, IEnumerable<long> staffIds, CancellationToken ct = default)
     {
         var actor = await ActorStaffIdAsync(ct);
         foreach (var staffId in staffIds.Where(id => id > 0 && id != actor).Distinct())
-            repository.Add(Build(draft, actor, recipientStaffId: staffId, audience: 0));
+            if (queued.Add((draft.Kind, draft.EntityId, staffId)))
+                repository.Add(Build(draft, actor, recipientStaffId: staffId, audience: 0));
     }
 
     public async Task ToUserAsync(NotificationDraft draft, long userId, CancellationToken ct = default)

@@ -55,6 +55,8 @@ public sealed class SignupService(
     public const int PasswordMaxLength = 128;
     public const int GarageNameMinLength = 2;
     public const int GarageNameMaxLength = 100;
+    public const int OwnerNameMinLength = 2;
+    public const int OwnerNameMaxLength = 100;
     public static readonly IReadOnlyList<string> GarageSizes = ["1-3", "4-10", "10+"];
 
     public const string StepEmailStart = "email.start";
@@ -396,6 +398,14 @@ public sealed class SignupService(
             return await FailAsync<SignupWorkspaceResultDto>(step, SelfServeErrors.SignupValidation(
                 "ขนาดอู่ไม่ถูกต้อง", "size"), client, null, null, ct);
 
+        var ownerName = OneLine(request.OwnerName);
+        if (ownerName.Length is > 0 and < OwnerNameMinLength)
+            return await FailAsync<SignupWorkspaceResultDto>(step, SelfServeErrors.SignupValidation(
+                "กรุณากรอกชื่อ-นามสกุลของคุณ", "ownerName"), client, null, null, ct);
+        if (ownerName.Length > OwnerNameMaxLength)
+            return await FailAsync<SignupWorkspaceResultDto>(step, SelfServeErrors.SignupValidation(
+                $"ชื่อ-นามสกุลยาวเกิน {OwnerNameMaxLength} ตัวอักษร", "ownerName"), client, null, null, ct);
+
         var (provinceOk, provinceName) = await ResolveProvinceAsync(request.ProvinceId, ct);
         if (!provinceOk)
             return await FailAsync<SignupWorkspaceResultDto>(step, SelfServeErrors.SignupValidation(
@@ -450,7 +460,7 @@ public sealed class SignupService(
         var duplicatePhone = await repository.IsPhoneUsedByOtherAccountAsync(phone, account.Id, ct);
         var viaGoogle = account.Provider == SelfServeAccountProvider.Google;
         var ownerEmail = account.Email ?? account.NormalizedEmail;
-        var (firstName, lastName) = OwnerName(account, ownerEmail);
+        var (firstName, lastName) = OwnerName(account, ownerEmail, ownerName);
         // Google ไม่มีรหัสผ่าน — เก็บ hash ของค่าสุ่มที่ไม่มีใครรู้ ([User].Password ห้ามว่าง) · เข้าสู่ระบบผ่าน /auth/google
         var storedPassword = account.PasswordHash ?? hasher.Hash(RandomSecret(24));
 
@@ -736,8 +746,15 @@ public sealed class SignupService(
         }
     }
 
-    private (string First, string Last) OwnerName(SelfServeAccount account, string ownerEmail)
+    /// <summary>ชื่อที่กรอกตอนสมัคร → ชื่อจาก Google → ส่วนหน้าของอีเมล · คำแรกเป็นชื่อ ที่เหลือเป็นนามสกุล</summary>
+    private (string First, string Last) OwnerName(SelfServeAccount account, string ownerEmail, string? typedName = null)
     {
+        if (!string.IsNullOrWhiteSpace(typedName))
+        {
+            var words = typedName.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            return (Truncate(words[0], 50)!, Truncate(words.Length > 1 ? words[1] : "", 50) ?? "");
+        }
+
         if (stash.TryGet(OwnerNameKey(account.Id), out var packed))
         {
             var parts = packed.Split('\u001F');
