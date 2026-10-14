@@ -1,11 +1,9 @@
 namespace AMD.AutoService.GaragePro.Application.SelfServe;
 
 /// <summary>
-/// ตรวจรูปแบบ + normalize อีเมลของ signup (docs/12 §7 ชั้น 1)
-/// · [RISK] กติกา normalize ต้องตรงกับ <c>EmailNormalizer</c> ของ B5 ตัวอักษรต่อตัวอักษร (login ด้วยอีเมลค้น sp_Account ด้วยค่านี้)
-///   — ยืนยันกับ B5 แล้ว 2026-10-14: trim → lowercase (invariant) → ตัด '.' ท้ายโดเมน → gmail.com/googlemail.com: ลบ '.'
-///   ทุกตัวใน local · ตัดตั้งแต่ '+' ตัวแรก · googlemail.com → gmail.com · อย่างอื่นไม่แตะ (ไม่ตัด +tag โดเมนอื่น · ไม่แปลง IDN)
-///   integrator: เมื่อ merge แล้วให้ <see cref="Normalize"/> เรียกตัวของ B5 ตัวเดียว (ไฟล์นี้แยกไว้กันชนชื่อไฟล์ตอนทำขนาน)
+/// ตรวจรูปแบบอีเมลของ signup (docs/12 §7 ชั้น 1) แล้ว normalize ด้วย <see cref="EmailNormalizer"/> ตัวเดียวกับ login
+/// · ห้ามมี normalize ของตัวเองที่นี่ — login ด้วยอีเมล/Google ค้น sp_Account.NormalizedEmail ด้วย EmailNormalizer
+///   ถ้ากติกาเพี้ยนกันแม้ตัวเดียว คนที่สมัครแล้วจะ login ด้วยอีเมลไม่เจอบัญชี
 /// · การตรวจรูปแบบเข้มกว่าที่ login ต้องใช้ (สมัครครั้งเดียว ป้องกันพิมพ์ผิด) แต่ไม่พยายามครอบ RFC 5322 ทั้งหมด
 /// </summary>
 public static class SignupEmail
@@ -14,29 +12,6 @@ public static class SignupEmail
     private const int MaxLocalLength = 64;
     private const int MaxLabelLength = 63;
     private const string LocalSpecials = "!#$%&'*+/=?^_`{|}~.-";
-
-    /// <summary>normalize อย่างเดียว (ไม่ตรวจรูปแบบละเอียด) — null เมื่อไม่มี '@' หนึ่งตัวพอดี หรือส่วนใดว่าง</summary>
-    public static string? Normalize(string? email)
-    {
-        if (string.IsNullOrWhiteSpace(email)) return null;
-        var value = email.Trim().ToLowerInvariant();
-        var at = value.IndexOf('@');
-        if (at <= 0 || at != value.LastIndexOf('@')) return null;
-
-        var local = value[..at];
-        var domain = value[(at + 1)..].TrimEnd('.');
-        if (domain.Length == 0) return null;
-
-        if (domain is "gmail.com" or "googlemail.com")
-        {
-            var plus = local.IndexOf('+');
-            if (plus >= 0) local = local[..plus];
-            local = local.Replace(".", "", StringComparison.Ordinal);
-            domain = "gmail.com";
-        }
-
-        return local.Length == 0 ? null : $"{local}@{domain}";
-    }
 
     /// <summary>
     /// ตรวจรูปแบบแล้ว normalize — false เมื่อรูปแบบไม่ใช่อีเมลที่ส่งถึงได้จริง
@@ -50,7 +25,7 @@ public static class SignupEmail
         var trimmed = input.Trim();
         if (trimmed.Length > MaxLength || !IsValidSyntax(trimmed)) return false;
 
-        var value = Normalize(trimmed);
+        var value = EmailNormalizer.Normalize(trimmed);
         if (value is null) return false;
 
         normalized = value;

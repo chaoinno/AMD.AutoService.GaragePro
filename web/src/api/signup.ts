@@ -53,8 +53,12 @@ export function startSignupEmail(input: EmailStartInput) {
 export function resendSignupEmail(email: string) {
   return post<ResendResult>('email/resend', { email })
 }
-export function verifySignupEmail(email: string, code: string) {
-  return post<SignupTicket>('email/verify', { email, code })
+/**
+ * [SECURITY] ส่งรหัสผ่านเดียวกับ email/start ไปด้วย — server รับ OTP เฉพาะเมื่อรหัสผ่านตรงกับที่ตั้งตอนเริ่มสมัคร
+ * (กันคนที่เริ่มสมัครอีเมลเดียวกันทับด้วยรหัสผ่านของตัวเอง) · ไม่ตรง = SIGNUP_PASSWORD_MISMATCH (field `password`)
+ */
+export function verifySignupEmail(email: string, code: string, password: string) {
+  return post<SignupTicket>('email/verify', { email, code, password })
 }
 export function signupWithGoogle(input: { idToken: string; turnstileToken: string; website: string }) {
   return post<SignupTicket>('google', input)

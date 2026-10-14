@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { accountSchema, consentSchema, emailSchema, garageNameSchema, otpSchema, passwordSchema, phoneSchema, workspaceSchema } from '../src/features/signup/signupSchema.ts'
+import { accountSchema, consentSchema, emailSchema, garageNameSchema, otpCodeOnlySchema, otpSchema, otpWithPasswordSchema, passwordSchema, phoneSchema, SIGNUP_PASSWORD_HINT, workspaceSchema } from '../src/features/signup/signupSchema.ts'
 
 test('password requires eight characters, a letter and a digit', () => {
   for (const password of ['abc12345', 'รหัสผ่าน123', 'space 12']) assert.equal(passwordSchema.safeParse(password).success, true, password)
@@ -13,6 +13,17 @@ test('Thai mobile and landline numbers normalize spaces and dashes', () => {
 test('OTP accepts exactly six ASCII digits', () => {
   assert.equal(otpSchema.safeParse({ code: '012345' }).success, true)
   for (const code of ['12345', '1234567', '12345a', ' 123456', '๑๒๓๔๕๖', '']) assert.equal(otpSchema.safeParse({ code }).success, false, code)
+})
+test('OTP step carries the start password: required only when the field is shown, never re-validated by the signup rules', () => {
+  const withPassword = otpWithPasswordSchema.safeParse({ code: '012345', password: '' })
+  assert.equal(withPassword.success, false)
+  assert.equal(withPassword.error.issues[0].path[0], 'password')
+  assert.equal(withPassword.error.issues[0].message, `กรุณา${SIGNUP_PASSWORD_HINT}`)
+  assert.equal(SIGNUP_PASSWORD_HINT, 'กรอกรหัสผ่านที่ตั้งไว้ตอนเริ่มสมัคร')
+  // ค่าที่ไม่ผ่านกติกาตั้งรหัสผ่านยังส่งได้ — server ตอบ SIGNUP_PASSWORD_MISMATCH ที่ชัดกว่าข้อความความยาวรหัสผ่าน
+  assert.deepEqual(otpWithPasswordSchema.parse({ code: '012345', password: 'abc' }), { code: '012345', password: 'abc' })
+  assert.deepEqual(otpCodeOnlySchema.parse({ code: '012345', password: '' }), { code: '012345', password: '' })
+  assert.equal(otpCodeOnlySchema.safeParse({ code: '12345', password: 'x' }).success, false)
 })
 test('garage names are trimmed and contain 2–100 characters', () => {
   assert.equal(garageNameSchema.parse('  อู่ช่างเอก  '), 'อู่ช่างเอก')

@@ -11,7 +11,7 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 /// <summary>จัดการซัพพลายเออร์และความสัมพันธ์ระหว่างซัพพลายเออร์กับสินค้าในสาขาปัจจุบัน</summary>
 [ApiController]
 [Route("api/v1/suppliers")]
-[RequireFeature(PlanFeature.Purchasing)]   // B5 — รวม /catalog/manage/{id}/suppliers ใน controller นี้
+[RequireFeature(PlanFeature.Purchasing, AllowReads = true)]   // B5 — รวม /catalog/manage/{id}/suppliers · F1: อ่านได้ เขียนยังล็อก
 [Produces("application/json")]
 [Authorize]
 [RequireShiftSession]

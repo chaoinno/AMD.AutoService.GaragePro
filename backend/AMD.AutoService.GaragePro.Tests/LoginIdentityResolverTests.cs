@@ -128,6 +128,7 @@ public sealed class EmailNormalizerTests
     [InlineData("@example.com")]
     [InlineData("user@")]
     [InlineData("a@b@example.com")]
+    [InlineData("two@@example.com")]
     [InlineData("a b@example.com")]
     [InlineData("+tag@gmail.com")]          // local ว่างหลังตัด +tag
     public void Rejects_values_that_are_not_an_email(string? input) =>

@@ -48,7 +48,7 @@ public sealed class PosController(IPosService service, ITaxInvoiceService taxInv
 
     /// <summary>สถานะใบกำกับภาษี: ออกแล้ว/ยัง · เหตุผลที่ยังออกไม่ได้ · ข้อมูลผู้ซื้อที่เติมจากลูกค้าให้แก้ก่อนออก</summary>
     [HttpGet("jobs/{jobId:guid}/tax-invoice")]
-    [RequireFeature(PlanFeature.TaxInvoice)]   // B5 — เว็บแสดง messageTh เป็นเหตุผลที่ออกไม่ได้
+    [RequireFeature(PlanFeature.TaxInvoice)]   // B5 · GET ก็ล็อก — เว็บไม่เรียกเมื่อแพ็กเกจล็อก (แถวใบกำกับแสดงกุญแจแทน)
     public async Task<IActionResult> GetTaxInvoice(Guid jobId, CancellationToken ct) =>
         Render(await taxInvoices.GetStateAsync(jobId, ct));
 

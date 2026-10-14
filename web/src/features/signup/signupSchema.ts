@@ -7,6 +7,14 @@ export const passwordSchema = z.string()
   .regex(/\d/, 'รหัสผ่านต้องมีตัวเลขอย่างน้อย 1 ตัว')
 export const consentSchema = z.boolean().refine((value) => value, 'กรุณายอมรับข้อกำหนดและนโยบายความเป็นส่วนตัว')
 export const otpSchema = z.object({ code: z.string().regex(/^\d{6}$/, 'กรุณากรอกรหัสยืนยัน 6 หลัก') })
+/** คำใบ้ใต้ช่องรหัสผ่านในขั้นยืนยันอีเมล (แสดงเมื่อไม่มีรหัสผ่านจากขั้นแรกในหน้า เช่น โหลดหน้าใหม่) */
+export const SIGNUP_PASSWORD_HINT = 'กรอกรหัสผ่านที่ตั้งไว้ตอนเริ่มสมัคร'
+/**
+ * ขั้นยืนยันอีเมลส่งรหัสผ่านของขั้นแรกไปด้วยเสมอ — ปกติถือไว้ใน state ของหน้า (ไม่ลง sessionStorage)
+ * ช่องรหัสผ่านโผล่เฉพาะเมื่อไม่มีค่านั้น (โหลดหน้าใหม่) หรือ server ตอบว่าไม่ตรง จึงตรวจแค่ "มีค่า" ไม่ใช้กติกาตั้งรหัสผ่าน
+ */
+export const otpWithPasswordSchema = otpSchema.extend({ password: z.string().min(1, `กรุณา${SIGNUP_PASSWORD_HINT}`) })
+export const otpCodeOnlySchema = otpSchema.extend({ password: z.string() })
 export const garageNameSchema = z.string().trim()
   .min(2, 'ชื่ออู่ต้องมีอย่างน้อย 2 ตัวอักษร')
   .max(100, 'ชื่ออู่ต้องไม่เกิน 100 ตัวอักษร')
@@ -29,5 +37,5 @@ export const workspaceSchema = z.object({
 })
 
 export type AccountValues = z.infer<typeof accountSchema>
-export type OtpValues = z.infer<typeof otpSchema>
+export type OtpValues = z.infer<typeof otpWithPasswordSchema>
 export type WorkspaceValues = z.input<typeof workspaceSchema>

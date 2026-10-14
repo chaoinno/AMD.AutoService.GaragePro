@@ -20,6 +20,8 @@ namespace AMD.AutoService.GaragePro.Application.SelfServe;
 ///   ตอนเปิดอู่ "จอง" token ให้ requestId นั้นแบบ compare-and-swap (<c>{hash}</c> → <c>{hash}:{requestId}</c>) — คำขอ requestId อื่นใช้ไม่ได้
 ///   (กันกดซ้ำสองครั้งได้สองอู่) · requestId เดิมส่งซ้ำ = ทำต่อจากที่ค้าง/ได้ผลเดิม (ไม่เปิดอู่ใหม่) · จองแล้วแต่เปิดอู่ล้ม
 ///   (ProvisionError) ให้ requestId ใหม่ (ผู้ใช้แก้ฟอร์มแล้วกดใหม่) จองต่อได้
+/// · [SECURITY] email/verify ต้องได้ทั้ง OTP และรหัสผ่านเดียวกับ email/start — start ทับรหัสผ่านของแถว Pending ได้โดยไม่ต้องพิสูจน์
+///   เจ้าของอีเมล ถ้า verify ดูแค่ OTP คนที่ start ทับระหว่างเจ้าของรอรหัสจะได้ผูกรหัสผ่านของตัวเองกับอู่ของเจ้าของอีเมล
 /// · ทุกผลลัพธ์ (รวมบอท/ถูกปฏิเสธ) ลง sp_SignupAttempt — ล้มแค่ log ไม่ทำให้คำขอล้ม
 /// · ขั้นหลังเปิดอู่ (ข้อมูลตัวอย่าง · LINE ทีมขาย · อีเมลต้อนรับ) เป็น best effort ล้มแล้วการสมัครยังสำเร็จ
 /// </summary>
@@ -233,6 +235,12 @@ public sealed class SignupService(
             return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupValidation(
                 $"กรุณากรอกรหัสยืนยัน {OtpLength} หลักจากอีเมล", "code"), client, domain, null, ct);
 
+        // ตรวจแค่ว่ามีค่า (ไม่ใช้กติกาความยาว/ตัวอักษรของ email/start) — ค่าที่ไม่ตรงกฎย่อมไม่ตรงกับ hash อยู่แล้ว
+        var password = request.Password;
+        if (string.IsNullOrEmpty(password) || password.Length > PasswordMaxLength)
+            return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupValidation(
+                "กรุณากรอกรหัสผ่านที่ตั้งไว้ตอนเริ่มสมัคร", "password"), client, domain, null, ct);
+
         var otp = await repository.GetOtpAsync(normalized, ct);
         if (otp is null)
             return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupOtpInvalid(), client, domain, null, ct);
@@ -244,13 +252,23 @@ public sealed class SignupService(
         var account = await repository.FindAccountByEmailAsync(normalized, ct);
         // [SECURITY] รหัสของอีเมลที่มีบัญชีแล้วไม่เคยถูกส่ง — แม้เดาถูกก็นับเป็นรหัสผิด (ตอบแบบเดียวกับอีเมลใหม่)
         var canVerify = account is { Status: SelfServeAccountStatus.Pending or SelfServeAccountStatus.Verified };
-        if (!canVerify || !hasher.Verify(otp.CodeHash, code))
+        // [SECURITY] รับรหัส OTP ได้ต่อเมื่อรหัสผ่านตรงกับที่ตั้งตอน email/start ด้วย — กันคนที่ start ด้วยอีเมลคนอื่น
+        // แล้วทับรหัสผ่าน (เจ้าของอีเมลกรอกรหัสล่าสุดแล้วได้อู่ที่ล็อกอินด้วยรหัสผ่านของผู้โจมตี) · ลองผิดนับรวมกับรหัสผิด
+        // · ตรวจ OTP ก่อนรหัสผ่านโดยตั้งใจ: คนที่ไม่มีรหัสจากอีเมลเห็นแค่ "รหัสไม่ถูกต้อง" เสมอ — ถ้าตรวจรหัสผ่านก่อน
+        //   คนนอกจะแยกได้ว่าอีเมลไหนมีบัญชีแล้ว (บัญชีที่มีอยู่ไม่เก็บรหัสผ่านจาก start จึงตอบต่างจากอีเมลใหม่)
+        // · Google (ไม่มีรหัสผ่าน) = ไม่ตรงเสมอ — ทางนี้เปิดอู่ด้วยอีเมลไม่ได้จนกว่าจะเริ่มสมัครด้วยอีเมลใหม่
+        var codeMatches = canVerify && hasher.Verify(otp.CodeHash, code);
+        var passwordMatches = codeMatches
+            && account!.PasswordHash is { Length: > 0 } stored && hasher.Verify(stored, password);
+        if (!passwordMatches)
         {
             otp.Attempts++;
             await repository.UpdateOtpAsync(otp, ct);
             var left = OtpMaxAttempts - otp.Attempts;
             return await FailAsync<SignupTokenDto>(step,
-                left <= 0 ? SelfServeErrors.SignupOtpLocked() : SelfServeErrors.SignupOtpInvalid(left),
+                left <= 0 ? SelfServeErrors.SignupOtpLocked()
+                : codeMatches ? SignupErrors.PasswordMismatch(left)
+                : SelfServeErrors.SignupOtpInvalid(left),
                 client, domain, account?.Id, ct);
         }
 
@@ -299,7 +317,7 @@ public sealed class SignupService(
             return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupGoogleInvalid(), client, null, null, ct, "id-token");
         if (!identity.EmailVerified)
             return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupGoogleInvalid(), client,
-                SignupEmail.DomainOf(SignupEmail.Normalize(identity.Email)), null, ct, "email-not-verified");
+                SignupEmail.DomainOf(EmailNormalizer.Normalize(identity.Email)), null, ct, "email-not-verified");
         if (!SignupEmail.TryParse(identity.Email, out var normalized, out var display, out var domain))
             return await FailAsync<SignupTokenDto>(step, SelfServeErrors.SignupGoogleInvalid(), client, null, null, ct, "email-format");
 
@@ -556,6 +574,7 @@ public sealed class SignupService(
         }
 
         // [SECURITY] เริ่มใหม่ = ต้องยืนยันอีเมลใหม่ · token เดิม (ถ้ามี) ใช้ไม่ได้อีก · รหัสผ่านเป็นของคำขอล่าสุด
+        // (verify ต้องส่งรหัสผ่านนี้คู่กับ OTP — คนที่ start ทับจึงผูกรหัสผ่านของตัวเองกับอู่ของเจ้าของอีเมลไม่ได้)
         account.Provider = SelfServeAccountProvider.Email;
         account.PasswordHash = passwordHash;
         account.Email = display;

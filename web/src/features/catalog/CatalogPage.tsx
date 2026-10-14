@@ -25,6 +25,9 @@ import {
 import { isApiError, isForbiddenError } from '../../api/client'
 import type { CatalogCategory, CatalogItemInput, CatalogItemSupplier, CatalogItemSupplierInput, CatalogManagementItem, PagedResult, Supplier } from '../../api/types'
 import { ManagementTable } from '../../components/ManagementTable'
+import { isFeatureLocked } from '../../lib/plan'
+import { PlanLockedPanel } from '../plan/PlanLockedPanel'
+import { useSessionPlan } from '../plan/usePlan'
 import { AppShell } from '../../components/AppShell'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
@@ -204,8 +207,11 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
   const details = useQuery({ queryKey: ['catalog-management-item', itemId], queryFn: () => getCatalogItem(itemId!), enabled: open && Boolean(itemId) })
   const categoriesQuery = useQuery({ queryKey: ['catalog-categories', 'lookup-with-inactive'], queryFn: () => getCatalogCategories({ includeInactive: true }), enabled: open })
   const warehousesQuery = useQuery({ queryKey: ['warehouses', 'lookup-with-inactive'], queryFn: () => getWarehouses({ includeInactive: true }), enabled: open })
-  const suppliersQuery = useQuery({ queryKey: ['suppliers', 'lookup-with-inactive'], queryFn: () => getSuppliers({ includeInactive: true, page: 1, pageSize: 200 }), enabled: open })
-  const itemSuppliersQuery = useQuery({ queryKey: ['catalog-item-suppliers', itemId], queryFn: () => getCatalogItemSuppliers(itemId!), enabled: open && Boolean(itemId) })
+  // [BIZ] ซัพพลายเออร์ของสินค้าเป็นส่วนของโมดูลจัดซื้อ — แพ็กเกจที่ล็อกจัดซื้อไม่โหลด/ไม่แสดงส่วนนี้ (แสดงกุญแจแทน) · ลูกค้าเดิมเหมือนเดิม
+  const { plan } = useSessionPlan()
+  const purchasingLocked = isFeatureLocked(plan, 'purchasing')
+  const suppliersQuery = useQuery({ queryKey: ['suppliers', 'lookup-with-inactive'], queryFn: () => getSuppliers({ includeInactive: true, page: 1, pageSize: 200 }), enabled: open && !purchasingLocked })
+  const itemSuppliersQuery = useQuery({ queryKey: ['catalog-item-suppliers', itemId], queryFn: () => getCatalogItemSuppliers(itemId!), enabled: open && Boolean(itemId) && !purchasingLocked })
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CatalogFormValues>({ resolver: zodResolver(catalogSchema), defaultValues: emptyForm })
   const type = watch('type')
   const selectedCategoryId = watch('categoryId')
@@ -311,8 +317,8 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
         <Field label="ชำรุด" error={errors.damaged?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('damaged')} /></Field>
         <Field label="หมายเหตุกำหนดรับสินค้า" error={errors.etaNote?.message} wide><Input maxLength={200} placeholder="เช่น สั่งได้ภายใน 2 วัน" {...register('etaNote')} /></Field>
       </div><p className="stock-formula"><Boxes /> จำนวนพร้อมใช้คำนวณจาก “คงคลัง − จองแล้ว” โดยไม่รวมกำลังสั่งซื้อและของชำรุด</p></section> : null}
-      <section><div className="section-heading-row"><div><h3>ซัพพลายเออร์ของสินค้า</h3><p className="section-help">กำหนดรหัสสินค้า ต้นทุน และเงื่อนไขสั่งซื้อแยกตามซัพพลายเออร์</p></div>{itemId ? <Badge variant="outline">{itemSuppliersQuery.data?.length ?? 0} ราย</Badge> : null}</div>
-        {!itemId ? <p className="section-help">บันทึกสินค้าให้เรียบร้อยก่อน จึงจะเพิ่มซัพพลายเออร์ได้</p> : <>
+      <section><div className="section-heading-row"><div><h3>ซัพพลายเออร์ของสินค้า</h3><p className="section-help">กำหนดรหัสสินค้า ต้นทุน และเงื่อนไขสั่งซื้อแยกตามซัพพลายเออร์</p></div>{itemId && !purchasingLocked ? <Badge variant="outline">{itemSuppliersQuery.data?.length ?? 0} ราย</Badge> : null}</div>
+        {purchasingLocked ? <PlanLockedPanel feature="purchasing" title="ซัพพลายเออร์ของสินค้าเปิดในแพ็กเกจเต็ม" detail="ผูกซัพพลายเออร์ ต้นทุนจากแต่ละราย และเงื่อนไขสั่งซื้อ ใช้คู่กับโมดูลจัดซื้อ — ข้อมูลสินค้า ราคา และสต็อกด้านบนบันทึกได้ตามปกติ" /> : !itemId ? <p className="section-help">บันทึกสินค้าให้เรียบร้อยก่อน จึงจะเพิ่มซัพพลายเออร์ได้</p> : <>
           <div className="supplier-link-form form-grid">
             <Field label="ซัพพลายเออร์ *"><Select value={linkForm.supplierId} onChange={(event) => setLinkForm((old) => ({ ...old, supplierId: event.target.value }))} disabled={suppliersQuery.isPending}><option value="">เลือกซัพพลายเออร์</option>{suppliers.map((supplier) => <option key={supplier.id} value={supplier.id}>{supplier.name} ({supplier.code})</option>)}</Select></Field>
             <Field label="รหัสสินค้าซัพพลายเออร์"><Input value={linkForm.supplierItemCode} maxLength={60} onChange={(event) => setLinkForm((old) => ({ ...old, supplierItemCode: event.target.value }))} /></Field>

@@ -175,6 +175,56 @@ public sealed class RequireFeatureAttributeTests
         (await Run(new RequireFeatureAttribute(PlanFeature.AdvancedReports), anonymous)).Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData("GET", true)]
+    [InlineData("HEAD", true)]
+    [InlineData("POST", false)]
+    [InlineData("PUT", false)]
+    [InlineData("PATCH", false)]
+    [InlineData("DELETE", false)]
+    public async Task Allow_reads_lets_trials_read_master_data_but_keeps_writes_locked(string method, bool expected)
+    {
+        // หน้าที่เปิดให้ทดลองใช้ (ฟอร์มสินค้า/หน้าแคตตาล็อก) อ่านรายชื่อคลังและซัพพลายเออร์ของสินค้า — ห้ามขึ้น "โหลดไม่สำเร็จ"
+        var policy = new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial());
+        var context = FilterContext.Sp1(method, "/api/v1/warehouses", services: policy);
+
+        var passed = await Run(new RequireFeatureAttribute(PlanFeature.Inventory) { AllowReads = true }, context);
+
+        passed.Should().Be(expected);
+        if (!expected)
+            ((Envelope<object>)((ObjectResult)context.Executing.Result!).Value!).Error!.Code
+                .Should().Be(PlanErrors.FeatureLockedCode);
+    }
+
+    [Fact]
+    public async Task Without_allow_reads_a_get_is_locked_too()
+    {
+        // ใบเบิก/สต็อก/ใบกำกับภาษี: การอ่านคือตัวฟีเจอร์ — เว็บไม่เรียกเมื่อล็อก (แสดงกุญแจแทน)
+        var context = FilterContext.Sp1("GET", "/api/v1/inventory/withdrawals/by-job/1",
+            services: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial()));
+
+        (await Run(new RequireFeatureAttribute(PlanFeature.Inventory), context)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Read_only_lookups_of_open_screens_allow_reads_and_feature_panels_do_not()
+    {
+        static RequireFeatureAttribute Of(Type type) =>
+            type.GetCustomAttributes(typeof(RequireFeatureAttribute), true).OfType<RequireFeatureAttribute>().Single();
+
+        // ฟอร์มสินค้า: GET /warehouses · GET /suppliers · GET /catalog/manage/{id}/suppliers (อยู่ใน SupplierController)
+        Of(typeof(WarehouseController)).AllowReads.Should().BeTrue();
+        Of(typeof(SupplierController)).AllowReads.Should().BeTrue();
+        typeof(SupplierController).GetMethod(nameof(SupplierController.GetItemSuppliers))!
+            .GetCustomAttributes(typeof(RequireFeatureAttribute), true).Should().BeEmpty("ใช้ค่าระดับ controller (อ่านได้)");
+
+        // ใบเบิกของจ๊อบ / แผนเบิก / ใบกำกับภาษี — ล็อกทั้งอ่านและเขียน
+        Of(typeof(StockFIFOController)).AllowReads.Should().BeFalse();
+        typeof(PosController).GetMethod(nameof(PosController.GetTaxInvoice))!
+            .GetCustomAttributes(typeof(RequireFeatureAttribute), true).OfType<RequireFeatureAttribute>()
+            .Single().AllowReads.Should().BeFalse();
+    }
+
     [Fact]
     public void Locked_controllers_and_actions_are_annotated()
     {

@@ -71,10 +71,15 @@ export function BillingDocumentModal({ open, job, kind, onClose }: Props) {
   const error = kind === 'taxInvoice'
     ? taxInvoiceQuery.error
     : summaryQuery.error ?? listQuery.error ?? quotationQueries.find((q) => q.error)?.error ?? null
+  // refetch() ไม่สน `enabled` — ลองใหม่เฉพาะ query ของเอกสารที่เปิดอยู่ (ใบแจ้งยอด/ใบเสร็จของแพ็กเกจทดลองใช้ต้องไม่ยิง
+  // ใบกำกับภาษีที่ server ล็อกไว้แล้วขึ้น error ซ้อน)
   const retry = () => {
+    if (kind === 'taxInvoice') {
+      void taxInvoiceQuery.refetch()
+      return
+    }
     void summaryQuery.refetch()
     void listQuery.refetch()
-    void taxInvoiceQuery.refetch()
     quotationQueries.forEach((q) => void q.refetch())
   }
 

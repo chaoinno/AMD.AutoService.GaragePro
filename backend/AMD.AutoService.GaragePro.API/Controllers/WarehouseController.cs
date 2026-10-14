@@ -11,7 +11,7 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 /// <summary>จัดการคลังหลักของสาขาปัจจุบัน โดยสาขาอ่านจาก JWT ของผู้ใช้</summary>
 [ApiController]
 [Route("api/v1/warehouses")]
-[RequireFeature(PlanFeature.Inventory)]   // B5
+[RequireFeature(PlanFeature.Inventory, AllowReads = true)]   // B5 · F1: อ่านได้ (ฟอร์มสินค้า/หน้าแคตตาล็อกใช้รายชื่อคลัง) — เขียนยังล็อก
 [Produces("application/json")]
 [Authorize]
 [RequireShiftSession]

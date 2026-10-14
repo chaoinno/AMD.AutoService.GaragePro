@@ -22,7 +22,12 @@ public sealed record EmailSignupStartRequest(
 
 public sealed record EmailSignupResendRequest(string? Email);
 
-public sealed record EmailSignupVerifyRequest(string? Email, string? Code);
+/// <param name="Password">
+/// รหัสผ่านเดียวกับที่ส่งใน email/start — [SECURITY] ผูกรหัสผ่านกับการยืนยันอีเมล: ใครก็เรียก email/start ด้วยอีเมลของคนอื่น
+/// แล้วทับรหัสผ่านได้ (ยังไม่ได้พิสูจน์เจ้าของอีเมล) ถ้า verify ตรวจแค่ OTP เจ้าของอีเมลที่กรอกรหัสล่าสุดจะได้อู่ที่ล็อกอินด้วย
+/// รหัสผ่านของผู้โจมตี · เว็บเก็บค่านี้ไว้ใน state ของหน้าเท่านั้น (ไม่ลง sessionStorage)
+/// </param>
+public sealed record EmailSignupVerifyRequest(string? Email, string? Code, string? Password);
 
 public sealed record GoogleSignupRequest(string? IdToken, string? TurnstileToken, string? Website);
 
