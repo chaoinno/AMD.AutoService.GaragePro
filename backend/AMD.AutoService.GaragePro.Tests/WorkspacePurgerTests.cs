@@ -58,6 +58,13 @@ public class WorkspacePurgerTests
             return Task.FromResult<IReadOnlyList<long>>([11, 12]);
         }
 
+        public Task<IReadOnlyList<string>> ReadAttachmentPathsAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
+            CancellationToken ct = default)
+        {
+            log.Add("paths");
+            return Task.FromResult<IReadOnlyList<string>>(AttachmentPaths);
+        }
+
         public Task<ServicePurgeResult> PurgeServiceDataAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
             CancellationToken ct = default)
         {
@@ -118,6 +125,7 @@ public class WorkspacePurgerTests
     {
         public HashSet<string> Missing { get; } = [];
         public HashSet<string> Broken { get; } = [];
+        public HashSet<string> Crash { get; } = [];
 
         public AttachmentValidation Validate(string contentType, long sizeBytes) => new(true, null, null);
 
@@ -132,6 +140,7 @@ public class WorkspacePurgerTests
             log.Add("file:" + relativePath);
             if (Missing.Contains(relativePath)) throw new FtpCommandException("550", "File not found");
             if (Broken.Contains(relativePath)) throw new IOException("ftp down");
+            if (Crash.Contains(relativePath)) throw new OperationCanceledException("process stopped");
             return Task.CompletedTask;
         }
     }
@@ -176,7 +185,21 @@ public class WorkspacePurgerTests
     }
 
     [Fact]
-    public async Task Purge_runs_svc_then_files_then_shadow_then_tombstone()
+    public async Task Stopping_while_deleting_files_leaves_the_svc_rows_so_the_next_run_still_knows_the_paths()
+    {
+        // ลบแถวก่อนไฟล์ = process ตายกลางทางแล้ว path หายไปพร้อมแถว ไฟล์ค้างบน FTP ตลอดไป (พบตอน E2E)
+        var h = Create();
+        h.Files.Crash.Add($"sp1/{BranchId}/job1/chat/b.png");
+
+        var act = () => h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target!.WorkspaceId, "system:lifecycle"));
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        h.Log.Should().Contain($"file:sp1/{BranchId}/job1/intake/a.jpg");
+        h.Log.Should().NotContain("svc").And.NotContain("shadow").And.NotContain("mark");
+    }
+
+    [Fact]
+    public async Task Purge_deletes_files_before_svc_rows_then_shadow_then_tombstone()
     {
         var h = Create();
 
@@ -184,8 +207,9 @@ public class WorkspacePurgerTests
 
         result.Success.Should().BeTrue();
         h.Log.Should().Equal(
-            "check:sp1", "find", "users", $"scope:sp1/{BranchId}", "svc",
+            "check:sp1", "find", "users", $"scope:sp1/{BranchId}", "paths",
             $"file:sp1/{BranchId}/job1/intake/a.jpg", $"file:sp1/{BranchId}/job1/chat/b.png",
+            $"scope:sp1/{BranchId}", "svc",
             "shadow", "image:2026/10/5_1.jpg", "image:Car/9.jpg", "mark");
         h.Data.ServiceScope.Should().BeEquivalentTo(new ServicePurgeScope("sp1", BranchId, [11, 12]));
         h.Data.ScopeUser!.ShardKey.Should().Be("sp1", "ServiceDbContext ของ scope ต้องชี้ GarageSelfServe");

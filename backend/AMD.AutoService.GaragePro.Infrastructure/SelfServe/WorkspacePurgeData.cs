@@ -216,10 +216,30 @@ public sealed class WorkspacePurgeData(
             new CommandDefinition(BranchUserIdsSql, new { BranchId = branchId }, cancellationToken: ct))).ToList();
     }
 
+    public async Task<IReadOnlyList<string>> ReadAttachmentPathsAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
+        CancellationToken ct = default) =>
+        await ServicePurgePlan.AttachmentPathsAsync(VerifiedServiceContext(scope, purgeScope), purgeScope, ct);
+
     public async Task<ServicePurgeResult> PurgeServiceDataAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
         CancellationToken ct = default)
     {
-        // guard 2: scope ต้องเป็นผู้ใช้ของ shard self-serve และ ServiceDbContext ต้องชี้ฐานเดียวกับ SelfServe:ConnectionString
+        var service = VerifiedServiceContext(scope, purgeScope);
+        service.Database.SetCommandTimeout(TimeSpan.FromMinutes(2));
+        var paths = await ServicePurgePlan.AttachmentPathsAsync(service, purgeScope, ct);
+
+        var deleted = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var step in ServicePurgePlan.Steps)
+            deleted[step.Table] = await step.Run(service, purgeScope, ct);
+
+        return new ServicePurgeResult(paths, deleted);
+    }
+
+    /// <summary>
+    /// guard 2: scope ต้องเป็นผู้ใช้ของ shard self-serve และ ServiceDbContext ต้องชี้ฐานเดียวกับ SelfServe:ConnectionString
+    /// (ใช้ทั้งตอนอ่าน path ไฟล์ — ไฟล์ถูกลบตาม path นี้ — และตอนลบแถว)
+    /// </summary>
+    private ServiceDbContext VerifiedServiceContext(IServiceProvider scope, ServicePurgeScope purgeScope)
+    {
         var user = scope.GetRequiredService<ICurrentUser>();
         if (!ServiceDbConnectionResolver.IsSelfServeShard(user.ShardKey, _options)
             || !ServiceDbConnectionResolver.IsSelfServeShard(purgeScope.ShardKey, _options))
@@ -230,15 +250,7 @@ public sealed class WorkspacePurgeData(
         var actual = SelfServeDatabaseGuard.DatabaseName(service.Database.GetConnectionString());
         if (expected is null || !string.Equals(expected, actual, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("ปฏิเสธการลบ svc_*: ServiceDbContext ไม่ได้ชี้ฐาน GarageSelfServe");
-
-        service.Database.SetCommandTimeout(TimeSpan.FromMinutes(2));
-        var paths = await ServicePurgePlan.AttachmentPathsAsync(service, purgeScope, ct);
-
-        var deleted = new Dictionary<string, int>(StringComparer.Ordinal);
-        foreach (var step in ServicePurgePlan.Steps)
-            deleted[step.Table] = await step.Run(service, purgeScope, ct);
-
-        return new ServicePurgeResult(paths, deleted);
+        return service;
     }
 
     public async Task<ShadowPurgeResult> PurgeShadowDataAsync(string shardKey, int branchId,

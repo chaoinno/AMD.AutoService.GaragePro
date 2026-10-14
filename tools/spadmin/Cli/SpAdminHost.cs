@@ -39,7 +39,7 @@ public static class SpAdminHost
                               ?? Environments.Production
         });
 
-        AddConfiguration(builder.Configuration);
+        AddConfiguration(builder.Configuration, builder.Environment.EnvironmentName);
 
         builder.Logging.ClearProviders();
         builder.Logging.AddSimpleConsole(o => o.SingleLine = true);
@@ -63,10 +63,15 @@ public static class SpAdminHost
         services.AddScoped<ICurrentUser>(sp => sp.GetRequiredService<CurrentUserOverride>().User ?? DefaultUser);
     }
 
-    public static void AddConfiguration(IConfigurationBuilder configuration)
+    public static void AddConfiguration(IConfigurationBuilder configuration, string? environmentName = null)
     {
         configuration.AddJsonFile(Path.Combine(AppContext.BaseDirectory, "appsettings.json"), optional: true,
             reloadOnChange: false);
+        // เครื่อง dev: ค่าที่ไม่ใช่ความลับซึ่ง API อ่านจาก appsettings.Development.json ของมันเอง (เช่น Ftp:Host/RootPath)
+        // · image production ลบไฟล์นี้ทิ้ง (Dockerfile.api) — ใน container ค่าเหล่านี้มาจาก env file/compose
+        if (!string.IsNullOrWhiteSpace(environmentName))
+            configuration.AddJsonFile(Path.Combine(AppContext.BaseDirectory, $"appsettings.{environmentName}.json"),
+                optional: true, reloadOnChange: false);
 
         // ใน container ไม่มีไฟล์ user-secrets (และ HOME ของผู้ใช้ระบบอาจหาไม่ได้) — ใช้ env file แทน
         if (!string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true",

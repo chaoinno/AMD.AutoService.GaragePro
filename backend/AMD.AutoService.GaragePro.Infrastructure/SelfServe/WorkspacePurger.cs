@@ -39,6 +39,10 @@ public interface IWorkspacePurgeData
 
     Task<IReadOnlyList<long>> ReadBranchUserIdsAsync(string shardKey, int branchId, CancellationToken ct = default);
 
+    /// <summary>ใน scope ของ ScopedCurrentUser(sp1, สาขา) — path ไฟล์แนบของสาขา (อ่านอย่างเดียว) เพื่อลบไฟล์<b>ก่อน</b>ลบแถว</summary>
+    Task<IReadOnlyList<string>> ReadAttachmentPathsAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
+        CancellationToken ct = default);
+
     /// <summary>ใน scope ของ ScopedCurrentUser(sp1, สาขา) — เก็บ path ไฟล์แนบก่อน แล้วลบ svc_* ตาม <see cref="ServicePurgePlan"/></summary>
     Task<ServicePurgeResult> PurgeServiceDataAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
         CancellationToken ct = default);
@@ -55,7 +59,9 @@ public interface IWorkspacePurgeData
 }
 
 /// <summary>
-/// ลำดับการลบอู่ทดลองใช้ (แผน S4): ตรวจ shard/ฐาน → svc_* (ลูกก่อนแม่) → ไฟล์แนบ FTP → แถวรูปร่าง Garage → tombstone sp_*
+/// ลำดับการลบอู่ทดลองใช้ (แผน S4): ตรวจ shard/ฐาน → ไฟล์แนบ FTP → svc_* (ลูกก่อนแม่) → แถวรูปร่าง Garage → tombstone sp_*
+/// · ไฟล์ก่อนแถวเสมอ: path ของไฟล์มีที่เดียวคือ svc_Attachment — ถ้าลบแถวก่อนแล้ว process ตายระหว่างลบไฟล์ (deploy/restart
+///   ตอนงานรายวันรัน) ไฟล์จะค้างบน FTP ตลอดไปโดยไม่มีใครรู้ path (พบตอน E2E) · ลบไฟล์ก่อนแล้วตาย = แถวยังอยู่ รอบหน้าลบต่อได้
 /// · [SECURITY] guard สองชั้น: (1) ที่นี่ — shard ต้องเป็น self-serve และค่าตั้ง connection ต้องชี้ฐาน GarageSelfServe เดียวกัน
 ///   (2) ใน <see cref="WorkspacePurgeData"/> — ตรวจชื่อฐานจาก connection จริงอีกครั้งก่อนลบแต่ละเฟส
 /// · tombstone เป็นขั้นสุดท้ายเสมอ: Status=Purged จึงหมายความว่าลบครบแล้ว รอบที่ล้มกลางทางรันซ้ำได้ (ทุกขั้น idempotent)
@@ -148,16 +154,28 @@ public sealed class WorkspacePurger(
         Dictionary<string, int> deleted, FileTally files, CancellationToken ct)
     {
         var userIds = await data.ReadBranchUserIdsAsync(shard, branchId, ct);
+        var purgeScope = new ServicePurgeScope(shard, branchId, userIds);
+        var system = new ScopedCurrentUser(shard, branchId, 0, "system");
 
         // ServiceDbContext ของ scope นี้เลือกฐานจาก ICurrentUser.ShardKey = sp1 → GarageSelfServe
-        var service = await scopes.RunAsAsync(
-            new ScopedCurrentUser(shard, branchId, 0, "system"),
-            (sp, token) => data.PurgeServiceDataAsync(sp, new ServicePurgeScope(shard, branchId, userIds), token),
-            ct);
+        var paths = await scopes.RunAsAsync(system,
+            (sp, token) => data.ReadAttachmentPathsAsync(sp, purgeScope, token), ct);
+        await DeleteFilesAsync(target, shard, branchId, paths, files, ct);
+
+        var service = await scopes.RunAsAsync(system,
+            (sp, token) => data.PurgeServiceDataAsync(sp, purgeScope, token), ct);
         Merge(deleted, service.DeletedRows);
 
+        // ไฟล์ที่ถูกแนบระหว่างสองขั้น (อู่หมดอายุแล้วจึงแทบไม่เกิด) — ลบตามด้วย path ที่อ่านไว้ก่อนลบแถว
+        var late = service.AttachmentPaths.Except(paths, StringComparer.Ordinal).ToList();
+        await DeleteFilesAsync(target, shard, branchId, late, files, ct);
+    }
+
+    private async Task DeleteFilesAsync(PurgeTarget target, string shard, int branchId, IEnumerable<string> paths,
+        FileTally files, CancellationToken ct)
+    {
         var prefix = $"{shard}/{branchId}/";
-        foreach (var path in service.AttachmentPaths.Distinct(StringComparer.Ordinal))
+        foreach (var path in paths.Distinct(StringComparer.Ordinal))
         {
             // [SECURITY] ไฟล์ของสาขาอื่นห้ามถูกลบแม้แถวจะอ้างผิด — path ที่ระบบสร้างขึ้นต้นด้วย {shard}/{branch}/ เสมอ
             if (!path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))

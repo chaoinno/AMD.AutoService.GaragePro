@@ -176,7 +176,14 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
         await client.DeleteFile(_rootPrefix + relativePath, ct);
     }
 
-    private AsyncFtpClient CreateClient() => new(_ftp.Host, _ftp.Username, _ftp.Password, _ftp.Port);
+    private AsyncFtpClient CreateClient()
+    {
+        // Host ว่าง = DNS ของ "" คืน address ทุกตัวของเครื่องตัวเอง แล้ว FluentFTP ไล่ต่อทีละตัวจน timeout (หลายนาทีต่อไฟล์)
+        // พบตอนรัน spadmin บนเครื่อง dev ที่ไม่มี Ftp:Host — ให้ล้มทันทีพร้อมบอกค่าที่ขาดแทน
+        if (string.IsNullOrWhiteSpace(_ftp.Host))
+            throw new InvalidOperationException("ยังไม่ได้ตั้ง Ftp:Host — ไฟล์แนบใช้งานไม่ได้");
+        return new(_ftp.Host, _ftp.Username, _ftp.Password, _ftp.Port);
+    }
 
     /// <summary>กัน path traversal — ต้องเป็น relative path ล้วน ไม่มี .. หรือ \ (เทียบเจตนาเดียวกับ ResolveInsideRoot เดิมบนดิสก์)</summary>
     private static bool IsSafeRelativePath(string relativePath)
