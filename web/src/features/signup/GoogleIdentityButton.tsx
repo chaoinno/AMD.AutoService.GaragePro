@@ -1,8 +1,13 @@
 import { CircleAlert } from 'lucide-react'
+import { ClientOnly } from '../../components/ClientOnly'
 import { useGoogleIdentity } from './useGoogleIdentity'
 import './signup.css'
 
 export function GoogleIdentityButton({ onCredential, disabledReason }: { onCredential: (idToken: string) => void; disabledReason?: string }) {
+  return <ClientOnly><MountedGoogleIdentityButton onCredential={onCredential} disabledReason={disabledReason} /></ClientOnly>
+}
+
+function MountedGoogleIdentityButton({ onCredential, disabledReason }: { onCredential: (idToken: string) => void; disabledReason?: string }) {
   const google = useGoogleIdentity(onCredential)
   if (!google.available) return null
   return (

@@ -17,6 +17,7 @@ export type PublicRoute = {
   priority: number
   /** ไม่ให้ search engine index (เช่น /login ซึ่งเป็นหน้าแรก + modal เข้าสู่ระบบ) */
   noindex?: boolean
+  jsonLd?: ('Organization' | 'SoftwareApplication' | 'FAQPage')[]
 }
 
 export const SITE_NAME = 'ServicePro'
@@ -32,6 +33,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     prerender: true,
     changefreq: 'weekly',
     priority: 1,
+    jsonLd: ['Organization', 'SoftwareApplication', 'FAQPage'],
   },
   {
     // หน้าเดียวกับ `/` แต่เปิด modal เข้าสู่ระบบ — ไม่ควรถูก index ซ้ำกับหน้าแรก
@@ -49,6 +51,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     title: 'ฟีเจอร์โปรแกรมอู่เซอร์วิส ServicePro',
     description: 'โปรแกรมสำหรับอู่เซอร์วิส ตั้งแต่รับรถ เสนอราคา งานซ่อม QC จนส่งมอบ พร้อมจัดซื้อ สต็อก FIFO ขายหน้าร้าน และรายงาน',
     h1: 'ฟีเจอร์โปรแกรมอู่เซอร์วิส ServicePro',
+    jsonLd: ['SoftwareApplication'],
     prerender: true,
     changefreq: 'monthly',
     priority: 0.8,
@@ -67,6 +70,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     title: 'ราคาโปรแกรมอู่บริการและแพ็กเกจ | ServicePro',
     description: 'โปรแกรมสำหรับอู่บริการ ทดลองใช้ฟรี 30 วัน ไม่ต้องใส่บัตรเครดิต แพ็กเกจเต็มพร้อมจัดซื้อ สต็อก POS รายงานขั้นสูง และหลายสาขา ติดต่อสอบถาม',
     h1: 'ราคาและแพ็กเกจ ServicePro',
+    jsonLd: ['SoftwareApplication'],
     prerender: true,
     changefreq: 'monthly',
     priority: 0.8,

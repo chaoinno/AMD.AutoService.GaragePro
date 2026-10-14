@@ -1,0 +1,13 @@
+{
+  "name": "ServicePro",
+  "short_name": "ServicePro",
+  "lang": "th",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0F2440",
+  "background_color": "#0F2440",
+  "icons": [
+    { "src": "/servicepro-logo.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ]
+}
