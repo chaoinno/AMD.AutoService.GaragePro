@@ -79,7 +79,7 @@ fi
 sql() {
   local database="$1"
   shift
-  sqlcmd -S "$SERVER" -U "$SQL_USER" -d "$database" -b -C -I "${CODEPAGE_ARGS[@]}" \
+  sqlcmd -S "$SERVER" -U "$SQL_USER" -d "$database" -b -C -I ${CODEPAGE_ARGS[@]+"${CODEPAGE_ARGS[@]}"} \
     -v DbName="$DB_NAME" GarageDb="$GARAGE_DB" AppLogin="$APP_LOGIN" MigrateLogin="$MIGRATE_LOGIN" \
     "$@"
 }
@@ -120,7 +120,7 @@ if [[ "${SKIP_LOGINS:-0}" != "1" ]]; then
   step master 06-logins.sql
   echo
   echo "==> 07-smoke.sql  (database: $DB_NAME, as $APP_LOGIN)"
-  SQLCMDPASSWORD="$SELFSERVE_APP_PASSWORD" sqlcmd -S "$SERVER" -U "$APP_LOGIN" -d "$DB_NAME" -b -C -I "${CODEPAGE_ARGS[@]}" \
+  SQLCMDPASSWORD="$SELFSERVE_APP_PASSWORD" sqlcmd -S "$SERVER" -U "$APP_LOGIN" -d "$DB_NAME" -b -C -I ${CODEPAGE_ARGS[@]+"${CODEPAGE_ARGS[@]}"} \
     -i "$SCRIPT_DIR/07-smoke.sql"
 else
   step "$DB_NAME" 07-smoke.sql
