@@ -22,15 +22,19 @@ public sealed class CatalogService : ICatalogService
     private readonly ICatalogRepository repository;
     private readonly ICurrentUser currentUser;
     private readonly IMasterDataRepository? masterData;
+    private readonly IWorkspacePolicy workspacePolicy;
 
     public CatalogService(ICatalogRepository repository, ICurrentUser currentUser)
         : this(repository, currentUser, null) { }
 
-    public CatalogService(ICatalogRepository repository, ICurrentUser currentUser, IMasterDataRepository? masterData)
+    /// <param name="workspacePolicy">ลิมิตจำนวนสินค้าของแพ็กเกจทดลองใช้ (B5) — null = ไม่จำกัด (legacy/เทสต์เดิม)</param>
+    public CatalogService(ICatalogRepository repository, ICurrentUser currentUser, IMasterDataRepository? masterData,
+        IWorkspacePolicy? workspacePolicy = null)
     {
         this.repository = repository;
         this.currentUser = currentUser;
         this.masterData = masterData;
+        this.workspacePolicy = workspacePolicy ?? UnlimitedWorkspacePolicy.Instance;
     }
 
     public async Task<Result<PagedResult<CatalogManagementItemDto>>> SearchAsync(
@@ -90,6 +94,11 @@ public sealed class CatalogService : ICatalogService
         if (referenceError is not null) return Result<CatalogManagementItemDto>.Fail(referenceError);
         if (await repository.CodeExistsAsync(currentUser.ShardKey, currentUser.BranchId, normalized.Code, null, ct))
             return Result<CatalogManagementItemDto>.Fail("CATALOG_CODE_DUPLICATE", "รหัสสินค้านี้มีอยู่แล้วในสาขาปัจจุบัน", "code");
+
+        // B5 — ลิมิตจำนวนสินค้า/บริการของแพ็กเกจ (ทุกทางที่สร้างแถวใหม่ผ่าน CreateCoreAsync) · legacy คืน null โดยไม่แตะฐาน
+        var limitError = await workspacePolicy.CheckLimitAsync(
+            currentUser.ShardKey, currentUser.BranchId, PlanLimitKind.CatalogItems, ct);
+        if (limitError is not null) return Result<CatalogManagementItemDto>.Fail(limitError);
 
         var item = new CatalogItem
         {

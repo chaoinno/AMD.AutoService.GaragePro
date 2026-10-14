@@ -23,11 +23,15 @@ public interface ICustomerVehicleService
     Task<Result<VehicleDetailDto>> UpdateVehicleImageAsync(long id, VehicleImageUpload image, CancellationToken ct = default);
 }
 
+/// <param name="workspacePolicy">ลิมิตจำนวนลูกค้าของแพ็กเกจทดลองใช้ (B5) — null = ไม่จำกัด (legacy/เทสต์เดิม)</param>
 public sealed class CustomerVehicleService(
     ICustomerVehicleRepository repository,
     IVehicleImageStorage imageStorage,
-    ICurrentUser currentUser) : ICustomerVehicleService
+    ICurrentUser currentUser,
+    IWorkspacePolicy? workspacePolicy = null) : ICustomerVehicleService
 {
+    private readonly IWorkspacePolicy _policy = workspacePolicy ?? UnlimitedWorkspacePolicy.Instance;
+
     private LegacyRequestScope Scope => new(currentUser.ShardKey, currentUser.BranchId, currentUser.UserId);
 
     public async Task<Result<PagedResult<CustomerSummaryDto>>> SearchCustomersAsync(
@@ -59,6 +63,10 @@ public sealed class CustomerVehicleService(
         if (duplicate is not null)
             return Result<CustomerDetailDto>.Fail("CUSTOMER_DUPLICATE",
                 "พบลูกค้าที่มีชื่อ นามสกุล และเบอร์โทรนี้อยู่แล้ว", details: duplicate);
+
+        // B5 — ลิมิตจำนวนลูกค้าของแพ็กเกจ (หลังเช็คซ้ำ: ลูกค้าที่มีอยู่แล้วตอบ CUSTOMER_DUPLICATE ให้เลือกคนเดิมได้แม้ครบลิมิต)
+        var limitError = await _policy.CheckLimitAsync(currentUser.ShardKey, currentUser.BranchId, PlanLimitKind.Customers, ct);
+        if (limitError is not null) return Result<CustomerDetailDto>.Fail(limitError);
 
         var id = await repository.CreateCustomerAsync(Scope, normalized, ct);
         return Result<CustomerDetailDto>.Ok((await repository.GetCustomerAsync(Scope, id, ct))!);

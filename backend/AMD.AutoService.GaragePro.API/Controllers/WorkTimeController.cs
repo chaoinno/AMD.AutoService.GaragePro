@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -66,6 +67,7 @@ public sealed class WorkTimeController(IWorkTimeService service) : ControllerBas
     /// `onlyNeedsReview=true` คัดเฉพาะคาบที่ระบบตัดให้เองหรือยังเปิดค้างอยู่
     /// </summary>
     [HttpGet("work/intervals")]
+    [RequireFeature(PlanFeature.AdvancedReports)]   // B5: หน้า /reports/work-intervals (จับเวลาเอง start/stop ไม่ล็อก)
     public async Task<IActionResult> Search(
         [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate,
         [FromQuery] bool onlyNeedsReview, CancellationToken ct) =>
@@ -73,12 +75,14 @@ public sealed class WorkTimeController(IWorkTimeService service) : ControllerBas
 
     /// <summary>แก้เวลาย้อนหลัง — หัวหน้าช่าง/ผู้จัดการ ภายในกรอบเวลาที่ตั้งไว้</summary>
     [HttpPut("work/intervals/{id:guid}")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> Edit(
         Guid id, [FromBody] EditWorkIntervalRequest request, CancellationToken ct) =>
         Render(await service.EditAsync(id, request, ct));
 
     /// <summary>ยกเลิกคาบที่ผิดชัดเจน — ผู้จัดการเท่านั้น และเป็น soft delete (แถวยังอยู่)</summary>
     [HttpDelete("work/intervals/{id:guid}")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> Void(
         Guid id, [FromBody] VoidWorkIntervalRequest request, CancellationToken ct) =>
         Render(await service.VoidAsync(id, request, ct));

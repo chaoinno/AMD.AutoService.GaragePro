@@ -74,8 +74,12 @@ public sealed class JobService(
     ILegacyReader legacy,
     IWorkIntervalHook workHook,
     ICurrentUser user,
-    TimeProvider clock) : IJobService
+    TimeProvider clock,
+    IWorkspacePolicy? workspacePolicy = null) : IJobService
 {
+    /// <summary>ลิมิตจำนวนจ๊อบของแพ็กเกจทดลองใช้ (B5) — null = ไม่จำกัด (legacy/ctor ในเทสต์เดิม)</summary>
+    private readonly IWorkspacePolicy _policy = workspacePolicy ?? UnlimitedWorkspacePolicy.Instance;
+
     private const int InShopTypeId = 9;      // รถในอู่
     private const int AppointmentTypeId = 10; // รถนัดหมาย
     private const int ClosedTypeId = 11;      // ปิดจ๊อบ — ระบบตั้งเองเมื่อถึงสถานะจบ (ไม่ใช่ค่าที่เลือกตอนเปิดจ๊อบได้)
@@ -326,6 +330,10 @@ public sealed class JobService(
         // เช่น รถเข้ามาซ่อมเรื่องใหม่ระหว่างที่งานเดิมยังรออะไหล่/รอปิด) ยังค้นงานค้างไว้เพื่อบอกผู้เปิด
         // และทิ้งร่องรอยใน ActivityEvent ไม่ได้บล็อก
         var openJob = await jobs.GetOpenByVehicleAsync(user.ShardKey, user.BranchId, request.VehicleId, ct);
+
+        // B5 — ลิมิตจำนวนจ๊อบของแพ็กเกจ ก่อนออกเลขจ๊อบ (ไม่เผาเลขทิ้งเมื่อถูกปฏิเสธ) · legacy คืน null โดยไม่แตะฐาน
+        var limitError = await _policy.CheckLimitAsync(user.ShardKey, user.BranchId, PlanLimitKind.Jobs, ct);
+        if (limitError is not null) return Result<CreatedJobDto>.Fail(limitError);
 
         var jobNo = await jobNumbers.NextAsync(user.ShardKey, user.BranchId, Now.AddHours(7), ct);
         var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);

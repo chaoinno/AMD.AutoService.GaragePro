@@ -1,6 +1,9 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Entities;
+using AMD.AutoService.GaragePro.Domain.Enums;
 
 namespace AMD.AutoService.GaragePro.Application.Staff;
 
@@ -17,9 +20,24 @@ public interface IStaffService
     Task<Result<IReadOnlyList<LookupItemDto>>> GetSectorsAsync(int? departmentId, CancellationToken ct = default);
 }
 
+/// <summary>
+/// · B5 (self-serve): สาขาที่แพ็กเกจไม่ใช่ Legacy (อู่ที่สมัครเอง shard sp1) สร้างพนักงานจากฟอร์มแบบง่าย —
+///   ต้องระบุ <see cref="StaffUpsertRequest.Role"/> แล้วระบบเติม เพศ/ตำแหน่ง/แผนก ตั้งชื่อผู้ใช้ SP0000.T00/.S00
+///   สุ่มรหัสผ่าน (เก็บเป็น hash) เขียน svc_UserRoleOverride และคืนรหัสผ่านครั้งเดียวใน <c>Account.InitialPassword</c>
+/// · ลิมิตจำนวนพนักงานของแพ็กเกจตรวจก่อนสร้างทุกครั้ง (legacy = ไม่จำกัด ไม่แตะฐาน)
+/// · [BIZ] สาขา legacy พฤติกรรมเดิมทุกประการ (Role ไม่ถูกใช้ · UserName = Password = รหัสพนักงาน plaintext)
+/// · พารามิเตอร์ท้ายเป็น optional เพื่อให้ ctor ในเทสต์เดิมยังใช้ได้ — DI ส่งตัวจริงให้เสมอ
+/// </summary>
 public sealed class StaffService(IStaffRepository repository, IStaffImageStorage imageStorage,
-    ICurrentUser currentUser) : IStaffService
+    ICurrentUser currentUser, IWorkspacePolicy? workspacePolicy = null, IAuthRepository? authRepository = null,
+    IPasswordHasher? passwordHasher = null, TimeProvider? clock = null) : IStaffService
 {
+    /// <summary>ชนเลขชื่อผู้ใช้ (IX_User) จากการเพิ่มพร้อมกัน — ถามเลขใหม่แล้วลองซ้ำได้เท่านี้ครั้ง</summary>
+    public const int MaxUserNameAttempts = 3;
+
+    private readonly IWorkspacePolicy _policy = workspacePolicy ?? UnlimitedWorkspacePolicy.Instance;
+    private readonly TimeProvider _clock = clock ?? TimeProvider.System;
+
     private LegacyRequestScope Scope => new(currentUser.ShardKey, currentUser.BranchId, currentUser.UserId, currentUser.UserName);
 
     public async Task<Result<PagedResult<StaffSummaryDto>>> SearchAsync(StaffSearchQuery query, CancellationToken ct = default)
@@ -40,15 +58,98 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
     {
         if (request.BranchId != 0 && request.BranchId != currentUser.BranchId)
             return Result<StaffDetailDto>.Fail("STAFF_BRANCH_FORBIDDEN", "เพิ่มพนักงานได้เฉพาะสาขาที่เข้าสู่ระบบ", "branchId");
+
+        var plan = await _policy.GetAsync(currentUser.ShardKey, currentUser.BranchId, ct);
+        var selfServe = plan.Kind != PlanKind.Legacy;
+        if (selfServe && request.Role is null)
+            return Result<StaffDetailDto>.Fail(SelfServeAuthErrors.StaffRoleRequired());
+
         var normalized = Normalize(request with { BranchId = currentUser.BranchId }, isCreate: true);
+        if (selfServe) normalized = WithRoleDefaults(normalized, request.Role!.Value);
         var error = StaffValidator.Validate(normalized, isCreate: true);
         if (error is not null) return Result<StaffDetailDto>.Fail(error);
         var imageError = ValidateImage(image);
         if (imageError is not null) return Result<StaffDetailDto>.Fail(imageError);
+
+        // ลิมิตของแพ็กเกจ — หลัง validate (ไม่เสีย query กับคำขอที่ผิดอยู่แล้ว) ก่อน insert · legacy คืน null โดยไม่แตะฐาน
+        var limitError = await _policy.CheckLimitAsync(currentUser.ShardKey, currentUser.BranchId, PlanLimitKind.Staff, ct);
+        if (limitError is not null) return Result<StaffDetailDto>.Fail(limitError);
+
+        if (selfServe)
+            return await CreateSelfServeAsync(normalized, request.Role!.Value, plan, image, ct);
+
         var result = await repository.CreateAsync(Scope, currentUser.IsAdministrator, normalized, image, ct);
         return result is null
             ? Result<StaffDetailDto>.Fail("STAFF_REFERENCE_INVALID", "ข้อมูลสาขา แผนก ตำแหน่ง หรือระดับฝีมือไม่ถูกต้อง")
             : Result<StaffDetailDto>.Ok(result);
+    }
+
+    /// <summary>
+    /// พนักงานของอู่ที่สมัครเอง: ชื่อผู้ใช้ตามรูปแบบที่ LoginIdentityResolver ส่งไป sp1 + รหัสสุ่ม (hash) + บทบาทแบบ override
+    /// · ชื่อผู้ใช้ไม่ล็อกตอนหาเลข — สองคำขอพร้อมกันได้เลขเดียวกันได้ ตัวที่สองชน IX_User แล้วถามเลขใหม่ (สูงสุด 3 ครั้ง)
+    /// · override บทบาทอยู่คนละ connection กับแถว [User] (svc_* ผ่าน EF · Staff/User ผ่าน Dapper) จึงเขียนหลังสร้างพนักงานสำเร็จ
+    ///   ถ้าล้มหลังจากนั้น พนักงานยังได้บทบาทเดียวกันจาก RoleMapper เพราะตำแหน่ง/แผนกเริ่มต้นเลือกให้ตรงบทบาทไว้แล้ว
+    ///   (SelfServeStaffRoles) — แต่ถ้าผู้เรียกส่งตำแหน่ง/แผนกเองที่ไม่ตรงบทบาท บทบาทจะต่างไปจนกว่าจะเขียน override ได้
+    /// </summary>
+    private async Task<Result<StaffDetailDto>> CreateSelfServeAsync(StaffUpsertRequest normalized, UserRole role,
+        WorkspacePlan plan, StaffImageUpload? image, CancellationToken ct)
+    {
+        if (plan.WorkspaceNo is not int workspaceNo)
+            return Result<StaffDetailDto>.Fail(SelfServeAuthErrors.StaffWorkspaceNotFound());
+        if (authRepository is null || passwordHasher is null)
+            throw new InvalidOperationException("StaffService ของอู่ที่สมัครเองต้องมี IAuthRepository และ IPasswordHasher");
+
+        var password = PasswordGenerator.Generate(10);
+        var storedPassword = passwordHasher.Hash(password);
+        var prefix = SelfServeStaffRoles.UserNamePrefix(workspaceNo, role);
+
+        StaffDetailDto? created = null;
+        for (var attempt = 1; created is null; attempt++)
+        {
+            var sequence = await repository.GetNextUserNameSequenceAsync(Scope, prefix, ct);
+            var account = new StaffAccountSpec(SelfServeStaffRoles.UserName(workspaceNo, role, sequence), storedPassword);
+            try
+            {
+                created = await repository.CreateAsync(Scope, currentUser.IsAdministrator, normalized, image, ct, account);
+                if (created is null)
+                    return Result<StaffDetailDto>.Fail("STAFF_REFERENCE_INVALID", "ข้อมูลสาขา แผนก ตำแหน่ง หรือระดับฝีมือไม่ถูกต้อง");
+            }
+            catch (UniqueConstraintViolationException) when (attempt < MaxUserNameAttempts)
+            {
+                // มีคนได้เลขนี้ไปก่อน — ถามเลขถัดไปใหม่
+            }
+            catch (UniqueConstraintViolationException)
+            {
+                return Result<StaffDetailDto>.Fail(SelfServeAuthErrors.StaffAccountConflict());
+            }
+        }
+
+        await authRepository.UpsertRoleOverrideAsync(new UserRoleOverride
+        {
+            LegacyShardKey = currentUser.ShardKey,
+            LegacyBranchId = currentUser.BranchId,
+            LegacyUserId = created.Account.Id,
+            Role = role,
+            Note = "self-serve: บทบาทที่เจ้าของอู่เลือกตอนเพิ่มพนักงาน",
+            SetByUserId = currentUser.UserId,
+            SetAt = _clock.GetUtcNow().UtcDateTime
+        }, ct);
+        await authRepository.SaveChangesAsync(ct);
+
+        // [SECURITY] รหัสผ่านดิบคืนครั้งนี้ครั้งเดียว (เก็บในฐานเป็น hash) — อ่านรายละเอียดซ้ำจะไม่มีค่านี้อีก
+        return Result<StaffDetailDto>.Ok(created with { Account = created.Account with { InitialPassword = password } });
+    }
+
+    /// <summary>เติมค่าที่ฟอร์มแบบง่ายไม่ได้ถาม — ค่าที่ผู้เรียกส่งมาเอง (&gt; 0) คงไว้ (เช่น S3 สร้างช่างตัวอย่าง)</summary>
+    private static StaffUpsertRequest WithRoleDefaults(StaffUpsertRequest r, UserRole role)
+    {
+        var (positionId, sectorId) = SelfServeStaffRoles.For(role);
+        return r with
+        {
+            GenderId = r.GenderId > 0 ? r.GenderId : SelfServeStaffRoles.GenderUnspecifiedId,
+            PositionId = r.PositionId > 0 ? r.PositionId : positionId,
+            MainSectorId = r.MainSectorId > 0 ? r.MainSectorId : sectorId
+        };
     }
 
     public async Task<Result<StaffDetailDto>> UpdateAsync(long id, StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
@@ -56,9 +157,23 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
         if (request.BranchId != 0 && request.BranchId != currentUser.BranchId)
             return Result<StaffDetailDto>.Fail("STAFF_BRANCH_FORBIDDEN", "แก้ไขพนักงานได้เฉพาะสาขาที่เข้าสู่ระบบ ไม่สามารถย้ายสาขาผ่าน API นี้", "branchId");
         var normalized = Normalize(request with { BranchId = currentUser.BranchId }, isCreate: false);
+
+        // B5 — อู่ที่สมัครเอง: ชื่อผู้ใช้เป็นรูปแบบที่ระบบกำหนด (SP0000.T00) ห้ามเปลี่ยน ไม่งั้น login จะถูกส่งไปหา db2
+        // แล้วพนักงานคนนั้นเข้าระบบไม่ได้อีก · รหัสผ่านใหม่เก็บเป็น hash เสมอ
+        var selfServe = (await _policy.GetAsync(currentUser.ShardKey, currentUser.BranchId, ct)).Kind != PlanKind.Legacy;
+        StaffDetailDto? existing = null;
+        if (selfServe)
+        {
+            existing = await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
+            if (existing is null || existing.BranchId != currentUser.BranchId) return Result<StaffDetailDto>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานในสาขาที่เข้าสู่ระบบ");
+            normalized = normalized with { UserName = existing.Account.UserName };
+            if (normalized.Password is { Length: < SelfServeAuthErrors.MinimumStaffPasswordLength })
+                return Result<StaffDetailDto>.Fail(SelfServeAuthErrors.StaffPasswordTooShort());
+        }
+
         var error = StaffValidator.Validate(normalized, isCreate: false);
         if (error is not null) return Result<StaffDetailDto>.Fail(error);
-        var existing = await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
+        existing ??= await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
         if (existing is null || existing.BranchId != currentUser.BranchId) return Result<StaffDetailDto>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานในสาขาที่เข้าสู่ระบบ");
         if (!currentUser.IsAdministrator &&
             (normalized.BranchId != existing.BranchId || normalized.MainSectorId != existing.SectorPositions.FirstOrDefault(x => x.IsMain)?.SectorId ||
@@ -67,6 +182,12 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
             return Result<StaffDetailDto>.Fail("STAFF_ORGANIZATION_FORBIDDEN", "เฉพาะผู้ดูแลระบบเท่านั้นที่แก้ไขแผนกหรือตำแหน่งได้");
         var imageError = ValidateImage(image);
         if (imageError is not null) return Result<StaffDetailDto>.Fail(imageError);
+        if (selfServe && normalized.Password is not null)
+        {
+            if (passwordHasher is null)
+                throw new InvalidOperationException("StaffService ของอู่ที่สมัครเองต้องมี IPasswordHasher");
+            normalized = normalized with { Password = passwordHasher.Hash(normalized.Password) };
+        }
         var result = await repository.UpdateAsync(Scope, currentUser.IsAdministrator, id, normalized, image, ct);
         return result is null
             ? Result<StaffDetailDto>.Fail("STAFF_UPDATE_CONFLICT", "ชื่อผู้ใช้ซ้ำหรือข้อมูลอ้างอิงไม่ถูกต้อง")

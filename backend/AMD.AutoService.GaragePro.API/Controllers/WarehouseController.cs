@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -10,6 +11,7 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 /// <summary>จัดการคลังหลักของสาขาปัจจุบัน โดยสาขาอ่านจาก JWT ของผู้ใช้</summary>
 [ApiController]
 [Route("api/v1/warehouses")]
+[RequireFeature(PlanFeature.Inventory)]   // B5
 [Produces("application/json")]
 [Authorize]
 [RequireShiftSession]

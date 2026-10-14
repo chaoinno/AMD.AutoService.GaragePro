@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using System.Text;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
@@ -66,6 +67,7 @@ public sealed class VehiclesController(ICustomerVehicleService service) : Contro
 
     /// <summary>ส่งออกรถเฉพาะสาขาที่เข้าสู่ระบบตาม filter เป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
     [HttpGet("export")]
+    [RequireFeature(PlanFeature.Export)]   // B5
     [Produces("text/csv")]
     public async Task<IActionResult> Export([FromQuery] VehicleSearchModel model, CancellationToken ct)
     {

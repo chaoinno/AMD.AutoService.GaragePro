@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -39,6 +37,15 @@ public interface IAuthService
         Task.FromResult(Result<LoginResultDto>.Fail("AUTH_NOT_IMPLEMENTED", "ยังไม่รองรับการออก session แบบนี้"));
 }
 
+/// <summary>
+/// · B5 (self-serve): login หา shard จากสิ่งที่พิมพ์ (<see cref="ILoginIdentityResolver"/>) · รหัสผ่านเทียบผ่าน
+///   <see cref="IPasswordHasher"/> (hash ของ sp1 + plaintext เดิมของ legacy) · แพ็กเกจจาก <see cref="IWorkspacePolicy"/>
+///   ลง DTO + claim · ล็อกแล้ว login ไม่ได้ (TRIAL_EXPIRED) · อ่านอย่างเดียวยัง login ได้
+/// · <paramref name="shardScopes"/>: login ของ sp1 มาจากคำขอที่ยังไม่ได้ยืนยันตัวตน — ServiceDbContext ของคำขอนั้นผูกกับ
+///   shard เริ่มต้น (db2) จึงอ่าน svc_UserRoleOverride/งานค้างของ sp1 ไม่เจอ ต้องอ่านใน scope ของ shard นั้นแทน
+///   (null = เทสต์/โฮสต์ที่ไม่มี self-serve — อ่านผ่าน repository ของ scope ปัจจุบันตามเดิม)
+/// · <paramref name="selfServeAccounts"/> มีเฉพาะเมื่อตั้ง SelfServe:ConnectionString (DI ส่ง null ให้เมื่อไม่ได้ตั้ง)
+/// </summary>
 public sealed class AuthService(
     ILegacyUserReader legacyUsers,
     IAuthRepository repository,
@@ -47,9 +54,20 @@ public sealed class AuthService(
     IWorkIntervalHook workHook,
     ICurrentUser currentUser,
     TimeProvider clock,
-    ILoginAttemptLimiter loginAttempts) : IAuthService
+    ILoginAttemptLimiter loginAttempts,
+    ILoginIdentityResolver identityResolver,
+    IPasswordHasher passwordHasher,
+    IWorkspacePolicy workspacePolicy,
+    IShardScopeFactory? shardScopes = null,
+    ISelfServeAccountReader? selfServeAccounts = null) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
+
+    /// <summary>
+    /// hash ทิ้งไว้เทียบเมื่อไม่พบผู้ใช้ของ sp1 — ให้เวลาตอบใกล้กับกรณีรหัสผิด (PBKDF2 ~100 ms) ไม่งั้นจับเวลาแล้วรู้ได้ว่า
+    /// อีเมล/ชื่อผู้ใช้ไหนมีบัญชี · legacy ไม่ทำ (เทียบ plaintext เร็วอยู่แล้ว ถ้าเพิ่ม PBKDF2 จะกลายเป็นตัวบอกใบ้แทน)
+    /// </summary>
+    private static string? _timingDummyHash;
 
     public async Task<Result<LoginResultDto>> LoginAsync(
         LoginRequest request, CancellationToken ct = default)
@@ -57,20 +75,28 @@ public sealed class AuthService(
         if (string.IsNullOrWhiteSpace(request.UserName) || string.IsNullOrWhiteSpace(request.Password))
             return Result<LoginResultDto>.Fail("AUTH_MISSING_CREDENTIALS", "กรุณากรอกรหัสพนักงานและรหัสผ่าน");
 
-        var shardKey = currentUser.ShardKey;
-
         // [SECURITY] B3 — ต่อ username: ผิดครบแล้วปฏิเสธก่อนแตะ Garage DB (ไม่เสีย query และไม่เทียบรหัสผ่านเลย
         // แม้คราวนี้จะพิมพ์ถูก ไม่งั้นการเดาต่อยังรู้ผลได้) · นับเฉพาะรหัสผิด/ไม่พบผู้ใช้ — เคสอื่นไม่ใช่การเดารหัสผ่าน
-        var attemptKey = LoginAttemptPolicy.KeyFor(shardKey, request.UserName);
+        // B5: key จากสิ่งที่ผู้ใช้พิมพ์ (ก่อนแปลงอีเมล → ชื่อผู้ใช้) — นับก่อนแตะฐาน sp_ ด้วย และไม่ผูกกับผลการแปลง
+        // อีเมล normalize ก่อน (ไม่แตะฐาน) ไม่งั้นสลับ a.b@gmail.com / ab+x@gmail.com ได้ตัวนับใหม่ทุกครั้งทั้งที่เป็นบัญชีเดียวกัน
+        var attemptKey = LoginAttemptPolicy.KeyFor(currentUser.ShardKey,
+            (request.UserName.Contains('@') ? EmailNormalizer.Normalize(request.UserName) : null) ?? request.UserName);
         if (await loginAttempts.IsBlockedAsync(attemptKey, ct))
             return Result<LoginResultDto>.Fail(SelfServeErrors.AuthRateLimited(LoginAttemptPolicy.WindowSeconds));
 
-        var user = await legacyUsers.FindByUserNameAsync(shardKey, request.UserName.Trim(), ct);
+        // B5 — shard มาจากสิ่งที่พิมพ์ ไม่ใช่จาก client: อีเมล/SP0000.X00 → sp1 · อื่นๆ → db2 (ลูกค้าเดิมเหมือนก่อน)
+        var identity = await identityResolver.ResolveAsync(request.UserName, ct);
+        var shardKey = identity.ShardKey;
+
+        var user = string.IsNullOrWhiteSpace(identity.UserName)
+            ? null
+            : await legacyUsers.FindByUserNameAsync(shardKey, identity.UserName, ct);
 
         // ข้อความเดียวกันทั้งกรณีไม่พบผู้ใช้และรหัสผิด — ไม่บอกใบ้ว่ามีรหัสพนักงานนี้อยู่จริง
         // (นับทั้งสองกรณี — ถ้านับเฉพาะรหัสผิด การถูกบล็อกจะบอกใบ้ว่า username นี้มีอยู่จริง)
         if (user is null || !PasswordMatches(request.Password, user.StoredPassword))
         {
+            if (user is null && shardKey != currentUser.ShardKey) EqualizeTiming(request.Password);
             await loginAttempts.RegisterFailureAsync(attemptKey, ct);
             return Result<LoginResultDto>.Fail("AUTH_INVALID_CREDENTIALS", "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
         }
@@ -78,13 +104,33 @@ public sealed class AuthService(
         // รหัสผ่านถูก = ไม่ใช่การเดา — ล้างตัวนับแม้จะไปติดเงื่อนไขอื่นข้างล่าง (ไม่ใช่พนักงาน/ไม่มีสาขา)
         await loginAttempts.ResetAsync(attemptKey, ct);
 
+        return await CompleteLoginAsync(shardKey, user, ct);
+    }
+
+    public async Task<Result<LoginResultDto>> IssueSessionForUserAsync(
+        string shardKey, long userId, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(shardKey);
+
+        var user = await legacyUsers.FindByIdAsync(shardKey, userId, ct);
+        if (user is null)
+            return Result<LoginResultDto>.Fail("AUTH_USER_NOT_FOUND", "ไม่พบบัญชีผู้ใช้นี้แล้ว");
+
+        return await CompleteLoginAsync(shardKey, user, ct);
+    }
+
+    /// <summary>
+    /// ส่วนหลังยืนยันตัวตนแล้วของ login — ใช้ร่วมกันระหว่างรหัสผ่าน · Google · สมัครเสร็จ (IssueSessionForUserAsync)
+    /// ให้ทุกทางผ่านเงื่อนไขชุดเดียว (เป็นพนักงาน · มีสาขา · แพ็กเกจไม่ถูกล็อก) และได้ token/DTO รูปเดียวกัน
+    /// </summary>
+    private async Task<Result<LoginResultDto>> CompleteLoginAsync(
+        string shardKey, LegacyUserDto user, CancellationToken ct)
+    {
         if (!user.IsStaff || user.StaffId is null)
             return Result<LoginResultDto>.Fail("AUTH_NOT_STAFF",
                 "บัญชีนี้ไม่ใช่พนักงานของอู่ — ระบบนี้ใช้ได้เฉพาะพนักงาน");
 
         var role = await ResolveRoleAsync(shardKey, user, ct);
-        var authUser = ToAuthUser(user, role, shardKey);
-
         var branches = await BuildBranchOptionsAsync(shardKey, user, ct);
         var branch = user.BranchId is null
             ? null
@@ -93,12 +139,23 @@ public sealed class AuthService(
             return Result<LoginResultDto>.Fail("AUTH_NO_BRANCH",
                 "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ");
 
+        // [BIZ] แพ็กเกจของอู่: ล็อก (เลยช่วงอ่านอย่างเดียว/ถูกระงับ) = เข้าไม่ได้ · อ่านอย่างเดียว = เข้าได้ ดู/พิมพ์ได้
+        // legacy ไม่แตะฐานข้อมูลใดๆ (WorkspacePolicy คืน Legacy ทันที)
+        var plan = await workspacePolicy.GetAsync(shardKey, branch.BranchId, ct);
+        if (plan.IsLocked)
+            return Result<LoginResultDto>.Fail(PlanErrors.TrialLocked());
+
+        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name);
+
         // [SECURITY] มือถือได้ token ที่ไม่หมดอายุ (คำขอผู้ใช้ 2026-10-05) — ตัดสิทธิ์ด้วยการตรวจสถานะ
         // พนักงานทุกคำขอแทน (GetSessionRevocationReasonAsync) · เว็บยังเป็น 12 ชม. เหมือนเดิม
         // X-Client-Source ปลอมได้ — ผลแค่ได้ token อายุยาว ซึ่งยังถูกตัดได้ด้วยการตรวจเดียวกัน
         var (token, expiresAt) = currentUser.Source == EventSource.Mobile
             ? tokens.IssueMobileToken(authUser, branch.BranchId)
             : tokens.IssueBranchToken(authUser, branch.BranchId);
+
+        if (currentUser.Source == EventSource.Mobile && plan.Kind != PlanKind.Legacy)
+            await MarkMobileLoginSeenAsync(branch.BranchId, ct);
 
         return Result<LoginResultDto>.Ok(new LoginResultDto(
             AccessToken: token,
@@ -108,6 +165,26 @@ public sealed class AuthService(
             BranchName: branch.Name,
             Branches: branches,
             RequiresShiftSelection: false));
+    }
+
+    /// <summary>checklist ต้อนรับของอู่ทดลองใช้ ("ช่างเข้าแอปแล้ว") — best effort ห้ามทำให้ login ล้ม</summary>
+    private async Task MarkMobileLoginSeenAsync(int branchId, CancellationToken ct)
+    {
+        if (selfServeAccounts is null) return;
+        try
+        {
+            await selfServeAccounts.MarkMobileLoginSeenAsync(branchId, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // implementation เขียน log เองและไม่ควรโยนอยู่แล้ว — กันไว้อีกชั้นเพราะ login สำคัญกว่า checklist
+        }
+    }
+
+    private void EqualizeTiming(string input)
+    {
+        _timingDummyHash ??= passwordHasher.Hash(Guid.NewGuid().ToString("N"));
+        _ = passwordHasher.Verify(_timingDummyHash, input);
     }
 
     public async Task<Result<IReadOnlyList<ShiftOptionDto>>> GetShiftsAsync(
@@ -184,8 +261,13 @@ public sealed class AuthService(
         // เปิดกะใหม่ = ปิดกะเดิมที่ค้างอยู่ของคนคนนี้ กันสถานะซ้อน
         await repository.CloseOpenSessionsAsync(shardKey, currentUser.UserId, Now, ct);
 
+        // แพ็กเกจล็อก = เข้าใช้งานไม่ได้ทุกทาง (กฎเดียวกับ login) · ไม่ทำงานกับ legacy (คืน Legacy โดยไม่แตะฐาน)
+        var plan = await workspacePolicy.GetAsync(shardKey, branch.BranchId, ct);
+        if (plan.IsLocked)
+            return Result<ShiftSessionDto>.Fail(PlanErrors.TrialLocked());
+
         var role = await ResolveRoleAsync(shardKey, user, ct);
-        var authUser = ToAuthUser(user, role, shardKey);
+        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name);
 
         var session = new ShiftSession
         {
@@ -289,7 +371,6 @@ public sealed class AuthService(
             return Result<MeDto>.Fail("AUTH_USER_NOT_FOUND", "ไม่พบบัญชีผู้ใช้นี้แล้ว");
 
         var role = await ResolveRoleAsync(shardKey, user, ct);
-        var authUser = ToAuthUser(user, role, shardKey);
 
         var session = currentUser.SessionId is null
             ? null
@@ -299,6 +380,12 @@ public sealed class AuthService(
         var branchName = session?.BranchName
             ?? (user.BranchId == branchId ? user.BranchName : null);
 
+        // /auth/me คือทางที่เว็บ/แอปรีเฟรชแพ็กเกจ (แถบนับถอยหลัง · อ่านอย่างเดียว) โดยไม่ต้อง login ใหม่
+        var plan = branchId > 0
+            ? await workspacePolicy.GetAsync(shardKey, branchId, ct)
+            : WorkspacePlan.Legacy;
+        var authUser = ToAuthUser(user, role, shardKey, plan, branchName);
+
         return Result<MeDto>.Ok(new MeDto(
             User: authUser,
             SessionId: session?.Id,
@@ -306,7 +393,9 @@ public sealed class AuthService(
             BranchName: branchName,
             ShiftId: session?.ShiftId,
             ShiftName: session?.ShiftName,
-            OpenedAt: session?.OpenedAt));
+            OpenedAt: session?.OpenedAt,
+            Plan: authUser.Plan,
+            Workspace: authUser.Workspace));
     }
 
     public async Task<Result<IReadOnlyList<SwitchableBranchDto>>> GetSwitchableBranchesAsync(
@@ -344,8 +433,12 @@ public sealed class AuthService(
             return Result<LoginResultDto>.Fail("AUTH_BRANCH_FORBIDDEN",
                 "บัญชีของสาขานี้ใช้งานไม่ได้แล้ว — ลองเปิดรายการสาขาใหม่อีกครั้ง");
 
+        var plan = await workspacePolicy.GetAsync(shardKey, target.BranchId, ct);
+        if (plan.IsLocked)
+            return Result<LoginResultDto>.Fail(PlanErrors.TrialLocked());
+
         var role = await ResolveRoleAsync(shardKey, targetUser, ct);
-        var authUser = ToAuthUser(targetUser, role, shardKey);
+        var authUser = ToAuthUser(targetUser, role, shardKey, plan, target.Name);
 
         // ไม่ใช้ BuildBranchOptionsAsync — ของ admin วนนับงานค้างทุกสาขาใน shard ทั้งที่ client ใช้แค่สาขาปลายทาง
         var counts = await repository.GetBranchWorkloadAsync(shardKey, target.BranchId, ct);
@@ -433,40 +526,54 @@ public sealed class AuthService(
         if (role != currentUser.Role)
             return "สิทธิ์ของบัญชีนี้เปลี่ยนแล้ว — กรุณาเข้าสู่ระบบใหม่";
 
-        return null;
+        // B5 — แพ็กเกจของอู่ที่สมัครเอง: ถูกล็อก/เปลี่ยนชนิด/ทีมงานเลื่อนวันจนสถานะอ่านอย่างเดียวไม่ตรงกับ token
+        // legacy: นโยบายคืน Legacy โดยไม่แตะฐาน และ token ไม่มี claim plan → ไม่มีผล (พฤติกรรมเดิมทุกประการ)
+        var branchId = currentUser.BranchId > 0 ? currentUser.BranchId : user.BranchId ?? 0;
+        var plan = await workspacePolicy.GetAsync(shardKey, branchId, ct);
+        return PlanAccess.RevocationReason(plan, currentUser.Plan, currentUser.PlanExpiresAt, Now);
     }
 
     // ---------- helper ----------
 
     /// <summary>
     /// [SECURITY] Garage DB เดิมเก็บรหัสผ่านเป็น plaintext ทั้งหมด (ตรวจแล้ว ~9,500 บัญชี ไม่มี hash เลย)
-    /// ระบบใหม่จำเป็นต้องเทียบแบบเดิมเพื่อให้ผู้ใช้เดิมเข้าได้ แต่:
-    ///   1) เทียบแบบ constant-time กันการเดารหัสด้วยการจับเวลา
+    /// ส่วนบัญชีของอู่ที่สมัครเอง (sp1) เป็น PBKDF2 ตั้งแต่แรก — <see cref="IPasswordHasher.Verify"/> รู้จักทั้งสองแบบ:
+    ///   1) hash → ตรวจแบบ PBKDF2 · ไม่ใช่ hash → เทียบ plaintext แบบเดิม (SHA-256 ทั้งสองฝั่ง + constant-time)
     ///   2) ห้าม log ค่ารหัสผ่านทุกกรณี
-    ///   3) ต้องวางแผนย้ายไป hash โดยเร็ว — ดู CLAUDE.md หัวข้อความปลอดภัย
+    ///   3) โครงสร้างนี้เปิดทางย้าย legacy ไป hash ทีละบัญชีได้โดยไม่ต้องแก้ตรงนี้อีก — ดู CLAUDE.md หัวข้อความปลอดภัย
     /// </summary>
-    private static bool PasswordMatches(string input, string stored)
-    {
-        if (string.IsNullOrEmpty(stored)) return false;
-
-        var a = Encoding.UTF8.GetBytes(input);
-        var b = Encoding.UTF8.GetBytes(stored);
-
-        return CryptographicOperations.FixedTimeEquals(
-            SHA256.HashData(a), SHA256.HashData(b));
-    }
+    private bool PasswordMatches(string input, string stored) =>
+        !string.IsNullOrEmpty(stored) && passwordHasher.Verify(stored, input);
 
     private async Task<UserRole> ResolveRoleAsync(
         string shardKey, LegacyUserDto user, CancellationToken ct)
     {
-        var overridden = await repository.GetRoleOverrideAsync(shardKey, user.UserId, ct);
+        var overridden = await InShardAsync(shardKey,
+            (repo, token) => repo.GetRoleOverrideAsync(shardKey, user.UserId, token), ct);
         if (overridden is not null) return overridden.Role;
 
         return RoleMapper.Resolve(
             user.IsAdministrator, user.PositionName, user.SectorName, user.DepartmentName);
     }
 
-    private static AuthUserDto ToAuthUser(LegacyUserDto user, UserRole role, string shardKey) => new(
+    /// <summary>
+    /// อ่าน svc_* ของ <paramref name="shardKey"/> — ปกติคือ repository ของคำขอนี้ (shard เดียวกับ token)
+    /// · ยกเว้น login/สมัครของ sp1 ที่คำขอยังไม่มี token: ServiceDbContext ของคำขอผูกกับ shard เริ่มต้น จึงต้องเปิด scope
+    ///   ของ shard ปลายทางผ่าน IShardScopeFactory ไม่งั้นได้ "ไม่มี override/ไม่มีงานค้าง" จากฐานผิดตัวโดยไม่มีอะไรฟ้อง
+    /// </summary>
+    private Task<T> InShardAsync<T>(string shardKey, Func<IAuthRepository, CancellationToken, Task<T>> work,
+        CancellationToken ct)
+    {
+        if (shardScopes is null || string.Equals(shardKey, currentUser.ShardKey, StringComparison.OrdinalIgnoreCase))
+            return work(repository, ct);
+
+        return shardScopes.RunAsAsync(
+            new ScopedCurrentUser(shardKey, 0, 0, "login", UserRole.FrontDesk, currentUser.Source),
+            (sp, token) => work((IAuthRepository)sp.GetService(typeof(IAuthRepository))!, token), ct);
+    }
+
+    private AuthUserDto ToAuthUser(LegacyUserDto user, UserRole role, string shardKey,
+        WorkspacePlan? plan = null, string? branchName = null) => new(
         UserId: user.UserId,
         UserName: user.UserName,
         DisplayName: string.IsNullOrWhiteSpace(user.StaffName) ? user.UserName : user.StaffName,
@@ -478,7 +585,9 @@ public sealed class AuthService(
         PositionName: user.PositionName,
         DepartmentName: user.DepartmentName,
         CanSeeCost: role == UserRole.Manager,
-        CanCloseShift: RoleMapper.CanCloseShift(role));
+        CanCloseShift: RoleMapper.CanCloseShift(role),
+        Plan: plan is null ? null : PlanAccess.ToDto(plan, Now),
+        Workspace: plan is null ? null : PlanAccess.ToWorkspaceInfo(plan, branchName ?? user.BranchName));
 
     private async Task<IReadOnlyList<BranchOptionDto>> BuildBranchOptionsAsync(
         string shardKey, LegacyUserDto user, CancellationToken ct)
@@ -488,7 +597,8 @@ public sealed class AuthService(
 
         foreach (var branch in branches)
         {
-            var counts = await repository.GetBranchWorkloadAsync(shardKey, branch.BranchId, ct);
+            var counts = await InShardAsync(shardKey,
+                (repo, token) => repo.GetBranchWorkloadAsync(shardKey, branch.BranchId, token), ct);
             result.Add(new BranchOptionDto(
                 branch.BranchId, branch.Name, branch.Address, branch.Phone,
                 counts.PendingQuotations, counts.WaitingApproval));

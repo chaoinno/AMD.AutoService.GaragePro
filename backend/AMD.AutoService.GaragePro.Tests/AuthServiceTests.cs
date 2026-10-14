@@ -1,6 +1,9 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Auth;
+using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.SelfServe;
+using AMD.AutoService.GaragePro.Domain.Entities.SelfServe;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -436,6 +439,340 @@ public sealed class AuthServiceTests
         repository.AddedShifts.Should().BeEmpty();
     }
 
+    private static readonly Pbkdf2PasswordHasher Hasher = new();
+
+    // ================= B5: self-serve (shard sp1) =================
+
+    private const string OwnerEmail = "Owner.Garage+trial@Gmail.com";
+
+    private static LegacyUserDto SelfServeOwner(string storedPassword) => ActiveUser(branchId: 5001) with
+    {
+        UserId = 9001,
+        UserName = "SP1001.M01",
+        StoredPassword = storedPassword,
+        StaffId = 9101,
+        StaffName = "เจ้าของ อู่ทดลอง",
+        BranchName = "อู่ทดลอง",
+        PositionName = "ผู้จัดการ"
+    };
+
+    private static IReadOnlyList<LegacyBranchSummaryDto> SelfServeBranch =>
+        [new LegacyBranchSummaryDto(5001, "อู่ทดลอง", null, null)];
+
+    [Fact]
+    public async Task Email_login_resolves_to_the_self_serve_shard_and_verifies_the_hashed_password()
+    {
+        var reader = new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch);
+        var accounts = new FakeAccountReader { Account = Account("SP1001.M01") };
+        var tokens = new CapturingTokenIssuer();
+        var expires = DateTime.UtcNow.AddDays(20);
+        var service = CreateService(reader, tokens,
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(expiresAt: expires)), accounts: accounts);
+
+        var result = await service.LoginAsync(new LoginRequest(OwnerEmail, "Secret123"));
+
+        result.Success.Should().BeTrue();
+        accounts.LookedUp.Should().Equal("ownergarage@gmail.com");
+        reader.LastShardKey.Should().Be("sp1");
+        reader.LastUserName.Should().Be("SP1001.M01");
+        result.Data!.User.ShardKey.Should().Be("sp1");
+        result.Data.User.Plan!.Kind.Should().Be("trial");
+        result.Data.User.Plan.ReadOnly.Should().BeFalse();
+        result.Data.User.Plan.Features.Should().BeEmpty();
+        result.Data.User.Plan.DaysLeft.Should().BeInRange(19, 20);
+        result.Data.User.Workspace.Should().Be(new WorkspaceInfoDto("SP1001", "อู่ทดลอง"));
+        tokens.IssuedUser!.Plan!.TrialEndsAt.Should().Be(expires);
+    }
+
+    [Fact]
+    public async Task Self_serve_username_login_goes_to_sp1_upper_cased()
+    {
+        var reader = new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch);
+        var service = CreateService(reader, new CapturingTokenIssuer(),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(expiresAt: DateTime.UtcNow.AddDays(3))));
+
+        var result = await service.LoginAsync(new LoginRequest(" sp1001.m01 ", "Secret123"));
+
+        result.Success.Should().BeTrue();
+        reader.LastShardKey.Should().Be("sp1");
+        reader.LastUserName.Should().Be("SP1001.M01");
+    }
+
+    [Fact]
+    public async Task Wrong_password_against_a_hash_is_rejected_and_counted()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch),
+            new CapturingTokenIssuer(), limiter: limiter,
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial()));
+
+        var result = await service.LoginAsync(new LoginRequest("SP1001.M01", "secret123"));
+
+        result.Error!.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+        limiter.Failures.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Unknown_email_is_rejected_like_a_wrong_password_without_querying_users()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var reader = new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch);
+        var service = CreateService(reader, new CapturingTokenIssuer(), limiter: limiter,
+            accounts: new FakeAccountReader());
+
+        var result = await service.LoginAsync(new LoginRequest("nobody@example.com", "Secret123"));
+
+        result.Error!.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+        reader.UserNameLookups.Should().Be(0);
+        limiter.Failures.Should().ContainSingle()
+            .Which.Should().Be(LoginAttemptPolicy.KeyFor("db2", "nobody@example.com"));
+    }
+
+    [Fact]
+    public async Task Gmail_spelling_variants_share_one_throttle_counter()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var service = CreateService(new StubLegacyUserReader(null, []), new CapturingTokenIssuer(), limiter: limiter,
+            accounts: new FakeAccountReader());
+
+        await service.LoginAsync(new LoginRequest("A.B+x@gmail.com", "x"));
+        await service.LoginAsync(new LoginRequest("ab@googlemail.com", "x"));
+
+        limiter.Failures.Distinct().Should().ContainSingle()
+            .Which.Should().Be(LoginAttemptPolicy.KeyFor("db2", "ab@gmail.com"));
+    }
+
+    [Fact]
+    public async Task Email_login_without_self_serve_configured_is_an_invalid_credential()
+    {
+        var reader = new StubLegacyUserReader(ActiveUser(branchId: 105), []);
+        var service = CreateService(reader, new CapturingTokenIssuer());
+
+        var result = await service.LoginAsync(new LoginRequest("owner@example.com", "secret"));
+
+        result.Error!.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+        reader.UserNameLookups.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Locked_trial_cannot_log_in()
+    {
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch), tokens,
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(
+                expiresAt: DateTime.UtcNow.AddDays(-120), readOnly: true, locked: true)));
+
+        var result = await service.LoginAsync(new LoginRequest("SP1001.M01", "Secret123"));
+
+        result.Error!.Code.Should().Be(PlanErrors.TrialExpiredCode);
+        result.Error.MessageTh.Should().Contain("LINE @garagepro");
+        tokens.IssuedUser.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Read_only_trial_still_logs_in_and_reports_read_only()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch),
+            new CapturingTokenIssuer(),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(
+                expiresAt: DateTime.UtcNow.AddDays(-3), readOnly: true)));
+
+        var result = await service.LoginAsync(new LoginRequest("SP1001.M01", "Secret123"));
+
+        result.Success.Should().BeTrue();
+        result.Data!.User.Plan!.ReadOnly.Should().BeTrue();
+        result.Data.User.Plan.DaysLeft.Should().BeNegative();
+    }
+
+    [Fact]
+    public async Task Legacy_login_carries_no_plan_and_no_workspace()
+    {
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105), [new LegacyBranchSummaryDto(105, "อู่", null, null)]),
+            tokens, policy: new FakeWorkspacePolicy());
+
+        var result = await service.LoginAsync(new LoginRequest("employee01", "secret"));
+
+        result.Success.Should().BeTrue();
+        result.Data!.User.Plan.Should().BeNull();
+        result.Data.User.Workspace.Should().BeNull();
+        tokens.IssuedUser!.Plan.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(EventSource.Mobile, 1)]
+    [InlineData(EventSource.Web, 0)]
+    public async Task Mobile_login_of_a_self_serve_workspace_marks_the_app_as_seen(EventSource source, int expected)
+    {
+        var accounts = new FakeAccountReader();
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch),
+            new CapturingTokenIssuer(), new StubCurrentUser(source: source),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial()), accounts: accounts);
+
+        (await service.LoginAsync(new LoginRequest("SP1001.M01", "Secret123"))).Success.Should().BeTrue();
+
+        accounts.MobileSeen.Should().HaveCount(expected);
+        if (expected > 0) accounts.MobileSeen.Should().Equal(5001);
+    }
+
+    [Fact]
+    public async Task Failing_mobile_seen_marker_never_fails_the_login()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch),
+            new CapturingTokenIssuer(), new StubCurrentUser(source: EventSource.Mobile),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial()),
+            accounts: new FakeAccountReader { ThrowOnMark = true });
+
+        (await service.LoginAsync(new LoginRequest("SP1001.M01", "Secret123"))).Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Anonymous_self_serve_login_reads_the_role_override_inside_the_sp1_scope()
+    {
+        // คำขอ login ยังไม่มี token → repository ของคำขอผูกกับ db2 · override ของ sp1 ต้องอ่านจาก scope ของ sp1
+        var requestRepository = new StubAuthRepository();
+        var sp1Repository = new StubAuthRepository
+        {
+            Override = new UserRoleOverride { LegacyShardKey = "sp1", LegacyUserId = 9001, Role = UserRole.Cashier }
+        };
+        var scopes = new FakeShardScopeFactory(sp1Repository);
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner(Hasher.Hash("Secret123")), SelfServeBranch),
+            new CapturingTokenIssuer(), repository: requestRepository,
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial()), shardScopes: scopes);
+
+        var result = await service.LoginAsync(new LoginRequest("SP1001.M01", "Secret123"));
+
+        result.Data!.User.Role.Should().Be(nameof(UserRole.Cashier));
+        requestRepository.OverrideQueries.Should().Be(0);
+        scopes.Users.Should().NotBeEmpty().And.OnlyContain(u => u.ShardKey == "sp1");
+    }
+
+    [Fact]
+    public async Task IssueSessionForUser_returns_a_login_result_with_the_plan()
+    {
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner("ignored"), SelfServeBranch), tokens,
+            new StubCurrentUser(shardKey: "sp1", source: EventSource.Web),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(expiresAt: DateTime.UtcNow.AddDays(30))));
+
+        var result = await service.IssueSessionForUserAsync("sp1", 9001);
+
+        result.Success.Should().BeTrue();
+        result.Data!.BranchId.Should().Be(5001);
+        result.Data.AccessToken.Should().Be("branch-token");
+        result.Data.User.Plan!.Kind.Should().Be("trial");
+        tokens.IssuedUser!.UserName.Should().Be("SP1001.M01");
+    }
+
+    [Fact]
+    public async Task IssueSessionForUser_rejects_unknown_users_and_locked_plans()
+    {
+        var reader = new StubLegacyUserReader(SelfServeOwner("ignored"), SelfServeBranch);
+        var locked = CreateService(reader, new CapturingTokenIssuer(),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(readOnly: true, locked: true)));
+
+        (await locked.IssueSessionForUserAsync("sp1", 4242)).Error!.Code.Should().Be("AUTH_USER_NOT_FOUND");
+        (await locked.IssueSessionForUserAsync("sp1", 9001)).Error!.Code.Should().Be(PlanErrors.TrialExpiredCode);
+    }
+
+    [Fact]
+    public async Task Me_reports_the_current_plan_so_clients_refresh_without_logging_in_again()
+    {
+        var service = CreateService(
+            new StubLegacyUserReader(SelfServeOwner("x"), SelfServeBranch), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 9001, branchId: 5001, shardKey: "sp1", plan: PlanKind.Trial),
+            policy: new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(expiresAt: DateTime.UtcNow.AddDays(-1), readOnly: true)));
+
+        var me = await service.GetMeAsync();
+
+        me.Data!.Plan!.ReadOnly.Should().BeTrue();
+        me.Data.User.Plan.Should().Be(me.Data.Plan);
+        me.Data.Workspace!.WorkspaceNo.Should().Be("SP1001");
+    }
+
+    [Fact]
+    public async Task Revocation_kicks_self_serve_tokens_when_the_plan_changes_or_locks()
+    {
+        var reader = new StubLegacyUserReader(SelfServeOwner("x"), SelfServeBranch);
+        var role = RoleOf(SelfServeOwner("x"));
+        var expires = DateTime.UtcNow.AddDays(10);
+        AuthService ServiceFor(WorkspacePlan plan, PlanKind? claim, DateTime? claimExpires) => CreateService(
+            reader, new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 9001, branchId: 5001, role: role, shardKey: "sp1",
+                plan: claim, planExpiresAt: claimExpires),
+            policy: new FakeWorkspacePolicy(plan));
+
+        (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: expires), PlanKind.Trial, expires)
+            .GetSessionRevocationReasonAsync()).Should().BeNull();
+        (await ServiceFor(FakeWorkspacePolicy.Paid(), PlanKind.Trial, expires)
+            .GetSessionRevocationReasonAsync()).Should().Be(PlanAccess.PlanChangedReason);
+        (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: expires, readOnly: true, locked: true), PlanKind.Trial, expires)
+            .GetSessionRevocationReasonAsync()).Should().Be(PlanAccess.PlanLockedReason);
+        // ทีมงานตัดวันให้หมดก่อนกำหนด: token ยังบอกว่าเขียนได้ แต่นโยบายบอกว่าอ่านอย่างเดียวแล้ว
+        (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: DateTime.UtcNow.AddDays(-1), readOnly: true), PlanKind.Trial, expires)
+            .GetSessionRevocationReasonAsync()).Should().Be(PlanAccess.PlanChangedReason);
+    }
+
+    [Fact]
+    public async Task Revocation_ignores_plans_for_legacy_tokens()
+    {
+        var policy = new FakeWorkspacePolicy();
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105), []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: RoleOf(ActiveUser(105))), policy: policy);
+
+        (await service.GetSessionRevocationReasonAsync()).Should().BeNull();
+    }
+
+    private static SelfServeLoginAccount Account(string userName, long userId = 9001) =>
+        new(Guid.NewGuid(), "ownergarage@gmail.com", SelfServeAccountProvider.Email, null, true, userName, userId);
+
+    private sealed class FakeAccountReader : ISelfServeAccountReader
+    {
+        public SelfServeLoginAccount? Account { get; init; }
+        public bool ThrowOnMark { get; init; }
+        public List<string> LookedUp { get; } = [];
+        public List<int> MobileSeen { get; } = [];
+
+        public Task<SelfServeLoginAccount?> FindActiveByNormalizedEmailAsync(string normalizedEmail, CancellationToken ct = default)
+        {
+            LookedUp.Add(normalizedEmail);
+            return Task.FromResult(Account?.NormalizedEmail == normalizedEmail ? Account : null);
+        }
+
+        public Task MarkMobileLoginSeenAsync(int branchId, CancellationToken ct = default)
+        {
+            if (ThrowOnMark) throw new InvalidOperationException("sp_ down");
+            MobileSeen.Add(branchId);
+            return Task.CompletedTask;
+        }
+    }
+
+    /// <summary>จำลอง IShardScopeFactory — scope ใหม่มี IAuthRepository ของ shard ปลายทาง</summary>
+    private sealed class FakeShardScopeFactory(IAuthRepository repository) : IShardScopeFactory
+    {
+        public List<ICurrentUser> Users { get; } = [];
+
+        public Task<T> RunAsAsync<T>(ICurrentUser user, Func<IServiceProvider, CancellationToken, Task<T>> work,
+            CancellationToken ct = default)
+        {
+            Users.Add(user);
+            return work(new MapServiceProvider().Add(repository), ct);
+        }
+
+        public Task RunAsAsync(ICurrentUser user, Func<IServiceProvider, CancellationToken, Task> work,
+            CancellationToken ct = default) =>
+            RunAsAsync<object?>(user, async (sp, token) => { await work(sp, token); return null; }, ct);
+    }
+
     private static AuthService CreateService(
         ILegacyUserReader users,
         ITokenIssuer tokens,
@@ -444,11 +781,26 @@ public sealed class AuthServiceTests
         ShiftSession? session = null,
         StubQuotationRepository? quotations = null,
         ILoginAttemptLimiter? limiter = null,
-        StubAuthRepository? repository = null) =>
+        StubAuthRepository? repository = null,
+        IWorkspacePolicy? policy = null,
+        ISelfServeAccountReader? accounts = null,
+        IShardScopeFactory? shardScopes = null) =>
         new(users, repository ?? new StubAuthRepository(session), quotations ?? new StubQuotationRepository(), tokens,
             workHook ?? new FakeWorkIntervalHook(),
             currentUser ?? new StubCurrentUser(), TimeProvider.System,
-            limiter ?? new FakeLoginAttemptLimiter());
+            limiter ?? new FakeLoginAttemptLimiter(),
+            new LoginIdentityResolver(Provider(accounts), "db2", SelfServeOptions.DefaultShardKey),
+            Hasher,
+            policy ?? UnlimitedWorkspacePolicy.Instance,
+            shardScopes,
+            accounts);
+
+    private static MapServiceProvider Provider(ISelfServeAccountReader? accounts)
+    {
+        var provider = new MapServiceProvider();
+        if (accounts is not null) provider.Add(accounts);
+        return provider;
+    }
 
     private static UserRole RoleOf(LegacyUserDto user) =>
         RoleMapper.Resolve(user.IsAdministrator, user.PositionName, user.SectorName, user.DepartmentName);
@@ -504,16 +856,24 @@ public sealed class AuthServiceTests
         IReadOnlyList<LegacyBranchSummaryDto> branches) : ILegacyUserReader
     {
         public int UserNameLookups { get; private set; }
+        public string? LastShardKey { get; private set; }
+        public string? LastUserName { get; private set; }
 
         public Task<LegacyUserDto?> FindByUserNameAsync(
             string shardKey, string userName, CancellationToken ct = default)
         {
             UserNameLookups++;
+            LastShardKey = shardKey;
+            LastUserName = userName;
             return Task.FromResult(user);
         }
 
         public Task<LegacyUserDto?> FindByIdAsync(
-            string shardKey, long userId, CancellationToken ct = default) => Task.FromResult(user);
+            string shardKey, long userId, CancellationToken ct = default)
+        {
+            LastShardKey = shardKey;
+            return Task.FromResult(user is not null && user.UserId == userId ? user : null);
+        }
 
         public Task<IReadOnlyList<LegacyBranchSummaryDto>> GetAccessibleBranchesAsync(
             string shardKey, LegacyUserDto legacyUser, CancellationToken ct = default) =>
@@ -523,6 +883,7 @@ public sealed class AuthServiceTests
     private sealed class CapturingTokenIssuer : ITokenIssuer
     {
         public int? IssuedBranchId { get; private set; }
+        public AuthUserDto? IssuedUser { get; private set; }
 
         public (string Token, DateTime ExpiresAt) IssuePreSessionToken(AuthUserDto user) =>
             ("pre-token", DateTime.UtcNow.AddMinutes(15));
@@ -530,12 +891,14 @@ public sealed class AuthServiceTests
         public (string Token, DateTime ExpiresAt) IssueBranchToken(AuthUserDto user, int branchId)
         {
             IssuedBranchId = branchId;
+            IssuedUser = user;
             return ("branch-token", DateTime.UtcNow.AddHours(12));
         }
 
         public (string Token, DateTime ExpiresAt) IssueMobileToken(AuthUserDto user, int branchId)
         {
             IssuedBranchId = branchId;
+            IssuedUser = user;
             return ("mobile-token", DateTime.UtcNow.AddYears(10));
         }
 
@@ -545,12 +908,15 @@ public sealed class AuthServiceTests
 
     private sealed class StubCurrentUser(
         long userId = 0, int branchId = 0, UserRole role = UserRole.FrontDesk,
-        EventSource source = EventSource.Web, bool isAdministrator = false) : ICurrentUser
+        EventSource source = EventSource.Web, bool isAdministrator = false,
+        string shardKey = "db2", PlanKind? plan = null, DateTime? planExpiresAt = null) : ICurrentUser
     {
         public long UserId => userId;
         public string UserName => "";
         public UserRole Role => role;
-        public string ShardKey => "db2";
+        public string ShardKey => shardKey;
+        public PlanKind? Plan => plan;
+        public DateTime? PlanExpiresAt => planExpiresAt;
         public int BranchId => branchId;
         public EventSource Source => source;
         public bool IsAdministrator => isAdministrator;
@@ -559,6 +925,8 @@ public sealed class AuthServiceTests
 
     private sealed class StubAuthRepository(ShiftSession? session = null) : IAuthRepository
     {
+        public UserRoleOverride? Override { get; set; }
+        public int OverrideQueries { get; private set; }
         public int ShiftQueries { get; private set; }
         public List<Shift> AddedShifts { get; } = [];
 
@@ -576,8 +944,11 @@ public sealed class AuthServiceTests
         public Task<ShiftSession?> GetSessionAsync(Guid sessionId, CancellationToken ct = default) => Task.FromResult(session);
         public Task AddSessionAsync(ShiftSession session, CancellationToken ct = default) => Task.CompletedTask;
         public Task CloseOpenSessionsAsync(string shardKey, long userId, DateTime closedAt, CancellationToken ct = default) => Task.CompletedTask;
-        public Task<UserRoleOverride?> GetRoleOverrideAsync(string shardKey, long userId, CancellationToken ct = default) =>
-            Task.FromResult<UserRoleOverride?>(null);
+        public Task<UserRoleOverride?> GetRoleOverrideAsync(string shardKey, long userId, CancellationToken ct = default)
+        {
+            OverrideQueries++;
+            return Task.FromResult(Override);
+        }
         public Task<BranchWorkload> GetBranchWorkloadAsync(string shardKey, int branchId, CancellationToken ct = default) =>
             Task.FromResult(new BranchWorkload(0, 0));
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);

@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -10,6 +11,7 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 /// <summary>จัดการซัพพลายเออร์และความสัมพันธ์ระหว่างซัพพลายเออร์กับสินค้าในสาขาปัจจุบัน</summary>
 [ApiController]
 [Route("api/v1/suppliers")]
+[RequireFeature(PlanFeature.Purchasing)]   // B5 — รวม /catalog/manage/{id}/suppliers ใน controller นี้
 [Produces("application/json")]
 [Authorize]
 [RequireShiftSession]

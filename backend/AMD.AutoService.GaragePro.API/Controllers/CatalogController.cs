@@ -61,7 +61,7 @@ public sealed class CatalogController(ICatalogRepository catalog, ICatalogServic
             return created
                 ? StatusCode(StatusCodes.Status201Created, Envelope.From(result, HttpContext.TraceIdentifier))
                 : Ok(Envelope.From(result, HttpContext.TraceIdentifier));
-        var status = result.Error!.Code switch
+        var status = PlanErrors.StatusCodeFor(result.Error!.Code) ?? result.Error.Code switch
         {
             "CATALOG_NOT_FOUND" => StatusCodes.Status404NotFound,
             "CATALOG_MANAGE_FORBIDDEN" or "CATALOG_PURCHASE_FORBIDDEN" => StatusCodes.Status403Forbidden,

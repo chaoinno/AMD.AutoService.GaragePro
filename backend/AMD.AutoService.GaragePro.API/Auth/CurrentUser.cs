@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -48,6 +49,20 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
 
     public bool IsAdministrator =>
         bool.TryParse(Principal?.FindFirstValue(GarageClaims.IsAdministrator), out var value) && value;
+
+    /// <summary>
+    /// แพ็กเกจจาก claim <c>plan</c> (B5) — null = token legacy/ออกก่อนมี self-serve · ค่าที่ไม่รู้จักถือว่าไม่มี
+    /// ใช้เป็น fast path เท่านั้น การตัดสินจริงถาม IWorkspacePolicy เสมอ (TrialReadOnlyFilter · RequireFeature · revocation)
+    /// </summary>
+    public PlanKind? Plan =>
+        PlanKindNames.TryParse(Principal?.FindFirstValue(GarageClaims.Plan), out var kind) ? kind : null;
+
+    /// <summary>วันหมดอายุของแพ็กเกจจาก claim <c>plan_exp</c> (unix seconds → UTC)</summary>
+    public DateTime? PlanExpiresAt =>
+        long.TryParse(Principal?.FindFirstValue(GarageClaims.PlanExpiresAt), NumberStyles.Integer,
+            CultureInfo.InvariantCulture, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime
+            : null;
 
     /// <summary>[BIZ] ทุก ActivityEvent ต้องรู้ว่ามาจากมือถือหรือเว็บ</summary>
     public EventSource Source =>

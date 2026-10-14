@@ -1,5 +1,6 @@
 using System.Text;
 using AMD.AutoService.GaragePro.API.Auth;
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Customers;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -42,7 +43,9 @@ public sealed class CustomersController(ICustomerVehicleService service) : Contr
         Render(await service.DeleteCustomerAsync(id, ct));
 
     /// <summary>ส่งออกลูกค้าเฉพาะสาขาที่เข้าสู่ระบบตาม filter เป็น UTF-8 CSV (สูงสุด 10,000 แถว)</summary>
+    /// <remarks>แพ็กเกจทดลองใช้ได้ 403 PLAN_FEATURE_LOCKED (ฟีเจอร์ export)</remarks>
     [HttpGet("export")]
+    [RequireFeature(PlanFeature.Export)]
     [Produces("text/csv")]
     public async Task<IActionResult> Export([FromQuery] CustomerSearchModel model, CancellationToken ct)
     {
@@ -62,7 +65,7 @@ public sealed class CustomersController(ICustomerVehicleService service) : Contr
             return created
                 ? StatusCode(StatusCodes.Status201Created, Envelope.From(result, HttpContext.TraceIdentifier))
                 : Ok(Envelope.From(result, HttpContext.TraceIdentifier));
-        var status = result.Error!.Code switch
+        var status = PlanErrors.StatusCodeFor(result.Error!.Code) ?? result.Error.Code switch
         {
             "CUSTOMER_NOT_FOUND" => StatusCodes.Status404NotFound,
             "CUSTOMER_DUPLICATE" => StatusCodes.Status409Conflict,
