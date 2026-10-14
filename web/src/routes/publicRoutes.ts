@@ -37,7 +37,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     // หน้าเดียวกับ `/` แต่เปิด modal เข้าสู่ระบบ — ไม่ควรถูก index ซ้ำกับหน้าแรก
     path: '/login',
     title: 'เข้าสู่ระบบ | ServicePro',
-    description: 'เข้าสู่ระบบสำหรับอู่บริการ ServicePro ด้วยรหัสพนักงานของอู่',
+    description: 'เข้าสู่ระบบสำหรับอู่บริการ ServicePro ด้วยอีเมลเจ้าของอู่ บัญชี Google หรือรหัสพนักงานของอู่',
     h1: 'โปรแกรมสำหรับอู่บริการ ครบตั้งแต่รับรถจนส่งมอบ — ทดลองใช้ฟรี 30 วัน',
     prerender: false,
     changefreq: 'monthly',
@@ -109,9 +109,9 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   },
   {
     path: '/signup',
-    title: 'ทดลองโปรแกรมอู่บริการ 30 วัน | ServicePro',
-    description: 'ทดลองโปรแกรมสำหรับอู่บริการ ServicePro ฟรี 30 วัน ไม่ต้องใส่บัตรเครดิต เปิดรับสมัครเร็วๆ นี้ ติดต่อ LINE @garagepro หรือโทร 090-996-6446',
-    h1: 'ทดลองใช้ ServicePro ฟรี 30 วัน — เปิดรับสมัครเร็วๆ นี้',
+    title: 'ทดลองใช้โปรแกรมอู่บริการฟรี 30 วัน | ServicePro',
+    description: 'สมัครทดลองใช้โปรแกรมสำหรับอู่บริการ ServicePro ฟรี 30 วัน ด้วย Google หรืออีเมล ไม่ต้องใส่บัตรเครดิต ตั้งค่าอู่และเริ่มใช้งานได้ในไม่กี่นาที',
+    h1: 'ทดลองใช้ ServicePro ฟรี 30 วัน',
     prerender: true,
     changefreq: 'weekly',
     priority: 0.8,

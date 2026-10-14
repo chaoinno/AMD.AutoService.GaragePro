@@ -1,0 +1,75 @@
+.signup-section { padding: 40px 0 56px; }
+.signup-container { display: grid; gap: 28px; width: min(1040px, 100% - 32px); margin-inline: auto; align-items: start; }
+.signup-intro h1, .signup-closed h1 { margin-top: 12px; font-size: clamp(28px, 3.4vw, 42px); line-height: 1.4; text-wrap: balance; }
+.signup-intro > p:last-of-type { margin-top: 12px; color: #cbd5e1; font-size: 16px; line-height: 1.7; }
+.signup-intro ul { display: none; margin: 28px 0 0; padding: 0; list-style: none; }
+.signup-intro li { display: flex; gap: 10px; align-items: center; margin-top: 16px; color: #cbd5e1; }
+.signup-intro li svg { flex-shrink: 0; color: #9ec4fb; }
+.signup-card { min-width: 0; padding: 24px 16px; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--card); color: var(--text); }
+.signup-card h2 { font-size: 22px; line-height: 1.5; margin-bottom: 18px; }
+.signup-card > .ui-alert { margin-bottom: 18px; }
+.signup-card a, .signup-footer a { color: var(--blue-600); text-underline-offset: 3px; }
+.signup-progress { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 24px; padding: 0; list-style: none; }
+.signup-progress li { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.signup-progress li > span { display: grid; flex-shrink: 0; width: 24px; height: 24px; place-items: center; border: 1px solid var(--border); border-radius: 50%; }
+.signup-progress li[aria-current='step'] { color: var(--blue-600); font-weight: 700; }
+.signup-progress li[aria-current='step'] > span { background: var(--blue-600); color: white; border-color: var(--blue-600); }
+.signup-form { display: grid; gap: 18px; }
+.signup-form .ui-input, .signup-form .ui-select { width: 100%; min-height: 48px; font-size: 16px; }
+.signup-password { position: relative; }
+.signup-password .ui-input { padding-right: 52px; }
+.signup-password > button { position: absolute; top: 0; right: 0; display: grid; width: 48px; height: 48px; place-items: center; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.signup-hint { color: var(--muted); font-size: 14px; line-height: 1.65; }
+.signup-hint svg { vertical-align: middle; }
+.signup-check { display: flex; min-height: 48px; align-items: center; gap: 12px; font-size: 15px; line-height: 1.7; cursor: pointer; }
+.signup-check input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--blue-600); }
+.signup-check a { position: relative; }
+.signup-google { min-width: 0; }
+.signup-google > div { width: 100%; min-height: 44px; }
+.signup-google [inert] { opacity: .55; }
+.signup-google .signup-hint { margin-top: 8px; }
+.signup-divider { display: flex; gap: 14px; align-items: center; color: var(--muted); font-size: 14px; }
+.signup-divider::before, .signup-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.signup-turnstile { min-width: 0; min-height: 65px; }
+.signup-submit { width: 100%; min-height: 52px; }
+.signup-card .signup-submit, .signup-done > .landing-btn { color: white; }
+.signup-secondary { min-height: 48px; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--card); color: var(--blue-600); font: inherit; font-weight: 600; cursor: pointer; }
+.signup-text-button { min-height: 44px; padding: 6px 4px; border: 0; background: transparent; color: var(--blue-600); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.signup-secondary:hover { background: var(--blue-50); }
+.signup-submit:disabled, .signup-secondary:disabled, .signup-text-button:disabled { opacity: .6; cursor: wait; }
+.signup-otp { font-family: 'IBM Plex Mono', monospace; font-size: 24px !important; letter-spacing: .4em; }
+.signup-email-address { overflow-wrap: anywhere; color: var(--text); }
+.signup-size { min-width: 0; padding: 0; border: 0; }
+.signup-size legend { margin-bottom: 10px; font-size: 15px; font-weight: 600; }
+.signup-size > div { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.signup-size label { position: relative; cursor: pointer; }
+.signup-size input { position: absolute; opacity: 0; }
+.signup-size span:not(.signup-hint) { display: grid; min-height: 48px; place-items: center; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
+.signup-size input:checked + span { border-color: var(--blue-600); background: var(--blue-50); color: var(--blue-600); font-weight: 700; box-shadow: inset 0 0 0 1px var(--blue-600); }
+.signup-size input:focus-visible + span { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.signup-card button:focus-visible, .signup-card a:focus-visible { outline-color: var(--blue-600); }
+.signup-footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); text-align: center; font-size: 14px; }
+.signup-closed { padding-block: 56px 72px; }
+.signup-closed .ui-alert { margin-top: 18px; }
+.signup-done { display: grid; gap: 20px; }
+.signup-container.signup-container--done { display: block; max-width: 560px; }
+.signup-done h1 { font-size: 26px; line-height: 1.5; overflow-wrap: anywhere; }
+.signup-done__icon { width: 48px; height: 48px; color: var(--blue-600); }
+.signup-done > p { color: var(--muted); font-size: 16px; line-height: 1.7; }
+.signup-done > p svg { vertical-align: middle; }
+.signup-play { width: fit-content; max-width: 100%; }
+.signup-play img { display: block; width: 210px; max-width: 100%; height: auto; }
+.signup-credentials { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--page); }
+.signup-credentials h2 { font-size: 18px; margin-bottom: 6px; }
+.signup-credentials > p { font-size: 14px; color: var(--muted); }
+.signup-credential { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.signup-credential > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
+.signup-credential span { color: var(--muted); font-size: 13px; }
+.signup-credential code { grid-column: 1; font-family: 'IBM Plex Mono', monospace; font-size: 15px; overflow-wrap: anywhere; user-select: all; }
+.signup-copy { grid-column: 2; grid-row: 1 / 3; display: flex; align-items: center; gap: 4px; min-height: 44px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--blue-600); font: inherit; font-size: 13px; cursor: pointer; }
+.signup-card .trace-id, .auth-form .trace-id { overflow-wrap: anywhere; }
+.login-form-notice { margin-bottom: 18px; }
+.login-signup-link { margin-top: 18px; text-align: center; }
+.login-signup-link a { color: var(--blue-600); text-underline-offset: 3px; }
+@media (min-width: 768px) { .signup-card { padding: 32px; } .signup-progress li { font-size: 14px; gap: 8px; } }
+@media (min-width: 1024px) { .signup-section { padding-block: 64px 80px; } .signup-container { grid-template-columns: minmax(0, 1fr) minmax(0, 480px); gap: 64px; } .signup-intro { padding-top: 32px; } .signup-intro ul { display: block; } }

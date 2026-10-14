@@ -12,7 +12,7 @@ import { AboutPage } from './features/landing/pages/AboutPage'
 import { ContactPage } from './features/landing/pages/ContactPage'
 import { PrivacyPage } from './features/landing/pages/PrivacyPage'
 import { TermsPage } from './features/landing/pages/TermsPage'
-import { SignupComingSoonPage } from './features/landing/pages/SignupComingSoonPage'
+import { SignupPage } from './features/signup/SignupPage'
 import { isPublicPath, PUBLIC_ROUTES } from './routes/publicRoutes'
 
 // Do not import protected pages here: public visits must not download the internal app.
@@ -28,7 +28,7 @@ const PUBLIC_PAGES: Record<string, ReactElement> = {
   '/contact': <ContactPage />,
   '/privacy': <PrivacyPage />,
   '/terms': <TermsPage />,
-  '/signup': <SignupComingSoonPage />,
+  '/signup': <SignupPage />,
 }
 
 export default function App() {

@@ -17,7 +17,7 @@ export function PricingPage() {
             <p className="landing-eyebrow">เริ่มต้นทดลองใช้</p>
             <h2 className="landing-h2">ทดลองใช้ฟรี 30 วัน ไม่ต้องใส่บัตรเครดิต</h2>
             <p>ทดลองโปรแกรมสำหรับอู่เซอร์วิส ServicePro เพื่อทำความรู้จักขั้นตอนงานของระบบ</p>
-            <p>เปิดรับสมัครเร็วๆ นี้</p>
+            <p>สมัครได้ด้วย Google หรืออีเมลที่หน้า ทดลองใช้ฟรี</p>
             <div className="landing-page-actions"><Link className="landing-btn landing-btn--primary" to="/signup">ทดลองใช้ฟรี</Link></div>
           </article>
           <article className="landing-feature landing-pricing__card">

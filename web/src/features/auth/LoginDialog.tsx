@@ -24,7 +24,7 @@ export function LoginDialog({ open, onClose }: { open: boolean; onClose: () => v
             <LockKeyhole />
           </div>
           <DialogTitle>เข้าสู่ระบบ ServicePro</DialogTitle>
-          <DialogDescription>ใช้รหัสพนักงานและรหัสผ่านเดิมของ GaragePro</DialogDescription>
+          <DialogDescription>เจ้าของอู่ที่สมัครเอง: อีเมล · พนักงาน: รหัสจากเจ้าของอู่ · พนักงานอู่ GaragePro: รหัสพนักงานเดิม</DialogDescription>
         </DialogHeader>
         <div className="ui-dialog__body">
           <LoginForm onPendingChange={setPending} />
