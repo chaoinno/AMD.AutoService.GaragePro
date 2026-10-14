@@ -1,0 +1,339 @@
+/* UX ทดลองใช้ (W2) — การ์ดเริ่มต้นใช้งาน · หน้าฟีเจอร์ที่ล็อก · หน้าต่างรหัสพนักงาน · หน้าต่างขอต่ออายุ
+   แถบทดลองใช้ · กุญแจในเมนู · ลายน้ำเอกสาร อยู่ใน index.css (ใช้ทั่วแอป/ตอนพิมพ์)
+   โทนสีเตือนใช้คู่เดียวกับ .state-block--locked / ui-alert--warning (#fdf3e2 · #8a5a00) */
+
+/* ---- ป้าย "ล็อกในแพ็กเกจเต็ม" ข้างปุ่ม ---- */
+.plan-lock-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid #edcf8e;
+  border-radius: var(--radius-pill);
+  background: #fdf3e2;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.plan-lock-note svg { width: 14px; height: 14px; flex: 0 0 auto; }
+
+.plan-lock-group { display: inline-flex; align-items: center; gap: 10px; }
+
+/* ---- หน้าฟีเจอร์ที่ล็อก ---- */
+.locked-feature {
+  max-width: 880px;
+  margin: 8px auto 0;
+  padding: 28px 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  box-shadow: 0 10px 30px rgb(15 36 64 / 5%);
+}
+
+.locked-feature__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 18px;
+  padding: 4px 12px;
+  border: 1px solid #edcf8e;
+  border-radius: var(--radius-pill);
+  background: #fdf3e2;
+  color: #8a5a00;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.locked-feature__badge svg { width: 14px; height: 14px; }
+
+.locked-feature__body { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 22px; }
+
+.locked-feature__icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border-radius: var(--radius-card);
+  background: #fdf3e2;
+  color: #8a5a00;
+}
+
+.locked-feature__icon svg { width: 30px; height: 30px; }
+
+.locked-feature__copy h2 { font-size: 25px; line-height: 1.35; }
+.locked-feature__copy > p { margin-top: 6px; color: var(--muted); font-size: 16px; }
+
+.locked-feature__bullets { display: grid; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+.locked-feature__bullets li { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start; font-size: 15px; }
+.locked-feature__bullets svg { width: 18px; height: 18px; margin-top: 3px; color: var(--teal-500); }
+
+.locked-feature__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 24px; }
+.locked-feature__actions a svg { width: 15px; height: 15px; }
+
+.locked-feature__sent,
+.trial-dialog__reason,
+.staff-credentials__reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0b6d5e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.locked-feature__sent { margin-top: 12px; }
+.locked-feature__sent svg,
+.trial-dialog__reason svg { width: 16px; height: 16px; }
+
+.locked-feature .trace-id {
+  margin-top: 18px;
+  color: var(--faint);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 12px;
+}
+
+/* ---- หน้าต่างขอต่ออายุ ---- */
+.trial-dialog { display: grid; gap: 14px; }
+.trial-dialog__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; width: 100%; }
+.trial-dialog__reason { margin-right: auto; }
+
+.trial-dialog__contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: #f8fafc;
+  font-size: 14px;
+}
+
+.trial-dialog__contact > svg { width: 18px; height: 18px; color: #06c755; }
+.trial-dialog__contact > span { flex: 1 1 220px; }
+.trial-dialog__contact a svg { width: 14px; height: 14px; }
+
+/* ---- การ์ดเริ่มต้นใช้งานบนหน้าจ๊อบ ---- */
+.welcome-checklist {
+  margin-bottom: 20px;
+  padding: 20px 22px;
+  border: 1px solid #b9d1f4;
+  border-radius: var(--radius-card);
+  background: linear-gradient(180deg, #f4f8fe 0%, #ffffff 120px);
+  box-shadow: 0 10px 30px rgb(15 36 64 / 5%);
+}
+
+.welcome-checklist--credentials-only { padding: 0; border: 0; background: none; box-shadow: none; }
+
+.welcome-checklist__header {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.welcome-checklist__icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: var(--radius-card);
+  background: var(--blue-50);
+  color: var(--blue-600);
+}
+
+.welcome-checklist__icon svg { width: 24px; height: 24px; }
+.welcome-checklist__heading h2 { font-size: 21px; line-height: 1.35; }
+.welcome-checklist__heading > p:last-child { color: var(--muted); font-size: 14px; }
+
+.welcome-checklist__progress {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 6px;
+  min-width: 132px;
+}
+
+.welcome-checklist__progress strong {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 23px;
+  font-variant-numeric: tabular-nums;
+}
+
+.welcome-checklist__progress > span:nth-child(2) { color: var(--muted); font-size: 13px; }
+
+.welcome-checklist__bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: #dbe5f3;
+}
+
+.welcome-checklist__bar > span { display: block; height: 100%; border-radius: inherit; background: var(--teal-500); }
+
+.welcome-checklist__state { margin-top: 16px; color: var(--muted); }
+.welcome-checklist__state .ui-button { margin-top: 8px; }
+
+.welcome-checklist__items { display: grid; gap: 0; margin: 16px 0 0; padding: 0; list-style: none; }
+
+.welcome-checklist__item {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  padding: 12px 4px;
+  border-top: 1px solid var(--border);
+}
+
+.welcome-checklist__item:first-child { border-top: 0; }
+
+.welcome-checklist__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.welcome-checklist__status svg { width: 20px; height: 20px; flex: 0 0 auto; }
+
+.welcome-checklist__item--done .welcome-checklist__status { color: #0b6d5e; }
+.welcome-checklist__item--done .welcome-checklist__text strong { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.welcome-checklist__text { display: grid; gap: 2px; min-width: 0; }
+.welcome-checklist__text strong { font-size: 16px; }
+.welcome-checklist__text > span { color: var(--muted); font-size: 14px; }
+.welcome-checklist__text .mobile-app-install { margin-top: 8px; }
+
+.welcome-checklist__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.welcome-checklist__limits {
+  margin: 0;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', 'Noto Sans Thai', ui-monospace, monospace;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.welcome-checklist__limits > span:first-child { font-family: 'Noto Sans Thai', 'Noto Sans', sans-serif; }
+.welcome-checklist__limit--full { color: #8a5a00; font-weight: 700; }
+
+.welcome-checklist__confirm ul { display: grid; gap: 6px; margin: 0 0 10px; padding-left: 20px; list-style: disc; }
+.welcome-checklist__confirm p { margin-bottom: 10px; color: var(--red-600); }
+
+/* ---- รหัสช่างตัวอย่าง (แสดงครั้งเดียว) ---- */
+.sample-credentials {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border: 1px solid #edcf8e;
+  border-radius: var(--radius-card);
+  background: #fff8e8;
+}
+
+.sample-credentials__head { display: flex; align-items: center; gap: 8px; color: #8a5a00; }
+.sample-credentials__head svg { width: 20px; height: 20px; }
+
+.sample-credentials__once {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: #8a5a00;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sample-credentials > p { color: #6b4700; font-size: 14px; }
+.sample-credentials__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.sample-credentials__list li { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.sample-credentials > .ui-button { justify-self: start; }
+
+.sample-credentials__field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid #edcf8e;
+  border-radius: var(--radius-input);
+  background: white;
+}
+
+.sample-credentials__field small { color: var(--muted); font-size: 12px; }
+
+.sample-credentials__field code,
+.staff-credentials__fields code {
+  color: var(--navy-900);
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* ---- QR แอปมือถือ ---- */
+.mobile-app-install { display: flex; align-items: center; gap: 14px; }
+.mobile-app-install__qr { flex: 0 0 auto; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: white; }
+.mobile-app-install__copy { display: grid; gap: 2px; font-size: 14px; }
+.mobile-app-install__copy strong { display: inline-flex; align-items: center; gap: 6px; }
+.mobile-app-install__copy strong svg { width: 16px; height: 16px; }
+.mobile-app-install__copy > span { color: var(--muted); }
+.mobile-app-install__copy a { display: inline-flex; align-items: center; gap: 4px; color: var(--blue-600); font-weight: 600; }
+.mobile-app-install__copy a svg { width: 14px; height: 14px; }
+.mobile-app-install--compact .mobile-app-install__copy { font-size: 13px; }
+
+/* ---- หน้าต่างรหัสพนักงานใหม่ ---- */
+.staff-credentials { display: grid; gap: 16px; }
+.staff-credentials__fields { display: grid; gap: 10px; margin: 0; }
+
+.staff-credentials__fields > div {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  background: #f8fafc;
+}
+
+.staff-credentials__fields dt { color: var(--muted); font-size: 14px; font-weight: 600; }
+.staff-credentials__fields dd { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; }
+.staff-credentials__fields code { font-size: 19px; user-select: all; }
+
+.staff-credentials__confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.staff-credentials__confirm input { width: 18px; height: 18px; }
+.staff-credentials__confirm svg { width: 16px; height: 16px; color: var(--muted); }
+.staff-credentials__confirm--attention { border-color: var(--red-600); box-shadow: 0 0 0 3px rgb(192 38 38 / 12%); }
+
+.staff-credentials__footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 12px; width: 100%; }
+.staff-credentials__reason { margin-right: auto; color: var(--muted); font-weight: 500; }
+
+/* ---- ฟอร์มเพิ่มพนักงานแบบง่าย ---- */
+.simple-staff-form { display: grid; gap: 16px; }
+.simple-staff-form__hint { margin-top: -6px; color: var(--muted); font-size: 14px; }
+.simple-staff-form .credential-preview { margin-bottom: 0; }

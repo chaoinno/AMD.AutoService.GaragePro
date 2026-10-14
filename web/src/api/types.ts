@@ -183,7 +183,14 @@ export type StaffDetail = {
   note: string | null
   pictureUrl: string | null
   isActive: boolean
-  account: { id: number; userName: string; isAdministrator: boolean; isActive: boolean }
+  account: {
+    id: number
+    userName: string
+    isAdministrator: boolean
+    isActive: boolean
+    /** อู่ที่สมัครเอง: รหัสผ่านเริ่มต้นที่ระบบสุ่มให้ — มีเฉพาะในคำตอบของการสร้างพนักงานครั้งเดียว (ห้ามเก็บ) */
+    initialPassword?: string
+  }
   sectorPositions: StaffSectorPosition[]
   createdDate: string | null
   lastUpdated: string | null
@@ -217,6 +224,15 @@ export type StaffInput = {
   additionalSectorIds: number[]
   userName?: string
   password?: string
+  /** อู่ที่สมัครเอง: บทบาทของพนักงาน (ชื่อ enum `UserRole` ของ backend) — ลูกค้าเดิมไม่ส่ง */
+  role?: StaffRoleName
+}
+
+export type StaffRoleName = 'Manager' | 'Technician' | 'Lead' | 'FrontDesk' | 'Office' | 'Cashier'
+
+/** ฟอร์มเพิ่มพนักงานแบบง่ายของอู่ที่สมัครเอง — server เติมเพศ/ตำแหน่ง/แผนกตามบทบาท และตั้งบัญชีผู้ใช้ให้ */
+export type StaffQuickInput = Pick<StaffInput, 'branchId' | 'firstName' | 'lastName' | 'phoneNumber1'> & {
+  role: StaffRoleName
 }
 
 export type StaffReferenceData = {
