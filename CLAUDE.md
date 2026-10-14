@@ -44,7 +44,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/09-technician-time-tracking.md](docs/09-technician-time-tracking.md) | จับเวลาช่างต่อจ๊อบ · สลับคัน · โหมดโฟกัสบนมือถือ — **เก็บเวลาทำแล้ว · รายงานประเมินยังไม่ได้ทำ** |
 | [docs/03-api-contract.md](docs/03-api-contract.md) §3/§11/§12 | **[เพิ่ม 2026-10-08]** endpoint เลขไมล์ · `handover/service-info` · `reports/vehicle-history` · `reports/service-due` |
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
-| [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) | **[ร่างเพื่อรีวิว 2026-10-13 · ยังไม่มีโค้ด]** ข้อเสนอ ServicePro แบบ "ทดลองใช้ด้วยตัวเอง": shard ใหม่ `sp1` + ฐาน `GarageSelfServe` (ตารางรูปร่างเหมือน Garage + `svc_*` + `sp_*`) · signup Google/อีเมล · จำกัด 30 วัน · กันอีเมลซ้ำ/ปลอม · ฟีเจอร์ล็อกที่ API · SEO/sitemap — **ระหว่างสำรวจพบสิ่งที่ต้องแก้ก่อนเปิดรับคนนอก (§9): `svc_Receipt.DocumentNo` unique ทั้งระบบแต่ counter ต่อสาขา (สาขาที่สองออกใบเสร็จแรกได้ 500) · `svc_Supplier`/`svc_CatalogCategory` ไม่มี scope สาขา · `/auth/login` ไม่มี rate limit · เว็บ production ไม่มี robots/sitemap/canonical และ 2 โดเมนเสิร์ฟเนื้อหาซ้ำ** |
+| [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · ยังไม่ได้ทดสอบกับฐานจริง]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -1770,6 +1770,47 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **วิธีทดสอบคู่ (ใช้ซ้ำได้)**: `codex exec --approve-for-me -C <scratch> ...` (config `approvals_reviewer="user"` ทำให้ `codex exec` ธรรมดาเปิดเว็บไม่ได้ —
     "Browser security policy blocked") · ผู้ใช้ login เว็บใน Chrome ของ codex เองครั้งแรก · แอป `flutter run -d <udid> --dart-define=API_BASE_URL=https://gpservice-api.garage-pro.net`
     · ภาพจาก MCP simulator screenshot อาจค้างเฟรมเก่า ใช้ `xcrun simctl io <udid> screenshot` แทน · ข้อความไทยที่วางผ่าน simulator clipboard เพี้ยน — ค้นด้วยตัวเลข
+
+- ✅ **[เพิ่ม 2026-10-14 · branch `feat/sp1-selfserve` — ยังไม่ merge main/ยังไม่ deploy] ServicePro Self-serve Trial (shard `sp1`)** — คำขอผู้ใช้ ·
+  วางแผนผ่าน plan mode (`docs/12`) แล้วให้ sub-agent (Opus 5.5) + codex CLI สร้างขนานกันเป็น work package ใน worktree แยก
+  · **สถาปัตยกรรม**: อู่ที่สมัครเอง = 1 สาขาใน shard `sp1` → ฐาน `GarageSelfServe` (instance เดียวกับ db2 · `COLLATE Thai_CI_AS`) มี 3 ส่วน:
+    ตาราง Garage-shape 16 ตาราง (DDL generate จาก schema จริง `deploy/selfserve/02-shadow-ddl.generated.sql`) + synonym 15 ตารางอ้างอิงไป `Garage.dbo` ·
+    `svc_*` จาก migration ชุดเดิม (`ServiceDbContext` เลือก connection ตาม `ICurrentUser.ShardKey` ผ่าน `ServiceDbConnectionResolver`) ·
+    `sp_*` 10 ตาราง (`SelfServeDbContext` + history `__EFMigrationsHistory_SelfServe`) · Dapper legacy 5 คลาสใช้ `LegacyShards:ConnectionStrings:sp1` โดยไม่แก้ SQL ·
+    โค้ดนอก HTTP (signup/งานรายวัน/CLI) ต้องใช้ `IShardScopeFactory.RunAsAsync(new ScopedCurrentUser(...))`
+  · **กฎที่ต้องรู้**: เจ้าของอู่เป็น Manager ผ่าน `svc_UserRoleOverride` — **ห้าม `IsAdministrator=1` ใน sp1** (admin เห็น/เปิดกะ/สลับได้ทุกสาขาใน shard) ·
+    username `SPnnnn.M01` (เจ้าของ) / `.Tnn` (ช่าง/หัวหน้าช่าง) / `.Snn` (อื่น) · เจ้าของ login ด้วยอีเมลได้ (`LoginIdentityResolver` → `sp_Account`) ·
+    รหัสผ่าน sp1 = PBKDF2 (`Pbkdf2PasswordHasher` — `PasswordMatches` รู้จัก hash และยังเทียบ plaintext ของ legacy ได้) ·
+    วันแพ็กเกจที่ `Branch.Start/EndPackageDate` เป็นเวลาไทย (ใช้ `BranchPackageDates` เสมอ) · `sp_*`/`svc_*` เป็น UTC ·
+    JWT มี claim `plan`/`plan_exp` · `AuthUser.plan`/`workspace` มีเฉพาะ sp1 (legacy ไม่มี) · `JobStateMachine` ไม่รับ `EventSource.System` → ข้อมูลตัวอย่างขับในนาม Web
+  · **บังคับที่ API**: `[RequireFeature]` (จัดซื้อ/สต็อก/POS/ใบกำกับ/รายงานขั้นสูง/ส่งออก/หลายสาขา — GET คลัง/ซัพพลายเออร์อ่านได้) · `PLAN_LIMIT_REACHED`
+    (พนักงาน 5 · สินค้า 200 · ลูกค้า 200 · จ๊อบ 100) · `TrialReadOnlyFilter` หลังหมดอายุ (GET ได้ · ยกเว้น `/auth` `/public` `/selfserve` `/notifications`) ·
+    login ตอน locked = `TRIAL_EXPIRED` · รายละเอียด endpoint/error code ที่ docs/03 §16
+  · **สมัคร**: อีเมล+OTP (verify ต้องส่งรหัสผ่านด้วย — ตรวจ OTP ก่อนรหัสผ่าน กันสวมรหัสและกันเดาอีเมลที่มีบัญชี) หรือ Google (`IGoogleIdTokenValidator` ใช้
+    OpenIdConnect เดิม) · กันซ้ำ/ปลอม: normalize Gmail (ตัดจุด/+tag) + `NormalizedEmail` unique ตลอดกาล · โดเมนชั่วคราว ~330 · MX (`DnsClient`) · Turnstile ·
+    honeypot · rate limit ต่อ IP แยกจากฟอร์มติดต่อ · `sp_SignupAttempt` · เปิดอู่แบบ resume ได้ (`WorkspaceProvisioner` + `ProvisionStep`) ·
+    ข้อมูลตัวอย่าง (`StarterDataService`: แคตตาล็อก 42 · เทมเพลต 2 · ช่าง 2 · ลูกค้า/รถ 2 · จ๊อบ 2) ลบได้ตาม ledger `sp_SampleEntity`
+  · **วงจรชีวิต**: `SelfServeDailyJob` (API · ปิดด้วย `SelfServe:Jobs:Enabled=false`) เตือน 7/1 วัน · หมดอายุวันที่ 30 → อ่านอย่างเดียว 90 วัน → ลบ
+    (`WorkspacePurger` เก็บ `NormalizedEmail`) · อู่ที่ convert แล้วลบเมื่อพ้น `PurgeAfter` · LINE ทีมขาย (`ISelfServeSalesNotifier`, `SelfServe:SalesLineGroupId`)
+  · **ผู้ดูแล**: `tools/spadmin` (list/show/extend/set-plan/suspend/purge/run-jobs/convert) — **`convert` ย้ายเฉพาะข้อมูลหลัก** ไปสาขา GaragePro ที่สร้างด้วย
+    GaragePro Admin ผ่าน service เดิม (พนักงานที่สร้างใหม่ฝั่ง db2 ได้ UserName=Password=รหัสพนักงาน ตาม path legacy — รายงานมีรหัสเข้าใช้ ต้องเก็บเป็นความลับ)
+  · **แก้ระบบเดิมพร้อมกัน (กระทบลูกค้าปัจจุบัน)**: เลขใบเสร็จ unique ต่อสาขา (migration `AddReceiptScope` — สาขาที่สองออกใบเสร็จแรกเคยได้ 500) ·
+    ซัพพลายเออร์/หมวดหมู่/คลังแยกสาขา (migration `ScopeMasterDataByBranch` backfill เป็น db2/227 — ตรวจข้อมูลจริงแล้วไม่มีแถวใช้ข้ามสาขา) + seed หมวด/คลังตั้งต้น ·
+    rate limit `/auth/login` (ต่อ IP + ล็อกต่อชื่อผู้ใช้ 10 ครั้ง/15 นาที) + `add-api-rate-limit.sh` (nginx real IP จาก Cloudflare — **ก่อนรันสคริปต์นี้ ASP.NET เห็น IP ของ Cloudflare**) ·
+    ปิดช่องสร้างกะให้สาขาอื่น (`AUTH_BRANCH_FORBIDDEN`)
+  · **เว็บ**: หน้าสาธารณะเป็น route จริง (`/features` `/pricing` `/mobile-app` `/about` `/contact` `/privacy` `/terms` `/signup`) + prerender (`entry-server.tsx`,
+    `scripts/prerender.mjs`, `dist/app.html` เป็น SPA fallback) + sitemap/robots + JSON-LD + og-image · แอประบบงานโหลดแยก (`AppRoutes` lazy) ·
+    แบนเนอร์ทดลองใช้/กุญแจเมนู/หน้าฟีเจอร์ล็อก/เช็คลิสต์เริ่มต้น/ลายน้ำเอกสาร (`body[data-plan=trial]`) · ฟอร์มพนักงานแบบย่อ + การ์ดรหัสผ่านครั้งเดียว ·
+    401 เก็บ `messageTh` ไว้แสดงหน้า login (`lib/loginNotice.ts`) · `PLAN_*`/`TRIAL_EXPIRED` ไม่ถูกนับเป็น forbidden · **privacy/terms ยังเป็น placeholder ต้องให้เจ้าของเติมก่อนเปิดใช้ Google OAuth**
+  · **มือถือ**: แบนเนอร์ทดลองใช้ · error แพ็กเกจไม่ logout · login รับอีเมล/`SPnnnn.Xnn` · เวอร์ชัน `1.1.0+3` (ยังไม่ build/ปล่อย)
+  · **deploy (ยังไม่ทำ)**: `deploy/selfserve/provision-selfserve-db.sh` (สร้างฐาน + login `gp_selfserve_app`/`gp_selfserve_migrate` + **GRANT SELECT 15 ตารางใน Garage**) ·
+    `deploy-production.sh` รัน migration 3 target เมื่อ env file มี `SelfServe__ConnectionString` · รับสมัครใหม่ปิดไว้จนกว่า `SELFSERVE_ENABLED=true` ·
+    คีย์ไม่บังคับ `Production:SelfServe:{Google,Turnstile,Email,SalesLineGroupId}` ใน user-secrets → bootstrap · `make-service-canonical.sh` (301 gpservice→service ต้อง `certbot --expand` ก่อน)
+  · ทดสอบแล้ว (2026-10-14 บน branch รวม): `dotnet build` 0 error · `dotnet test` **1107 ผ่าน / 16 ข้าม** (SQL integration ที่ต้องมีฐาน `GarageSelfServe_Dev`) ·
+    Web `tsc -b`/`vite build`/prerender ผ่าน · `node --test` **59** · Mobile `dart analyze` สะอาด · `flutter test` **118** · เบราว์เซอร์ (หน้าสาธารณะ 1440/375 ไม่มี hydration warning)
+  · **ยังไม่ได้ทดสอบกับฐาน/API จริงเลย** — ต้องสร้าง `GarageSelfServe_Dev` + รัน migration (รวม 2 ตัวของ ServiceDb ที่**มีผลกับ production ทันทีเพราะฐานร่วม**) แล้วเดิน E2E ตาม plan §6
+  · ข้อจำกัดที่รู้: อีเมลยังเป็น `LoggingEmailSender` (Production ปิดสมัครด้วยอีเมลจนกว่าจะตั้งผู้ให้บริการ) · nginx ยังไม่จำกัด `/auth/google` (ASP.NET จำกัดแล้ว) ·
+    ผู้ดูแลระบบถูกซ่อนจากรายชื่อ mention (เดิม) · ข้อความ LINE/อีเมลใช้ปี พ.ศ.
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
