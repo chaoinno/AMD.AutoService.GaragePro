@@ -7,6 +7,7 @@ import {
   useEffect,
   useId,
   useRef,
+  useState,
 } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
@@ -69,13 +70,15 @@ export function DialogTrigger({ onClick, ...props }: ComponentProps<'button'>) {
 
 export function DialogContent({ className, children, ...props }: ComponentProps<'div'>) {
   const { open, onOpenChange, titleId, descriptionId } = useDialogContext()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
   const contentRef = useRef<HTMLDivElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
   const onOpenChangeRef = useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
 
   useEffect(() => {
-    if (!open) return
+    if (!open || !mounted) return
     previousFocus.current = document.activeElement as HTMLElement | null
     document.body.classList.add('modal-open')
     const frame = window.requestAnimationFrame(() => {
@@ -95,9 +98,9 @@ export function DialogContent({ className, children, ...props }: ComponentProps<
       previousFocus.current?.focus()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on open/close, not on every onOpenChange identity change (avoids refocus/scroll-jump on unrelated re-renders)
-  }, [open])
+  }, [open, mounted])
 
-  if (!open) return null
+  if (!open || !mounted) return null
 
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Tab') return

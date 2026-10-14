@@ -100,6 +100,14 @@ fi
 
 curl --fail --silent --show-error --retry 3 --retry-delay 2 \
   https://gpservice-api.garage-pro.net/health >/dev/null
-curl --fail --silent --show-error --retry 3 --retry-delay 2 \
-  https://gpservice.garage-pro.net/healthz >/dev/null
+code=$(curl --silent --show-error --retry 3 --retry-delay 2 --output /dev/null --write-out '%{http_code}' \
+  https://service.garage-pro.net/healthz)
+[[ "$code" == "200" ]] || { echo "Canonical web healthz returned $code; expected 200." >&2; exit 1; }
+code=$(curl --silent --show-error --retry 3 --retry-delay 2 --output /dev/null --write-out '%{http_code}' \
+  https://gpservice.garage-pro.net/healthz)
+case "$code" in
+  301) echo "Legacy web hostname redirects to the canonical hostname." ;;
+  200) echo "Hint: install make-service-canonical.sh on the origin to redirect gpservice to service." ;;
+  *) echo "Legacy web healthz returned $code; expected 200 or 301." >&2; exit 1 ;;
+esac
 echo "Production deployment and public health checks passed."
