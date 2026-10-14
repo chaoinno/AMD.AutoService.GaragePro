@@ -3,6 +3,7 @@ using System.Text;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.SelfServe;
 using AMD.AutoService.GaragePro.Application.Work;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
@@ -38,7 +39,8 @@ public sealed class AuthService(
     ITokenIssuer tokens,
     IWorkIntervalHook workHook,
     ICurrentUser currentUser,
-    TimeProvider clock) : IAuthService
+    TimeProvider clock,
+    ILoginAttemptLimiter loginAttempts) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -49,11 +51,25 @@ public sealed class AuthService(
             return Result<LoginResultDto>.Fail("AUTH_MISSING_CREDENTIALS", "กรุณากรอกรหัสพนักงานและรหัสผ่าน");
 
         var shardKey = currentUser.ShardKey;
+
+        // [SECURITY] B3 — ต่อ username: ผิดครบแล้วปฏิเสธก่อนแตะ Garage DB (ไม่เสีย query และไม่เทียบรหัสผ่านเลย
+        // แม้คราวนี้จะพิมพ์ถูก ไม่งั้นการเดาต่อยังรู้ผลได้) · นับเฉพาะรหัสผิด/ไม่พบผู้ใช้ — เคสอื่นไม่ใช่การเดารหัสผ่าน
+        var attemptKey = LoginAttemptPolicy.KeyFor(shardKey, request.UserName);
+        if (await loginAttempts.IsBlockedAsync(attemptKey, ct))
+            return Result<LoginResultDto>.Fail(SelfServeErrors.AuthRateLimited(LoginAttemptPolicy.WindowSeconds));
+
         var user = await legacyUsers.FindByUserNameAsync(shardKey, request.UserName.Trim(), ct);
 
         // ข้อความเดียวกันทั้งกรณีไม่พบผู้ใช้และรหัสผิด — ไม่บอกใบ้ว่ามีรหัสพนักงานนี้อยู่จริง
+        // (นับทั้งสองกรณี — ถ้านับเฉพาะรหัสผิด การถูกบล็อกจะบอกใบ้ว่า username นี้มีอยู่จริง)
         if (user is null || !PasswordMatches(request.Password, user.StoredPassword))
+        {
+            await loginAttempts.RegisterFailureAsync(attemptKey, ct);
             return Result<LoginResultDto>.Fail("AUTH_INVALID_CREDENTIALS", "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+        }
+
+        // รหัสผ่านถูก = ไม่ใช่การเดา — ล้างตัวนับแม้จะไปติดเงื่อนไขอื่นข้างล่าง (ไม่ใช่พนักงาน/ไม่มีสาขา)
+        await loginAttempts.ResetAsync(attemptKey, ct);
 
         if (!user.IsStaff || user.StaffId is null)
             return Result<LoginResultDto>.Fail("AUTH_NOT_STAFF",
@@ -91,6 +107,12 @@ public sealed class AuthService(
         int branchId, CancellationToken ct = default)
     {
         var shardKey = currentUser.ShardKey;
+
+        // [SECURITY] B3 — เดิมขอกะของสาขาไหนใน shard ก็ได้ และสาขาที่ยังไม่มีกะถูกสร้างกะเริ่มต้นให้ทันที
+        // (ผู้ใช้สาขาหนึ่งเขียนข้อมูลลงสาขาอื่นได้) — ต้องตรวจก่อนอ่าน/สร้างอะไรทั้งสิ้น
+        if (!await CanUseBranchShiftsAsync(shardKey, branchId, ct))
+            return Result<IReadOnlyList<ShiftOptionDto>>.Fail(SelfServeErrors.AuthBranchForbidden());
+
         var shifts = await repository.GetShiftsAsync(shardKey, branchId, ct);
 
         // สาขาที่ยังไม่เคยตั้งกะ ให้ใช้ชุดเริ่มต้นแล้วบันทึกไว้ เพื่อให้เข้าใช้งานได้ทันที
@@ -114,6 +136,23 @@ public sealed class AuthService(
             .ToList();
 
         return Result<IReadOnlyList<ShiftOptionDto>>.Ok(options);
+    }
+
+    /// <summary>
+    /// สาขาของ token เข้าได้เสมอ (middleware ตรวจทุกคำขอแล้วว่ายังตรงกับ Staff.BranchId) · สาขาอื่นเฉพาะผู้ดูแลระบบ
+    /// และต้องอยู่ใน GetAccessibleBranchesAsync — กฎเดียวกับ OpenShiftAsync · สถานะ admin อ่านจาก Garage DB ใหม่
+    /// ไม่เชื่อ claim อย่างเดียว (claim ใช้แค่ข้ามการ query ของผู้ใช้ทั่วไป ซึ่งได้ผลเป็น "ไม่ได้" อยู่แล้ว)
+    /// </summary>
+    private async Task<bool> CanUseBranchShiftsAsync(string shardKey, int branchId, CancellationToken ct)
+    {
+        if (branchId > 0 && branchId == currentUser.BranchId) return true;
+        if (!currentUser.IsAdministrator) return false;
+
+        var user = await legacyUsers.FindByIdAsync(shardKey, currentUser.UserId, ct);
+        if (user is null) return false;
+
+        var allowed = await legacyUsers.GetAccessibleBranchesAsync(shardKey, user, ct);
+        return allowed.Any(b => b.BranchId == branchId);
     }
 
     public async Task<Result<ShiftSessionDto>> OpenShiftAsync(

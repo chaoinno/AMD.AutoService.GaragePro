@@ -116,6 +116,7 @@ public static class DependencyInjection
         services.AddScoped<ILegacyUserReader, LegacyUserReader>();
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<ILoginAttemptLimiter, AMD.AutoService.GaragePro.Infrastructure.Auth.MemoryLoginAttemptLimiter>();
 
         services.AddScoped<IAttachmentRepository, AttachmentRepository>();
         services.AddSingleton<IAttachmentStorage, FtpAttachmentStorage>();

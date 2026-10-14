@@ -140,46 +140,8 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
     o.KnownProxies.Clear();
 });
 
-// [SECURITY] ฟอร์มติดต่อเป็น anonymous — ต่อ IP 5 ครั้ง/10 นาที + เพดานรวม 60 ครั้ง/ชั่วโมง
-// กันคนยิงสแปมเข้ากลุ่ม LINE และกันโควตา push message ของ LINE OA หมด
-builder.Services.AddRateLimiter(o =>
-{
-    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    o.AddPolicy("purchasing-pin", context =>
-    {
-        var user = context.RequestServices.GetRequiredService<ICurrentUser>();
-        return RateLimitPartition.GetFixedWindowLimiter($"{user.ShardKey}:{user.BranchId}:{user.UserId}", _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true
-        });
-    });
-    o.AddPolicy(PublicContactController.RateLimitPolicy, context =>
-        RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(10), QueueLimit = 0 }));
-    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
-        context.Request.Path.StartsWithSegments("/api/v1/public")
-            ? RateLimitPartition.GetFixedWindowLimiter("public-global",
-                _ => new FixedWindowRateLimiterOptions { PermitLimit = 60, Window = TimeSpan.FromHours(1), QueueLimit = 0 })
-            : RateLimitPartition.GetNoLimiter("authenticated"));
-    o.OnRejected = async (context, ct) =>
-    {
-        var isPurchasingPin = context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>()?.PolicyName == "purchasing-pin";
-        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        context.HttpContext.Response.ContentType = "application/json; charset=utf-8";
-        await context.HttpContext.Response.WriteAsJsonAsync(new
-        {
-            success = false,
-            data = (object?)null,
-            error = new
-            {
-                code = isPurchasingPin ? "PURCHASING_PIN_RATE_LIMIT" : "RATE_LIMITED",
-                messageTh = isPurchasingPin ? "ลองยืนยัน PIN หลายครั้งเกินไป กรุณารอ 1 นาทีแล้วลองใหม่" : "ส่งข้อมูลถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อทาง LINE @garagepro / โทร 090-996-6446"
-            },
-            traceId = context.HttpContext.TraceIdentifier
-        }, ct);
-    };
-});
+// [SECURITY] rate limit ทั้งหมด (ฟอร์มติดต่อ · PIN จัดซื้อ · login · signup) — ดู RateLimiting/RateLimitingSetup.cs
+builder.Services.AddGarageProRateLimiting();
 
 var app = builder.Build();
 

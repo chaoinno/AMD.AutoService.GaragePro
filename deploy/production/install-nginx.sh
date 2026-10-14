@@ -12,6 +12,10 @@ fi
 command -v sudo >/dev/null || { echo "sudo is required" >&2; exit 1; }
 command -v certbot >/dev/null || { echo "certbot is not installed" >&2; exit 1; }
 
+# zone gp_login/gp_signup + real_ip จาก Cloudflare — ต้องมาก่อน nginx-api.conf ที่อ้าง zone ไม่งั้น nginx -t ไม่ผ่าน
+# (เครื่องที่ติดตั้งไปแล้วใช้ add-api-rate-limit.sh แทน)
+sudo install -m 0644 "$DEPLOY_DIR/nginx-ratelimit.conf" \
+  /etc/nginx/conf.d/garagepro-service-ratelimit.conf
 sudo install -m 0644 "$DEPLOY_DIR/nginx-web.conf" \
   /etc/nginx/sites-available/gpservice.garage-pro.net
 sudo install -m 0644 "$DEPLOY_DIR/nginx-api.conf" \

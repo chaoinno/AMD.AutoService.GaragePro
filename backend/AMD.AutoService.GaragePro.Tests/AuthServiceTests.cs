@@ -4,6 +4,7 @@ using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
+using AMD.AutoService.GaragePro.Infrastructure.Auth;
 using FluentAssertions;
 
 namespace AMD.AutoService.GaragePro.Tests;
@@ -273,16 +274,181 @@ public sealed class AuthServiceTests
         tokens.IssuedBranchId.Should().BeNull();
     }
 
+    // ---------- B3: จำกัดการเดารหัสผ่านต่อ username ----------
+
+    [Fact]
+    public async Task Login_is_refused_while_the_username_is_blocked_without_touching_the_legacy_reader()
+    {
+        var reader = new StubLegacyUserReader(ActiveUser(branchId: 105),
+            [new LegacyBranchSummaryDto(105, "อู่ตงเจริญยนต์", null, null)]);
+        var limiter = new FakeLoginAttemptLimiter();
+        limiter.Blocked.Add("db2:employee01");
+        var tokens = new CapturingTokenIssuer();
+        var service = CreateService(reader, tokens, limiter: limiter);
+
+        // ตัวพิมพ์/ช่องว่างต่างกันต้องชนตัวนับเดียวกัน ไม่งั้นสลับ "Employee01" ได้ตัวนับใหม่ทุกครั้ง
+        var result = await service.LoginAsync(new LoginRequest("  Employee01 ", "secret"));
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("AUTH_RATE_LIMITED");
+        result.Error.MessageTh.Should().Contain("15 นาที");
+        reader.UserNameLookups.Should().Be(0, "ต้องปฏิเสธก่อนแตะ Garage DB");
+        tokens.IssuedBranchId.Should().BeNull();
+        limiter.Failures.Should().BeEmpty("คำขอที่ถูกบล็อกไม่ต่ออายุการบล็อก");
+    }
+
+    [Fact]
+    public async Task Wrong_password_registers_a_failure_for_the_normalized_username()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var service = CreateService(new StubLegacyUserReader(ActiveUser(branchId: 105), []),
+            new CapturingTokenIssuer(), limiter: limiter);
+
+        var result = await service.LoginAsync(new LoginRequest("EMPLOYEE01", "wrong"));
+
+        result.Error!.Code.Should().Be("AUTH_INVALID_CREDENTIALS");
+        limiter.Failures.Should().Equal("db2:employee01");
+        limiter.Resets.Should().BeEmpty();
+    }
+
+    // ไม่พบผู้ใช้ต้องนับเหมือนรหัสผิด — ถ้าไม่นับ การถูกบล็อกจะบอกใบ้ว่า username ไหนมีอยู่จริง
+    [Fact]
+    public async Task Unknown_username_registers_a_failure_too()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var service = CreateService(new StubLegacyUserReader(null, []), new CapturingTokenIssuer(), limiter: limiter);
+
+        await service.LoginAsync(new LoginRequest("ghost", "whatever"));
+
+        limiter.Failures.Should().Equal("db2:ghost");
+    }
+
+    [Fact]
+    public async Task Successful_login_resets_the_failure_counter()
+    {
+        var limiter = new FakeLoginAttemptLimiter();
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105),
+                [new LegacyBranchSummaryDto(105, "อู่ตงเจริญยนต์", null, null)]),
+            new CapturingTokenIssuer(), limiter: limiter);
+
+        var result = await service.LoginAsync(new LoginRequest("employee01", "secret"));
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        limiter.Resets.Should().Equal("db2:employee01");
+        limiter.Failures.Should().BeEmpty();
+    }
+
+    // ต่อจากตัวนับจริง: ผิด 10 ครั้ง → ครั้งที่ 11 ถูกปฏิเสธแม้รหัสจะถูก (แผน §6 #12)
+    [Fact]
+    public async Task Eleventh_attempt_is_rate_limited_even_with_the_right_password()
+    {
+        using var limiter = new MemoryLoginAttemptLimiter(TimeProvider.System);
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105),
+                [new LegacyBranchSummaryDto(105, "อู่ตงเจริญยนต์", null, null)]),
+            new CapturingTokenIssuer(), limiter: limiter);
+
+        for (var i = 0; i < 10; i++)
+            (await service.LoginAsync(new LoginRequest("employee01", "wrong"))).Error!.Code
+                .Should().Be("AUTH_INVALID_CREDENTIALS");
+
+        var eleventh = await service.LoginAsync(new LoginRequest("employee01", "secret"));
+
+        eleventh.Error!.Code.Should().Be("AUTH_RATE_LIMITED");
+    }
+
+    // ---------- B3: กะของสาขา ----------
+
+    [Fact]
+    public async Task Shifts_of_another_branch_are_forbidden_and_nothing_is_created()
+    {
+        var repository = new StubAuthRepository();
+        var service = CreateService(new StubLegacyUserReader(ActiveUser(branchId: 105), []),
+            new CapturingTokenIssuer(), new StubCurrentUser(userId: 7, branchId: 105), repository: repository);
+
+        var result = await service.GetShiftsAsync(227);
+
+        result.Success.Should().BeFalse();
+        result.Error!.Code.Should().Be("AUTH_BRANCH_FORBIDDEN");
+        repository.ShiftQueries.Should().Be(0);
+        repository.AddedShifts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Shifts_of_the_token_branch_are_still_created_on_first_use()
+    {
+        var repository = new StubAuthRepository();
+        var service = CreateService(new StubLegacyUserReader(ActiveUser(branchId: 105), []),
+            new CapturingTokenIssuer(), new StubCurrentUser(userId: 7, branchId: 105), repository: repository);
+
+        var result = await service.GetShiftsAsync(105);
+
+        result.Success.Should().BeTrue(result.Error?.MessageTh);
+        result.Data.Should().HaveCount(3);
+        repository.AddedShifts.Should().HaveCount(3).And.OnlyContain(s => s.LegacyBranchId == 105);
+    }
+
+    [Theory]
+    [InlineData(227, true)]
+    [InlineData(300, false)]
+    public async Task Administrators_get_shifts_only_for_branches_they_can_access(int branchId, bool allowed)
+    {
+        var repository = new StubAuthRepository();
+        var service = CreateService(
+            new StubLegacyUserReader(Admin(userId: 7, branchId: 105),
+            [
+                new LegacyBranchSummaryDto(105, "อู่สาขาหนึ่ง", null, null),
+                new LegacyBranchSummaryDto(227, "อู่สาขาสอง", null, null),
+            ]),
+            new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager, isAdministrator: true),
+            repository: repository);
+
+        var result = await service.GetShiftsAsync(branchId);
+
+        result.Success.Should().Be(allowed, result.Error?.MessageTh);
+        if (allowed)
+        {
+            repository.AddedShifts.Should().HaveCount(3).And.OnlyContain(s => s.LegacyBranchId == branchId);
+        }
+        else
+        {
+            result.Error!.Code.Should().Be("AUTH_BRANCH_FORBIDDEN");
+            repository.AddedShifts.Should().BeEmpty();
+        }
+    }
+
+    // claim admin ค้างหลังถูกถอดสิทธิ์ — GetAccessibleBranchesAsync ของผู้ใช้ทั่วไปคืนแค่สาขาตัวเอง
+    [Fact]
+    public async Task Stale_admin_claim_cannot_reach_a_branch_the_reader_no_longer_grants()
+    {
+        var repository = new StubAuthRepository();
+        var service = CreateService(
+            new StubLegacyUserReader(ActiveUser(branchId: 105), [new LegacyBranchSummaryDto(105, "อู่สาขาหนึ่ง", null, null)]),
+            new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105, isAdministrator: true),
+            repository: repository);
+
+        var result = await service.GetShiftsAsync(227);
+
+        result.Error!.Code.Should().Be("AUTH_BRANCH_FORBIDDEN");
+        repository.AddedShifts.Should().BeEmpty();
+    }
+
     private static AuthService CreateService(
         ILegacyUserReader users,
         ITokenIssuer tokens,
         ICurrentUser? currentUser = null,
         FakeWorkIntervalHook? workHook = null,
         ShiftSession? session = null,
-        StubQuotationRepository? quotations = null) =>
-        new(users, new StubAuthRepository(session), quotations ?? new StubQuotationRepository(), tokens,
+        StubQuotationRepository? quotations = null,
+        ILoginAttemptLimiter? limiter = null,
+        StubAuthRepository? repository = null) =>
+        new(users, repository ?? new StubAuthRepository(session), quotations ?? new StubQuotationRepository(), tokens,
             workHook ?? new FakeWorkIntervalHook(),
-            currentUser ?? new StubCurrentUser(), TimeProvider.System);
+            currentUser ?? new StubCurrentUser(), TimeProvider.System,
+            limiter ?? new FakeLoginAttemptLimiter());
 
     private static UserRole RoleOf(LegacyUserDto user) =>
         RoleMapper.Resolve(user.IsAdministrator, user.PositionName, user.SectorName, user.DepartmentName);
@@ -337,8 +503,14 @@ public sealed class AuthServiceTests
         LegacyUserDto? user,
         IReadOnlyList<LegacyBranchSummaryDto> branches) : ILegacyUserReader
     {
+        public int UserNameLookups { get; private set; }
+
         public Task<LegacyUserDto?> FindByUserNameAsync(
-            string shardKey, string userName, CancellationToken ct = default) => Task.FromResult(user);
+            string shardKey, string userName, CancellationToken ct = default)
+        {
+            UserNameLookups++;
+            return Task.FromResult(user);
+        }
 
         public Task<LegacyUserDto?> FindByIdAsync(
             string shardKey, long userId, CancellationToken ct = default) => Task.FromResult(user);
@@ -373,7 +545,7 @@ public sealed class AuthServiceTests
 
     private sealed class StubCurrentUser(
         long userId = 0, int branchId = 0, UserRole role = UserRole.FrontDesk,
-        EventSource source = EventSource.Web) : ICurrentUser
+        EventSource source = EventSource.Web, bool isAdministrator = false) : ICurrentUser
     {
         public long UserId => userId;
         public string UserName => "";
@@ -381,16 +553,26 @@ public sealed class AuthServiceTests
         public string ShardKey => "db2";
         public int BranchId => branchId;
         public EventSource Source => source;
-        public bool IsAdministrator => false;
+        public bool IsAdministrator => isAdministrator;
         public Guid? SessionId => null;
     }
 
     private sealed class StubAuthRepository(ShiftSession? session = null) : IAuthRepository
     {
-        public Task<IReadOnlyList<Shift>> GetShiftsAsync(string shardKey, int branchId, CancellationToken ct = default) =>
-            Task.FromResult<IReadOnlyList<Shift>>([]);
+        public int ShiftQueries { get; private set; }
+        public List<Shift> AddedShifts { get; } = [];
+
+        public Task<IReadOnlyList<Shift>> GetShiftsAsync(string shardKey, int branchId, CancellationToken ct = default)
+        {
+            ShiftQueries++;
+            return Task.FromResult<IReadOnlyList<Shift>>([]);
+        }
         public Task<Shift?> GetShiftAsync(Guid shiftId, CancellationToken ct = default) => Task.FromResult<Shift?>(null);
-        public Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default) => Task.CompletedTask;
+        public Task AddShiftsAsync(IEnumerable<Shift> shifts, CancellationToken ct = default)
+        {
+            AddedShifts.AddRange(shifts);
+            return Task.CompletedTask;
+        }
         public Task<ShiftSession?> GetSessionAsync(Guid sessionId, CancellationToken ct = default) => Task.FromResult(session);
         public Task AddSessionAsync(ShiftSession session, CancellationToken ct = default) => Task.CompletedTask;
         public Task CloseOpenSessionsAsync(string shardKey, long userId, DateTime closedAt, CancellationToken ct = default) => Task.CompletedTask;
@@ -399,6 +581,27 @@ public sealed class AuthServiceTests
         public Task<BranchWorkload> GetBranchWorkloadAsync(string shardKey, int branchId, CancellationToken ct = default) =>
             Task.FromResult(new BranchWorkload(0, 0));
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
+    }
+
+    private sealed class FakeLoginAttemptLimiter : ILoginAttemptLimiter
+    {
+        public HashSet<string> Blocked { get; } = [];
+        public List<string> Failures { get; } = [];
+        public List<string> Resets { get; } = [];
+
+        public Task<bool> IsBlockedAsync(string key, CancellationToken ct = default) => Task.FromResult(Blocked.Contains(key));
+
+        public Task RegisterFailureAsync(string key, CancellationToken ct = default)
+        {
+            Failures.Add(key);
+            return Task.CompletedTask;
+        }
+
+        public Task ResetAsync(string key, CancellationToken ct = default)
+        {
+            Resets.Add(key);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class StubQuotationRepository : IQuotationRepository
