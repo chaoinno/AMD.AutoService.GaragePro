@@ -3,11 +3,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../api/client.dart';
+import '../../app/navigation.dart';
 import '../../core/tokens.dart';
 import '../../widgets/common.dart';
+import '../../widgets/trial_banner.dart';
 
-/// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User)
+/// เข้าสู่ระบบด้วยบัญชีเดิมใน Garage DB (dbo.User) หรือบัญชีของอู่ที่สมัครเอง
 /// username ไม่ได้จำกัดว่าต้องเป็นตัวเลขเสมอไป (เว็บก็รับข้อความทั่วไปแบบนี้อยู่แล้วใน LoginPage.tsx)
+/// · อู่ที่สมัครเอง: เจ้าของใช้อีเมล · พนักงานใช้รหัสที่เจ้าของอู่สร้าง (`SP1042.T01`) — server แยกเองจากรูปแบบ
+///   แอปส่ง endpoint/ฟิลด์เดิมทุกอย่าง แอปรุ่นที่อยู่บน store จึงเข้าระบบได้โดยไม่ต้องแก้
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -24,6 +28,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscure = true;
   String? _errorTh;
   String? _errorTrace;
+
+  /// อู่ถูกปิดการใช้งานหลังหมดช่วงทดลองใช้ (TRIAL_EXPIRED ที่ /auth/login) — บอกช่องทางติดต่อฝ่ายขายด้วย
+  bool _trialLocked = false;
 
   @override
   void dispose() {
@@ -69,32 +76,41 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                   color: T.text,
                                   height: 1.5)),
                           const SizedBox(height: 4),
-                          const Text('ใช้รหัสพนักงานและรหัสผ่านเดิมของอู่',
+                          const Text(
+                              'ใช้รหัสพนักงาน · อู่ที่สมัครเอง: อีเมลเจ้าของ หรือรหัสจากเจ้าของอู่ (เช่น SP1042.T01)',
                               style: TextStyle(fontSize: 14, color: T.muted, height: 1.65)),
                           const SizedBox(height: T.s24),
 
                           if (_errorTh != null) ...[
                             InfoBanner(
-                              icon: Icons.error_outline,
+                              icon: _trialLocked ? Icons.lock_outline : Icons.error_outline,
                               title: 'เข้าสู่ระบบไม่สำเร็จ',
                               body: _errorTrace == null
                                   ? _errorTh
                                   : '$_errorTh\nรหัสอ้างอิง $_errorTrace',
-                              tone: StateTone.error,
+                              // ไม่ใช่ความผิดของผู้กรอก — โทนเตือน ไม่ใช่แดง
+                              tone: _trialLocked ? StateTone.warn : StateTone.error,
                             ),
+                            if (_trialLocked) ...[
+                              const SizedBox(height: T.s8),
+                              const _SalesContact(),
+                            ],
                             const SizedBox(height: T.s16),
                           ],
 
-                          _label('รหัสพนักงาน'),
+                          _label('รหัสพนักงานหรืออีเมล'),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _userNameController,
                             enabled: !_submitting,
                             keyboardType: TextInputType.text,
+                            // iOS แก้คำอัตโนมัติจะทำให้ "SP1042.T01"/อีเมล เพี้ยนก่อนส่ง
+                            autocorrect: false,
                             textInputAction: TextInputAction.next,
                             onSubmitted: (_) => _passwordFocus.requestFocus(),
                             autofillHints: const [AutofillHints.username],
-                            decoration: _decoration('กรอกรหัสพนักงาน', Icons.badge_outlined),
+                            decoration:
+                                _decoration('กรอกรหัสพนักงานหรืออีเมล', Icons.badge_outlined),
                             style: const TextStyle(fontSize: 17, height: 1.5),
                           ),
                           const SizedBox(height: T.s16),
@@ -191,8 +207,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     if (userName.isEmpty || password.isEmpty) {
       setState(() {
-        _errorTh = 'กรุณากรอกรหัสพนักงานและรหัสผ่าน';
+        _errorTh = 'กรุณากรอกรหัสพนักงาน (หรืออีเมล) และรหัสผ่าน';
         _errorTrace = null;
+        _trialLocked = false;
       });
       return;
     }
@@ -201,6 +218,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _submitting = true;
       _errorTh = null;
       _errorTrace = null;
+      _trialLocked = false;
     });
 
     try {
@@ -213,12 +231,43 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         setState(() {
           _errorTh = e.messageTh;
           _errorTrace = e.traceId;
+          _trialLocked = e.isTrialExpired;
         });
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
+}
+
+/// ช่องทางติดต่อฝ่ายขายเมื่ออู่ถูกปิดการใช้งาน — แอปไม่มีตัวเปิดลิงก์ภายนอก (ไม่มี url_launcher)
+/// จึงให้คัดลอก ID ไปค้นใน LINE เองแทน
+class _SalesContact extends StatelessWidget {
+  const _SalesContact();
+
+  static const _lineId = '@garagepro';
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          const Icon(Icons.chat_bubble_outline, size: 18, color: T.navy700),
+          const SizedBox(width: T.s8),
+          const Expanded(
+            child: Text(salesLineContact,
+                style: TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: T.navy700, height: 1.6)),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(const ClipboardData(text: _lineId));
+              showAppMessage('คัดลอก $_lineId แล้ว — เปิด LINE แล้วค้นหาเพื่อนด้วย ID นี้');
+            },
+            style: TextButton.styleFrom(minimumSize: const Size(T.touchMin, T.touchMin)),
+            icon: const Icon(Icons.copy, size: 16),
+            label: const Text('คัดลอก ID'),
+          ),
+        ],
+      );
 }
 
 class _Brand extends StatelessWidget {

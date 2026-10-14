@@ -18,6 +18,18 @@ class ApiException implements Exception {
   /// ยังไม่ได้เลือกสาขา/กะ
   bool get requiresShift => code == 'AUTH_SHIFT_REQUIRED';
 
+  // แพ็กเกจของอู่ที่สมัครเอง (403/403/422) — **ไม่ใช่เหตุให้ออกจากระบบ** ทั้งสามตัว
+  // (`_notifyAuthFailure` ดูแค่ AUTH_REQUIRED/AUTH_SHIFT_REQUIRED) แสดง messageTh ของ server ตามทางเดิมของแต่ละหน้า
+
+  /// ช่วงทดลองใช้จบแล้ว: คำขอเขียนถูกปฏิเสธ (อ่านได้ตามปกติ) · ที่ /auth/login = อู่ถูกปิดการใช้งาน
+  bool get isTrialExpired => code == 'TRIAL_EXPIRED';
+
+  /// ฟีเจอร์นี้ไม่อยู่ในแพ็กเกจของอู่
+  bool get isPlanLocked => code == 'PLAN_FEATURE_LOCKED';
+
+  /// ครบจำนวนที่แพ็กเกจรองรับ (พนักงาน/สินค้า/ลูกค้า/จ๊อบ)
+  bool get isPlanLimit => code == 'PLAN_LIMIT_REACHED';
+
   @override
   String toString() => '$code: $messageTh';
 }

@@ -11,7 +11,9 @@ class AuthApi {
     return LoginResult.fromJson(data);
   }
 
-  /// ใช้ "เคาะประตู" ให้ server ตรวจว่าบัญชียังใช้งานได้ — ไม่ได้ใช้ข้อมูลที่ตอบกลับ
+  /// ใช้ "เคาะประตู" ให้ server ตรวจว่าบัญชียังใช้งานได้ + อ่านแพ็กเกจล่าสุดของอู่กลับมา
   /// ถ้าถูกตัดสิทธิ์ ApiClient จะล้างเซสชันให้เองจาก AUTH_REQUIRED (ดู SessionGuard)
-  Future<void> ping() => _c.get<Object?>('/auth/me');
+  /// [MeResult.fromJson] ไม่โยน exception — คำตอบรูปร่างแปลกได้แค่ "ไม่มีแพ็กเกจ"
+  Future<MeResult> ping() async =>
+      MeResult.fromJson(await _c.get<Object?>('/auth/me'));
 }

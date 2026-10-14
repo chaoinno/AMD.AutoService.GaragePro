@@ -7,6 +7,7 @@ import '../../app/routes.dart';
 import '../../core/format.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
+import '../../models/auth.dart';
 import '../../models/reports.dart';
 import '../../widgets/common.dart';
 import 'widgets/report_bar.dart';
@@ -26,12 +27,19 @@ final stockReportProvider =
 
 /// รายงานอ่านอย่างเดียวบนมือถือ — 4 มุมมองเดียวกับเว็บ
 /// สิทธิ์ตรงกับ ReportsService (ผู้จัดการ/ธุรการ) และต้นทุน/กำไรถูก strip ที่ server อยู่แล้ว
+///
+/// [BIZ] แพ็กเกจทดลองใช้: "วันนี้" (dashboard) เปิด ส่วนอีก 3 แท็บเป็นรายงานขั้นสูง (`advancedReports` —
+/// ตรงกับ `RequireFeature` ที่ ReportsController และ registry ของเว็บ) จึง**คงแท็บรายงานไว้** ไม่ซ่อนทั้งแท็บ
+/// แท็บที่ล็อกมีไอคอนกุญแจบอกล่วงหน้า และเมื่อ server ตอบ PLAN_FEATURE_LOCKED แสดง messageTh ของ server
+/// (แอปไม่ตัดสินสิทธิ์เอง — ยิงคำขอตามปกติ ให้ server เป็นผู้ตอบ)
 class ReportsPage extends ConsumerWidget {
   const ReportsPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final role = AppRole.parse(ref.watch(sessionProvider)?.user.role);
+    final session = ref.watch(sessionProvider);
+    final role = AppRole.parse(session?.user.role);
+    final advancedLocked = session?.user.plan?.hasFeature(PlanInfo.advancedReports) == false;
 
     if (!role.canSeeReports) {
       return Scaffold(
@@ -51,18 +59,18 @@ class ReportsPage extends ConsumerWidget {
         appBar: AppBar(
           title: const Text('รายงาน'),
           actions: const [NotificationBell()],
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             indicatorColor: Colors.white,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            labelStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            labelStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
             tabs: [
-              Tab(text: 'วันนี้'),
-              Tab(text: 'รอบเวลา'),
-              Tab(text: 'ยอดขาย'),
-              Tab(text: 'สต็อก'),
+              const Tab(text: 'วันนี้'),
+              _ReportTab('รอบเวลา', locked: advancedLocked),
+              _ReportTab('ยอดขาย', locked: advancedLocked),
+              _ReportTab('สต็อก', locked: advancedLocked),
             ],
           ),
         ),
@@ -88,8 +96,7 @@ class _DashboardTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          StateBlock.fromError(e, onRetry: () => ref.invalidate(dashboardReportProvider)),
+      error: (e, _) => _reportError(e, onRetry: () => ref.invalidate(dashboardReportProvider)),
       data: (report) {
         final maxCount = report.jobsByStatus
             .fold<int>(0, (m, s) => s.count > m ? s.count : m)
@@ -175,8 +182,7 @@ class _CycleTimeTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          StateBlock.fromError(e, onRetry: () => ref.invalidate(cycleTimeReportProvider)),
+      error: (e, _) => _reportError(e, onRetry: () => ref.invalidate(cycleTimeReportProvider)),
       data: (report) {
         final maxHours = report.averageDurationByStatus
             .fold<double>(0, (m, s) => s.averageHours > m ? s.averageHours : m);
@@ -262,8 +268,7 @@ class _SalesMarginTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) =>
-          StateBlock.fromError(e, onRetry: () => ref.invalidate(salesMarginReportProvider)),
+      error: (e, _) => _reportError(e, onRetry: () => ref.invalidate(salesMarginReportProvider)),
       data: (report) {
         final maxRevenue =
             report.byTechnician.fold<double>(0, (m, t) => t.netAmount > m ? t.netAmount : m);
@@ -349,7 +354,7 @@ class _StockTab extends ConsumerWidget {
 
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => StateBlock.fromError(e, onRetry: () => ref.invalidate(stockReportProvider)),
+      error: (e, _) => _reportError(e, onRetry: () => ref.invalidate(stockReportProvider)),
       data: (report) {
         final maxBucket =
             report.agingBuckets.fold<double>(0, (m, b) => b.value > m ? b.value : m);
@@ -408,6 +413,51 @@ class _StockTab extends ConsumerWidget {
       },
     );
   }
+}
+
+/// ป้ายแท็บรายงาน — แท็บที่แพ็กเกจไม่รวมมีไอคอนกุญแจนำหน้า ([UI] ไม่สื่อด้วยสีอย่างเดียว)
+class _ReportTab extends StatelessWidget {
+  const _ReportTab(this.label, {required this.locked});
+
+  final String label;
+  final bool locked;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!locked) return Tab(text: label);
+    return Tab(
+      child: Semantics(
+        label: '$label (ไม่รวมในแพ็กเกจปัจจุบัน)',
+        excludeSemantics: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock_outline, size: 16),
+            const SizedBox(width: 4),
+            Text(label),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// error ของแท็บรายงาน — PLAN_FEATURE_LOCKED ไม่ใช่ "ทำรายการไม่สำเร็จ" ที่ลองใหม่แล้วจะหาย:
+/// แสดงเป็นกุญแจโทนเตือน พร้อม messageTh ของ server (บอกช่องทางติดต่อไว้แล้ว) · error อื่นใช้แบบเดิม
+Widget _reportError(Object error, {required VoidCallback onRetry}) {
+  if (error is ApiException && error.isPlanLocked) {
+    return StateBlock(
+      icon: Icons.lock_outline,
+      title: 'รายงานนี้ไม่รวมในแพ็กเกจปัจจุบัน',
+      body: error.messageTh,
+      traceId: error.traceId,
+      tone: StateTone.warn,
+      // ยังให้ลองใหม่ได้ — หลังติดต่อฝ่ายขายแล้วแพ็กเกจเปลี่ยน ไม่ต้องออกจากหน้า
+      actionLabel: 'ตรวจสอบอีกครั้ง',
+      onAction: onRetry,
+    );
+  }
+  return StateBlock.fromError(error, onRetry: onRetry);
 }
 
 Widget _sectionTitle(String text) => Padding(

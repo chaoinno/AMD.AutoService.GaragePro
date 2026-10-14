@@ -16,6 +16,9 @@ import '../../api/client.dart';
 ///
 /// ไม่ต้องจัดการผลลัพธ์เอง: 401 `AUTH_REQUIRED` ถูก `_handleAuthFailure` ใน api/client.dart รับไป
 /// ล้างเซสชัน + แสดงเหตุผลจาก server · error อื่น (เน็ตหลุด/server ล่ม) เงียบไว้ — ไม่ใช่เหตุให้ออกจากระบบ
+///
+/// ตอบสำเร็จ = เก็บแพ็กเกจ/อู่ล่าสุดลงเซสชัน (อู่ที่สมัครเอง) — แถบทดลองใช้จึงเปลี่ยนเป็น "อ่านอย่างเดียว"
+/// ภายใน 5 นาที/ทันทีที่กลับมาจาก background โดยไม่ต้องเข้าสู่ระบบใหม่ · ลูกค้าเดิมไม่มีแพ็กเกจ = null ตามเดิม
 class SessionGuard extends ConsumerStatefulWidget {
   const SessionGuard({super.key, required this.child});
 
@@ -72,10 +75,15 @@ class _SessionGuardState extends ConsumerState<SessionGuard> {
   }
 
   Future<void> _check() async {
-    if (_checking || ref.read(sessionProvider) == null) return;
+    final token = ref.read(sessionProvider)?.accessToken;
+    if (_checking || token == null) return;
     _checking = true;
     try {
-      await ref.read(authApiProvider).ping();
+      final me = await ref.read(authApiProvider).ping();
+      if (!mounted) return;
+      await ref
+          .read(sessionProvider.notifier)
+          .updatePlan(me.plan, me.workspace, expectedToken: token);
     } catch (_) {
       // ดูคอมเมนต์ของคลาส — 401 ถูกจัดการที่ ApiClient แล้ว ที่เหลือไม่ใช่เหตุให้ออกจากระบบ
     } finally {
