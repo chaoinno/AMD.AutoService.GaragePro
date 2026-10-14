@@ -6,8 +6,9 @@ public class Warehouse
     public Guid Id { get; set; } = Guid.NewGuid();
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string? LegacyShardKey { get; set; }
-    public int? LegacyBranchId { get; set; }
+    // [BIZ] เดิม nullable — แถวที่ไม่มีสาขาไม่มีใครมองเห็นอยู่แล้ว (ทุก query กรองสาขา) บังคับ NOT NULL ตั้งแต่ ScopeMasterDataByBranch
+    public string LegacyShardKey { get; set; } = string.Empty;
+    public int LegacyBranchId { get; set; }
     public string? Address { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

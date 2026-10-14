@@ -7,10 +7,18 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence;
 
 public sealed class MasterDataRepository(ServiceDbContext db) : IMasterDataRepository
 {
+    // [SECURITY] ทุก query ของซัพพลายเออร์/คลัง/หมวดหมู่เริ่มจาก scope ของสาขา — id ของสาขาอื่นจึงเท่ากับ "ไม่พบ"
+    private IQueryable<Supplier> Suppliers(string shardKey, int branchId) =>
+        db.Suppliers.Where(x => x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId);
+    private IQueryable<Warehouse> Warehouses(string shardKey, int branchId) =>
+        db.Warehouses.Where(x => x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId);
+    private IQueryable<CatalogCategory> Categories(string shardKey, int branchId) =>
+        db.CatalogCategories.Where(x => x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId);
+
     public async Task<IReadOnlyList<Supplier>> SearchSuppliersAsync(
-        string? keyword, bool includeInactive, CancellationToken ct = default)
+        string shardKey, int branchId, string? keyword, bool includeInactive, CancellationToken ct = default)
     {
-        var query = db.Suppliers.AsNoTracking();
+        var query = Suppliers(shardKey, branchId).AsNoTracking();
         if (!includeInactive) query = query.Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -21,11 +29,12 @@ public sealed class MasterDataRepository(ServiceDbContext db) : IMasterDataRepos
         return await query.OrderBy(x => x.Code).Take(500).ToListAsync(ct);
     }
 
-    public Task<Supplier?> GetSupplierAsync(Guid id, CancellationToken ct = default) =>
-        db.Suppliers.FirstOrDefaultAsync(x => x.Id == id, ct);
+    public Task<Supplier?> GetSupplierAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
+        Suppliers(shardKey, branchId).FirstOrDefaultAsync(x => x.Id == id, ct);
 
-    public Task<bool> SupplierCodeExistsAsync(string code, Guid? excludingId, CancellationToken ct = default) =>
-        db.Suppliers.AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
+    public Task<bool> SupplierCodeExistsAsync(
+        string shardKey, int branchId, string code, Guid? excludingId, CancellationToken ct = default) =>
+        Suppliers(shardKey, branchId).AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
 
     public async Task AddSupplierAsync(Supplier supplier, CancellationToken ct = default) =>
         await db.Suppliers.AddAsync(supplier, ct);
@@ -33,8 +42,7 @@ public sealed class MasterDataRepository(ServiceDbContext db) : IMasterDataRepos
     public async Task<IReadOnlyList<Warehouse>> SearchWarehousesAsync(
         string shardKey, int branchId, string? keyword, bool includeInactive, CancellationToken ct = default)
     {
-        var query = db.Warehouses.AsNoTracking()
-            .Where(x => x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId);
+        var query = Warehouses(shardKey, branchId).AsNoTracking();
         if (!includeInactive) query = query.Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -47,19 +55,22 @@ public sealed class MasterDataRepository(ServiceDbContext db) : IMasterDataRepos
 
     public Task<Warehouse?> GetWarehouseAsync(
         string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
-        db.Warehouses.FirstOrDefaultAsync(x => x.Id == id &&
-            x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId, ct);
+        Warehouses(shardKey, branchId).FirstOrDefaultAsync(x => x.Id == id, ct);
 
-    public Task<bool> WarehouseCodeExistsAsync(string code, Guid? excludingId, CancellationToken ct = default) =>
-        db.Warehouses.AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
+    public Task<bool> WarehouseCodeExistsAsync(
+        string shardKey, int branchId, string code, Guid? excludingId, CancellationToken ct = default) =>
+        Warehouses(shardKey, branchId).AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
+
+    public Task<bool> AnyWarehouseAsync(string shardKey, int branchId, CancellationToken ct = default) =>
+        Warehouses(shardKey, branchId).AnyAsync(ct);
 
     public async Task AddWarehouseAsync(Warehouse warehouse, CancellationToken ct = default) =>
         await db.Warehouses.AddAsync(warehouse, ct);
 
     public async Task<IReadOnlyList<CatalogCategory>> SearchCategoriesAsync(
-        string? keyword, bool includeInactive, CancellationToken ct = default)
+        string shardKey, int branchId, string? keyword, bool includeInactive, CancellationToken ct = default)
     {
-        var query = db.CatalogCategories.AsNoTracking().AsQueryable();
+        var query = Categories(shardKey, branchId).AsNoTracking();
         if (!includeInactive) query = query.Where(x => x.IsActive);
         if (!string.IsNullOrWhiteSpace(keyword))
         {
@@ -70,11 +81,15 @@ public sealed class MasterDataRepository(ServiceDbContext db) : IMasterDataRepos
         return await query.OrderBy(x => x.SortOrder).ThenBy(x => x.Code).Take(1000).ToListAsync(ct);
     }
 
-    public Task<CatalogCategory?> GetCategoryAsync(Guid id, CancellationToken ct = default) =>
-        db.CatalogCategories.Include(x => x.Children).FirstOrDefaultAsync(x => x.Id == id, ct);
+    public Task<CatalogCategory?> GetCategoryAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
+        Categories(shardKey, branchId).Include(x => x.Children).FirstOrDefaultAsync(x => x.Id == id, ct);
 
-    public Task<bool> CategoryCodeExistsAsync(string code, Guid? excludingId, CancellationToken ct = default) =>
-        db.CatalogCategories.AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
+    public Task<bool> CategoryCodeExistsAsync(
+        string shardKey, int branchId, string code, Guid? excludingId, CancellationToken ct = default) =>
+        Categories(shardKey, branchId).AnyAsync(x => x.Code == code && (!excludingId.HasValue || x.Id != excludingId), ct);
+
+    public Task<bool> AnyCategoryAsync(string shardKey, int branchId, CancellationToken ct = default) =>
+        Categories(shardKey, branchId).AnyAsync(ct);
 
     public Task<bool> CategoryHasChildrenAsync(Guid id, bool activeOnly, CancellationToken ct = default) =>
         db.CatalogCategories.AnyAsync(x => x.ParentCategoryId == id && (!activeOnly || x.IsActive), ct);

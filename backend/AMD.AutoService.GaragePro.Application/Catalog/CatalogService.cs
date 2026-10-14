@@ -222,7 +222,8 @@ public sealed class CatalogService : ICatalogService
 
         if (categoryId.HasValue)
         {
-            var category = await masterData!.GetCategoryAsync(categoryId.Value, ct);
+            // [SECURITY] หมวดหมู่ต้องเป็นของสาขาปัจจุบัน — id ของสาขาอื่นได้ CATEGORY_NOT_FOUND เหมือนไม่มีอยู่
+            var category = await masterData!.GetCategoryAsync(currentUser.ShardKey, currentUser.BranchId, categoryId.Value, ct);
             if (category is null || !category.IsActive)
                 return new("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้าที่เปิดใช้งาน", "categoryId");
             // [BIZ] สินค้าผูกได้เฉพาะหมวดปลายทาง (leaf) เท่านั้น

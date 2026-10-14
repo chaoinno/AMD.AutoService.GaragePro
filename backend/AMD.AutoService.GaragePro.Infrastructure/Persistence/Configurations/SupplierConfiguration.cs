@@ -11,6 +11,7 @@ public sealed class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
         builder.ToTable("svc_Supplier");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
         builder.Property(x => x.Code).HasMaxLength(30).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(300).IsRequired();
         builder.Property(x => x.ContactName).HasMaxLength(150);
@@ -23,6 +24,8 @@ public sealed class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
         builder.Property(x => x.IsActive).HasDefaultValue(true);
         builder.Property(x => x.CreatedDate).HasColumnType("datetime2");
         builder.Property(x => x.LastUpdated).HasColumnType("datetime2");
-        builder.HasIndex(x => x.Code).IsUnique().HasDatabaseName("UX_svc_Supplier_Code");
+        // ชื่อ index คงเดิมโดยตั้งใจ — MasterDataSupport.ConflictCode/MasterDataRepository.KnownConstraints จับจากชื่อนี้
+        builder.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Code })
+            .IsUnique().HasDatabaseName("UX_svc_Supplier_Code");
     }
 }

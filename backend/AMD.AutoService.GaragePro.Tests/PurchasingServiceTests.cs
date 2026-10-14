@@ -107,6 +107,20 @@ public class PurchasingServiceTests
     }
 
     [Fact]
+    public async Task Po_cannot_use_a_supplier_of_another_branch()
+    {
+        var f = new Fixture();
+        var foreign = new Supplier { Code = "S", Name = "ซัพพลายเออร์สาขาอื่น", LegacyShardKey = "db2", LegacyBranchId = 106 };
+        f.Repo.Add(foreign);
+
+        var result = await f.Service.SaveAsync("PO", null, f.Input() with { SupplierId = foreign.Id }, default);
+
+        Assert.False(result.Success);
+        Assert.Equal("SUPPLIER_NOT_FOUND", result.Error?.Code);
+        Assert.Empty(f.Repo.All<PurchaseDocument>());
+    }
+
+    [Fact]
     public async Task Office_approval_threshold_uses_total_including_vat()
     {
         var f = new Fixture();
@@ -577,7 +591,7 @@ public class PurchasingServiceTests
         public FakeNotificationPublisher Notifications { get; } = new();
         public CatalogItem Item { get; } = new() { Code = "A", Name = "อะไหล่", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = "db2", LegacyBranchId = 105 };
         public Warehouse Warehouse { get; } = new() { Code = "W", Name = "คลัง", LegacyShardKey = "db2", LegacyBranchId = 105 };
-        public Supplier Supplier { get; } = new() { Code = "S", Name = "ซัพพลายเออร์" };
+        public Supplier Supplier { get; } = new() { Code = "S", Name = "ซัพพลายเออร์", LegacyShardKey = "db2", LegacyBranchId = 105 };
         public CatalogItem CurrentItem => Repo.All<CatalogItem>().Single(x => x.Id == Item.Id);
         public Staff Requester { get; } = new(9001, "ช่าง เอ", "นามสกุล", 105, true);
         public Fixture()
@@ -633,8 +647,8 @@ public class PurchasingServiceTests
         }
         public Task<int> CountOpenAsync(string kind, CancellationToken ct) => Task.FromResult(All<PurchaseDocument>().Count(x => x.Kind == kind && x.Status != "complete" && x.Status != "cancelled" && (kind != "PR" || x.Status != "converted") && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Task.FromResult(All<CatalogItem>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
-        public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey!, x.LegacyBranchId ?? 0)));
-        public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id));
+        public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
+        public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyList<StockLot>> LotsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockLot>>(All<StockLot>().Where(x => x.CatalogItemId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> ids, CancellationToken ct) => Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(All<StockLot>().Where(x => ids.Contains(x.CatalogItemId) && Scope(x.LegacyShardKey, x.LegacyBranchId)).GroupBy(x => x.CatalogItemId).ToDictionary(x => x.Key, x => x.Sum(l => l.RemainingQuantity * l.UnitCost)));

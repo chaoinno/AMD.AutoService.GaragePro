@@ -33,7 +33,7 @@ public class PurchasingSqlTests
         }
         var item = new CatalogItem { Code = "TEST-FIFO", Name = "ข้อมูลทดสอบ FIFO ชั่วคราว", Unit = "ชิ้น", Type = LineType.Part, LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
         var warehouse = new Warehouse { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "คลังทดสอบชั่วคราว", LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
-        var supplier = new Supplier { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "ซัพพลายเออร์ทดสอบชั่วคราว" };
+        var supplier = new Supplier { Code = $"FT-{Guid.NewGuid():N}"[..28], Name = "ซัพพลายเออร์ทดสอบชั่วคราว", LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId };
         try
         {
             await using (var db = NewDb()) { db.AddRange(item, warehouse, supplier); await db.SaveChangesAsync(); }

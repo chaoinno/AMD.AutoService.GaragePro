@@ -157,6 +157,14 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -170,11 +178,11 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("ParentCategoryId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
                         .IsUnique()
                         .HasDatabaseName("UX_svc_CatalogCategory_Code");
-
-                    b.HasIndex("ParentCategoryId");
 
                     b.ToTable("svc_CatalogCategory", (string)null);
                 });
@@ -2477,6 +2485,14 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -2500,7 +2516,7 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
                         .IsUnique()
                         .HasDatabaseName("UX_svc_Supplier_Code");
 
@@ -2731,10 +2747,11 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("LegacyBranchId")
+                    b.Property<int>("LegacyBranchId")
                         .HasColumnType("int");
 
                     b.Property<string>("LegacyShardKey")
+                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("nvarchar(20)");
 
@@ -2745,7 +2762,7 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Code")
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Code")
                         .IsUnique()
                         .HasDatabaseName("UX_svc_Warehouse_Code");
 
