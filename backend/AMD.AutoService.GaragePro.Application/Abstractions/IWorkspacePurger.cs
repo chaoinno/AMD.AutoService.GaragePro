@@ -5,7 +5,8 @@ namespace AMD.AutoService.GaragePro.Application.Abstractions;
 /// <summary>
 /// คำขอลบข้อมูลอู่ทดลองใช้หนึ่งอู่ (docs/12 §6 วันที่ 120)
 /// · <paramref name="ShardKey"/> ว่าง = shard self-serve ที่ตั้งค่าไว้ · ส่ง shard อื่นมา = ถูกปฏิเสธเสมอ
-/// · <paramref name="AllowPaid"/> = ทีมงานยืนยันว่าจะลบอู่ที่จ่ายเงินแล้วจริง (job รายวันไม่ส่งค่านี้)
+/// · <paramref name="AllowPaid"/> = ยืนยันว่าจะลบอู่ที่จ่ายเงินแล้ว (paid) หรือย้ายไปสาขาจริงแล้ว (converted) จริง
+///   — spadmin <c>purge --allow-paid</c> · job รายวันส่งเฉพาะอู่ converted ที่เลย PurgeAfter แล้ว (ไม่เคยส่งให้ paid)
 /// </summary>
 public sealed record WorkspacePurgeRequest(
     Guid WorkspaceId,

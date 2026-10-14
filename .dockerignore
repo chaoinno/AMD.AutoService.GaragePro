@@ -5,7 +5,9 @@
 artifacts
 GaragePro Service Ops Design
 mobile
-tools
+# tools ไม่เข้า image ยกเว้น spadmin (S5) ที่ Dockerfile.api publish ไว้ที่ /app/spadmin
+tools/*
+!tools/spadmin
 **/bin
 **/obj
 **/node_modules

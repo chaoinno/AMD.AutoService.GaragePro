@@ -329,6 +329,36 @@ public class TrialLifecycleTests
     }
 
     [Fact]
+    public async Task Converted_workspaces_are_purged_with_confirmation_only_after_purge_after()
+    {
+        // S5: ย้ายข้อมูลหลักไปสาขาจริงแล้ว → ตัวย้ายตั้ง PurgeAfter = +30 วัน · ไม่มีอีเมล/ไม่เปลี่ยนสถานะ · ลบเมื่อเลยกำหนดเท่านั้น
+        var h = new Harness();
+        var converted = h.Repository.Add(WorkspacePlanKind.Converted);
+        var i = h.Repository.Workspaces.FindIndex(w => w.Id == converted.Id);
+        h.Repository.Workspaces[i] = converted with { PurgeAfter = Day0.AddDays(60) };
+
+        await h.MaintenanceOnDay(59);
+        h.Purger.Purged.Should().BeEmpty("ยังไม่ถึง PurgeAfter (แม้วันทดลองเดิมจะเลยมานานแล้ว)");
+
+        await h.MaintenanceOnDay(60);
+        h.Purger.Purged.Should().ContainSingle().Which.Should().Be(
+            new WorkspacePurgeRequest(converted.Id, TrialLifecycleService.Actor, AllowPaid: true),
+            "purger ปฏิเสธอู่ converted ถ้าไม่ยืนยัน — job รายวันยืนยันเฉพาะเมื่อเลย PurgeAfter แล้ว");
+        h.Email.Sent.Should().BeEmpty();
+        h.Repository.StatusChanges.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Paid_workspaces_are_never_purged_even_with_a_purge_after()
+    {
+        var ws = new SelfServeWorkspaceInfo(Guid.NewGuid(), 1001, 500, "อู่", null, WorkspacePlanKind.Paid,
+            WorkspaceStatus.Active, Day0, EndsAt, null, null, null, Day0.AddDays(1), Day0, null, "a@example.com");
+
+        TrialLifecycleRules.Decide(new LifecycleWorkspace(ws, EndsAt, new HashSet<string>()), Day0.AddDays(500), new SelfServeOptions().Trial)
+            .Should().BeEmpty("ลูกค้าที่จ่ายเงินห้ามถูกลบอัตโนมัติ");
+    }
+
+    [Fact]
     public async Task Suspended_workspaces_get_no_emails_but_are_purged_when_due()
     {
         var h = new Harness();

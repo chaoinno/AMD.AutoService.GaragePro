@@ -29,6 +29,8 @@
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Infrastructure\AMD.AutoService.GaragePro.Infrastructure.csproj" />
     <!-- กติกาล้วนของชั้น API (RateLimiting/RateLimitRules) — ทดสอบโดยไม่ยก host/WebApplicationFactory -->
     <ProjectReference Include="..\AMD.AutoService.GaragePro.API\AMD.AutoService.GaragePro.API.csproj" />
+    <!-- ตัว parse คำสั่ง + DI ของ tools/spadmin (S5) -->
+    <ProjectReference Include="..\..\tools\spadmin\SpAdmin.csproj" />
   </ItemGroup>
 
   <!-- [SECURITY] project reference ไป API คัด appsettings.Development.json (มี connection string จริง — CLAUDE.md [RISK])

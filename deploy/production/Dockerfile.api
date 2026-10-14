@@ -7,14 +7,26 @@ COPY backend/AMD.AutoService.GaragePro.Domain/*.csproj backend/AMD.AutoService.G
 COPY backend/AMD.AutoService.GaragePro.Application/*.csproj backend/AMD.AutoService.GaragePro.Application/
 COPY backend/AMD.AutoService.GaragePro.Infrastructure/*.csproj backend/AMD.AutoService.GaragePro.Infrastructure/
 COPY backend/AMD.AutoService.GaragePro.API/*.csproj backend/AMD.AutoService.GaragePro.API/
-RUN dotnet restore backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj
+COPY tools/spadmin/*.csproj tools/spadmin/
+RUN dotnet restore backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
+ && dotnet restore tools/spadmin/SpAdmin.csproj
 
 COPY backend/ backend/
+COPY tools/spadmin/ tools/spadmin/
 RUN dotnet publish backend/AMD.AutoService.GaragePro.API/AMD.AutoService.GaragePro.API.csproj \
     --configuration Release \
     --output /app/publish \
     --no-restore \
  && rm -f /app/publish/appsettings.Development.json
+
+# spadmin — เครื่องมือทีมงานของอู่ทดลองใช้ (tools/spadmin/README.md) อยู่ใน image เดียวกับ API ที่ /app/spadmin
+# รันด้วย env file ของ API (docker compose run --rm --no-deps --entrypoint dotnet api /app/spadmin/SpAdmin.dll list)
+# — ไม่มีไฟล์ค่าตั้ง/ความลับเพิ่ม · ไม่ใช่ entrypoint ของ container (API ยังเป็นโปรเซสเดียวที่รันเอง)
+RUN dotnet publish tools/spadmin/SpAdmin.csproj \
+    --configuration Release \
+    --output /app/spadmin \
+    --no-restore \
+ && rm -f /app/spadmin/appsettings.Development.json
 
 # Bundle EF migrations into the runtime image. Deployment runs these executables
 # as one-off jobs before replacing the API container.
@@ -53,6 +65,7 @@ RUN apt-get update \
 COPY --from=build --chown=appuser:appgroup /app/publish ./
 COPY --from=build --chown=appuser:appgroup /app/efbundle ./efbundle
 COPY --from=build --chown=appuser:appgroup /app/efbundle-selfserve ./efbundle-selfserve
+COPY --from=build --chown=appuser:appgroup /app/spadmin ./spadmin
 
 USER appuser
 EXPOSE 8080

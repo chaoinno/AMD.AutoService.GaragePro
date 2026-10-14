@@ -94,6 +94,9 @@ public sealed class WorkspacePurger(
                 target.BranchId, true, new Dictionary<string, int>(), 0, 0, []));
         if (target.Plan == WorkspacePlanKind.Paid && !request.AllowPaid)
             return Refused("อู่นี้เป็นแพ็กเกจที่ชำระเงินแล้ว — ต้องยืนยันการลบอู่ที่จ่ายเงินแล้วโดยตรง");
+        // S5: อู่ที่ย้ายข้อมูลไปสาขาจริงแล้วเป็นลูกค้าที่จ่ายเงิน — ลบได้เมื่อยืนยันเท่านั้น (spadmin --allow-paid · job รายวันหลัง PurgeAfter)
+        if (target.Plan == WorkspacePlanKind.Converted && !request.AllowPaid)
+            return Refused("อู่นี้ย้ายข้อมูลไปสาขา GaragePro แล้ว (converted) — ต้องยืนยันการลบโดยตรง");
 
         var deleted = new Dictionary<string, int>(StringComparer.Ordinal);
         var files = new FileTally();
