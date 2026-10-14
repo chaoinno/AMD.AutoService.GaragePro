@@ -47,6 +47,31 @@ export function stashLoginNotice(
   }
 }
 
+/**
+ * อ่านโดยไม่ลบ — หน้า login ใช้ตัวนี้ แล้วค่อย {@link clearLoginNotice} เมื่อผู้ใช้กดเข้าสู่ระบบ
+ * เพราะ 401 ทำให้ไปหน้า login สองรอบ: ล้างเซสชัน → React พาไป /login ใน SPA (ฟอร์ม mount รอบแรก) แล้ว
+ * `window.location.assign('/login')` โหลดหน้าใหม่ (mount รอบสอง) — ถ้ารอบแรกลบทิ้ง ผู้ใช้จะไม่เห็นเหตุผลเลย (พบตอน E2E)
+ */
+export function peekLoginNotice(
+  storage: NoticeStorage | null = defaultStorage(),
+  now: Date = new Date(),
+): LoginNotice | null {
+  if (!storage) return null
+  try {
+    return parseLoginNotice(storage.getItem(LOGIN_NOTICE_KEY), now)
+  } catch {
+    return null
+  }
+}
+
+export function clearLoginNotice(storage: NoticeStorage | null = defaultStorage()): void {
+  try {
+    storage?.removeItem(LOGIN_NOTICE_KEY)
+  } catch {
+    // storage ถูกบล็อก — ไม่มีอะไรให้ลบ
+  }
+}
+
 /** อ่านแล้วลบทันที (แสดงได้ครั้งเดียว) — คืน null เมื่อไม่มี/อ่านไม่ออก/เก่าเกิน */
 export function takeLoginNotice(
   storage: NoticeStorage | null = defaultStorage(),

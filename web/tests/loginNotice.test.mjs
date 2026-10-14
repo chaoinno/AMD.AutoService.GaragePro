@@ -6,6 +6,8 @@ import {
   parseLoginNotice,
   stashLoginNotice,
   takeLoginNotice,
+  peekLoginNotice,
+  clearLoginNotice,
 } from '../src/lib/loginNotice.ts'
 
 function memoryStorage() {
@@ -81,4 +83,15 @@ test('missing or throwing storage never breaks the caller', () => {
   }
   assert.doesNotThrow(() => stashLoginNotice(notice, throwing))
   assert.equal(takeLoginNotice(throwing), null)
+})
+
+test('peek keeps the notice for the second login mount until it is cleared', () => {
+  const storage = memoryStorage()
+  const at = new Date('2026-10-14T06:20:00Z')
+  stashLoginNotice({ code: 'AUTH_REQUIRED', messageTh: 'แพ็กเกจของอู่เปลี่ยนแล้ว — กรุณาเข้าสู่ระบบใหม่' }, storage, at)
+  assert.equal(peekLoginNotice(storage, at)?.code, 'AUTH_REQUIRED', 'SPA mount')
+  assert.equal(peekLoginNotice(storage, at)?.code, 'AUTH_REQUIRED', 'hard-reload mount still sees it')
+  clearLoginNotice(storage)
+  assert.equal(peekLoginNotice(storage, at), null)
+  assert.equal(peekLoginNotice(null), null)
 })

@@ -13,7 +13,7 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { clearStoredSession, saveSession } from '../../lib/session'
-import { takeLoginNotice, type LoginNotice } from '../../lib/loginNotice'
+import { clearLoginNotice, peekLoginNotice, type LoginNotice } from '../../lib/loginNotice'
 import { GoogleIdentityButton } from '../signup/GoogleIdentityButton'
 
 const loginSchema = z.object({
@@ -69,10 +69,11 @@ export function LoginForm({ onPendingChange }: { onPendingChange?: (pending: boo
     onPendingChange?.(pending)
   }, [pending, onPendingChange])
   useEffect(() => {
-    // Read exactly once, including React StrictMode's replay of mount effects.
+    // Peek (not take): a 401 mounts this form twice — SPA redirect, then the hard reload — and the
+    // second mount is the one the user sees. The notice is cleared when the user submits (below).
     if (noticeRead.current) return
     noticeRead.current = true
-    setNotice(takeLoginNotice())
+    setNotice(peekLoginNotice())
   }, [])
 
   return (
@@ -82,6 +83,7 @@ export function LoginForm({ onPendingChange }: { onPendingChange?: (pending: boo
         if (pendingRef.current) return
         pendingRef.current = true
         setNotice(null)
+        clearLoginNotice()
         google.reset()
         mutation.mutate(values)
       })}>
@@ -89,6 +91,7 @@ export function LoginForm({ onPendingChange }: { onPendingChange?: (pending: boo
           if (pendingRef.current) return
           pendingRef.current = true
           setNotice(null)
+          clearLoginNotice()
           mutation.reset()
           google.mutate(idToken)
         }} />
