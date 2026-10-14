@@ -105,7 +105,9 @@ public class WorkspaceProvisioningSqlTests
                 .Should().ThrowAsync<InvalidOperationException>();
 
             (await repository.FindShadowUserAsync(Shard, branchId.Value, "SP0000.M01")).Should().BeNull();
-            (await repository.ListStuckProvisioningAsync(now.AddHours(-1))).Should().Contain(w => w.Id == workspace.Id);
+            // ขั้นผูกสาขาเพิ่งแตะ UpdatedAt = now (สร้างไว้ตั้งแต่ 3 ชม.ก่อน) — "ค้าง" นับจากการแตะล่าสุด ไม่ใช่วันสร้าง
+            (await repository.ListStuckProvisioningAsync(now.AddHours(-1))).Should().NotContain(w => w.Id == workspace.Id);
+            (await repository.ListStuckProvisioningAsync(now.AddMinutes(1))).Should().Contain(w => w.Id == workspace.Id);
 
             // บันทึก error = UPDATE สองคอลัมน์ ไม่ใช่ SaveChanges ของการแก้ที่ค้าง
             workspace.Name = "must-not-be-saved";

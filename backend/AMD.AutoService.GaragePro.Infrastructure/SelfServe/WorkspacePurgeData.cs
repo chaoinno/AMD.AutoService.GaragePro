@@ -129,12 +129,20 @@ public sealed class WorkspacePurgeData(
     /// ชุดแถวของสาขาลงตารางชั่วคราว (กติกาการมองเห็นเดียวกับรายการลูกค้า/รถ — BranchDataScope) แล้วตัดลูกค้า/รถที่สาขาอื่น
     /// อ้างถึงด้วยออก ([SECURITY] ไม่ควรเกิดใน sp1 แต่ถ้าเกิด แถวที่เหลือจะทำให้ FK ล้มทั้ง transaction แทนการลบข้อมูลของอู่อื่น)
     /// </summary>
-    internal static readonly string CollectShadowRowsSql = $"""
+    /// <remarks>
+    /// ต้องรันก่อน <see cref="CollectShadowRowsSql"/> ด้วยคำสั่ง<b>ที่ไม่มีพารามิเตอร์</b> — คำสั่งที่มีพารามิเตอร์ถูกส่งเป็น
+    /// sp_executesql ซึ่งเป็น scope ของตัวเอง ตาราง #temp ที่สร้างข้างในหายทันทีที่คำสั่งจบ คำสั่งถัดไปจึงได้
+    /// "Invalid object name '#PurgeStaff'" (พบตอนรันกับฐานจริงครั้งแรก) · สร้างที่ระดับ session แล้ว sp_executesql มองเห็นได้
+    /// </remarks>
+    internal const string CreateShadowTempTablesSql = """
+        DROP TABLE IF EXISTS #PurgeStaff, #PurgeUser, #PurgeCustomer, #PurgeCar;
         CREATE TABLE #PurgeStaff (Id bigint NOT NULL PRIMARY KEY);
         CREATE TABLE #PurgeUser (Id bigint NOT NULL PRIMARY KEY);
         CREATE TABLE #PurgeCustomer (Id bigint NOT NULL PRIMARY KEY);
         CREATE TABLE #PurgeCar (Id bigint NOT NULL PRIMARY KEY);
+        """;
 
+    internal static readonly string CollectShadowRowsSql = $"""
         INSERT #PurgeStaff (Id) SELECT s.Id FROM Staff s WHERE s.BranchId = @BranchId;
         INSERT #PurgeUser (Id) SELECT u.Id FROM [User] u JOIN #PurgeStaff s ON s.Id = u.StaffId;
         INSERT #PurgeCustomer (Id)
@@ -241,6 +249,8 @@ public sealed class WorkspacePurgeData(
         try
         {
             var args = new { BranchId = branchId };
+            await connection.ExecuteAsync(new CommandDefinition(CreateShadowTempTablesSql, null, tx,
+                cancellationToken: ct));
             await connection.ExecuteAsync(new CommandDefinition(CollectShadowRowsSql, args, tx,
                 commandTimeout: 120, cancellationToken: ct));
             var pictures = (await connection.QueryAsync<string>(new CommandDefinition(StaffPicturesSql, null, tx,

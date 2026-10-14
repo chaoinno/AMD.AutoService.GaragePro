@@ -30,6 +30,7 @@ public class WorkspacePurgeSqlTests
         try
         {
             var args = new { BranchId = NoSuchBranch };
+            await db.ExecuteAsync(WorkspacePurgeData.CreateShadowTempTablesSql, transaction: tx);
             await db.ExecuteAsync(WorkspacePurgeData.CollectShadowRowsSql, args, tx);
             (await db.QueryAsync<string>(WorkspacePurgeData.StaffPicturesSql, transaction: tx)).Should().BeEmpty();
             (await db.QueryAsync<string>(WorkspacePurgeData.CarImagesSql, transaction: tx)).Should().BeEmpty();
