@@ -59,7 +59,13 @@ jq -r '
     | "SelfServe__ConnectionString=" + .["Production:SelfServe:ConnectionString"],
       "LegacyShards__ConnectionStrings__sp1=" + .["Production:SelfServe:ConnectionString"]),
   (select(.["Production:SelfServe:MigrationConnectionString"] // "" | length > 0)
-    | "SelfServe__MigrationConnectionString=" + .["Production:SelfServe:MigrationConnectionString"])
+    | "SelfServe__MigrationConnectionString=" + .["Production:SelfServe:MigrationConnectionString"]),
+  # self-serve integrations (ไม่บังคับ) — Google/Turnstile/อีเมล/LINE ทีมขาย · ไม่ตั้ง = ปิดช่องทางนั้น
+  # (Google ไม่ตั้ง = ซ่อนปุ่ม · Turnstile secret ไม่ตั้ง = Production ปฏิเสธบอทเช็คทุกคำขอ · Email provider log = ปิดสมัครด้วยอีเมล)
+  (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:FromAddress","Email:FromName","SalesLineGroupId"][] as $k
+    | (.["Production:SelfServe:" + $k] // "") as $v
+    | select($v | length > 0)
+    | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v)
 ' "$input_json" > "$temp_env"
 if grep -Eq '^(SelfServe__ConnectionString|LegacyShards__ConnectionStrings__sp1|SelfServe__MigrationConnectionString)=.*GarageSelfServe_Dev' "$temp_env"; then
   rm -f "$temp_env" "$input_json"

@@ -26,6 +26,15 @@ services:
       Ftp__RootPath: /AutoServiceGaragePro/attachments/
       VehicleImages__RootPath: /app/storage/vehicle-images
       StaffImages__RootPath: /app/storage/staff-images
+      # self-serve trial (shard sp1) — มีผลเฉพาะเมื่อ env file มี SelfServe__ConnectionString
+      # [BIZ] รับสมัครใหม่ปิดไว้ก่อนจนกว่าเจ้าของสั่งเปิด: SELFSERVE_ENABLED=true ./scripts/deploy-production.sh
+      #       (ปิดรับสมัครแล้วอู่ที่มีอยู่ยังใช้งาน/หมดอายุตามปกติ)
+      SelfServe__Enabled: ${SELFSERVE_ENABLED:-false}
+      SelfServe__ShardKey: sp1
+      SelfServe__PublicBaseUrl: https://service.garage-pro.net
+      SelfServe__Trial__Days: "30"
+      SelfServe__Trial__ReadOnlyDays: "90"
+      SelfServe__Jobs__Enabled: "true"
     ports:
       - "127.0.0.1:${API_PORT:-5081}:8080"
     volumes:
@@ -42,6 +51,10 @@ services:
       args:
         VITE_API_BASE_URL: https://gpservice-api.garage-pro.net
         VITE_LEGACY_ASSET_BASE_URL: https://media.garage-pro.net/
+        VITE_SITE_URL: https://service.garage-pro.net
+        # ค่าสาธารณะ (ไม่ใช่ความลับ) — deploy-production.sh อ่านจาก env file แล้ว export ให้ตอน build
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
     image: garagepro-service-web:latest
     container_name: garagepro_service_web
     restart: unless-stopped
