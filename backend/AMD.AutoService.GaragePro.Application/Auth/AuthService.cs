@@ -30,6 +30,13 @@ public interface IAuthService
     /// เรียกจาก middleware ทุกคำขอ (มี cache) — token มือถือไม่หมดอายุ จึงต้องมีที่ตัดสิทธิ์
     /// </summary>
     Task<string?> GetSessionRevocationReasonAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// ออก session ให้ผู้ใช้ที่ระบบเพิ่งยืนยันตัวตนเอง (สมัครทดลองใช้สำเร็จ · Google login) — รูปเดียวกับ login
+    /// [SECURITY] ห้ามเปิดเป็น endpoint ตรง: เรียกได้เฉพาะหลังพิสูจน์ตัวตนแล้วในโค้ดฝั่ง server (B5 implement)
+    /// </summary>
+    Task<Result<LoginResultDto>> IssueSessionForUserAsync(string shardKey, long userId, CancellationToken ct = default) =>
+        Task.FromResult(Result<LoginResultDto>.Fail("AUTH_NOT_IMPLEMENTED", "ยังไม่รองรับการออก session แบบนี้"));
 }
 
 public sealed class AuthService(

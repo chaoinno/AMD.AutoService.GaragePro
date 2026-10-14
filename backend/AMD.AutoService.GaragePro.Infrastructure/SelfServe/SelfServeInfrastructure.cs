@@ -18,7 +18,7 @@ namespace AMD.AutoService.GaragePro.Infrastructure.SelfServe;
 /// · [BIZ] "ตั้งค่า self-serve แล้ว" = มี <c>SelfServe:ConnectionString</c> (<see cref="IsConfigured"/>) — ไม่ใช่ <c>SelfServe:Enabled</c>
 ///   ซึ่งเป็นแค่สวิตช์ปิดรับสมัครใหม่: ปิดรับสมัครแล้วอู่ที่มีอยู่ยังต้องถูกบังคับแพ็กเกจ/วันหมดอายุตามปกติ
 /// </summary>
-public static class SelfServeInfrastructure
+public static partial class SelfServeInfrastructure
 {
     public static IServiceCollection AddSelfServeInfrastructure(
         this IServiceCollection services, IConfiguration configuration)
@@ -47,6 +47,15 @@ public static class SelfServeInfrastructure
             services.AddScoped<IWorkspacePlanReader, WorkspacePlanReader>();
             services.AddScoped<IPlanUsageCounter, PlanUsageCounter>();
             services.AddScoped<IWorkspacePolicy, WorkspacePolicy>();
+
+            // จุดลงทะเบียนต่อ work package (partial method — ไม่มีไฟล์ implementation = ไม่มีผล)
+            // แต่ละ WP เป็นเจ้าของไฟล์ SelfServeInfrastructure.<ชื่อ>.cs ของตัวเอง กัน merge ชนกันที่ไฟล์นี้
+            RegisterAuth(services, configuration);          // B5
+            RegisterProvisioning(services, configuration);  // S2
+            RegisterSignup(services, configuration);        // S1
+            RegisterStarterData(services, configuration);   // S3
+            RegisterLifecycle(services, configuration);     // S4
+            RegisterAdmin(services, configuration);         // S5
         }
         else
         {
@@ -56,6 +65,13 @@ public static class SelfServeInfrastructure
 
         return services;
     }
+
+    static partial void RegisterAuth(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterProvisioning(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterSignup(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterStarterData(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterLifecycle(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterAdmin(IServiceCollection services, IConfiguration configuration);
 
     public const string ConnectionStringKey = SelfServeOptions.SectionName + ":ConnectionString";
 
