@@ -162,7 +162,7 @@ public sealed class SignupServiceTests
         public Task<GoogleIdentity?> ValidateAsync(string idToken, CancellationToken ct = default) => Task.FromResult(Identity);
     }
 
-    private sealed class FakeNotifier : IContactNotifier
+    private sealed class FakeNotifier : ISelfServeSalesNotifier
     {
         public bool IsConfigured { get; set; } = true;
         public List<(Guid Key, string Text)> Sent { get; } = [];

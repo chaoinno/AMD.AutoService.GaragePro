@@ -32,7 +32,7 @@ public sealed class SignupService(
     ITurnstileVerifier turnstile,
     IEmailDomainChecker domains,
     IGoogleIdTokenValidator google,
-    IContactNotifier notifier,
+    ISelfServeSalesNotifier notifier,
     ISignupSessionIssuer sessions,
     ISignupReferenceData referenceData,
     SelfServeOptions options,
@@ -488,8 +488,10 @@ public sealed class SignupService(
             garageName, workspaceNo, phone, provinceName, size, ownerEmail, viaGoogle, request.SampleData, duplicatePhone), ct);
 
         var workspace = await TryGetAsync(() => repository.FindWorkspaceAsync(account.Id, requestId, ct));
-        await TryAsync(() => email.SendAsync(SignupMessages.Welcome(
-            ownerEmail, garageName, workspaceNo, workspace?.TrialEndsAt, viaGoogle, options.PublicBaseUrl, technicians), ct),
+        // [แก้ตอนรวมงาน] ใช้แม่แบบอีเมลชุดเดียวของ S4 (SelfServeEmails) — ข้อความ/HTML/escape ตรงกันทุกฉบับ
+        var trialEndsAt = workspace?.TrialEndsAt ?? Now.AddDays(options.Trial.Days);
+        await TryAsync(() => email.SendAsync(SelfServeEmails.Welcome(new WelcomeEmail(
+            garageName, result.WorkspaceNo, ownerEmail, viaGoogle, trialEndsAt, options.PublicBaseUrl, technicians)).To(ownerEmail), ct),
             "ส่งอีเมลต้อนรับ", result.WorkspaceId);
 
         var session = await IssueSessionAsync(result.OwnerUserId, ct);
@@ -642,8 +644,8 @@ public sealed class SignupService(
         try
         {
             await email.SendAsync(accountTaken
-                ? SignupMessages.AccountExists(to, options.PublicBaseUrl)
-                : SignupMessages.Otp(to, code, OtpMinutes), ct);
+                ? SelfServeEmails.AccountExists(options.PublicBaseUrl).To(to)
+                : SelfServeEmails.Otp(code, OtpMinutes).To(to), ct);
             return null;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

@@ -16,7 +16,7 @@ namespace AMD.AutoService.GaragePro.Tests;
 /// </summary>
 public sealed class SignupRegistrationTests
 {
-    private sealed class StubNotifier : IContactNotifier
+    private sealed class StubNotifier : ISelfServeSalesNotifier
     {
         public bool IsConfigured => false;
         public Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct) => Task.FromResult(false);
@@ -43,7 +43,7 @@ public sealed class SignupRegistrationTests
         var services = new ServiceCollection();
         services.AddLogging();
         // ของที่ host จริงลงทะเบียนจากที่อื่น (DependencyInjection.cs / B5) — แทนด้วย stub ที่ไม่ต้องต่อฐาน
-        services.AddSingleton<IContactNotifier, StubNotifier>();
+        services.AddSingleton<ISelfServeSalesNotifier, StubNotifier>();
         services.AddScoped<ISignupSessionIssuer, StubSessions>();
         services.AddScoped<ISignupReferenceData, StubReference>();
         // [แก้ตอนรวมงาน] หลัง S2 merge แล้ว provisioner ถูกลงทะเบียนจริงและต้องใช้ repository ของระบบหลัก

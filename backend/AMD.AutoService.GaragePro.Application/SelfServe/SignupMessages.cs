@@ -27,65 +27,7 @@ public static class SignupMessages
 {
     private static readonly TimeZoneInfo Bangkok = ResolveBangkok();
 
-    public static EmailMessage Otp(string to, string code, int minutes) => new(
-        to,
-        $"รหัสยืนยันการสมัคร ServicePro: {code}",
-        new StringBuilder()
-            .AppendLine("รหัสยืนยันอีเมลสำหรับสมัครทดลองใช้ ServicePro ของคุณคือ")
-            .AppendLine()
-            .AppendLine($"    {code}")
-            .AppendLine()
-            .AppendLine($"รหัสนี้ใช้ได้ {minutes} นาที — อย่าบอกรหัสนี้กับผู้อื่น ทีมงาน ServicePro จะไม่ถามรหัสนี้จากคุณ")
-            .AppendLine("ถ้าคุณไม่ได้สมัคร ServicePro ไม่ต้องทำอะไร ระบบจะไม่สร้างบัญชีให้")
-            .ToString(),
-        Tag: "otp");
-
-    /// <summary>
-    /// [SECURITY] ส่งแทน OTP เมื่ออีเมลมีบัญชีอยู่แล้ว — หน้าเว็บตอบเหมือนกันทุกกรณี (กัน enumeration)
-    /// คนที่เป็นเจ้าของอีเมลจริงจึงรู้จากกล่องจดหมายเท่านั้นว่าต้องเข้าสู่ระบบแทนการสมัครใหม่
-    /// </summary>
-    public static EmailMessage AccountExists(string to, string publicBaseUrl) => new(
-        to,
-        "อีเมลนี้มีบัญชี ServicePro อยู่แล้ว",
-        new StringBuilder()
-            .AppendLine("มีการขอสมัครทดลองใช้ ServicePro ด้วยอีเมลนี้ แต่อีเมลนี้มีบัญชีอยู่แล้ว (หรือเคยใช้ทดลองใช้ไปแล้ว)")
-            .AppendLine()
-            .AppendLine($"เข้าสู่ระบบได้ที่ {publicBaseUrl.TrimEnd('/')}/login ด้วยอีเมลนี้ หรือปุ่ม \"เข้าสู่ระบบด้วย Google\"")
-            .AppendLine($"ลืมรหัสผ่าน ต้องการต่ออายุ หรือสมัครแพ็กเกจ ติดต่อ {PlanErrors.ContactLine}")
-            .AppendLine()
-            .AppendLine("ถ้าคุณไม่ได้ขอสมัคร ไม่ต้องทำอะไร")
-            .ToString(),
-        Tag: "account-exists");
-
-    public static EmailMessage Welcome(
-        string to, string garageName, string workspaceNo, DateTime? trialEndsAtUtc, bool viaGoogle,
-        string publicBaseUrl, IReadOnlyList<SampleCredential> technicians)
-    {
-        var sb = new StringBuilder()
-            .AppendLine($"ยินดีต้อนรับสู่ ServicePro — อู่ {OneLine(garageName)} พร้อมใช้งานแล้ว")
-            .AppendLine()
-            .AppendLine($"รหัสอู่: {workspaceNo}");
-        if (trialEndsAtUtc is { } end)
-            sb.AppendLine($"ทดลองใช้ฟรีถึงวันที่ {ThaiDate(end)}");
-        sb.AppendLine()
-            .AppendLine($"เข้าสู่ระบบ: {publicBaseUrl.TrimEnd('/')}/login")
-            .AppendLine(viaGoogle
-                ? $"ใช้ปุ่ม \"เข้าสู่ระบบด้วย Google\" ด้วยบัญชี {to}"
-                : $"ใช้อีเมล {to} กับรหัสผ่านที่ตั้งตอนสมัคร");
-
-        if (technicians.Count > 0)
-        {
-            sb.AppendLine()
-                .AppendLine("รหัสช่างตัวอย่าง สำหรับลองแอป ServicePro บนมือถือ (ข้อมูลตัวอย่าง — ลบได้ในหน้าจ๊อบ):");
-            foreach (var t in technicians)
-                sb.AppendLine($"  • {t.UserName} / รหัสผ่าน {t.Password}");
-        }
-
-        sb.AppendLine()
-            .AppendLine($"มีคำถามหรือต้องการให้ช่วยตั้งค่า ติดต่อ {PlanErrors.ContactLine}");
-
-        return new EmailMessage(to, $"ยินดีต้อนรับสู่ ServicePro — {workspaceNo}", sb.ToString(), Tag: "welcome");
-    }
+    // [แก้ตอนรวมงาน] อีเมล OTP/บัญชีมีอยู่แล้ว/ต้อนรับ ย้ายไปใช้ SelfServeEmails (S4) ที่เดียว — ไฟล์นี้เหลือข้อความ LINE ทีมขาย
 
     /// <summary>ข้อความแจ้งทีมขายในกลุ่ม LINE (แผน S1) — ไม่มีข้อมูลลับ (ไม่มีรหัสผ่าน/token)</summary>
     public static string SalesLine(SignupSalesInfo info)
