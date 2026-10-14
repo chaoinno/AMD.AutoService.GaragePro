@@ -45,6 +45,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/03-api-contract.md](docs/03-api-contract.md) §3/§11/§12 | **[เพิ่ม 2026-10-08]** endpoint เลขไมล์ · `handover/service-info` · `reports/vehicle-history` · `reports/service-due` |
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
+| [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · ยังไม่ merge/deploy]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -1839,6 +1840,20 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   (กันคนนอกไล่เช็คว่าอีเมลไหนเป็นลูกค้า) ผู้ใช้เคยพิจารณาให้บอกบนหน้าจอ แล้วเลือกคงไว้ก่อน ·
   ข้อสังเกตที่ยังไม่ตัดสินใจ: ส่งใบเสนอราคาตอนจ๊อบ "รอตรวจเช็ค" ข้ามเช็คลิสต์รับรถได้ (เว็บเลื่อนสถานะพร้อมเหตุผลคงที่) ·
   เหตุผลส่ง QC ของช่างพิมพ์อะไรก็ได้ (เคยเจอ "1") · ไมล์รับรถถอยหลังกว่าจ๊อบก่อนของรถคันเดียวกันไม่มีคำเตือน · ช่างกดอนุมัติ/เซ็นแทนลูกค้าในแอปได้
+
+- ✅ **[เพิ่ม 2026-10-14 · branch `feat/cloudflare-email` แตกจาก `feat/sp1-selfserve` `cb574c0` · ยังไม่ merge/deploy] ส่งอีเมลจริงผ่าน Cloudflare Email Service**
+  (คำขอผู้ใช้: ใช้ Cloudflare ที่ดูแล DNS อยู่แล้ว · ทีมจะตั้งค่าฝั่ง Cloudflare ให้) · ขั้นตอนฝั่ง Cloudflare + deploy อยู่ที่ [docs/16](docs/16-cloudflare-email-setup.md)
+  · `Infrastructure/Email/CloudflareEmailSender.cs`: REST `POST {BaseUrl}/accounts/{AccountId}/email/sending/send` + Bearer token · body `from{address,name}`/`to`/`subject`/`text`/`html?`/`reply_to?`
+    · `StringContent` ไม่ใช่ `JsonContent` (บทเรียน LINE: chunked ไม่มี Content-Length) · HttpClient ตัวเดียวทั้งแอปแบบ `LineContactNotifier` (timeout 15 วิ)
+    · ผิดพลาด (เครือข่าย · timeout · non-2xx · `success:false` · `permanent_bounces` ไม่ว่าง) → `EmailDeliveryException` ข้อความมี HTTP status + code ของ Cloudflare
+    · **ตั้งค่าไม่ครบ (AccountId/ApiKey/FromAddress) ไม่ทำให้ API ล้ม**: log error บอกชื่อคีย์ที่ขาดครั้งเดียว + `IsConfigured=false` → Production ซ่อนสมัครด้วยอีเมล (เหลือ Google)
+    · [SECURITY] ไม่ log เนื้อหา (มี OTP) ไม่ log ที่อยู่เต็ม (เฉพาะโดเมนผู้รับ + tag) ไม่ log token
+  · `SelfServeOptions.EmailOptions` เพิ่ม `AccountId`/`ReplyToAddress`/`BaseUrl` · `SelfServeInfrastructure.RegisterEmailSender` เลือกตาม `SelfServe:Email:Provider`:
+    `log` (ค่าเริ่มต้น) / `cloudflare` · **ค่าอื่น resolve แล้ว throw บอกชื่อ** (ไม่ fallback ไป log เงียบๆ ตามข้อห้ามใน `LoggingEmailSender`)
+  · secrets: `env.example` + `bootstrap-production-secrets.sh` รับ `Production:SelfServe:Email:{AccountId,ReplyToAddress}` เพิ่ม (คีย์ Provider/ApiKey/FromAddress/FromName มีอยู่แล้ว) · ไม่มี migration · ไม่แตะเว็บ/แอป
+  · ทดสอบแล้ว: `CloudflareEmailSenderTests.cs` 16 (รูปแบบคำขอ/Bearer/Content-Length · ไม่มี html/reply_to · queued นับเป็นส่งแล้ว · 401/403/429/400 ได้ code โดยไม่มีที่อยู่/OTP ในข้อความ ·
+    หน้า error ไม่ใช่ JSON · permanent bounce · เครือข่ายล่ม · log ไม่มีเนื้อหา/ที่อยู่/token · ขาดคีย์ทีละตัว · DI เลือก cloudflare · provider ไม่รู้จัก throw) ·
+    `dotnet test` เต็มชุด 1129 ผ่าน / skipped 16 (เดิม 1113) · **ยังไม่เคยยิง Cloudflare จริง** (ยังไม่มีบัญชี Workers Paid/token) · ตัวเลข error code มาจากเอกสาร Cloudflare ไม่ได้ทดลองเห็นจริง
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

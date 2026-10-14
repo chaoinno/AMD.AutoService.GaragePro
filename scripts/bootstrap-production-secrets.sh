@@ -62,7 +62,7 @@ jq -r '
     | "SelfServe__MigrationConnectionString=" + .["Production:SelfServe:MigrationConnectionString"]),
   # self-serve integrations (ไม่บังคับ) — Google/Turnstile/อีเมล/LINE ทีมขาย · ไม่ตั้ง = ปิดช่องทางนั้น
   # (Google ไม่ตั้ง = ซ่อนปุ่ม · Turnstile secret ไม่ตั้ง = Production ปฏิเสธบอทเช็คทุกคำขอ · Email provider log = ปิดสมัครด้วยอีเมล)
-  (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:FromAddress","Email:FromName","SalesLineGroupId"][] as $k
+  (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:AccountId","Email:FromAddress","Email:FromName","Email:ReplyToAddress","SalesLineGroupId"][] as $k
     | (.["Production:SelfServe:" + $k] // "") as $v
     | select($v | length > 0)
     | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v)

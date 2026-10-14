@@ -91,17 +91,35 @@ public sealed class SelfServeOptions
     public sealed class EmailOptions
     {
         public const string LogProvider = "log";
+        public const string CloudflareProvider = "cloudflare";
 
-        /// <summary><c>log</c> = เขียนลง log เท่านั้น (dev · IEmailSender.IsConfigured = false) · ค่าอื่น = ผู้ให้บริการจริง (เช่น brevo)</summary>
+        /// <summary>
+        /// <c>log</c> = เขียนลง log เท่านั้น (dev · IEmailSender.IsConfigured = false) ·
+        /// <c>cloudflare</c> = Cloudflare Email Service (REST API · ต้องมี <see cref="AccountId"/> + <see cref="ApiKey"/> + <see cref="FromAddress"/>)
+        /// · ค่าอื่นยังไม่รองรับ: resolve IEmailSender แล้วจะได้ error บอกชื่อ provider ไม่ fallback ไป log เงียบๆ
+        /// </summary>
         public string Provider { get; set; } = LogProvider;
 
         public string FromAddress { get; set; } = "";
         public string FromName { get; set; } = "ServicePro";
+
+        /// <summary>[SECURITY] Cloudflare: API token สิทธิ์ "Email Sending: Edit" — user-secrets / env file เท่านั้น</summary>
         public string ApiKey { get; set; } = "";
+
+        /// <summary>Cloudflare account ID ที่ onboard โดเมนผู้ส่งไว้ (ไม่ใช่ความลับ แต่เก็บคู่กับ token)</summary>
+        public string AccountId { get; set; } = "";
+
+        /// <summary>ที่อยู่สำหรับลูกค้ากดตอบกลับ (ไม่บังคับ) — ว่าง = ตอบกลับไปที่ <see cref="FromAddress"/> ซึ่งมักไม่มีใครอ่าน</summary>
+        public string ReplyToAddress { get; set; } = "";
+
+        /// <summary>เปลี่ยนได้เฉพาะเทสต์/mock — production ใช้ค่าเริ่มต้นของ Cloudflare</summary>
+        public string BaseUrl { get; set; } = "https://api.cloudflare.com/client/v4";
 
         public bool IsLogProvider =>
             string.IsNullOrWhiteSpace(Provider)
             || string.Equals(Provider, LogProvider, StringComparison.OrdinalIgnoreCase);
+
+        public bool IsCloudflareProvider => string.Equals(Provider?.Trim(), CloudflareProvider, StringComparison.OrdinalIgnoreCase);
     }
 
     public sealed class BlocklistOptions

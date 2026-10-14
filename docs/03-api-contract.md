@@ -309,7 +309,7 @@ Events → client:
 ### 16.1 สมัคร (anonymous · rate limit ต่อ IP แยกจากฟอร์มติดต่อ — `API/RateLimiting/RateLimitRules.cs`)
 | Method · Path | Body → Data | หมายเหตุ |
 |---|---|---|
-| `GET /api/v1/public/signup/config` | → `{enabled, googleEnabled, emailEnabled, turnstileSiteKey?}` | `SelfServe:Enabled=false` → `enabled:false` (เว็บแสดง "เปิดรับสมัครเร็วๆ นี้") · Production ที่อีเมลยังเป็น `log` → `emailEnabled:false` |
+| `GET /api/v1/public/signup/config` | → `{enabled, googleEnabled, emailEnabled, turnstileSiteKey?}` | `SelfServe:Enabled=false` → `enabled:false` (เว็บแสดง "เปิดรับสมัครเร็วๆ นี้") · Production ที่อีเมลยังเป็น `log` หรือ `cloudflare` ที่ตั้งค่าไม่ครบ (`IEmailSender.IsConfigured=false`) → `emailEnabled:false` · ตั้งค่า Cloudflare: [docs/16](16-cloudflare-email-setup.md) |
 | `GET /api/v1/public/signup/provinces` | → `[{id, name}]` | อ่านตาราง `province` (cache 24 ชม.) |
 | `POST …/email/start` | `{requestId, email, password, turnstileToken, website, consent:true}` → `{resendAfterSeconds}` | honeypot `website` มีค่า = 200 หลอก · อีเมลที่มีบัญชีแล้ว = 200 เหมือนกัน (ส่งอีเมล "มีบัญชีอยู่แล้ว" แทน OTP) · 3/ชม. + 10/วันต่อ IP |
 | `POST …/email/resend` | `{email}` → `{resendAfterSeconds}` | ≥ 60 วิ · ≤ 3 ครั้ง/ชม./อีเมล |

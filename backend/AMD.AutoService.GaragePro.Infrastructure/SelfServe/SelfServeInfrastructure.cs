@@ -26,7 +26,7 @@ public static partial class SelfServeInfrastructure
         services.Configure<SelfServeOptions>(configuration.GetSection(SelfServeOptions.SectionName));
 
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        RegisterEmailSender(services, configuration);
         services.AddSingleton<IShardScopeFactory, ShardScopeFactory>();
 
         // ServiceDbContext เลือกฐานตาม shard ผ่านตัวนี้ (DependencyInjection.cs) — ต้องมีเสมอ แม้ไม่ได้ตั้ง self-serve
@@ -64,6 +64,25 @@ public static partial class SelfServeInfrastructure
         }
 
         return services;
+    }
+
+    /// <summary>
+    /// เลือกผู้ส่งอีเมลจาก <c>SelfServe:Email:Provider</c> ตอนลงทะเบียน (log = ค่าเริ่มต้น · cloudflare = Cloudflare Email Service)
+    /// · provider ที่ยังไม่รองรับไม่ fallback ไป log เงียบๆ: resolve แล้วได้ error บอกชื่อ (ตามข้อห้ามใน LoggingEmailSender)
+    /// </summary>
+    private static void RegisterEmailSender(IServiceCollection services, IConfiguration configuration)
+    {
+        var email = new SelfServeOptions.EmailOptions();
+        configuration.GetSection($"{SelfServeOptions.SectionName}:Email").Bind(email);
+
+        if (email.IsLogProvider)
+            services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        else if (email.IsCloudflareProvider)
+            services.AddSingleton<IEmailSender, CloudflareEmailSender>();
+        else
+            services.AddSingleton<IEmailSender>(_ => throw new InvalidOperationException(
+                $"SelfServe:Email:Provider '{email.Provider}' ยังไม่รองรับ (รองรับ: {SelfServeOptions.EmailOptions.LogProvider}, " +
+                $"{SelfServeOptions.EmailOptions.CloudflareProvider})"));
     }
 
     static partial void RegisterAuth(IServiceCollection services, IConfiguration configuration);
