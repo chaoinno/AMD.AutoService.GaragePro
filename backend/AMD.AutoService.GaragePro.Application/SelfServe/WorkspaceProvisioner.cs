@@ -270,7 +270,7 @@ public sealed class WorkspaceProvisioner(
 
         // [SECURITY] กันพลาดจากทุกทาง (ข้อมูลถูกแก้มือ/ตัวสร้างพนักงานเปลี่ยน) — admin ของ sp1 เห็นทุกอู่ใน shard
         if (owner.IsAdministrator)
-            throw new InvalidOperationException($"owner [User] {owner.UserName} is an administrator — refusing to activate");
+            throw new InvalidOperationException($"owner [User] {owner.UserName} is an administrator, refusing to activate");
 
         return owner;
     }
@@ -320,12 +320,12 @@ public sealed class WorkspaceProvisioner(
 
         if (created is null)
             throw new InvalidOperationException(
-                "StaffRepository rejected the owner — branch inactive or reference rows (Gender/Position/Sector) missing in the shard");
+                "StaffRepository rejected the owner: branch inactive or reference rows (Gender/Position/Sector) missing in the shard");
 
         // ตัวสร้างพนักงานต้องใช้ชื่อผู้ใช้ที่กำหนด ไม่ใช่รหัสพนักงานแบบ legacy — ไม่งั้นเจ้าของเข้าสู่ระบบด้วยอีเมล/SP….M01 ไม่ได้
         if (!string.Equals(created.Account.UserName, userName, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"owner [User] was created as '{created.Account.UserName}' instead of '{userName}' — StaffAccountSpec not honoured");
+                $"owner [User] was created as '{created.Account.UserName}' instead of '{userName}', StaffAccountSpec not honoured");
 
         return new ShadowUserRef(created.Account.Id, created.Id, created.Account.UserName, created.Account.IsAdministrator);
     }
@@ -348,7 +348,7 @@ public sealed class WorkspaceProvisioner(
                 LegacyBranchId = branchId,
                 LegacyUserId = owner.UserId,
                 Role = UserRole.Manager,
-                Note = "เจ้าของอู่ — สมัครทดลองใช้",
+                Note = "เจ้าของอู่ สมัครทดลองใช้",
                 SetByUserId = 0,
                 SetAt = Now
             }, token);
@@ -423,7 +423,7 @@ public sealed class WorkspaceProvisioner(
                 workspace.SignupRequestId = null;
                 workspace.ProvisionError = Limit(
                     $"abandoned: still provisioning after {olderThan.TotalMinutes:0} min at step {step}"
-                    + (lastError is null ? string.Empty : $" — last error: {lastError}"), 2000);
+                    + (lastError is null ? string.Empty : $", last error: {lastError}"), 2000);
 
                 repository.AddAudit(new WorkspaceAudit
                 {
@@ -464,7 +464,7 @@ public sealed class WorkspaceProvisioner(
         if (request.AccountId == Guid.Empty)
             return SelfServeErrors.SignupTokenInvalid();
         if (string.IsNullOrWhiteSpace(request.SignupRequestId) || request.SignupRequestId.Trim().Length > MaxRequestId)
-            return SelfServeErrors.SignupValidation("รหัสคำขอสมัครไม่ถูกต้อง — กรุณาเริ่มสมัครใหม่อีกครั้ง", "requestId");
+            return SelfServeErrors.SignupValidation("รหัสคำขอสมัครไม่ถูกต้อง กรุณาเริ่มสมัครใหม่อีกครั้ง", "requestId");
         if (string.IsNullOrWhiteSpace(request.GarageName))
             return SelfServeErrors.SignupValidation("กรุณากรอกชื่ออู่", "garageName");
         if (request.GarageName.Trim().Length > MaxGarageName)

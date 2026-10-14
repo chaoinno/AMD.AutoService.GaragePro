@@ -39,7 +39,7 @@ export function BranchSwitcher() {
         className="branch-button branch-button--switchable"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label={`สาขาปัจจุบัน ${branchName} — คลิกเพื่อสลับสาขา`}
+        aria-label={`สาขาปัจจุบัน ${branchName}, คลิกเพื่อสลับสาขา`}
         title="สลับสาขา"
       >
         <Building2 aria-hidden="true" />
@@ -95,7 +95,7 @@ function BranchSwitchDialog({ onClose }: { onClose: () => void }) {
       open
       onClose={close}
       title="สลับสาขา"
-      description="แสดงเฉพาะสาขาที่เปิดใช้งานและมีบัญชีผู้ดูแลระบบชื่อเดียวกับคุณ — เลือกแล้วระบบจะเข้าสู่ระบบด้วยบัญชีของสาขานั้นให้อัตโนมัติ"
+      description="แสดงเฉพาะสาขาที่เปิดใช้งานและมีบัญชีผู้ดูแลระบบชื่อเดียวกับคุณ เลือกแล้วระบบจะเข้าสู่ระบบด้วยบัญชีของสาขานั้นให้อัตโนมัติ"
       size="medium"
       footer={<Button variant="outline" onClick={close} disabled={mutation.isPending}>ปิด</Button>}
     >
@@ -114,7 +114,7 @@ function BranchSwitchDialog({ onClose }: { onClose: () => void }) {
         <StateBlock
           variant="empty"
           title="ไม่พบสาขาที่สลับไปได้"
-          reason="ไม่มีสาขาที่เปิดใช้งานซึ่งมีบัญชีผู้ดูแลระบบชื่อเดียวกับคุณ — เพิ่มบัญชีได้ที่ระบบจัดการผู้ดูแลระบบ"
+          reason="ไม่มีสาขาที่เปิดใช้งานซึ่งมีบัญชีผู้ดูแลระบบชื่อเดียวกับคุณ เพิ่มบัญชีได้ที่ระบบจัดการผู้ดูแลระบบ"
           actionLabel="ปิด"
           onAction={close}
         />

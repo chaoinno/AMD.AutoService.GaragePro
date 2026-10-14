@@ -54,7 +54,7 @@ export function NotificationBell() {
         type="button"
         className="notification-bell"
         aria-label={label}
-        title={count.isError ? 'โหลดจำนวนแจ้งเตือนไม่สำเร็จ — เปิดเพื่อดูรายละเอียด' : label}
+        title={count.isError ? 'โหลดจำนวนแจ้งเตือนไม่สำเร็จ เปิดเพื่อดูรายละเอียด' : label}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}

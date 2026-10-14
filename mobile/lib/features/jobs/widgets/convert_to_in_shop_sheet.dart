@@ -107,7 +107,7 @@ class _ConvertToInShopSheetState extends ConsumerState<_ConvertToInShopSheet> {
             Text(
               appointmentAt == null
                   ? 'เปลี่ยนงานนี้เป็น "รถในอู่" และบันทึกเวลาที่รถเข้าจริง'
-                  : 'นัดไว้ ${fullDateTime(appointmentAt)} น. — มาก่อนหรือหลังนัดก็บันทึกได้ '
+                  : 'นัดไว้ ${fullDateTime(appointmentAt)} น. มาก่อนหรือหลังนัดก็บันทึกได้ '
                       'วันนัดเดิมยังเก็บไว้เป็นประวัติ',
               style: const TextStyle(fontSize: 14, color: T.muted, height: 1.7),
             ),

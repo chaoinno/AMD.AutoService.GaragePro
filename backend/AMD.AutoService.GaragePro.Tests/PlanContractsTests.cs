@@ -92,7 +92,7 @@ public class PlanContractsTests
 
         var locked = PlanErrors.FeatureLocked(PlanFeature.Purchasing);
         locked.Code.Should().Be("PLAN_FEATURE_LOCKED");
-        locked.MessageTh.Should().Be("ฟีเจอร์นี้เปิดในแพ็กเกจเต็ม — ติดต่อ LINE @garagepro");
+        locked.MessageTh.Should().Be("ฟีเจอร์นี้เปิดในแพ็กเกจเต็ม ติดต่อ LINE @garagepro");
 
         PlanErrors.TrialExpired().Code.Should().Be("TRIAL_EXPIRED");
         PlanErrors.TrialExpired().MessageTh.Should().Contain("30 วัน");

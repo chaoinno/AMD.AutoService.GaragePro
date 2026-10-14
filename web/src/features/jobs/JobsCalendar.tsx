@@ -25,13 +25,13 @@ const FIELD_COPY: Record<JobCalendarDateField, { noun: string; loading: string; 
     noun: 'วันที่นัดเข้า',
     loading: 'ระบบกำลังอ่านข้อมูลวันนัดเข้าของเดือนนี้',
     empty: 'ไม่มีงานที่นัดเข้าในเดือนนี้',
-    emptyReason: 'ไม่มีจ๊อบที่มีวันเวลานัดเข้าในช่วงนี้ — ลองเปลี่ยนเดือนหรือเปิดจ๊อบประเภท "รถนัดหมาย"',
+    emptyReason: 'ไม่มีจ๊อบที่มีวันเวลานัดเข้าในช่วงนี้ ลองเปลี่ยนเดือนหรือเปิดจ๊อบประเภท "รถนัดหมาย"',
   },
   promise: {
     noun: 'วันที่นัดส่งมอบ',
     loading: 'ระบบกำลังอ่านข้อมูลวันนัดส่งมอบของเดือนนี้',
     empty: 'ไม่มีงานที่นัดส่งมอบในเดือนนี้',
-    emptyReason: 'ไม่มีจ๊อบที่ตั้งวันนัดส่งมอบไว้ในช่วงนี้ — ตั้งวันนัดส่งมอบได้จากการ์ดจ๊อบหรือตอนเปิดจ๊อบ',
+    emptyReason: 'ไม่มีจ๊อบที่ตั้งวันนัดส่งมอบไว้ในช่วงนี้ ตั้งวันนัดส่งมอบได้จากการ์ดจ๊อบหรือตอนเปิดจ๊อบ',
   },
 }
 
@@ -53,9 +53,9 @@ function dateOf(job: Job, field: JobCalendarDateField): string | null {
 /// UpdatePromiseAsync) ไม่งั้นผู้ใช้จะลากได้แล้วโดนปฏิเสธทีหลัง
 function rescheduleBlockedReason(job: Job, field: JobCalendarDateField): string | null {
   if (job.status === 'completed' || job.status === 'cancelled')
-    return 'จ๊อบนี้ปิดแล้ว — เปลี่ยนวันไม่ได้'
+    return 'จ๊อบนี้ปิดแล้ว เปลี่ยนวันไม่ได้'
   if (field === 'appointment' && job.jobTypeId !== 10)
-    return 'รถเข้าอู่แล้ว (เปลี่ยนเป็นรถในอู่) — เปลี่ยนวันนัดเข้าไม่ได้'
+    return 'รถเข้าอู่แล้ว (เปลี่ยนเป็นรถในอู่) เปลี่ยนวันนัดเข้าไม่ได้'
   return null
 }
 
@@ -271,9 +271,9 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
         <MoveHorizontal aria-hidden="true" />
         {dragging ? (
           <span>
-            กำลังย้าย <strong>{dragging.vehicleRegistration || dragging.jobNo}</strong> — วางบนวันที่ต้องการ
+            กำลังย้าย <strong>{dragging.vehicleRegistration || dragging.jobNo}</strong> วางบนวันที่ต้องการ
             (คงเวลาเดิม {draggingTime} น.) · ช่องลายขีดวางไม่ได้: วันที่ผ่านมาแล้ว
-            {draggingBound ? <> หรือ{draggingBound.label} — วันส่งมอบต้องไม่ก่อนวันนัดเข้า</> : null}
+            {draggingBound ? <> หรือ{draggingBound.label} วันส่งมอบต้องไม่ก่อนวันนัดเข้า</> : null}
           </span>
         ) : (
           <span>
@@ -295,7 +295,7 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
 
       {calendarQuery.data?.truncated ? (
         <div className="jobs-calendar__notice jobs-calendar__notice--warning" role="alert">
-          แสดง {calendarQuery.data.limit} รายการแรกของช่วงนี้ — โปรดใช้ตัวกรองคำค้นหา/สถานะเพื่อจำกัดผลลัพธ์
+          แสดง {calendarQuery.data.limit} รายการแรกของช่วงนี้ โปรดใช้ตัวกรองคำค้นหา/สถานะเพื่อจำกัดผลลัพธ์
         </div>
       ) : null}
 
@@ -335,7 +335,7 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
               <div className="jobs-calendar__chips">
                 {visible.map((job) => {
                   const value = dateOf(job, dateField)
-                  const time = value ? chipTimeFormatter.format(new Date(value)) : '—'
+                  const time = value ? chipTimeFormatter.format(new Date(value)) : '-'
                   const blockedReason = rescheduleBlockedReason(job, dateField)
                   const saving = rescheduleMutation.isPending && rescheduleMutation.variables?.job.jobId === job.jobId
                   return (
@@ -354,7 +354,7 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
                       ].filter(Boolean).join(' ')}
                       onClick={() => onSelectJob(job.jobId)}
                       title={blockedReason ?? `ลากเพื่อเปลี่ยน${copy.noun} · คลิกเพื่อเปิดการ์ดจ๊อบ`}
-                      aria-label={`${copy.noun} ${time} น. ทะเบียน ${job.vehicleRegistration} สถานะ ${job.statusLabel}${blockedReason ? ` — ${blockedReason}` : ''}`}
+                      aria-label={`${copy.noun} ${time} น. ทะเบียน ${job.vehicleRegistration} สถานะ ${job.statusLabel}${blockedReason ? `, ${blockedReason}` : ''}`}
                     >
                       <span className="jobs-calendar__chip-time">
                         {blockedReason
@@ -395,7 +395,7 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
       <ConfirmModal
         open={dayDetail !== null}
         title={dayDetail ? `${copy.noun} ${dayDetail.getDate()}/${dayDetail.getMonth() + 1}/${dayDetail.getFullYear() + 543}` : ''}
-        description="ลากวางได้เฉพาะจ๊อบที่แสดงในช่องปฏิทิน — รายการในหน้าต่างนี้ให้คลิกเปิดการ์ดจ๊อบแล้วแก้วันเวลาจากในการ์ด"
+        description="ลากวางได้เฉพาะจ๊อบที่แสดงในช่องปฏิทิน รายการในหน้าต่างนี้ให้คลิกเปิดการ์ดจ๊อบแล้วแก้วันเวลาจากในการ์ด"
         onClose={() => setDayDetail(null)}
         size="medium"
       >
@@ -408,7 +408,7 @@ export function JobsCalendar({ query, status, dateField, onSelectJob }: JobsCale
                   type="button"
                   onClick={() => { onSelectJob(job.jobId); setDayDetail(null) }}
                 >
-                  <span>{value ? chipTimeFormatter.format(new Date(value)) : '—'} น. · {job.vehicleRegistration} · {job.customerName}</span>
+                  <span>{value ? chipTimeFormatter.format(new Date(value)) : '-'} น. · {job.vehicleRegistration} · {job.customerName}</span>
                   <JobStatusChip status={job.status} label={job.statusLabel} />
                 </button>
               </li>

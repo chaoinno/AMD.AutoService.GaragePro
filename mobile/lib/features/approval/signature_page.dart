@@ -393,7 +393,7 @@ class _SignaturePageState extends ConsumerState<SignaturePage> {
     try {
       final session = ref.read(sessionProvider);
       if (session == null) {
-        throw ApiException('AUTH_REQUIRED', 'เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่');
+        throw ApiException('AUTH_REQUIRED', 'เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
       }
 
       // อัปโหลดลายเซ็นขึ้น server ก่อน แล้วเก็บ path ที่ server คืนมา

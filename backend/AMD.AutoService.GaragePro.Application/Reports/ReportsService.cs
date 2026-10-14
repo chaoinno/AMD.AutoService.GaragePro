@@ -202,9 +202,9 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             .OrderByDescending(l => AgeDays(l, now))
             .Take(15)
             .Select(l => new AgingStockLotDto(
-                catalogById.TryGetValue(l.CatalogItemId, out var c) ? c.Code : "—",
+                catalogById.TryGetValue(l.CatalogItemId, out var c) ? c.Code : "-",
                 catalogById.TryGetValue(l.CatalogItemId, out var c2) ? c2.Name : "ไม่พบสินค้าในแคตตาล็อกแล้ว",
-                warehouseById.TryGetValue(l.WarehouseId, out var w) ? w.Name : "—",
+                warehouseById.TryGetValue(l.WarehouseId, out var w) ? w.Name : "-",
                 l.RemainingQuantity, l.UnitCost, AgeDays(l, now)))
             .ToList();
 

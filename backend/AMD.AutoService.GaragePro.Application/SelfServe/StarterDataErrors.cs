@@ -13,11 +13,11 @@ public static class StarterDataErrors
     public const string ClearIncompleteCode = "SELFSERVE_SAMPLE_CLEAR_INCOMPLETE";      // 500
 
     public static ApiError WorkspaceNotReady() => new(WorkspaceNotReadyCode,
-        "อู่นี้ยังสร้างไม่เสร็จหรือถูกปิดไปแล้ว จึงจัดการข้อมูลตัวอย่างไม่ได้ — ลองใหม่อีกครั้งในอีกสักครู่");
+        "อู่นี้ยังสร้างไม่เสร็จหรือถูกปิดไปแล้ว จึงจัดการข้อมูลตัวอย่างไม่ได้ ลองใหม่อีกครั้งในอีกสักครู่");
 
     /// <param name="summary">สรุปขั้นที่ล้ม (ไม่มีรหัสผ่าน/connection string) — ส่งไปใน details ให้ทีมงานไล่ปัญหาได้</param>
     public static ApiError ClearIncomplete(string? summary) => new(ClearIncompleteCode,
-        $"ล้างข้อมูลตัวอย่างได้ไม่ครบ — กดล้างอีกครั้ง หรือติดต่อ {PlanErrors.ContactLine}",
+        $"ล้างข้อมูลตัวอย่างได้ไม่ครบ กดล้างอีกครั้ง หรือติดต่อ {PlanErrors.ContactLine}",
         Details: string.IsNullOrWhiteSpace(summary) ? null : new { summary });
 
     /// <summary>HTTP status ของรหัสในชุดนี้ — null = ไม่ใช่รหัสของข้อมูลตัวอย่าง</summary>

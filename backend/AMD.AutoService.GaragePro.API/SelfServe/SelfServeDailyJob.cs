@@ -78,7 +78,7 @@ public sealed class SelfServeDailyJob(
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "งานรายวันอู่ทดลองใช้รันไม่สำเร็จ — จะลองใหม่รอบถัดไป");
+            logger.LogError(ex, "งานรายวันอู่ทดลองใช้รันไม่สำเร็จ จะลองใหม่รอบถัดไป");
         }
     }
 }

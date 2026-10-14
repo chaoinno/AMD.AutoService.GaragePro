@@ -55,7 +55,7 @@ TrialBannerSpec? trialBannerSpec(PlanInfo? plan, {DateTime? now}) {
       return const TrialBannerSpec(
         tone: StateTone.error,
         icon: Icons.lock_outline,
-        title: 'บัญชีอู่ถูกระงับ — ดูข้อมูลได้ แต่แก้ไขไม่ได้',
+        title: 'บัญชีอู่ถูกระงับ ดูข้อมูลได้ แต่แก้ไขไม่ได้',
         body: 'ติดต่อ $salesLineContact',
       );
 
@@ -64,7 +64,7 @@ TrialBannerSpec? trialBannerSpec(PlanInfo? plan, {DateTime? now}) {
         return const TrialBannerSpec(
           tone: StateTone.error,
           icon: Icons.lock_outline,
-          title: 'ช่วงทดลองใช้ครบแล้ว — ดูข้อมูลได้ แต่แก้ไขไม่ได้',
+          title: 'ช่วงทดลองใช้ครบแล้ว ดูข้อมูลได้ แต่แก้ไขไม่ได้',
           body: 'ติดต่อ $salesLineContact',
         );
       }

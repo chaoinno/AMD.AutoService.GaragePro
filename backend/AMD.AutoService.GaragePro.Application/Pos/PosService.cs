@@ -53,7 +53,7 @@ public sealed class PosService(
         var summary = await BuildSummaryAsync(jobResult.Data!, ct);
         if (summary is null)
             return Result<PaymentSummaryDto>.Fail(
-                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา — ไม่สามารถคำนวณยอดชำระได้");
+                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา ไม่สามารถคำนวณยอดชำระได้");
 
         return Result<PaymentSummaryDto>.Ok(summary);
     }
@@ -67,7 +67,7 @@ public sealed class PosService(
 
         if ((await repo.GetPaymentsByJobAsync(jobId, ct)).Count > 0 || await repo.GetReceiptByJobAsync(jobId, ct) is not null)
             return Result<PaymentSummaryDto>.Fail(
-                "POS_VAT_LOCKED", "เริ่มบันทึกการชำระเงินหรือออกใบเสร็จไปแล้ว — เปลี่ยนการคิด VAT ไม่ได้อีก");
+                "POS_VAT_LOCKED", "เริ่มบันทึกการชำระเงินหรือออกใบเสร็จไปแล้ว เปลี่ยนการคิด VAT ไม่ได้อีก");
 
         job.VatIncluded = included;
         await repo.AddEventAsync(new ActivityEvent
@@ -87,7 +87,7 @@ public sealed class PosService(
         var summary = await BuildSummaryAsync(job, ct);
         if (summary is null)
             return Result<PaymentSummaryDto>.Fail(
-                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา — ไม่สามารถคำนวณยอดชำระได้");
+                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา ไม่สามารถคำนวณยอดชำระได้");
 
         return Result<PaymentSummaryDto>.Ok(summary);
     }
@@ -110,7 +110,7 @@ public sealed class PosService(
             return Result<PaymentDto>.Fail("POS_VALIDATION", "ไม่พบ RequestId", nameof(request.RequestId));
 
         if (await repo.GetReceiptByJobAsync(jobId, ct) is not null)
-            return Result<PaymentDto>.Fail("POS_RECEIPT_ISSUED", "งานนี้ออกใบเสร็จไปแล้ว — บันทึกชำระเงินเพิ่มไม่ได้");
+            return Result<PaymentDto>.Fail("POS_RECEIPT_ISSUED", "งานนี้ออกใบเสร็จไปแล้ว บันทึกชำระเงินเพิ่มไม่ได้");
 
         var hash = Hash(request);
         var existing = await repo.GetPaymentByRequestIdAsync(request.RequestId, ct);
@@ -118,7 +118,7 @@ public sealed class PosService(
         {
             if (existing.RequestHash != hash)
                 return Result<PaymentDto>.Fail(
-                    "POS_CONFLICT", "RequestId นี้เคยใช้บันทึกข้อมูลอื่นไปแล้ว — กรุณาลองใหม่");
+                    "POS_CONFLICT", "RequestId นี้เคยใช้บันทึกข้อมูลอื่นไปแล้ว กรุณาลองใหม่");
 
             return Result<PaymentDto>.Ok(PosMapper.ToDto(existing));
         }
@@ -166,7 +166,7 @@ public sealed class PosService(
             return Result<bool>.Fail("POS_VALIDATION", "กรุณาระบุเหตุผลที่ลบรายการชำระเงินนี้", nameof(reason));
 
         if (await repo.GetReceiptByJobAsync(jobId, ct) is not null)
-            return Result<bool>.Fail("POS_RECEIPT_ISSUED", "งานนี้ออกใบเสร็จไปแล้ว — ลบรายการชำระเงินไม่ได้");
+            return Result<bool>.Fail("POS_RECEIPT_ISSUED", "งานนี้ออกใบเสร็จไปแล้ว ลบรายการชำระเงินไม่ได้");
 
         var payment = await repo.GetPaymentAsync(jobId, paymentId, ct);
         if (payment is null)
@@ -179,7 +179,7 @@ public sealed class PosService(
             EntityId = payment.Id,
             EntityType = nameof(Payment),
             EventType = "payment.removed",
-            DescriptionTh = $"ลบรายการชำระเงิน {payment.Amount:N2} บาท — เหตุผล: {reason.Trim()}",
+            DescriptionTh = $"ลบรายการชำระเงิน {payment.Amount:N2} บาท เหตุผล: {reason.Trim()}",
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
@@ -202,18 +202,18 @@ public sealed class PosService(
         var summary = await BuildSummaryAsync(jobResult.Data!, ct);
         if (summary is null)
             return Result<PaymentReceiptDto>.Fail(
-                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา — ไม่สามารถออกใบเสร็จได้");
+                "POS_NO_QUOTATION", "งานนี้ยังไม่มีใบเสนอราคา ไม่สามารถออกใบเสร็จได้");
 
         // [BIZ] ใบเสร็จรวมออกได้ครั้งเดียว — ใบเสนอราคาที่ยังรอลูกค้าต้องจบก่อน ไม่งั้นยอดของใบนั้นจะไม่ถูกเก็บเงินเลย
         if (summary.AwaitingCustomerQuotationCodes.Count > 0)
             return Result<PaymentReceiptDto>.Fail(
                 "POS_QUOTATION_AWAITING_CUSTOMER",
                 $"ใบเสนอราคา {string.Join(", ", summary.AwaitingCustomerQuotationCodes)} ยังรอลูกค้าตัดสินใจ/เซ็นยืนยัน " +
-                "— ให้ลูกค้าอนุมัติหรือไม่อนุมัติให้เรียบร้อยก่อนออกใบเสร็จ");
+                "ให้ลูกค้าอนุมัติหรือไม่อนุมัติให้เรียบร้อยก่อนออกใบเสร็จ");
 
         if (!summary.BalanceSettled)
             return Result<PaymentReceiptDto>.Fail(
-                "POS_BALANCE_NOT_SETTLED", "ยอดคงเหลือยังไม่เป็นศูนย์ — บันทึกชำระเงินให้ครบก่อนออกใบเสร็จ");
+                "POS_BALANCE_NOT_SETTLED", "ยอดคงเหลือยังไม่เป็นศูนย์ บันทึกชำระเงินให้ครบก่อนออกใบเสร็จ");
 
         var docNo = await receiptNumbers.NextAsync(user.ShardKey, user.BranchId, Now.AddHours(7), ct);
 

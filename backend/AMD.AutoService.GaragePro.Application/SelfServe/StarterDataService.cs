@@ -40,7 +40,7 @@ public sealed class StarterDataService(
     public const string SampleReason = "ข้อมูลตัวอย่าง";
 
     public const string ConsentText =
-        "ข้อมูลตัวอย่าง — ลายเซ็นจำลองเพื่อสาธิตขั้นตอนลูกค้าอนุมัติ ไม่ใช่ลายเซ็นของลูกค้าจริง";
+        "ข้อมูลตัวอย่าง: ลายเซ็นจำลองเพื่อสาธิตขั้นตอนลูกค้าอนุมัติ ไม่ใช่ลายเซ็นของลูกค้าจริง";
 
     /// <summary>ชนิดแถวใน ledger — ค่าคงที่ร่วมกับ ClearAsync และ S5 (conversion ข้ามแถวตัวอย่าง)</summary>
     public static class EntityTypes
@@ -234,11 +234,11 @@ public sealed class StarterDataService(
             }
             catch (StepFailedException ex)
             {
-                Errors.Add($"{label} — {ex.Message}");
+                Errors.Add($"{label}: {ex.Message}");
             }
             catch (Exception ex)
             {
-                Errors.Add($"{label} — ระบบขัดข้อง ({Describe(ex)})");
+                Errors.Add($"{label}: ระบบขัดข้อง ({Describe(ex)})");
             }
         }
     }
@@ -315,7 +315,7 @@ public sealed class StarterDataService(
             }
 
             if (failed.Count > 0)
-                Errors.Add($"แคตตาล็อก — สร้างไม่ได้ {failed.Count} รายการ ({string.Join(", ", failed.Take(3))})");
+                Errors.Add($"แคตตาล็อก: สร้างไม่ได้ {failed.Count} รายการ ({string.Join(", ", failed.Take(3))})");
         }
 
         private async Task TemplatesAsync(CancellationToken ct)
@@ -326,7 +326,7 @@ public sealed class StarterDataService(
                 var missing = template.Lines.Where(l => !_catalogCodes.Contains(l.CatalogCode)).Select(l => l.CatalogCode).ToList();
                 if (missing.Count > 0)
                 {
-                    Errors.Add($"เทมเพลต {template.Code} — ข้าม เพราะยังไม่มีรหัส {string.Join(", ", missing)}");
+                    Errors.Add($"เทมเพลต {template.Code}: ข้าม เพราะยังไม่มีรหัส {string.Join(", ", missing)}");
                     continue;
                 }
 
@@ -343,7 +343,7 @@ public sealed class StarterDataService(
                 if (result.Success)
                     await RecordAsync(EntityTypes.QuotationTemplate, result.Data!.Id.ToString(), ct);
                 else if (result.Error!.Code != "QUOTE_TEMPLATE_CODE_DUPLICATE") // มีอยู่แล้ว = ไม่ใช่ความผิดพลาด แต่ไม่ใช่ของตัวอย่าง
-                    Errors.Add($"เทมเพลต {template.Code} — {result.Error.MessageTh} ({result.Error.Code})");
+                    Errors.Add($"เทมเพลต {template.Code}: {result.Error.MessageTh} ({result.Error.Code})");
             }
         }
 
@@ -365,7 +365,7 @@ public sealed class StarterDataService(
                 var result = await staffs.CreateAsync(request, image: null, ct);
                 if (!result.Success)
                 {
-                    Errors.Add($"ช่างตัวอย่าง — เพิ่ม{technician.FirstName}ไม่ได้: {result.Error!.MessageTh} ({result.Error.Code})");
+                    Errors.Add($"ช่างตัวอย่าง: เพิ่ม{technician.FirstName}ไม่ได้ ({result.Error!.MessageTh}, {result.Error.Code})");
                     // ลิมิตพนักงานเต็มแล้ว คนถัดไปก็ไม่ผ่านเช่นกัน — ไม่ต้องลองต่อ
                     if (result.Error.Code == PlanErrors.LimitReachedCode) return;
                     continue;
@@ -409,14 +409,14 @@ public sealed class StarterDataService(
             }
 
             if (failed.Count > 0)
-                Errors.Add($"ลูกค้าตัวอย่าง — สร้างไม่ได้ ({string.Join(", ", failed)})");
+                Errors.Add($"ลูกค้าตัวอย่าง: สร้างไม่ได้ ({string.Join(", ", failed)})");
         }
 
         private async Task VehiclesAsync(CancellationToken ct)
         {
             if (_customerIds.All(id => id is null))
             {
-                Errors.Add("รถตัวอย่าง — ข้าม เพราะยังไม่มีลูกค้าตัวอย่าง");
+                Errors.Add("รถตัวอย่าง: ข้าม เพราะยังไม่มีลูกค้าตัวอย่าง");
                 return;
             }
 
@@ -425,7 +425,7 @@ public sealed class StarterDataService(
                 StarterCatalog.Vehicles.Count, ct);
             if (refs is null || refs.Models.Count == 0)
             {
-                Errors.Add("รถตัวอย่าง — ข้ามรถและจ๊อบตัวอย่าง เพราะไม่พบข้อมูลยี่ห้อ/รุ่น/โฉม/ปีรถที่ใช้ได้");
+                Errors.Add("รถตัวอย่าง: ข้ามรถและจ๊อบตัวอย่าง เพราะไม่พบข้อมูลยี่ห้อ/รุ่น/โฉม/ปีรถที่ใช้ได้");
                 return;
             }
 
@@ -451,7 +451,7 @@ public sealed class StarterDataService(
             }
 
             if (failed.Count > 0)
-                Errors.Add($"รถตัวอย่าง — สร้างไม่ได้ ({string.Join(", ", failed)})");
+                Errors.Add($"รถตัวอย่าง: สร้างไม่ได้ ({string.Join(", ", failed)})");
         }
 
         private async Task TagAsync(CancellationToken ct)
@@ -474,7 +474,7 @@ public sealed class StarterDataService(
             if (_customerIds.ElementAtOrDefault(sample.Index) is not { } customerId ||
                 _vehicleIds.ElementAtOrDefault(sample.Index) is not { } vehicleId)
             {
-                Errors.Add($"จ๊อบตัวอย่าง {sample.Key} — ข้าม เพราะไม่มีลูกค้า/รถตัวอย่าง");
+                Errors.Add($"จ๊อบตัวอย่าง {sample.Key}: ข้าม เพราะไม่มีลูกค้า/รถตัวอย่าง");
                 return;
             }
 
@@ -483,13 +483,13 @@ public sealed class StarterDataService(
             var lines = sample.Lines.Where(l => _catalogCodes.Contains(l.CatalogCode)).ToList();
             if (lines.Count == 0)
             {
-                Errors.Add($"จ๊อบตัวอย่าง {sample.Key} — ข้าม เพราะยังไม่มีรายการในแคตตาล็อก");
+                Errors.Add($"จ๊อบตัวอย่าง {sample.Key}: ข้าม เพราะยังไม่มีรายการในแคตตาล็อก");
                 return;
             }
 
             if (technicianId is null && lines.Any(l => StarterCatalog.Find(l.CatalogCode)?.Type == LineType.Labor))
             {
-                Errors.Add($"จ๊อบตัวอย่าง {sample.Key} — ข้าม เพราะไม่มีช่างให้ระบุในบรรทัดค่าแรง");
+                Errors.Add($"จ๊อบตัวอย่าง {sample.Key}: ข้าม เพราะไม่มีช่างให้ระบุในบรรทัดค่าแรง");
                 return;
             }
 
@@ -556,7 +556,7 @@ public sealed class StarterDataService(
                     jobId, "signature", quotationId, "sample-signature.png", "image/png", content, png.Length), ct);
                 if (result.Success) return result.Data;
 
-                Errors.Add($"จ๊อบตัวอย่าง {jobKey} — อัปโหลดลายเซ็นตัวอย่างไม่สำเร็จ ({result.Error!.MessageTh}) · {stopped}");
+                Errors.Add($"จ๊อบตัวอย่าง {jobKey}: อัปโหลดลายเซ็นตัวอย่างไม่สำเร็จ ({result.Error!.MessageTh}) · {stopped}");
                 return null;
             }
             catch (OperationCanceledException)
@@ -565,7 +565,7 @@ public sealed class StarterDataService(
             }
             catch (Exception ex)
             {
-                Errors.Add($"จ๊อบตัวอย่าง {jobKey} — อัปโหลดลายเซ็นตัวอย่างไม่สำเร็จ ({Describe(ex)}) · {stopped}");
+                Errors.Add($"จ๊อบตัวอย่าง {jobKey}: อัปโหลดลายเซ็นตัวอย่างไม่สำเร็จ ({Describe(ex)}) · {stopped}");
                 return null;
             }
         }

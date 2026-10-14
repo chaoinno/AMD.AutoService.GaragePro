@@ -144,7 +144,7 @@ class _QcPageState extends ConsumerState<QcPage> {
                 style: const TextStyle(fontSize: 15, height: 1.7),
               )
             else
-              const Text('ยังไม่ได้บันทึก — ต้องบันทึกก่อนจึงจะผ่าน QC ได้',
+              const Text('ยังไม่ได้บันทึก ต้องบันทึกก่อนจึงจะผ่าน QC ได้',
                   style: TextStyle(fontSize: 14, color: T.muted, height: 1.7)),
             const SizedBox(height: T.s8),
             SizedBox(
@@ -181,7 +181,7 @@ class _QcPageState extends ConsumerState<QcPage> {
     if (job.status == 'waitparts') {
       return const StickyActionBar(
         label: 'ส่งตรวจ QC',
-        disabledReason: 'จ๊อบนี้ยังค้างสถานะ "รออะไหล่" — ให้ธุรการกด "ยืนยันซ่อมเสร็จ → ส่งตรวจ QC" '
+        disabledReason: 'จ๊อบนี้ยังค้างสถานะ "รออะไหล่" ให้ธุรการกด "ยืนยันซ่อมเสร็จ → ส่งตรวจ QC" '
             'จากเว็บสำนักงาน',
         onPressed: null,
       );
@@ -190,7 +190,7 @@ class _QcPageState extends ConsumerState<QcPage> {
     if (job.status == 'inprogress') {
       return StickyActionBar(
         label: 'ส่งตรวจ QC',
-        hint: 'จ๊อบยังอยู่ที่ "${job.statusLabel}" — ต้องส่งเข้า QC ก่อนจึงจะกดผ่านได้',
+        hint: 'จ๊อบยังอยู่ที่ "${job.statusLabel}" ต้องส่งเข้า QC ก่อนจึงจะกดผ่านได้',
         onPressed: _busy ? null : _sendToQc,
       );
     }
@@ -255,7 +255,7 @@ class _QcPageState extends ConsumerState<QcPage> {
             const Text('ส่งตรวจ QC',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, height: 1.5)),
             const Text(
-              'ระบบยังไม่มีรายการซ่อมรายบรรทัดให้ตรวจอัตโนมัติ — สรุปงานที่ทำเสร็จเพื่อบันทึกไว้ใน audit log',
+              'ระบบยังไม่มีรายการซ่อมรายบรรทัดให้ตรวจอัตโนมัติ สรุปงานที่ทำเสร็จเพื่อบันทึกไว้ใน audit log',
               style: TextStyle(fontSize: 14, color: T.muted, height: 1.7),
             ),
             const SizedBox(height: T.s12),

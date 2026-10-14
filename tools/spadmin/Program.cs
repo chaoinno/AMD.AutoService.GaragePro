@@ -50,7 +50,7 @@ public static class SpAdminProgram
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
-            await Console.Error.WriteLineAsync("ยกเลิกแล้ว (Ctrl+C) — แถวที่ทำสำเร็จก่อนหน้านี้ถูกบันทึกแล้ว รันคำสั่งเดิมซ้ำได้");
+            await Console.Error.WriteLineAsync("ยกเลิกแล้ว (Ctrl+C) แถวที่ทำสำเร็จก่อนหน้านี้ถูกบันทึกแล้ว รันคำสั่งเดิมซ้ำได้");
             return ExitCodes.Cancelled;
         }
         catch (SqlException ex)

@@ -84,7 +84,7 @@ export function SimpleStaffCreateDialog({
     <ConfirmModal
       open={open}
       title="เพิ่มพนักงาน"
-      description="กรอกแค่ชื่อ เบอร์โทร และบทบาท — ระบบสร้างชื่อผู้ใช้และรหัสผ่านเข้าแอปให้"
+      description="กรอกแค่ชื่อ เบอร์โทร และบทบาท ระบบสร้างชื่อผู้ใช้และรหัสผ่านเข้าแอปให้"
       onClose={close}
       size="medium"
       footer={

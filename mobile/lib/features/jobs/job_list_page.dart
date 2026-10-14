@@ -138,8 +138,8 @@ class _JobListPageState extends ConsumerState<JobListPage> {
             ? 'ไม่พบงานที่ตรงกับ "${state.filter.query}"'
             : state.filter.status != null
                 // บอกให้ตรงจุดว่าอะไรกรองอยู่ แทนคำว่า "ตัวกรองที่เลือก" ลอยๆ ที่ไม่ได้ช่วยอะไร
-                ? 'ไม่มีงานในสถานะที่กรองอยู่ — กด "ล้าง" บนแถบด้านบนเพื่อดูทุกสถานะ'
-                : 'ยังไม่มีงานในตัวกรองที่เลือก — ลองเปลี่ยนประเภทหรือสถานะ',
+                ? 'ไม่มีงานในสถานะที่กรองอยู่ กด "ล้าง" บนแถบด้านบนเพื่อดูทุกสถานะ'
+                : 'ยังไม่มีงานในตัวกรองที่เลือก ลองเปลี่ยนประเภทหรือสถานะ',
         actionLabel: 'โหลดใหม่',
         onAction: () => ref.read(jobListProvider.notifier).load(),
       );
@@ -172,7 +172,7 @@ class _JobListPageState extends ConsumerState<JobListPage> {
               child: InfoBanner(
                 icon: Icons.cloud_off_outlined,
                 title: 'ข้อมูลอาจไม่ใช่ล่าสุด',
-                body: 'โหลดใหม่ไม่สำเร็จ — ลากลงเพื่อลองอีกครั้ง',
+                body: 'โหลดใหม่ไม่สำเร็จ ลากลงเพื่อลองอีกครั้ง',
                 tone: StateTone.warn,
               ),
             );

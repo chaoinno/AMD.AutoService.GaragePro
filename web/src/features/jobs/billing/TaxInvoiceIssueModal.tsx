@@ -57,7 +57,7 @@ export function TaxInvoiceIssueModal({ open, job, onClose, onIssued }: Props) {
   const formError = !name.trim()
     ? 'กรุณาระบุชื่อผู้ซื้อ'
     : !address.trim()
-      ? 'กรุณาระบุที่อยู่ผู้ซื้อ — ใบกำกับภาษีเต็มรูปต้องมีที่อยู่ผู้ซื้อเสมอ'
+      ? 'กรุณาระบุที่อยู่ผู้ซื้อ ใบกำกับภาษีเต็มรูปต้องมีที่อยู่ผู้ซื้อเสมอ'
       : taxIdDigits && taxIdDigits.length !== 13
         ? 'เลขประจำตัวผู้เสียภาษีต้องเป็นตัวเลข 13 หลัก'
         : buyerKind !== 'individual' && !taxIdDigits
@@ -122,8 +122,8 @@ export function TaxInvoiceIssueModal({ open, job, onClose, onIssued }: Props) {
           <Field label="ประเภทผู้ซื้อ">
             <Select value={buyerKind} onChange={(e) => setBuyerKind(e.target.value as BuyerKind)}>
               <option value="individual">บุคคลธรรมดา (ไม่ระบุสาขา)</option>
-              <option value="headOffice">นิติบุคคล — สำนักงานใหญ่</option>
-              <option value="branch">นิติบุคคล — สาขา</option>
+              <option value="headOffice">นิติบุคคล: สำนักงานใหญ่</option>
+              <option value="branch">นิติบุคคล: สาขา</option>
             </Select>
           </Field>
           <Field label={buyerKind === 'individual' ? 'เลขประจำตัวผู้เสียภาษี / บัตรประชาชน (ถ้ามี)' : 'เลขประจำตัวผู้เสียภาษี'}>

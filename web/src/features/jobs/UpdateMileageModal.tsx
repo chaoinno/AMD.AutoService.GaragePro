@@ -30,7 +30,7 @@ export function UpdateMileageModal({ job, onClose }: { job: Job; onClose: () => 
     <ConfirmModal
       open
       title={job.mileageAtIntake != null ? 'แก้ไขเลขไมล์ขณะรับรถ' : 'บันทึกเลขไมล์ขณะรับรถ'}
-      description="อ่านจากหน้าปัดรถตอนรับรถ — แก้ไขได้จนกว่าจะส่งมอบรถ ระบบบันทึกประวัติการแก้ไขไว้ในจ๊อบนี้"
+      description="อ่านจากหน้าปัดรถตอนรับรถ แก้ไขได้จนกว่าจะส่งมอบรถ ระบบบันทึกประวัติการแก้ไขไว้ในจ๊อบนี้"
       onClose={onClose}
       size="small"
       footer={

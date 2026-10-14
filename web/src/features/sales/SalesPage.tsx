@@ -96,7 +96,7 @@ function SaleList() {
     mutationFn: async () => {
       const warehouses = await getWarehouses()
       const warehouse = warehouses.find((w) => w.isActive) ?? warehouses[0]
-      if (!warehouse) throw new Error('ยังไม่มีคลังสินค้าที่เปิดใช้งานในสาขานี้ — เพิ่มคลังที่เมนู "คลัง" ก่อน')
+      if (!warehouse) throw new Error('ยังไม่มีคลังสินค้าที่เปิดใช้งานในสาขานี้ เพิ่มคลังที่เมนู "คลัง" ก่อน')
       return createSale({ warehouseId: warehouse.id, legacyCustomerId: null, customerName: null, customerPhone: null, vatIncluded: true })
     },
     onSuccess: (sale) => {
@@ -201,7 +201,7 @@ function SaleList() {
                 ]}
               />
               {(query.data?.total ?? 0) > items.length ? (
-                <p className="section-help sale-table-note">แสดง {items.length} จาก {query.data?.total} บิลล่าสุด — ใช้ตัวกรองเพื่อหาบิลที่เก่ากว่า · การเรียงคอลัมน์เรียงเฉพาะรายการที่แสดงอยู่</p>
+                <p className="section-help sale-table-note">แสดง {items.length} จาก {query.data?.total} บิลล่าสุด ใช้ตัวกรองเพื่อหาบิลที่เก่ากว่า · การเรียงคอลัมน์เรียงเฉพาะรายการที่แสดงอยู่</p>
               ) : null}
             </Card>
           )}

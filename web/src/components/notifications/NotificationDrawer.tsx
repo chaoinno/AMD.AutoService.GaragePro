@@ -199,7 +199,7 @@ export function NotificationDrawer({
               )}
               {list.isError && (
                 <p className="notification-sheet__error" role="alert">
-                  โหลดหน้าถัดไปไม่สำเร็จ — {isApiError(list.error) ? `${list.error.messageTh} (traceId: ${list.error.traceId})` : 'ลองใหม่อีกครั้ง'}
+                  โหลดหน้าถัดไปไม่สำเร็จ {isApiError(list.error) ? `${list.error.messageTh} (traceId: ${list.error.traceId})` : 'ลองใหม่อีกครั้ง'}
                 </p>
               )}
             </>

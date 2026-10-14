@@ -115,7 +115,7 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
         } else {
           signatureImagePath = VERBAL_APPROVAL_SIGNATURE_PATH
           consentText =
-            `ลูกค้าแจ้งอนุมัติทาง${channel} — ไม่มีลายเซ็น · บันทึกแทนโดย ${userName} · ${verbalNote.trim()}`
+            `ลูกค้าแจ้งอนุมัติทาง${channel} ไม่มีลายเซ็น · บันทึกแทนโดย ${userName} · ${verbalNote.trim()}`
         }
 
         await signQuotation(q.id, {
@@ -132,8 +132,8 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
     },
     onSuccess: (movedJob) => {
       toast.success(movedJob
-        ? 'บันทึกการอนุมัติของลูกค้าแล้ว — จ๊อบเปลี่ยนเป็น "อนุมัติแล้ว"'
-        : 'บันทึกการอนุมัติของลูกค้าแล้ว — รายการที่อนุมัติรวมเข้ายอดชำระของจ๊อบนี้')
+        ? 'บันทึกการอนุมัติของลูกค้าแล้ว จ๊อบเปลี่ยนเป็น "อนุมัติแล้ว"'
+        : 'บันทึกการอนุมัติของลูกค้าแล้ว รายการที่อนุมัติรวมเข้ายอดชำระของจ๊อบนี้')
       onClose()
     },
     onError: (error) => {
@@ -161,11 +161,11 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
   // [UI] ปุ่มที่ปิดต้องบอกเหตุผล — เรียงตามสิ่งที่ต้องทำก่อน/หลัง เหมือน StickyActionBar ของมือถือ
   let blockedReason: string | null = null
   if (!q) blockedReason = 'กำลังโหลดใบเสนอราคา'
-  else if (!canAdvanceJob) blockedReason = 'จ๊อบยังไม่ถึงขั้น "รออนุมัติ" — ต้องให้ผู้จัดการหรือธุรการดำเนินการ'
-  else if (!signed && !openForDecision) blockedReason = `ใบเสนอราคาสถานะ "${q.statusLabelTh}" — รับการอนุมัติไม่ได้`
-  else if (!signed && q.isExpired) blockedReason = 'ใบเสนอราคาหมดอายุ — ต้องออกฉบับแก้ไขก่อนให้ลูกค้าอนุมัติ'
+  else if (!canAdvanceJob) blockedReason = 'จ๊อบยังไม่ถึงขั้น "รออนุมัติ" ต้องให้ผู้จัดการหรือธุรการดำเนินการ'
+  else if (!signed && !openForDecision) blockedReason = `ใบเสนอราคาสถานะ "${q.statusLabelTh}" รับการอนุมัติไม่ได้`
+  else if (!signed && q.isExpired) blockedReason = 'ใบเสนอราคาหมดอายุ ต้องออกฉบับแก้ไขก่อนให้ลูกค้าอนุมัติ'
   else if (!signed && pendingLines.length > 0) blockedReason = `ยังเหลือ ${pendingLines.length} รายการที่ยังไม่ได้ตัดสินใจ`
-  else if (!signed && approvedCount === 0) blockedReason = 'ยังไม่มีรายการที่อนุมัติ — ต้องอนุมัติอย่างน้อย 1 รายการ (ถ้าไม่อนุมัติทั้งหมดให้ออกฉบับแก้ไขหรือปิดงาน)'
+  else if (!signed && approvedCount === 0) blockedReason = 'ยังไม่มีรายการที่อนุมัติ ต้องอนุมัติอย่างน้อย 1 รายการ (ถ้าไม่อนุมัติทั้งหมดให้ออกฉบับแก้ไขหรือปิดงาน)'
   else if (!signed && method === 'signature' && !hasSignature) blockedReason = 'ให้ลูกค้าเซ็นในกรอบลายเซ็นก่อน'
   else if (!signed && method === 'verbal' && !verbalNote.trim()) blockedReason = 'ระบุรายละเอียดการแจ้งอนุมัติ (ชื่อผู้แจ้ง/เวลา) ก่อน'
   else if (busy) blockedReason = 'กำลังบันทึก กรุณารอสักครู่'
@@ -203,7 +203,7 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
       open
       size="large"
       title={q ? `ดำเนินการแทนลูกค้า · ${q.code} (v${q.version})` : 'ดำเนินการแทนลูกค้า'}
-      description="บันทึกการตัดสินใจของลูกค้ารายรายการ แล้วยืนยันด้วยลายเซ็นหรือบันทึกช่องทางที่ลูกค้าแจ้งอนุมัติ — ขั้นตอนเดียวกับหน้าอนุมัติบนมือถือ"
+      description="บันทึกการตัดสินใจของลูกค้ารายรายการ แล้วยืนยันด้วยลายเซ็นหรือบันทึกช่องทางที่ลูกค้าแจ้งอนุมัติ ขั้นตอนเดียวกับหน้าอนุมัติบนมือถือ"
       onClose={onClose}
       footer={
         <>
@@ -229,7 +229,7 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
           {q.revisionReason ? (
             <div className="customer-approval__banner customer-approval__banner--warn" role="status">
               <strong>ใบเสนอราคาฉบับแก้ไข (เวอร์ชัน {q.version})</strong>
-              <p>{q.revisionReason} — การอนุมัติในเวอร์ชันก่อนหน้าเป็นโมฆะ ต้องตัดสินใจใหม่ทุกรายการ</p>
+              <p>{q.revisionReason} การอนุมัติในเวอร์ชันก่อนหน้าเป็นโมฆะ ต้องตัดสินใจใหม่ทุกรายการ</p>
             </div>
           ) : null}
           {signed && q.approval ? (
@@ -237,7 +237,7 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
               <strong><CheckCircle2 aria-hidden="true" /> ลูกค้ายืนยันแล้ว</strong>
               <p>
                 เมื่อ {formatDateTime(q.approval.signedAt)} · รับรองโดย {q.approval.witnessEmployeeName} · ผูกกับเวอร์ชันที่{' '}
-                {q.approval.quotationVersion} — เหลือแค่เปลี่ยนสถานะจ๊อบเป็น "อนุมัติแล้ว"
+                {q.approval.quotationVersion} เหลือแค่เปลี่ยนสถานะจ๊อบเป็น "อนุมัติแล้ว"
               </p>
             </div>
           ) : null}
@@ -281,14 +281,14 @@ function CustomerApprovalContent({ quotationId, job, onClose }: Props & { quotat
                   onSelect={() => setMethod('signature')}
                   icon={<PenLine aria-hidden="true" />}
                   title="ลูกค้าเซ็นบนหน้าจอนี้"
-                  detail="ลูกค้าอยู่ที่อู่ — ใช้เมาส์ ปากกา หรือนิ้วบนจอสัมผัส"
+                  detail="ลูกค้าอยู่ที่อู่ ใช้เมาส์ ปากกา หรือนิ้วบนจอสัมผัส"
                 />
                 <MethodOption
                   checked={method === 'verbal'}
                   onSelect={() => setMethod('verbal')}
                   icon={<Phone aria-hidden="true" />}
                   title="ลูกค้าแจ้งอนุมัติทางช่องทางอื่น"
-                  detail="ไม่มีลายเซ็น — พนักงานบันทึกแทนและชื่อผู้บันทึกจะอยู่ในเอกสาร"
+                  detail="ไม่มีลายเซ็น พนักงานบันทึกแทนและชื่อผู้บันทึกจะอยู่ในเอกสาร"
                 />
               </div>
 

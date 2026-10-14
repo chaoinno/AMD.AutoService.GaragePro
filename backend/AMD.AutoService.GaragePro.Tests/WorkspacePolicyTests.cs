@@ -109,9 +109,9 @@ public class WorkspacePolicyTests
         clock.Now = Now.AddSeconds(30);
         var after = await policy.GetAsync("SP1", 7);
 
-        reader.Calls.Should().Be(1, "ภายใน 60 วิต้องไม่อ่านฐานซ้ำ — รวมกรณีส่ง shard ตัวพิมพ์ต่างกัน");
+        reader.Calls.Should().Be(1, "ภายใน 60 วิต้องไม่อ่านฐานซ้ำ รวมกรณีส่ง shard ตัวพิมพ์ต่างกัน");
         before.IsReadOnly.Should().BeFalse();
-        after.IsReadOnly.Should().BeTrue("cache เก็บข้อมูลดิบ ไม่ใช่ผลที่ตัดสินแล้ว — หมดอายุตรงเวลาแม้ยังอยู่ใน cache");
+        after.IsReadOnly.Should().BeTrue("cache เก็บข้อมูลดิบ ไม่ใช่ผลที่ตัดสินแล้ว หมดอายุตรงเวลาแม้ยังอยู่ใน cache");
     }
 
     [Fact]

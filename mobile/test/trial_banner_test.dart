@@ -44,7 +44,7 @@ void main() {
       final spec = trialBannerSpec(trial(daysLeft: 0, readOnly: true))!;
       expect(spec.tone, StateTone.error);
       expect(spec.icon, Icons.lock_outline);
-      expect(spec.title, 'ช่วงทดลองใช้ครบแล้ว — ดูข้อมูลได้ แต่แก้ไขไม่ได้');
+      expect(spec.title, 'ช่วงทดลองใช้ครบแล้ว ดูข้อมูลได้ แต่แก้ไขไม่ได้');
       expect(spec.body, 'ติดต่อ LINE @garagepro');
     });
 
@@ -54,7 +54,7 @@ void main() {
       expect(spec.title, contains('ระงับ'));
     });
 
-    test('server ไม่ส่ง daysLeft — คำนวณจาก trialEndsAt (ปัดขึ้น)', () {
+    test('server ไม่ส่ง daysLeft คำนวณจาก trialEndsAt (ปัดขึ้น)', () {
       final now = DateTime.utc(2026, 11, 10, 12);
       final spec = trialBannerSpec(trial(endsAt: DateTime.utc(2026, 11, 13, 17)), now: now)!;
       expect(spec.title, 'ทดลองใช้ · เหลือ 4 วัน');
@@ -88,7 +88,7 @@ void main() {
       ),
     ));
 
-    expect(find.text('ช่วงทดลองใช้ครบแล้ว — ดูข้อมูลได้ แต่แก้ไขไม่ได้'), findsOneWidget);
+    expect(find.text('ช่วงทดลองใช้ครบแล้ว ดูข้อมูลได้ แต่แก้ไขไม่ได้'), findsOneWidget);
     expect(find.text('ติดต่อ LINE @garagepro'), findsOneWidget);
     expect(find.byIcon(Icons.lock_outline), findsOneWidget);
   });

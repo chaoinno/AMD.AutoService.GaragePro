@@ -68,7 +68,7 @@ public sealed class QcChecklistService(
         var result = QcMapper.ParseResultToken(request.Result);
         if (result is null)
             return Result<QcChecklistItemDto>.Fail(
-                "QC_RESULT_INVALID", "ผลตรวจไม่ถูกต้อง — ต้องเป็น pending หรือ pass", nameof(request.Result));
+                "QC_RESULT_INVALID", "ผลตรวจไม่ถูกต้อง ต้องเป็น pending หรือ pass", nameof(request.Result));
 
         var jobResult = await ValidateJobAsync(jobId, ct);
         if (!jobResult.Success) return Result<QcChecklistItemDto>.Fail(jobResult.Error!);
@@ -76,10 +76,10 @@ public sealed class QcChecklistService(
         var checklist = await repository.GetByJobAsync(jobId, ct);
         if (checklist is null)
             return Result<QcChecklistItemDto>.Fail(
-                "QC_NOT_FOUND", "ยังไม่มีเช็คลิสต์ QC ของงานนี้ — เปิดหน้า QC ก่อน");
+                "QC_NOT_FOUND", "ยังไม่มีเช็คลิสต์ QC ของงานนี้ เปิดหน้า QC ก่อน");
 
         if (checklist.IsLocked)
-            return Result<QcChecklistItemDto>.Fail("QC_LOCKED", "งานนี้ผ่าน QC ไปแล้ว — แก้ไขไม่ได้");
+            return Result<QcChecklistItemDto>.Fail("QC_LOCKED", "งานนี้ผ่าน QC ไปแล้ว แก้ไขไม่ได้");
 
         var item = checklist.Items.FirstOrDefault(i => i.Id == itemId);
         if (item is null)
@@ -112,10 +112,10 @@ public sealed class QcChecklistService(
         var checklist = await repository.GetByJobAsync(jobId, ct);
         if (checklist is null)
             return Result<QcChecklistDto>.Fail(
-                "QC_NOT_FOUND", "ยังไม่มีเช็คลิสต์ QC ของงานนี้ — เปิดหน้า QC ก่อน");
+                "QC_NOT_FOUND", "ยังไม่มีเช็คลิสต์ QC ของงานนี้ เปิดหน้า QC ก่อน");
 
         if (checklist.IsLocked)
-            return Result<QcChecklistDto>.Fail("QC_LOCKED", "งานนี้ผ่าน QC ไปแล้ว — แก้ไขไม่ได้");
+            return Result<QcChecklistDto>.Fail("QC_LOCKED", "งานนี้ผ่าน QC ไปแล้ว แก้ไขไม่ได้");
 
         checklist.TestDriveKm = request.Km;
         checklist.TestDriveNote = request.Note.Trim();
@@ -147,7 +147,7 @@ public sealed class QcChecklistService(
         if (approvedLines.Count == 0)
             return Result<QcChecklist>.Fail(
                 "QC_NO_APPROVED_LINES",
-                "งานนี้ยังไม่มีรายการที่อนุมัติในใบเสนอราคา — ตรวจสอบขั้นเสนอราคา/งานซ่อมก่อน");
+                "งานนี้ยังไม่มีรายการที่อนุมัติในใบเสนอราคา ตรวจสอบขั้นเสนอราคา/งานซ่อมก่อน");
 
         var checklist = new QcChecklist
         {

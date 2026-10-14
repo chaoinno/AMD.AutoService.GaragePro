@@ -36,7 +36,7 @@ public sealed class WorkspacePlanReader(IOptions<LegacyShardOptions> legacyOptio
     {
         if (!_legacy.ConnectionStrings.TryGetValue(shardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{shardKey}' — ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey} " +
+                $"ไม่รู้จัก shard '{shardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey} " +
                 "(ค่าเดียวกับ SelfServe:ConnectionString)");
 
         BranchRow? row;

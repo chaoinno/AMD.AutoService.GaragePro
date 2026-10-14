@@ -71,7 +71,7 @@ export function QuotationTemplatePickerModal({
                 : template && template.lineCount === 0
                   ? 'เทมเพลตนี้ยังไม่มีรายการ'
                   : hasMissingCatalogItem
-                    ? 'เทมเพลตนี้มีรหัสที่ไม่พบในแคตตาล็อกแล้ว — แก้ที่เมนูข้อมูลหลักก่อน'
+                    ? 'เทมเพลตนี้มีรหัสที่ไม่พบในแคตตาล็อกแล้ว แก้ที่เมนูข้อมูลหลักก่อน'
                     : undefined
             }
             onClick={() => selectedId && onApply({ templateId: selectedId, source: source || null })}
@@ -102,7 +102,7 @@ export function QuotationTemplatePickerModal({
               {isApiError(listQuery.error) ? listQuery.error.messageTh : 'โหลดเทมเพลตไม่สำเร็จ'}
             </div>
           ) : !listQuery.data?.length ? (
-            <p className="form-message">ยังไม่มีเทมเพลตที่ใช้งานอยู่ — สร้างได้ที่เมนู "เทมเพลตใบเสนอราคา"</p>
+            <p className="form-message">ยังไม่มีเทมเพลตที่ใช้งานอยู่ สร้างได้ที่เมนู "เทมเพลตใบเสนอราคา"</p>
           ) : (
             <ul className="template-picker__cards">
               {listQuery.data.map((t) => (

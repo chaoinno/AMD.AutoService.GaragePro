@@ -128,7 +128,7 @@ public sealed class AuthService(
     {
         if (!user.IsStaff || user.StaffId is null)
             return Result<LoginResultDto>.Fail("AUTH_NOT_STAFF",
-                "บัญชีนี้ไม่ใช่พนักงานของอู่ — ระบบนี้ใช้ได้เฉพาะพนักงาน");
+                "บัญชีนี้ไม่ใช่พนักงานของอู่ ระบบนี้ใช้ได้เฉพาะพนักงาน");
 
         var role = await ResolveRoleAsync(shardKey, user, ct);
         var branches = await BuildBranchOptionsAsync(shardKey, user, ct);
@@ -137,7 +137,7 @@ public sealed class AuthService(
             : branches.FirstOrDefault(b => b.BranchId == user.BranchId.Value);
         if (branch is null)
             return Result<LoginResultDto>.Fail("AUTH_NO_BRANCH",
-                "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน — ติดต่อผู้ดูแลระบบ");
+                "บัญชีนี้ไม่ได้ผูกกับสาขาที่เปิดใช้งาน ติดต่อผู้ดูแลระบบ");
 
         // [BIZ] แพ็กเกจของอู่: ล็อก (เลยช่วงอ่านอย่างเดียว/ถูกระงับ) = เข้าไม่ได้ · อ่านอย่างเดียว = เข้าได้ ดู/พิมพ์ได้
         // legacy ไม่แตะฐานข้อมูลใดๆ (WorkspacePolicy คืน Legacy ทันที)
@@ -321,7 +321,7 @@ public sealed class AuthService(
         // [BIZ] ช่างและหัวหน้าช่างไม่มีสิทธิ์ปิดกะ
         if (!RoleMapper.CanCloseShift(currentUser.Role))
             return Result<bool>.Fail("SHIFT_CLOSE_FORBIDDEN",
-                "บทบาทนี้ไม่มีสิทธิ์ปิดกะ — ให้หัวหน้ากะหรือผู้จัดการเป็นผู้ปิด");
+                "บทบาทนี้ไม่มีสิทธิ์ปิดกะ ให้หัวหน้ากะหรือผู้จัดการเป็นผู้ปิด");
 
         var session = await repository.GetSessionAsync(sessionId, ct);
         if (session is null)
@@ -431,7 +431,7 @@ public sealed class AuthService(
         if (targetUser is null || !targetUser.IsStaff || targetUser.StaffId is null
             || targetUser.BranchId != target.BranchId)
             return Result<LoginResultDto>.Fail("AUTH_BRANCH_FORBIDDEN",
-                "บัญชีของสาขานี้ใช้งานไม่ได้แล้ว — ลองเปิดรายการสาขาใหม่อีกครั้ง");
+                "บัญชีของสาขานี้ใช้งานไม่ได้แล้ว ลองเปิดรายการสาขาใหม่อีกครั้ง");
 
         var plan = await workspacePolicy.GetAsync(shardKey, target.BranchId, ct);
         if (plan.IsLocked)
@@ -514,17 +514,17 @@ public sealed class AuthService(
         var shardKey = currentUser.ShardKey;
         var user = await legacyUsers.FindByIdAsync(shardKey, currentUser.UserId, ct);
         if (user is null)
-            return "บัญชีนี้ถูกปิดใช้งานแล้ว — ติดต่อผู้จัดการสาขา";
+            return "บัญชีนี้ถูกปิดใช้งานแล้ว ติดต่อผู้จัดการสาขา";
 
         // สาขาใน token มาจาก Staff.BranchId ตอน login — ย้ายสาขาแล้วถ้ายังใช้ token เดิม
         // จะเห็น/แก้ข้อมูลของสาขาเก่าได้ตลอดไปเพราะ token ไม่หมดอายุ
         if (currentUser.BranchId > 0 && user.BranchId != currentUser.BranchId)
-            return "บัญชีนี้ถูกย้ายสาขาแล้ว — กรุณาเข้าสู่ระบบใหม่";
+            return "บัญชีนี้ถูกย้ายสาขาแล้ว กรุณาเข้าสู่ระบบใหม่";
 
         // role อยู่ใน claim — ถูกลดสิทธิ์ (เช่นผู้จัดการเป็นช่าง) แล้วต้องไม่เก็บสิทธิ์เดิมไว้ตลอดไป
         var role = await ResolveRoleAsync(shardKey, user, ct);
         if (role != currentUser.Role)
-            return "สิทธิ์ของบัญชีนี้เปลี่ยนแล้ว — กรุณาเข้าสู่ระบบใหม่";
+            return "สิทธิ์ของบัญชีนี้เปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่";
 
         // B5 — แพ็กเกจของอู่ที่สมัครเอง: ถูกล็อก/เปลี่ยนชนิด/ทีมงานเลื่อนวันจนสถานะอ่านอย่างเดียวไม่ตรงกับ token
         // legacy: นโยบายคืน Legacy โดยไม่แตะฐาน และ token ไม่มี claim plan → ไม่มีผล (พฤติกรรมเดิมทุกประการ)

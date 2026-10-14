@@ -74,12 +74,12 @@ export function IntakeReceiptDocument({ job, checklist, photos }: IntakeReceiptD
           {checklist.isLocked ? (
             <span>ส่งแล้วเมื่อ {formatDateTime(checklist.submittedAt!)} โดย {checklist.submittedByUserName}</span>
           ) : (
-            <span>ยังไม่ส่ง checklist — ข้อมูลนี้เป็นร่างล่าสุด ณ เวลาที่พิมพ์</span>
+            <span>ยังไม่ส่ง checklist ข้อมูลนี้เป็นร่างล่าสุด ณ เวลาที่พิมพ์</span>
           )}
         </div>
         {issueCount > 0 ? (
           <p className="intake-document-checklist__warning">
-            <AlertTriangle aria-hidden="true" /> พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ — ดูรายละเอียดด้านล่าง
+            <AlertTriangle aria-hidden="true" /> พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ ดูรายละเอียดด้านล่าง
           </p>
         ) : null}
 
@@ -109,7 +109,7 @@ export function IntakeReceiptDocument({ job, checklist, photos }: IntakeReceiptD
                           <Icon aria-hidden="true" /> {meta.label}
                         </span>
                       </td>
-                      <td>{item.note || '—'}</td>
+                      <td>{item.note || '-'}</td>
                     </tr>
                   )
                 })}

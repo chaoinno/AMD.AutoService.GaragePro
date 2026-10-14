@@ -88,7 +88,7 @@ function ServiceInfoForm({
     || months !== (handover.nextServiceMonths ?? null)
 
   const blockedReason = intakeKm == null
-    ? 'งานนี้ยังไม่มีเลขไมล์ขณะรับรถ — บันทึกที่ขั้น "รับรถ" ของการ์ดนี้ก่อน'
+    ? 'งานนี้ยังไม่มีเลขไมล์ขณะรับรถ บันทึกที่ขั้น "รับรถ" ของการ์ดนี้ก่อน'
     : handoverKm.km == null ? 'กรอกเลขไมล์ตอนส่งมอบ'
       : nextKm.km == null ? 'กรอกเลขไมล์ที่นัดครั้งถัดไป'
         : months == null ? 'เลือกระยะเวลานัดครั้งถัดไป (เดือน)'
@@ -166,7 +166,7 @@ function ServiceInfoForm({
         <p className="handover-service__preview">
           <CalendarClock aria-hidden="true" />
           นัดครั้งถัดไป: {nextServiceText(nextKm.km, previewDue)}
-          <span className="section-help"> — วันที่นับจากวันที่ยืนยันส่งมอบจริง</span>
+          <span className="section-help"> วันที่นับจากวันที่ยืนยันส่งมอบจริง</span>
         </p>
       ) : null}
       <div className="job-card-panel-actions">

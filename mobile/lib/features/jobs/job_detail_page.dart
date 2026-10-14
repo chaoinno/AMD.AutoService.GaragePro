@@ -254,7 +254,7 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
         data: (quotations) {
           if (quotations.isEmpty) {
             return const Text(
-              'ยังไม่มีใบเสนอราคาของงานนี้ — ธุรการเป็นผู้ออกใบจากเว็บสำนักงาน '
+              'ยังไม่มีใบเสนอราคาของงานนี้ ธุรการเป็นผู้ออกใบจากเว็บสำนักงาน '
               'เมื่อส่งให้ลูกค้าแล้วจะมาปรากฏที่นี่ให้กดอนุมัติและเซ็นได้',
               style: TextStyle(fontSize: 15, color: T.muted, height: 1.7),
             );
@@ -319,7 +319,7 @@ class _JobDetailPageState extends ConsumerState<JobDetailPage> {
           if (images.isEmpty) {
             return const Padding(
               padding: EdgeInsets.symmetric(vertical: T.s16),
-              child: Text('ยังไม่มีรูปของงานนี้ — กด "เพิ่มรูป" เพื่อถ่ายหรือเลือกจากคลังภาพ',
+              child: Text('ยังไม่มีรูปของงานนี้ กด "เพิ่มรูป" เพื่อถ่ายหรือเลือกจากคลังภาพ',
                   style: TextStyle(fontSize: 15, color: T.muted, height: 1.7)),
             );
           }

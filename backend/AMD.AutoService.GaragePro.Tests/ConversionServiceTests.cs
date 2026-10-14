@@ -78,11 +78,11 @@ public class ConversionServiceTests
         technician.BranchId.Should().Be(TargetBranch);
         technician.PositionId.Should().Be(5, "บทบาทช่างใน sp1 → ตำแหน่ง 'พนักงาน' ที่ปลายทาง");
         technician.MainSectorId.Should().Be(76, "→ หน่วยงาน 'งานซ่อมทั่วไป' ฝ่ายโรงงาน (RoleMapper ได้ช่าง)");
-        technician.GenderId.Should().Be(1, "'ไม่ระบุ' ไม่มีใน Garage — ใช้ค่าแรกของปลายทางพร้อมแจ้งในรายงาน");
+        technician.GenderId.Should().Be(1, "'ไม่ระบุ' ไม่มีใน Garage ใช้ค่าแรกของปลายทางพร้อมแจ้งในรายงาน");
         technician.UserName.Should().BeNull("ให้ทางสร้างเดิมของ legacy ออกรหัส/ชื่อผู้ใช้เอง");
         technician.Role.Should().BeNull();
 
-        world.CustomerRequests.Single().GenderId.Should().BeNull("เพศ 3 ไม่มีที่ปลายทาง — ลูกค้าไม่บังคับเพศ");
+        world.CustomerRequests.Single().GenderId.Should().BeNull("เพศ 3 ไม่มีที่ปลายทาง ลูกค้าไม่บังคับเพศ");
         world.VehicleRequests.Single().CustomerId.Should().Be(world.CreatedLongIds["customer:สมชาย"]);
 
         report.Entities.Single(e => e.EntityType == ConversionEntityTypes.Staff).MappedExisting
@@ -201,7 +201,7 @@ public class ConversionServiceTests
         Entity(report, ConversionEntityTypes.CatalogCategory).AlreadyConverted.Should().Be(1);
         Entity(report, ConversionEntityTypes.CatalogItem).AlreadyConverted.Should().Be(1);
         Entity(report, ConversionEntityTypes.Customer).AlreadyConverted.Should().Be(1);
-        world.Store.Map.Should().HaveCount(10, "แถวเดิม 3 + แถวใหม่ 7 — ไม่มีแถวซ้ำ");
+        world.Store.Map.Should().HaveCount(10, "แถวเดิม 3 + แถวใหม่ 7, ไม่มีแถวซ้ำ");
     }
 
     [Fact]

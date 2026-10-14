@@ -365,14 +365,14 @@ public sealed class StarterDataRepository(
     {
         if (!ServiceDbConnectionResolver.IsSelfServeShard(shardKey, SelfServe))
             throw new InvalidOperationException(
-                $"ข้อมูลตัวอย่างแก้ได้เฉพาะ shard self-serve ({SelfServe.ShardKey}) — ได้ '{shardKey}'");
+                $"ข้อมูลตัวอย่างแก้ได้เฉพาะ shard self-serve ({SelfServe.ShardKey}), ได้ '{shardKey}'");
     }
 
     private SqlConnection Open(string shardKey)
     {
         if (!legacyOptions.Value.ConnectionStrings.TryGetValue(shardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{shardKey}' — ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings");
+                $"ไม่รู้จัก shard '{shardKey}' ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings");
         return new SqlConnection(cs);
     }
 

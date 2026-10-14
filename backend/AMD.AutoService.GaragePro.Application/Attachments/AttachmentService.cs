@@ -119,7 +119,7 @@ public sealed class AttachmentService(
         var content = await storage.OpenReadAsync(meta.RelativePath, ct);
         if (content is null)
             return Result<AttachmentFile>.Fail("ATTACHMENT_FILE_MISSING",
-                "ไม่พบไฟล์บนที่เก็บข้อมูล — อาจถูกลบหรือย้ายไปแล้ว");
+                "ไม่พบไฟล์บนที่เก็บข้อมูล อาจถูกลบหรือย้ายไปแล้ว");
 
         return Result<AttachmentFile>.Ok(new AttachmentFile(meta, content));
     }

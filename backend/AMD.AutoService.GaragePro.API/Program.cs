@@ -32,7 +32,7 @@ builder.Services.AddSwaggerGen(o =>
     {
         Title = "ServicePro API",
         Version = "v1",
-        Description = "ระบบปฏิบัติการงานบริการ — ใบเสนอราคา เอกสาร และไฟล์แนบ"
+        Description = "ระบบปฏิบัติการงานบริการ: ใบเสนอราคา เอกสาร และไฟล์แนบ"
     });
 
     o.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -101,7 +101,7 @@ builder.Services
                     error = new
                     {
                         code = "AUTH_REQUIRED",
-                        messageTh = "เซสชันหมดอายุหรือยังไม่ได้เข้าสู่ระบบ — กรุณาเข้าสู่ระบบใหม่"
+                        messageTh = "เซสชันหมดอายุหรือยังไม่ได้เข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่"
                     },
                     traceId = context.HttpContext.TraceIdentifier
                 });
@@ -169,7 +169,7 @@ if (app.Environment.IsDevelopment())
     catch (Exception ex)
     {
         app.Logger.LogWarning(ex,
-            "เริ่มต้นฐานข้อมูลไม่สำเร็จ — API จะรันต่อแต่ endpoint ที่ต้องใช้ DB จะคืน error " +
+            "เริ่มต้นฐานข้อมูลไม่สำเร็จ API จะรันต่อแต่ endpoint ที่ต้องใช้ DB จะคืน error " +
             "(ตรวจ VPN และ ConnectionStrings:ServiceDb)");
     }
 
@@ -196,7 +196,7 @@ if (app.Environment.IsDevelopment())
         catch (Exception ex)
         {
             app.Logger.LogWarning(ex,
-                "เริ่มต้นฐาน self-serve ไม่สำเร็จ — อู่ทดลองใช้ (sp1) จะใช้งานไม่ได้จนกว่าจะแก้ " +
+                "เริ่มต้นฐาน self-serve ไม่สำเร็จ อู่ทดลองใช้ (sp1) จะใช้งานไม่ได้จนกว่าจะแก้ " +
                 "(ตรวจ SelfServe:ConnectionString และว่ารัน deploy/selfserve/provision-selfserve-db.sh แล้ว)");
         }
     }

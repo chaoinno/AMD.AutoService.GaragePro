@@ -91,7 +91,7 @@ function WelcomeChecklistCard({ workspaceNo, onCreateJob }: { workspaceNo: strin
     setDismissed(false)
     setCredentials(readCredentials(workspaceNo))
     toast.success('ยินดีต้อนรับสู่ ServicePro', {
-      description: 'เริ่มจากเช็คลิสต์ 5 ข้อบนหน้าจ๊อบ — ระบบติ๊กให้เองเมื่อทำเสร็จจริง',
+      description: 'เริ่มจากเช็คลิสต์ 5 ข้อบนหน้าจ๊อบ ระบบติ๊กให้เองเมื่อทำเสร็จจริง',
     })
     // เอา welcome ออกจาก URL — รีโหลดหน้าแล้วไม่ต้องต้อนรับซ้ำ (การ์ดยังเปิดอยู่เพราะล้างค่าปิดไว้แล้ว)
     const params = new URLSearchParams(window.location.search)
@@ -224,7 +224,7 @@ function SampleCredentialsPanel({ credentials, onHide }: { credentials: SampleCr
         <strong>รหัสช่างตัวอย่าง</strong>
         <span className="sample-credentials__once">แสดงครั้งเดียว</span>
       </div>
-      <p>ใช้ทดลองเข้าแอป ServicePro บนมือถือในฐานะช่าง — คัดลอกหรือจดไว้ก่อนกดซ่อน ระบบจะไม่แสดงรหัสผ่านนี้อีก</p>
+      <p>ใช้ทดลองเข้าแอป ServicePro บนมือถือในฐานะช่าง คัดลอกหรือจดไว้ก่อนกดซ่อน ระบบจะไม่แสดงรหัสผ่านนี้อีก</p>
       <ul className="sample-credentials__list">
         {credentials.technicians.map((tech) => (
           <li key={tech.userName}>
@@ -245,7 +245,7 @@ function SampleCredentialsPanel({ credentials, onHide }: { credentials: SampleCr
           </li>
         ))}
       </ul>
-      <Button variant="outline" size="sm" onClick={onHide}>จดแล้ว — ซ่อนรหัสนี้</Button>
+      <Button variant="outline" size="sm" onClick={onHide}>จดแล้ว ซ่อนรหัสนี้</Button>
     </div>
   )
 }
@@ -277,7 +277,7 @@ function ClearSampleDataButton() {
       <ConfirmModal
         open={open}
         title="ล้างข้อมูลตัวอย่าง"
-        description="ลบข้อมูลที่ระบบสร้างให้ตอนสมัคร — ข้อมูลที่อู่เพิ่มเองไม่ถูกลบ"
+        description="ลบข้อมูลที่ระบบสร้างให้ตอนสมัคร ข้อมูลที่อู่เพิ่มเองไม่ถูกลบ"
         onClose={close}
         size="small"
         footer={
@@ -293,7 +293,7 @@ function ClearSampleDataButton() {
           <ul>
             <li>ลบจ๊อบ ใบเสนอราคา ลูกค้า รถ และเทมเพลตตัวอย่าง</li>
             <li>ปิดใช้งานบัญชีช่างตัวอย่าง (เข้าแอปด้วยรหัสตัวอย่างไม่ได้อีก)</li>
-            <li>ลบสินค้า/บริการตัวอย่างที่ยังไม่ถูกใช้ — รายการที่ใช้ในใบเสนอราคาจริงแล้วจะถูกปิดใช้งานแทน</li>
+            <li>ลบสินค้า/บริการตัวอย่างที่ยังไม่ถูกใช้ รายการที่ใช้ในใบเสนอราคาจริงแล้วจะถูกปิดใช้งานแทน</li>
           </ul>
           <p><strong>ทำย้อนกลับไม่ได้</strong></p>
           {clear.isError ? (

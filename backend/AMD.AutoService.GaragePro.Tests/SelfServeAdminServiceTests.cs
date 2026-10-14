@@ -47,7 +47,7 @@ public class SelfServeAdminServiceTests
         var change = h.Repository.Changes.Single();
         change.EndsAtUtc.Should().Be(Now.AddDays(4));
         change.Status.Should().Be(WorkspaceStatus.Active);
-        change.ClearPurgeAfter.Should().BeTrue("วันลบเดิมคำนวณจากวันหมดอายุเก่า — job รายวันตั้งใหม่ตอนหมดอายุครั้งหน้า");
+        change.ClearPurgeAfter.Should().BeTrue("วันลบเดิมคำนวณจากวันหมดอายุเก่า job รายวันตั้งใหม่ตอนหมดอายุครั้งหน้า");
     }
 
     [Fact]

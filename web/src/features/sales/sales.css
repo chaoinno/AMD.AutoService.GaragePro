@@ -232,7 +232,7 @@
 .sale-thermal__foot { display: grid; gap: 1px; margin-top: 3mm; text-align: center; }
 .sale-thermal__foot small { font-size: 0.85em; }
 /* อู่ทดลองใช้ (W2): บรรทัดท้ายใบเสร็จกระดาษม้วน — ขาวดำล้วนเหมือนเนื้อใบเสร็จ · ลูกค้าเดิมไม่มี data-plan จึงไม่แสดง */
-body[data-plan='trial'] .sale-thermal__foot::after { content: 'เอกสารจากระบบทดลองใช้ ServicePro — service.garage-pro.net'; display: block; margin-top: 1.5mm; font-size: 0.85em; }
+body[data-plan='trial'] .sale-thermal__foot::after { content: 'เอกสารจากระบบทดลองใช้ ServicePro, service.garage-pro.net'; display: block; margin-top: 1.5mm; font-size: 0.85em; }
 
 @media (max-width: 1360px) {
   .sale-editor-grid { grid-template-columns: 250px minmax(0, 1fr) 310px; gap: 12px; }

@@ -364,7 +364,7 @@ function IntakeStage({ job }: { job: Job }) {
                       variant="outline"
                       size="sm"
                       disabled={jobClosed}
-                      title={jobClosed ? 'จ๊อบนี้ปิดแล้ว — แก้ไขเลขไมล์ไม่ได้' : undefined}
+                      title={jobClosed ? 'จ๊อบนี้ปิดแล้ว แก้ไขเลขไมล์ไม่ได้' : undefined}
                       onClick={() => setEditingMileage(true)}
                     >
                       {job.mileageAtIntake != null ? 'แก้ไขเลขไมล์' : 'บันทึกเลขไมล์'}
@@ -380,7 +380,7 @@ function IntakeStage({ job }: { job: Job }) {
                         variant="outline"
                         size="sm"
                         onClick={() => setConvertingToInShop(true)}
-                        title="รถมาถึงอู่แล้ว — เปลี่ยนประเภทงานเป็นรถในอู่พร้อมบันทึกวันเวลาที่เข้าจริง"
+                        title="รถมาถึงอู่แล้ว เปลี่ยนประเภทงานเป็นรถในอู่พร้อมบันทึกวันเวลาที่เข้าจริง"
                       >
                         รถเข้าอู่แล้ว → เปลี่ยนเป็นรถในอู่
                       </Button>
@@ -396,7 +396,7 @@ function IntakeStage({ job }: { job: Job }) {
                       variant="outline"
                       size="sm"
                       disabled={jobClosed}
-                      title={jobClosed ? 'จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดส่งมอบไม่ได้' : undefined}
+                      title={jobClosed ? 'จ๊อบนี้ปิดแล้ว แก้ไขวันเวลานัดส่งมอบไม่ได้' : undefined}
                       onClick={() => setReschedulingPromise(true)}
                     >
                       {job.promiseAt ? 'แก้ไข/เลื่อนวันส่งมอบ' : 'ตั้งวันนัดส่งมอบ'}
@@ -418,7 +418,7 @@ function IntakeStage({ job }: { job: Job }) {
                           variant="outline"
                           size="sm"
                           disabled={jobClosed}
-                          title={jobClosed ? 'จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดหมายไม่ได้' : undefined}
+                          title={jobClosed ? 'จ๊อบนี้ปิดแล้ว แก้ไขวันเวลานัดหมายไม่ได้' : undefined}
                           onClick={() => setReschedulingAppointment(true)}
                         >
                           แก้ไข/เลื่อนนัด
@@ -458,7 +458,7 @@ function IntakeStage({ job }: { job: Job }) {
               </div>
             ) : !attachmentsQuery.data.length ? (
               <div className="job-detail-empty">
-                <p>ยังไม่รองรับการถ่ายรูปรับรถ 5 มุมบังคับและลายเซ็นรับรถแบบอัตโนมัติ — งานนี้ยังไม่มีไฟล์แนบ</p>
+                <p>ยังไม่รองรับการถ่ายรูปรับรถ 5 มุมบังคับและลายเซ็นรับรถแบบอัตโนมัติ งานนี้ยังไม่มีไฟล์แนบ</p>
               </div>
             ) : (
               <div className="job-detail-photo-grid">
@@ -584,7 +584,7 @@ function RescheduleAppointmentModal({ job, onClose }: { job: Job; onClose: () =>
   // [BIZ] วันนัดเข้าห้ามเลยวันนัดส่งมอบ (API บังคับซ้ำ) — ต้องเลื่อนวันส่งมอบออกไปก่อน
   const promiseLocal = isoToLocalInput(job.promiseAt)
   const orderError = value && promiseLocal && value > promiseLocal
-    ? `วันนัดเข้าต้องไม่เลยวันนัดส่งมอบ (${formatDateTime(job.promiseAt)}) — เลื่อนวันส่งมอบก่อน`
+    ? `วันนัดเข้าต้องไม่เลยวันนัดส่งมอบ (${formatDateTime(job.promiseAt)}) เลื่อนวันส่งมอบก่อน`
     : undefined
 
   const mutation = useMutation({
@@ -656,7 +656,7 @@ function ConvertToInShopModal({ job, onClose }: { job: Job; onClose: () => void 
     <ConfirmModal
       open
       title="เปลี่ยนเป็นรถในอู่"
-      description="ใช้เมื่อรถมาถึงอู่จริง — ไม่ต้องตรงกับวันเวลานัดหมายที่ตั้งไว้ (มาก่อน/หลังนัดก็เปลี่ยนได้)"
+      description="ใช้เมื่อรถมาถึงอู่จริง ไม่ต้องตรงกับวันเวลานัดหมายที่ตั้งไว้ (มาก่อน/หลังนัดก็เปลี่ยนได้)"
       onClose={onClose}
       size="small"
       footer={
@@ -764,7 +764,7 @@ function QuoteStage({ job }: { job: Job }) {
     onSuccess: (quotation) => {
       setTemplateTargetId(quotation.id)
       setShowTemplatePicker(true)
-      toast.success(`สร้างใบเสนอราคา ${quotation.code} แล้ว — เลือกเทมเพลตที่ต้องการเพิ่มรายการ`)
+      toast.success(`สร้างใบเสนอราคา ${quotation.code} แล้ว เลือกเทมเพลตที่ต้องการเพิ่มรายการ`)
       void queryClient.invalidateQueries({ queryKey: ['job-quotations', job.jobId] })
     },
     onError: (error) => {
@@ -785,7 +785,7 @@ function QuoteStage({ job }: { job: Job }) {
       toast.error(isApiError(error) ? error.messageTh : 'เพิ่มรายการจากเทมเพลตไม่สำเร็จ')
       // สร้างใบร่างไว้แล้ว (ถ้าเป็นเส้นทางสร้างใหม่) แต่ apply ล้มเหลว — ไม่ปล่อยให้หายเงียบๆ บอกให้เปิดใบนั้นต่อเอง
       if (!draftQuotation && templateTargetId) {
-        toast.message('สร้างใบเสนอราคาให้แล้วแต่ยังไม่ได้เพิ่มรายการ — เปิดใบนั้นจากรายการด้านล่างเพื่อเพิ่มเอง')
+        toast.message('สร้างใบเสนอราคาให้แล้วแต่ยังไม่ได้เพิ่มรายการ เปิดใบนั้นจากรายการด้านล่างเพื่อเพิ่มเอง')
       }
     },
   })
@@ -806,7 +806,7 @@ function QuoteStage({ job }: { job: Job }) {
   const approveRepairMutation = useMutation({
     mutationFn: () => transitionJob(job.jobId, { toStatus: 'inprogress' }),
     onSuccess: () => {
-      toast.success('อนุมัติซ่อมแล้ว — ส่งต่อไปขั้นเบิกสินค้า/ดำเนินการซ่อม')
+      toast.success('อนุมัติซ่อมแล้ว ส่งต่อไปขั้นเบิกสินค้า/ดำเนินการซ่อม')
     },
     onError: (error) => {
       toast.error(isApiError(error) ? error.messageTh : 'เปลี่ยนสถานะไม่สำเร็จ')
@@ -845,12 +845,12 @@ function QuoteStage({ job }: { job: Job }) {
       <CardContent>
         {openDraft ? (
           <p className="form-message">
-            มีใบร่าง {openDraft.code} อยู่ — ส่งใบนั้นให้ลูกค้าก่อนจึงจะสร้างใบใหม่ได้ (ถ้าต้องแก้ราคาใบที่ส่งไปแล้ว
+            มีใบร่าง {openDraft.code} อยู่ ส่งใบนั้นให้ลูกค้าก่อนจึงจะสร้างใบใหม่ได้ (ถ้าต้องแก้ราคาใบที่ส่งไปแล้ว
             ให้เปิดใบนั้นแล้วกด "ออกฉบับแก้ไข")
           </p>
         ) : (query.data?.length ?? 0) > 1 ? (
           <p className="form-message">
-            งานนี้มีใบเสนอราคา {query.data!.length} ใบ — ลูกค้าอนุมัติแยกใบ แต่เก็บเงินและออกใบเสร็จรวมใบเดียว
+            งานนี้มีใบเสนอราคา {query.data!.length} ใบ ลูกค้าอนุมัติแยกใบ แต่เก็บเงินและออกใบเสร็จรวมใบเดียว
           </p>
         ) : null}
         {query.isPending ? (
@@ -890,12 +890,12 @@ function QuoteStage({ job }: { job: Job }) {
 
         {awaitingCustomerQuotations.length ? (
           <p className="form-message">
-            {awaitingCustomerQuotations.map((q) => q.code).join(', ')} รอลูกค้าอนุมัติบนแอปมือถือ — กด "จัดการ"
+            {awaitingCustomerQuotations.map((q) => q.code).join(', ')} รอลูกค้าอนุมัติบนแอปมือถือ กด "จัดการ"
             ที่ใบนั้นเพื่อดำเนินการแทนลูกค้า
           </p>
         ) : stuckSignedQuotation ? (
           <p className="form-message">
-            ลูกค้ายืนยัน {stuckSignedQuotation.code} แล้ว แต่จ๊อบยังไม่เปลี่ยนสถานะ — กด "จัดการ" ที่ใบนั้นเพื่อดำเนินการต่อ
+            ลูกค้ายืนยัน {stuckSignedQuotation.code} แล้ว แต่จ๊อบยังไม่เปลี่ยนสถานะ กด "จัดการ" ที่ใบนั้นเพื่อดำเนินการต่อ
           </p>
         ) : null}
 
@@ -956,7 +956,7 @@ function RepairStage({ job }: { job: Job }) {
 
   // [ASSUME] ยังไม่มีระบบ QC จริง (เช็คลิสต์/รูปก่อน-หลัง) — ยืนยันเองแทนตาม pattern manual-override เดิม
   // (guard `AllTasksDoneWithPhotos` ของ InProgress→Qc ไม่ใช่ isComputable จึงบังคับส่ง reason เสมอ)
-  const REPAIR_TO_QC_REASON = 'ยืนยันด้วยตนเองจากเว็บ — ระบบตรวจสอบคุณภาพ (QC) แบบเช็คลิสต์เต็มรูปแบบยังไม่พร้อมใช้งาน (อยู่ระหว่างพัฒนา)'
+  const REPAIR_TO_QC_REASON = 'ยืนยันด้วยตนเองจากเว็บ ระบบตรวจสอบคุณภาพ (QC) แบบเช็คลิสต์เต็มรูปแบบยังไม่พร้อมใช้งาน (อยู่ระหว่างพัฒนา)'
   const remainingChainToQc = (status: JobStatusToken): JobStatusToken[] => {
     switch (status) {
       case 'inprogress': return ['qc']
@@ -1002,18 +1002,18 @@ function RepairStage({ job }: { job: Job }) {
           <>
             {!started ? (
               <div className="job-detail-empty">
-                <p>ยังไม่ถึงขั้นตอนนี้ — ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
+                <p>ยังไม่ถึงขั้นตอนนี้ ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
               </div>
             ) : null}
             <PlanLockedPanel
               feature="inventory"
               title="เบิกสินค้าจากสต็อกเปิดในแพ็กเกจเต็ม"
-              detail="ใบเบิกสินค้าตามรายการที่ลูกค้าอนุมัติ ตัดสต็อกตามล็อต (FIFO) — แพ็กเกจทดลองใช้ทำงานซ่อมและส่งตรวจ QC ได้ตามปกติ"
+              detail="ใบเบิกสินค้าตามรายการที่ลูกค้าอนุมัติ ตัดสต็อกตามล็อต (FIFO) แพ็กเกจทดลองใช้ทำงานซ่อมและส่งตรวจ QC ได้ตามปกติ"
             />
           </>
         ) : !started ? (
           <div className="job-detail-empty">
-            <p>ยังไม่ถึงขั้นตอนนี้ — ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
+            <p>ยังไม่ถึงขั้นตอนนี้ ต้องกด "อนุมัติซ่อม" ในขั้นตอนเสนอราคาก่อน</p>
           </div>
         ) : query.isPending ? (
           <p className="form-message">กำลังโหลดใบเบิกสินค้า…</p>
@@ -1125,7 +1125,7 @@ function QcStage({ job }: { job: Job }) {
   // ไม่มีปุ่ม "ไม่ผ่าน"/ตีกลับ (คำขอผู้ใช้ 2026-09-09) — ถ้ายังไม่ผ่านให้ไปแจ้งช่างแก้นอกระบบแล้วย้อนมาติ๊กผ่านทีหลัง
   const passMutation = useMutation({
     mutationFn: () => transitionJob(job.jobId, { toStatus: 'ready' }),
-    onSuccess: () => { toast.success('ผ่าน QC แล้ว — ส่งต่อไปขั้นตอนชำระเงิน/ส่งมอบ'); invalidate() },
+    onSuccess: () => { toast.success('ผ่าน QC แล้ว ส่งต่อไปขั้นตอนชำระเงิน/ส่งมอบ'); invalidate() },
     onError: (error) => toast.error(isApiError(error) ? error.messageTh : 'เปลี่ยนสถานะไม่สำเร็จ'),
   })
 
@@ -1141,7 +1141,7 @@ function QcStage({ job }: { job: Job }) {
       <CardContent>
         {!started ? (
           <div className="job-detail-empty">
-            <p>ยังไม่ถึงขั้นตอนนี้ — ต้องกด "ยืนยันซ่อมเสร็จ" ในขั้นตอนเบิกสินค้า/ดำเนินการซ่อมก่อน</p>
+            <p>ยังไม่ถึงขั้นตอนนี้ ต้องกด "ยืนยันซ่อมเสร็จ" ในขั้นตอนเบิกสินค้า/ดำเนินการซ่อมก่อน</p>
           </div>
         ) : query.isPending ? (
           <p className="form-message">กำลังโหลดเช็คลิสต์ QC…</p>
@@ -1157,7 +1157,7 @@ function QcStage({ job }: { job: Job }) {
         ) : (
           <>
             <p className="form-message">
-              ตรวจแต่ละรายการที่ซ่อมจริงในใบเสนอราคาที่อนุมัติแล้ว — ไม่มีปุ่ม "ไม่ผ่าน" ถ้ารายการไหนยังไม่เรียบร้อย
+              ตรวจแต่ละรายการที่ซ่อมจริงในใบเสนอราคาที่อนุมัติแล้ว ไม่มีปุ่ม "ไม่ผ่าน" ถ้ารายการไหนยังไม่เรียบร้อย
               ให้ไปแจ้งช่างแก้ไขนอกระบบก่อน แล้วย้อนมาติ๊กผ่านทีหลัง
             </p>
 
@@ -1167,7 +1167,7 @@ function QcStage({ job }: { job: Job }) {
                 <tbody>
                   {checklist.items.map(item => (
                     <tr key={item.id}>
-                      <td>{item.catalogCode || '—'}</td>
+                      <td>{item.catalogCode || '-'}</td>
                       <td>{item.name}</td>
                       <td>{item.type === 'labor' ? 'ค่าแรง' : 'อะไหล่'}</td>
                       <td>
@@ -1246,7 +1246,7 @@ function QcStage({ job }: { job: Job }) {
               </div>
             ) : (
               <div className="job-detail-empty">
-                <p>ผ่าน QC แล้ว — งานอยู่ระหว่างขั้นตอนชำระเงิน/ส่งมอบ</p>
+                <p>ผ่าน QC แล้ว งานอยู่ระหว่างขั้นตอนชำระเงิน/ส่งมอบ</p>
               </div>
             )}
           </>
@@ -1423,9 +1423,9 @@ function PaymentStage({ job }: { job: Job }) {
   // [BIZ] ใบเสร็จรวมออกได้ครั้งเดียว — มิเรอร์ลำดับการตรวจของ PosService.IssueReceiptAsync (server ตรวจซ้ำเสมอ)
   const awaitingQuotations = summary?.awaitingCustomerQuotationCodes ?? []
   const receiptBlockedReason = awaitingQuotations.length > 0
-    ? `ใบเสนอราคา ${awaitingQuotations.join(', ')} ยังรอลูกค้าตัดสินใจ/เซ็นยืนยัน — ให้จบก่อนออกใบเสร็จรวม`
+    ? `ใบเสนอราคา ${awaitingQuotations.join(', ')} ยังรอลูกค้าตัดสินใจ/เซ็นยืนยัน ให้จบก่อนออกใบเสร็จรวม`
     : !summary?.balanceSettled
-      ? 'ยอดคงเหลือยังไม่เป็นศูนย์ — บันทึกชำระเงินให้ครบก่อน'
+      ? 'ยอดคงเหลือยังไม่เป็นศูนย์ บันทึกชำระเงินให้ครบก่อน'
       : null
 
   // ใบกำกับภาษีออกได้หลังออกใบเสร็จเท่านั้น — ไม่ถามสถานะก่อนหน้านั้น (คำขอนี้อ่านข้อมูลสาขา/ลูกค้าจากฐานเดิม)
@@ -1441,7 +1441,7 @@ function PaymentStage({ job }: { job: Job }) {
   const taxInvoiceBlockedReason = !summary?.receipt
     ? 'ออกได้หลังออกใบเสร็จแล้ว'
     : !summary.vatIncluded
-      ? 'งานนี้ไม่ได้คิดภาษีมูลค่าเพิ่ม — ออกใบกำกับภาษีไม่ได้'
+      ? 'งานนี้ไม่ได้คิดภาษีมูลค่าเพิ่ม ออกใบกำกับภาษีไม่ได้'
       : taxInvoiceQuery.isPending
         ? 'กำลังตรวจสอบ…'
         : taxInvoiceQuery.isError
@@ -1472,14 +1472,14 @@ function PaymentStage({ job }: { job: Job }) {
 
   const completeMutation = useMutation({
     mutationFn: () => transitionJob(job.jobId, { toStatus: 'completed' }),
-    onSuccess: () => toast.success('ปิดงานเรียบร้อย — เสร็จสมบูรณ์'),
+    onSuccess: () => toast.success('ปิดงานเรียบร้อย เสร็จสมบูรณ์'),
     onError: (error) => toast.error(isApiError(error) ? error.messageTh : 'ปิดงานไม่สำเร็จ'),
     onSettled: invalidate,
   })
 
   if (!started) {
     return (
-      <NotYetAvailableStage reason='ยังไม่ถึงขั้นตอนนี้ — ต้องผ่าน QC ("ผ่าน QC → ส่งไปชำระเงิน/ส่งมอบ") ก่อน' />
+      <NotYetAvailableStage reason='ยังไม่ถึงขั้นตอนนี้ ต้องผ่าน QC ("ผ่าน QC → ส่งไปชำระเงิน/ส่งมอบ") ก่อน' />
     )
   }
 
@@ -1504,7 +1504,7 @@ function PaymentStage({ job }: { job: Job }) {
               <>
                 <label
                   className="filter-check"
-                  title={summary.vatLocked ? 'เริ่มบันทึกการชำระเงินหรือออกใบเสร็จไปแล้ว — เปลี่ยนการคิด VAT ไม่ได้อีก' : undefined}
+                  title={summary.vatLocked ? 'เริ่มบันทึกการชำระเงินหรือออกใบเสร็จไปแล้ว เปลี่ยนการคิด VAT ไม่ได้อีก' : undefined}
                 >
                   <input
                     type="checkbox"
@@ -1512,12 +1512,12 @@ function PaymentStage({ job }: { job: Job }) {
                     disabled={summary.vatLocked || vatMutation.isPending}
                     onChange={(e) => vatMutation.mutate(e.target.checked)}
                   />
-                  คิดภาษีมูลค่าเพิ่ม (VAT) — ไม่ติ๊กจะลดยอดที่ต้องชำระจริง
+                  คิดภาษีมูลค่าเพิ่ม (VAT) ไม่ติ๊กจะลดยอดที่ต้องชำระจริง
                 </label>
 
                 {(summary.quotationCodes?.length ?? 0) > 1 ? (
                   <p className="form-message">
-                    ยอดรวมจากใบเสนอราคา {summary.quotationCodes.length} ใบ: {summary.quotationCodes.join(', ')} — ออกใบเสร็จรวมใบเดียว
+                    ยอดรวมจากใบเสนอราคา {summary.quotationCodes.length} ใบ: {summary.quotationCodes.join(', ')} ออกใบเสร็จรวมใบเดียว
                   </p>
                 ) : null}
 
@@ -1648,7 +1648,7 @@ function PaymentStage({ job }: { job: Job }) {
                 title="ใบแจ้งยอด"
                 done={false}
                 status={summary
-                  ? summary.balanceSettled ? 'ชำระครบแล้ว — พิมพ์ได้ทุกเมื่อ' : `ยอดคงเหลือ ${formatMoney(summary.remainingAmount)} บาท — พิมพ์ได้ทุกเมื่อ`
+                  ? summary.balanceSettled ? 'ชำระครบแล้ว พิมพ์ได้ทุกเมื่อ' : `ยอดคงเหลือ ${formatMoney(summary.remainingAmount)} บาท พิมพ์ได้ทุกเมื่อ`
                   : 'กำลังโหลดยอดชำระ…'}
               >
                 <Button variant="outline" size="sm" disabled={!summary} onClick={() => setDocumentKind('statement')}>
@@ -1683,7 +1683,7 @@ function PaymentStage({ job }: { job: Job }) {
                   title="ใบกำกับภาษี (เต็มรูป)"
                   done={false}
                   locked
-                  status="ใบกำกับภาษีเต็มรูปเปิดในแพ็กเกจเต็ม — ใบแจ้งยอดและใบเสร็จรับเงินใช้ได้ตามปกติ"
+                  status="ใบกำกับภาษีเต็มรูปเปิดในแพ็กเกจเต็ม ใบแจ้งยอดและใบเสร็จรับเงินใช้ได้ตามปกติ"
                 >
                   <PlanInterestActions feature="taxInvoice" />
                 </BillingDocRow>
@@ -1692,7 +1692,7 @@ function PaymentStage({ job }: { job: Job }) {
                 done={Boolean(taxInvoice)}
                 status={taxInvoice
                   ? `ออกแล้ว ${taxInvoice.documentNo} · ในนาม ${taxInvoice.buyer.name}`
-                  : taxInvoiceBlockedReason ?? 'พร้อมออกใบกำกับภาษี — ยืนยันข้อมูลผู้ซื้อก่อน'}
+                  : taxInvoiceBlockedReason ?? 'พร้อมออกใบกำกับภาษี ยืนยันข้อมูลผู้ซื้อก่อน'}
               >
                 {taxInvoice ? (
                   <Button variant="outline" size="sm" onClick={() => setDocumentKind('taxInvoice')}>
@@ -1712,7 +1712,7 @@ function PaymentStage({ job }: { job: Job }) {
               <BillingDocRow
                 title="ใบส่งมอบรถ"
                 done={Boolean(handover?.isLocked)}
-                status={handover?.isLocked ? 'ยืนยันส่งมอบแล้ว' : 'พิมพ์ได้ทุกเมื่อ — มีช่องให้ลูกค้าเซ็นบนกระดาษ'}
+                status={handover?.isLocked ? 'ยืนยันส่งมอบแล้ว' : 'พิมพ์ได้ทุกเมื่อ มีช่องให้ลูกค้าเซ็นบนกระดาษ'}
               >
                 <Button variant="outline" size="sm" onClick={() => setHandoverDocOpen(true)}>
                   <Printer aria-hidden="true" /> พิมพ์ใบส่งมอบรถ
@@ -1732,7 +1732,7 @@ function PaymentStage({ job }: { job: Job }) {
             ) : !handover ? null : (
               <>
                 <p className="form-message">
-                  ตรวจของในรถกับลูกค้าก่อนส่งมอบ — รายการที่สูญหายต้องระบุรายละเอียดเสมอ
+                  ตรวจของในรถกับลูกค้าก่อนส่งมอบ รายการที่สูญหายต้องระบุรายละเอียดเสมอ
                 </p>
                 <div className="purchase-table-scroll">
                   <table className="master-table purchase-lines">

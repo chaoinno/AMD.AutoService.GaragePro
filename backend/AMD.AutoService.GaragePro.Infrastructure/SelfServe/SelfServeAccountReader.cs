@@ -33,7 +33,7 @@ public sealed class SelfServeAccountReader(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning(ex, "อ่าน sp_Account ไม่สำเร็จ — login ด้วยอีเมลของอู่ที่สมัครเองจะได้ผลเป็น 'ไม่พบบัญชี' จนกว่าฐานจะกลับมา");
+            _logger.LogWarning(ex, "อ่าน sp_Account ไม่สำเร็จ login ด้วยอีเมลของอู่ที่สมัครเองจะได้ผลเป็น 'ไม่พบบัญชี' จนกว่าฐานจะกลับมา");
             throw;
         }
     }

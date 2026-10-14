@@ -236,7 +236,7 @@ public class TrialLifecycleTests
             .Which.Text.Should().Be($"⏰ หมดทดลองใช้: อู่ อู่ช่างเอก (SP{ws.WorkspaceNo}) · โทร 081-234-5678 · หมดอายุ 31/10/2569");
         h.Repository.Workspaces.Single().PurgeAfter.Should().Be(EndsAt.AddDays(90));
 
-        h.Purger.Purged.Should().ContainSingle("ลบครั้งเดียวที่วัน 120 — วัน 121 อู่เป็น Purged แล้ว")
+        h.Purger.Purged.Should().ContainSingle("ลบครั้งเดียวที่วัน 120, วัน 121 อู่เป็น Purged แล้ว")
             .Which.Should().Be(new WorkspacePurgeRequest(ws.Id, TrialLifecycleService.Actor));
         h.Repository.Notices.Should().BeEquivalentTo(new[]
         {
@@ -347,7 +347,7 @@ public class TrialLifecycleTests
         await h.MaintenanceOnDay(60);
         h.Purger.Purged.Should().ContainSingle().Which.Should().Be(
             new WorkspacePurgeRequest(converted.Id, TrialLifecycleService.Actor, AllowPaid: true),
-            "purger ปฏิเสธอู่ converted ถ้าไม่ยืนยัน — job รายวันยืนยันเฉพาะเมื่อเลย PurgeAfter แล้ว");
+            "purger ปฏิเสธอู่ converted ถ้าไม่ยืนยัน job รายวันยืนยันเฉพาะเมื่อเลย PurgeAfter แล้ว");
         h.Email.Sent.Should().BeEmpty();
         h.Repository.StatusChanges.Should().BeEmpty();
     }

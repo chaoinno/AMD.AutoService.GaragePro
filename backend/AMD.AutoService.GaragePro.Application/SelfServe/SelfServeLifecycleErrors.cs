@@ -19,13 +19,13 @@ public static class SelfServeLifecycleErrors
         new(ValidationCode, messageTh, field);
 
     public static ApiError NotifyFailed() => new(NotifyFailedCode,
-        $"ส่งคำขอไปยังทีมงานไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง หรือติดต่อ {SelfServeText.ContactLine} / โทร {SelfServeText.ContactPhone}");
+        $"ส่งคำขอไปยังทีมงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อ {SelfServeText.ContactLine} / โทร {SelfServeText.ContactPhone}");
 
     public static ApiError SampleUnavailable() => new(SampleUnavailableCode,
-        $"ระบบข้อมูลตัวอย่างยังไม่พร้อมใช้งาน — กรุณาลองใหม่ภายหลัง หรือติดต่อ {SelfServeText.ContactLine}");
+        $"ระบบข้อมูลตัวอย่างยังไม่พร้อมใช้งาน กรุณาลองใหม่ภายหลัง หรือติดต่อ {SelfServeText.ContactLine}");
 
     public static ApiError SampleFailed() => new(SampleFailedCode,
-        "สร้างข้อมูลตัวอย่างไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง");
+        "สร้างข้อมูลตัวอย่างไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
 
     public static ApiError WorkspaceNotFound() => new(WorkspaceNotFoundCode,
         "ไม่พบอู่ที่สมัครทดลองใช้รายการนี้");

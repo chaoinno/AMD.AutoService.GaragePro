@@ -82,7 +82,7 @@ public class SelfServeInfrastructureTests
         options.Trial.Days.Should().Be(14);
         options.Trial.ReadOnlyDays.Should().Be(90, "ค่าที่ไม่ได้ตั้งต้องคง default");
         options.Trial.EffectiveReminderDays.Should().Equal([7, 1],
-            "binder ต่อท้าย array เดิม — default จึงต้องว่างแล้ว fallback ตอนอ่าน ไม่งั้นได้ [7,1,7,1]");
+            "binder ต่อท้าย array เดิม, default จึงต้องว่างแล้ว fallback ตอนอ่าน ไม่งั้นได้ [7,1,7,1]");
         options.Limits.Staff.Should().Be(3);
         options.Limits.Jobs.Should().Be(100);
         options.Email.Provider.Should().Be("brevo");

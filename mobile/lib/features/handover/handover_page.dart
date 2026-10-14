@@ -112,8 +112,8 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
                     ? Icons.receipt_long_outlined
                     : Icons.hourglass_empty_outlined,
                 title: handover.receiptIssued
-                    ? 'ออกใบเสร็จแล้ว — ส่งมอบรถได้'
-                    : 'ยังออกใบเสร็จไม่ได้ — ยังส่งมอบรถไม่ได้',
+                    ? 'ออกใบเสร็จแล้ว ส่งมอบรถได้'
+                    : 'ยังออกใบเสร็จไม่ได้ ยังส่งมอบรถไม่ได้',
                 body: handover.receiptIssued
                     ? 'เลขที่ ${handover.receiptDocumentNo ?? '-'}'
                     : 'ลูกค้าต้องชำระเงินให้ครบและแคชเชียร์ออกใบเสร็จก่อน '
@@ -278,7 +278,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
     // เหตุผลที่กดไม่ได้ต้องตรงกับที่ HandoverService ตรวจจริง และเรียงตามลำดับเดียวกับ SubmitAsync
     // ใบเสร็จมาก่อนเพราะเป็นเงื่อนไขที่คนถือแอปแก้เองไม่ได้ (ต้องรอแคชเชียร์) ต่างจากอีกสองข้อ
     final reason = !handover.receiptIssued
-        ? 'ยังไม่ได้ออกใบเสร็จ — ต้องรับชำระเงินให้ครบก่อนจึงจะส่งมอบรถได้'
+        ? 'ยังไม่ได้ออกใบเสร็จ ต้องรับชำระเงินให้ครบก่อนจึงจะส่งมอบรถได้'
         : !handover.allDecided
             ? 'ยังตรวจของในรถไม่ครบ เหลืออีก ${handover.pendingCount} รายการ'
             : !handover.serviceInfoComplete
@@ -332,7 +332,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${item.name} — สูญหาย',
+            Text('${item.name}: สูญหาย',
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.5)),
             const Text('ต้องระบุรายละเอียดเสมอ เพื่อกันข้อพิพาทภายหลัง',
                 style: TextStyle(fontSize: 14, color: T.muted, height: 1.7)),
@@ -411,7 +411,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('ส่งมอบรถเรียบร้อย'),
         content: const Text(
-          'ชำระเงิน ออกใบเสร็จ และลูกค้าเซ็นรับรถครบแล้ว — ปิดงานเลยไหม',
+          'ชำระเงิน ออกใบเสร็จ และลูกค้าเซ็นรับรถครบแล้ว ปิดงานเลยไหม',
           style: TextStyle(fontSize: 15, height: 1.7),
         ),
         actions: [
@@ -430,7 +430,7 @@ class _HandoverPageState extends ConsumerState<HandoverPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('ปิดงานเรียบร้อย — เสร็จสมบูรณ์',
+          content: Text('ปิดงานเรียบร้อย เสร็จสมบูรณ์',
               style: TextStyle(fontSize: 15, height: 1.6)),
           backgroundColor: T.navy900,
           behavior: SnackBarBehavior.floating,

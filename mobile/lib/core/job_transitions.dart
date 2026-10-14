@@ -40,7 +40,7 @@ abstract final class JobTransitions {
       from: 'waitinspect', to: 'waitquote', labelTh: 'ส่งผลตรวจเช็ค',
       roles: {AppRole.technician, AppRole.office, AppRole.manager},
       allowedFromMobile: true, needsReason: true,
-      reasonHintTh: 'ยังไม่มีใบตรวจเช็ค 31 รายการในระบบ — ระบุสิ่งที่ตรวจแล้วเพื่อบันทึกไว้ใน audit log',
+      reasonHintTh: 'ยังไม่มีใบตรวจเช็ค 31 รายการในระบบ ระบุสิ่งที่ตรวจแล้วเพื่อบันทึกไว้ใน audit log',
     ),
     JobTransition(
       from: 'waitquote', to: 'waitapprove', labelTh: 'ส่งใบเสนอราคาให้ลูกค้า',
@@ -73,7 +73,7 @@ abstract final class JobTransitions {
       from: 'inprogress', to: 'qc', labelTh: 'ซ่อมเสร็จ ส่งตรวจ QC',
       roles: {AppRole.technician, AppRole.office, AppRole.manager},
       allowedFromMobile: true, needsReason: true,
-      reasonHintTh: 'ยังไม่มีรายการซ่อมรายบรรทัดในระบบ — สรุปงานที่ทำเสร็จเพื่อบันทึกไว้',
+      reasonHintTh: 'ยังไม่มีรายการซ่อมรายบรรทัดในระบบ สรุปงานที่ทำเสร็จเพื่อบันทึกไว้',
     ),
     // [BIZ] ไม่มี qc→inprogress ที่นี่โดยตั้งใจ — ระบบไม่มี process ตีกลับ (คำขอผู้ใช้ 2026-09-09:
     // "QC ต้องกดผ่านเท่านั้น ไม่มีไม่ผ่าน") แต่แอปเคยมีปุ่มนี้อยู่และเป็นปุ่มหลักของสถานะ qc เสียด้วย
@@ -117,10 +117,10 @@ abstract final class JobTransitions {
     if (!t.allowsRole(role)) {
       // บอกทางแก้แทนการไล่ชื่อ role ทั้งหมด — รายการที่เปิดเกือบทุกบทบาทจะได้ข้อความยาวจนอ่านไม่รู้เรื่อง
       if (role == AppRole.unknown) {
-        return 'ระบบไม่รู้จักบทบาทของบัญชีนี้ — ออกจากระบบแล้วเข้าใหม่ หรือแจ้งผู้ดูแลระบบ';
+        return 'ระบบไม่รู้จักบทบาทของบัญชีนี้ ออกจากระบบแล้วเข้าใหม่ หรือแจ้งผู้ดูแลระบบ';
       }
       final who = t.roles.map((r) => r.labelTh).join(' หรือ ');
-      return 'บทบาทนี้ไม่มีสิทธิ์ทำรายการนี้ — ต้องเป็น$who';
+      return 'บทบาทนี้ไม่มีสิทธิ์ทำรายการนี้ ต้องเป็น$who';
     }
     return null;
   }

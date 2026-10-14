@@ -45,11 +45,11 @@ public static class QuotationValidator
 
         foreach (var group in duplicateGroups.CodeDuplicates)
             errors.Add(new("QUOTE_DUPLICATE_LINE",
-                $"รหัส {group.Key} ซ้ำกัน {group.Count} บรรทัด — ต้องรวมเป็นบรรทัดเดียว"));
+                $"รหัส {group.Key} ซ้ำกัน {group.Count} บรรทัด ต้องรวมเป็นบรรทัดเดียว"));
 
         foreach (var group in duplicateGroups.NameDuplicates)
             errors.Add(new("QUOTE_DUPLICATE_LINE",
-                $"รายการนอกแคตตาล็อก “{group.Key}” ซ้ำกัน {group.Count} บรรทัด — ต้องรวมเป็นบรรทัดเดียว"));
+                $"รายการนอกแคตตาล็อก “{group.Key}” ซ้ำกัน {group.Count} บรรทัด ต้องรวมเป็นบรรทัดเดียว"));
 
         // [ASSUME] ส่วนลด > 10% หรือโปรประกันคู่สัญญา ต้องผู้จัดการอนุมัติ
         var needsApproval = quotation.Lines
@@ -72,7 +72,7 @@ public static class QuotationValidator
         if (marginPct < QuotationCalculator.MinimumMarginPercent)
             warnings.Add(new("QUOTE_LOW_MARGIN",
                 $"กำไรขั้นต้น {marginPct:0.#}% ต่ำกว่าเกณฑ์ {QuotationCalculator.MinimumMarginPercent:0}% ของสาขา " +
-                "— ทบทวนส่วนลดหรือเลือกอะไหล่เทียบ"));
+                "ทบทวนส่วนลดหรือเลือกอะไหล่เทียบ"));
 
         return new QuotationValidationResult(errors, warnings);
     }
@@ -101,7 +101,7 @@ public static class QuotationValidator
 
         if (quotation.Lines.All(l => l.ApprovalStatus != LineApprovalStatus.Approved))
             errors.Add(new("QUOTE_NOTHING_APPROVED",
-                "ลูกค้าไม่อนุมัติทุกรายการ — ต้องปิดงานหรือออกใบเสนอราคาใหม่"));
+                "ลูกค้าไม่อนุมัติทุกรายการ ต้องปิดงานหรือออกใบเสนอราคาใหม่"));
 
         return new QuotationValidationResult(errors, []);
     }

@@ -373,7 +373,7 @@ function SignatureImage({ path, customerName }: { path: string; customerName: st
     }
   }, [path, isVerbal])
 
-  if (isVerbal) return <span>ไม่มีลายเซ็น — พนักงานบันทึกการอนุมัติแทนลูกค้า</span>
+  if (isVerbal) return <span>ไม่มีลายเซ็น พนักงานบันทึกการอนุมัติแทนลูกค้า</span>
   if (!path) return <span>ไม่มีรูปลายเซ็น</span>
   if (failed) return <span>ไม่สามารถโหลดรูปลายเซ็นได้</span>
   if (!objectUrl) return <span>กำลังโหลดลายเซ็น…</span>
@@ -409,7 +409,7 @@ function DocumentLineGroup({
           return (
             <tr className={rejected ? 'document-line--rejected' : undefined} key={line.id}>
               <td className="document-center money">{line.sequence}</td>
-              <td className="document-code">{line.catalogCode || '—'}</td>
+              <td className="document-code">{line.catalogCode || '-'}</td>
               <td>
                 <strong>{line.name}</strong>
                 {line.note ? <small className="document-line-note">{line.note}</small> : null}

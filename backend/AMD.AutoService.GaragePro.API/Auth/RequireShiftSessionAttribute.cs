@@ -42,7 +42,7 @@ public sealed class RequireShiftSessionAttribute : ActionFilterAttribute
                 error = new
                 {
                     code = "AUTH_SHIFT_REQUIRED",
-                    messageTh = "โทเคนนี้ยังไม่ผูกกับสาขา — เข้าสู่ระบบใหม่แล้วเลือกสาขาและกะ"
+                    messageTh = "โทเคนนี้ยังไม่ผูกกับสาขา เข้าสู่ระบบใหม่แล้วเลือกสาขาและกะ"
                 },
                 traceId = context.HttpContext.TraceIdentifier
             })

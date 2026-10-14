@@ -74,7 +74,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('แท็บ 4'), findsOneWidget);
-    expect(find.text('ช่วงทดลองใช้ครบแล้ว — ดูข้อมูลได้ แต่แก้ไขไม่ได้'), findsOneWidget);
+    expect(find.text('ช่วงทดลองใช้ครบแล้ว ดูข้อมูลได้ แต่แก้ไขไม่ได้'), findsOneWidget);
   });
 
   /// [BIZ] แท็บรายงานยังอยู่สำหรับเจ้าของอู่ทดลองใช้ — "วันนี้" ไม่ใช่รายงานขั้นสูง

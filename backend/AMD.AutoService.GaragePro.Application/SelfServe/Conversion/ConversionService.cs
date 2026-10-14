@@ -85,7 +85,7 @@ public sealed class ConversionService(
         // [SECURITY] ปลายทางต้องเป็นสาขาจริง ไม่ใช่ shard ทดลองใช้เอง — ไม่งั้น "ย้าย" = คัดลอกซ้อนในฐานเดียวกัน
         if (SelfServeText.IsSelfServeShard(shard, options))
             return Fail(SelfServeAdminErrors.ConversionRefused(
-                $"shard ปลายทาง '{shard}' เป็น shard ของอู่ทดลองใช้เอง — ปลายทางต้องเป็นสาขา GaragePro จริง (เช่น db2)"));
+                $"shard ปลายทาง '{shard}' เป็น shard ของอู่ทดลองใช้เอง ปลายทางต้องเป็นสาขา GaragePro จริง (เช่น db2)"));
 
         var actor = string.IsNullOrWhiteSpace(request.Actor) ? "spadmin" : request.Actor.Trim();
 
@@ -95,14 +95,14 @@ public sealed class ConversionService(
 
         if (workspace.Status is not (WorkspaceStatus.Active or WorkspaceStatus.Expired))
             return Fail(SelfServeAdminErrors.ConversionRefused(
-                $"อู่ {code} อยู่สถานะ {workspace.Status} — ย้ายได้เฉพาะอู่ที่ใช้งานอยู่ (Active) หรือหมดอายุ (Expired)"));
+                $"อู่ {code} อยู่สถานะ {workspace.Status} ย้ายได้เฉพาะอู่ที่ใช้งานอยู่ (Active) หรือหมดอายุ (Expired)"));
         if (workspace.BranchId is not { } sourceBranch)
             return Fail(SelfServeAdminErrors.ConversionRefused($"อู่ {code} ยังไม่มีสาขาใน shard ทดลองใช้"));
         if (workspace.ConvertedToBranchId is { } convertedBranch
             && (convertedBranch != request.TargetBranchId
                 || !string.Equals(workspace.ConvertedToShardKey, shard, StringComparison.OrdinalIgnoreCase)))
             return Fail(SelfServeAdminErrors.ConversionRefused(
-                $"อู่ {code} ถูกย้ายไป {workspace.ConvertedToShardKey}/{convertedBranch} แล้ว — รันซ้ำได้เฉพาะปลายทางเดิม"));
+                $"อู่ {code} ถูกย้ายไป {workspace.ConvertedToShardKey}/{convertedBranch} แล้ว รันซ้ำได้เฉพาะปลายทางเดิม"));
 
         var (targetError, targetUser) = await ValidateTargetAsync(shard, request.TargetBranchId, request.TargetUserId, ct);
         if (targetError is not null) return Fail(targetError);
@@ -113,7 +113,7 @@ public sealed class ConversionService(
             || !string.Equals(e.TargetShardKey, shard, StringComparison.OrdinalIgnoreCase));
         if (foreign is not null)
             return Fail(SelfServeAdminErrors.ConversionRefused(
-                $"อู่ {code} มีรายการที่ย้ายไป {foreign.TargetShardKey}/{foreign.TargetBranchId} แล้ว — รันซ้ำได้เฉพาะปลายทางเดิม"));
+                $"อู่ {code} มีรายการที่ย้ายไป {foreign.TargetShardKey}/{foreign.TargetBranchId} แล้ว รันซ้ำได้เฉพาะปลายทางเดิม"));
 
         var data = await source.ReadAsync(workspace, ct);
         var started = Now;
@@ -153,7 +153,7 @@ public sealed class ConversionService(
             else
             {
                 await store.AddAuditAsync(workspace.Id, PartialAuditAction, actor,
-                    $"ย้ายไม่สำเร็จ {run.TotalFailed} รายการ — ยังไม่ปิดการย้าย (แก้แล้วรันซ้ำ หรือยืนยันด้วย --allow-failures)",
+                    $"ย้ายไม่สำเร็จ {run.TotalFailed} รายการ ยังไม่ปิดการย้าย (แก้แล้วรันซ้ำ หรือยืนยันด้วย --allow-failures)",
                     payload, Now, ct);
             }
         }
@@ -161,15 +161,15 @@ public sealed class ConversionService(
         var notes = new List<string>
         {
             "ไม่ย้าย: จ๊อบ · ใบเสนอราคา · ใบเสร็จ/การชำระเงิน · เวลาทำงานช่าง · ซัพพลายเออร์/ใบสั่งซื้อ/ล็อตสต็อก (ย้ายเฉพาะข้อมูลหลัก)",
-            "รูปภาพ (พนักงาน/รถ) ไม่ถูกคัดลอก — ดูรายการใน imagesNotCopied แล้วอัปโหลดใหม่ที่สาขาปลายทางถ้าต้องการ"
+            "รูปภาพ (พนักงาน/รถ) ไม่ถูกคัดลอก ดูรายการใน imagesNotCopied แล้วอัปโหลดใหม่ที่สาขาปลายทางถ้าต้องการ"
         };
         if (run.StaffAccounts.Count > 0)
-            notes.Add("[SECURITY] พนักงานที่สร้างใหม่ใช้กติกาสาขาเดิม: ชื่อผู้ใช้ = รหัสผ่าน = รหัสพนักงาน — " +
+            notes.Add("[SECURITY] พนักงานที่สร้างใหม่ใช้กติกาสาขาเดิม: ชื่อผู้ใช้ = รหัสผ่าน = รหัสพนักงาน " +
                       "ส่งให้เจ้าของอู่แล้วให้เปลี่ยนรหัสผ่านทันที และเก็บไฟล์รายงานนี้เป็นความลับ");
         if (request.DryRun)
             notes.Add("dry-run: ไม่ได้เขียนอะไรเลย · ตัวเลข Created/MappedExisting เป็นการคาดการณ์จากข้อมูลปลายทาง ณ ตอนนี้");
         else if (!finished)
-            notes.Add($"ยังไม่ปิดการย้าย: ล้ม {run.TotalFailed} รายการ — แก้สาเหตุแล้วรันคำสั่งเดิมซ้ำ (แถวที่ย้ายแล้วจะถูกข้าม)");
+            notes.Add($"ยังไม่ปิดการย้าย: ล้ม {run.TotalFailed} รายการ แก้สาเหตุแล้วรันคำสั่งเดิมซ้ำ (แถวที่ย้ายแล้วจะถูกข้าม)");
 
         return Result<ConversionReport>.Ok(new ConversionReport(
             code, workspace.WorkspaceNo, request.DryRun, shard, request.TargetBranchId, request.TargetUserId,
@@ -207,7 +207,7 @@ public sealed class ConversionService(
         var branches = await users.GetAccessibleBranchesAsync(shard, user, ct);
         if (!branches.Any(b => b.BranchId == branchId))
             return (SelfServeAdminErrors.ConversionTargetInvalid(
-                $"สาขา {branchId} ไม่ได้เปิดใช้งาน หรือไม่ใช่กลุ่ม Service (BranchGroupId 7) — สร้าง/เปิดใน GaragePro Admin ก่อน"),
+                $"สาขา {branchId} ไม่ได้เปิดใช้งาน หรือไม่ใช่กลุ่ม Service (BranchGroupId 7) สร้าง/เปิดใน GaragePro Admin ก่อน"),
                 null);
 
         return (null, user);
@@ -347,7 +347,7 @@ public sealed class ConversionService(
                     if (_targetCategories.TryGetValue(category.Code, out var found))
                     {
                         if (!found.IsActive)
-                            report.Messages.Add($"{category.Code}: ปลายทางมีรหัสนี้แต่ปิดใช้งาน — จับคู่ไว้ (สินค้าในหมวดนี้จะสร้างโดยไม่มีหมวด)");
+                            report.Messages.Add($"{category.Code}: ปลายทางมีรหัสนี้แต่ปิดใช้งาน จับคู่ไว้ (สินค้าในหมวดนี้จะสร้างโดยไม่มีหมวด)");
                         await RecordAsync(type, sourceId, Id(found.Id), report, created: false, ct);
                         return;
                     }
@@ -357,7 +357,7 @@ public sealed class ConversionService(
                     {
                         if (!byId.ContainsKey(parentId))
                         {
-                            report.Messages.Add($"{category.Code}: หมวดแม่ไม่ได้ย้าย (ปิดใช้งาน/ไม่พบ) — สร้างเป็นหมวดระดับบน");
+                            report.Messages.Add($"{category.Code}: หมวดแม่ไม่ได้ย้าย (ปิดใช้งาน/ไม่พบ) สร้างเป็นหมวดระดับบน");
                         }
                         else if (!_map.TryGetValue(Key(type, Id(parentId)), out var parentTarget))
                         {
@@ -436,7 +436,7 @@ public sealed class ConversionService(
                     if (_targetWarehouses.TryGetValue(warehouse.Code, out var found))
                     {
                         if (!found.IsActive)
-                            report.Messages.Add($"{warehouse.Code}: ปลายทางมีคลังรหัสนี้แต่ปิดใช้งาน — สินค้าจะสร้างโดยไม่ผูกคลัง");
+                            report.Messages.Add($"{warehouse.Code}: ปลายทางมีคลังรหัสนี้แต่ปิดใช้งาน สินค้าจะสร้างโดยไม่ผูกคลัง");
                         await RecordAsync(type, sourceId, Id(found.Id), report, created: false, ct);
                         return;
                     }
@@ -495,7 +495,7 @@ public sealed class ConversionService(
                     var category = MapReference(ConversionEntityTypes.CatalogCategory, item.CategoryId, item.Code, "หมวดหมู่", report);
                     var warehouse = MapReference(ConversionEntityTypes.Warehouse, item.WarehouseId, item.Code, "คลัง", report);
                     if (item.StockManaged)
-                        report.Messages.Add($"{item.Code}: ใช้ระบบสต็อก FIFO — คัดลอกยอดคงเหลือ {item.OnHand} เป็นตัวเลข (ไม่ได้ย้ายล็อต) " +
+                        report.Messages.Add($"{item.Code}: ใช้ระบบสต็อก FIFO คัดลอกยอดคงเหลือ {item.OnHand} เป็นตัวเลข (ไม่ได้ย้ายล็อต) " +
                                             "ตั้งยอดยกมาที่สาขาปลายทางถ้าใช้ระบบสต็อก");
 
                     // Reserved/OnOrder ผูกกับจ๊อบ/ใบสั่งซื้อที่ไม่ได้ย้าย จึงเริ่มที่ 0
@@ -521,14 +521,14 @@ public sealed class ConversionService(
                     if (!result.Success && request.CategoryId is not null
                         && result.Error!.Code is "CATEGORY_NOT_FOUND" or "CATEGORY_NOT_LEAF")
                     {
-                        report.Messages.Add($"{item.Code}: หมวดหมู่ปลายทางใช้ไม่ได้ ({result.Error.Code}) — สร้างโดยไม่มีหมวด");
+                        report.Messages.Add($"{item.Code}: หมวดหมู่ปลายทางใช้ไม่ได้ ({result.Error.Code}) สร้างโดยไม่มีหมวด");
                         request = request with { CategoryId = null };
                         result = await service.CreateAsync(request, ct);
                     }
 
                     if (!result.Success && request.WarehouseId is not null && result.Error!.Code == "WAREHOUSE_NOT_FOUND")
                     {
-                        report.Messages.Add($"{item.Code}: คลังปลายทางใช้ไม่ได้ — สร้างโดยไม่ผูกคลัง");
+                        report.Messages.Add($"{item.Code}: คลังปลายทางใช้ไม่ได้ สร้างโดยไม่ผูกคลัง");
                         request = request with { WarehouseId = null };
                         result = await service.CreateAsync(request, ct);
                     }
@@ -560,7 +560,7 @@ public sealed class ConversionService(
             if (_map.TryGetValue(Key(type, Id(id)), out var target))
                 return Guid.TryParse(target, out var g) ? g : null;   // dry-run: ยังไม่มี id จริง
 
-            report.Messages.Add($"{rowKey}: {label}ต้นทางไม่ได้ย้าย (ปิดใช้งาน/ล้ม) — สร้างโดยไม่ผูก{label}");
+            report.Messages.Add($"{rowKey}: {label}ต้นทางไม่ได้ย้าย (ปิดใช้งาน/ล้ม) สร้างโดยไม่ผูก{label}");
             return null;
         }
 
@@ -598,7 +598,7 @@ public sealed class ConversionService(
                     if (lines.Count == 0)
                     {
                         report.Skipped++;
-                        report.Messages.Add($"{template.Code}: ไม่มีบรรทัดเหลือหลังตัดรหัสที่ไม่ได้ย้าย — ไม่สร้าง");
+                        report.Messages.Add($"{template.Code}: ไม่มีบรรทัดเหลือหลังตัดรหัสที่ไม่ได้ย้าย ไม่สร้าง");
                         return;
                     }
 
@@ -649,7 +649,7 @@ public sealed class ConversionService(
                     // เจ้าของอู่มีบัญชีที่สาขาปลายทางแล้ว (ทีมงานสร้างใน GaragePro Admin = ผู้ใช้ปลายทาง) — ไม่สร้างคนซ้ำ
                     if (staff.IsOwner)
                     {
-                        report.Messages.Add($"{rowKey}: เจ้าของอู่ — ใช้บัญชีปลายทาง (Staff {_targetStaffId}) แทนการสร้างใหม่");
+                        report.Messages.Add($"{rowKey}: เจ้าของอู่ ใช้บัญชีปลายทาง (Staff {_targetStaffId}) แทนการสร้างใหม่");
                         await RecordAsync(type, sourceId, Id(_targetStaffId), report, created: false, ct);
                         return;
                     }
@@ -661,7 +661,7 @@ public sealed class ConversionService(
                         .Items.FirstOrDefault(s => SameName(s.FullName, fullName));
                     if (existing is not null)
                     {
-                        report.Messages.Add($"{rowKey}: มีพนักงานชื่อนี้ที่สาขาปลายทางแล้ว (Staff {existing.Id}) — จับคู่แทนการสร้างซ้ำ");
+                        report.Messages.Add($"{rowKey}: มีพนักงานชื่อนี้ที่สาขาปลายทางแล้ว (Staff {existing.Id}) จับคู่แทนการสร้างซ้ำ");
                         await RecordAsync(type, sourceId, Id(existing.Id), report, created: false, ct);
                         return;
                     }
@@ -719,7 +719,7 @@ public sealed class ConversionService(
                               string.Join(" · ", candidates.Select(c => $"{c.Position}/{c.Sector}")) + ")");
 
             if (detail.SectorPositions.Count(p => !p.IsMain) > 0)
-                report.Messages.Add($"{rowKey}: ไม่ได้ย้ายหน่วยงานเพิ่มเติม — เพิ่มเองใน GaragePro Admin ถ้าต้องการ");
+                report.Messages.Add($"{rowKey}: ไม่ได้ย้ายหน่วยงานเพิ่มเติม เพิ่มเองใน GaragePro Admin ถ้าต้องการ");
 
             // เพศ: sp1 มี "ไม่ระบุ" (Id 3) ที่ Garage ไม่มี — จับคู่ด้วยชื่อก่อน แล้ว id เดิม (ตารางคัดลอก id มา) ไม่งั้นค่าแรกของปลายทาง
             var gender = FindByName(_refs.Genders, detail.GenderName)
@@ -728,14 +728,14 @@ public sealed class ConversionService(
             {
                 gender = _refs.Genders.OrderBy(g => g.Id).FirstOrDefault();
                 if (gender is null) return (null, "สาขาปลายทางไม่มีตารางเพศให้เลือก");
-                report.Messages.Add($"{rowKey}: เพศ '{detail.GenderName ?? "-"}' ไม่มีที่ปลายทาง — ตั้งเป็น '{gender.Name}' ชั่วคราว " +
+                report.Messages.Add($"{rowKey}: เพศ '{detail.GenderName ?? "-"}' ไม่มีที่ปลายทาง ตั้งเป็น '{gender.Name}' ชั่วคราว " +
                                     "แก้ใน GaragePro Admin");
             }
 
             var skill = FindByName(_refs.SkillLevels, detail.StaffSkillLevelName)
                         ?? _refs.SkillLevels.FirstOrDefault(l => l.Id == detail.StaffSkillLevelId);
             if (skill is null && detail.StaffSkillLevelId is not null)
-                report.Messages.Add($"{rowKey}: ไม่พบระดับฝีมือ '{detail.StaffSkillLevelName}' ที่ปลายทาง — เว้นว่าง");
+                report.Messages.Add($"{rowKey}: ไม่พบระดับฝีมือ '{detail.StaffSkillLevelName}' ที่ปลายทาง เว้นว่าง");
 
             // BranchId = สาขาปลายทาง · UserName/Password ว่าง = ทางสร้างเดิมของ legacy (ระบบออกรหัสพนักงานและตั้งชื่อผู้ใช้ให้)
             return (new StaffUpsertRequest(
@@ -810,7 +810,7 @@ public sealed class ConversionService(
                     else if (result.Error!.Code == "CUSTOMER_DUPLICATE" && result.Error.Details is CustomerDuplicateDto dup)
                     {
                         if (dup.IsDeleted)
-                            report.Messages.Add($"{rowKey}: ปลายทางมีลูกค้าคนเดียวกันแต่ถูกลบอยู่ (Customer {dup.Id}) — จับคู่ไว้ กู้คืนเองถ้าต้องการ");
+                            report.Messages.Add($"{rowKey}: ปลายทางมีลูกค้าคนเดียวกันแต่ถูกลบอยู่ (Customer {dup.Id}) จับคู่ไว้ กู้คืนเองถ้าต้องการ");
                         await RecordAsync(type, sourceId, Id(dup.Id), report, created: false, ct);
                     }
                     else
@@ -842,7 +842,7 @@ public sealed class ConversionService(
                             && vehicle.Owners.All(o => _samples.Contains(Key(ConversionEntityTypes.Customer, Id(o.Id)))))
                         {
                             report.Skipped++;
-                            report.Messages.Add($"{rowKey}: เจ้าของเป็นลูกค้าตัวอย่าง — ไม่ย้าย");
+                            report.Messages.Add($"{rowKey}: เจ้าของเป็นลูกค้าตัวอย่าง ไม่ย้าย");
                         }
                         else
                         {
@@ -853,13 +853,13 @@ public sealed class ConversionService(
                     }
 
                     if (vehicle.Owners.Count > 1)
-                        report.Messages.Add($"{rowKey}: มีเจ้าของ {vehicle.Owners.Count} คน — ผูกกับ {owner.FullName} คนเดียว");
+                        report.Messages.Add($"{rowKey}: มีเจ้าของ {vehicle.Owners.Count} คน ผูกกับ {owner.FullName} คนเดียว");
 
                     if (vehicle.ProvinceId is not { } province || vehicle.BrandId is not { } brand
                         || vehicle.ModelId is not { } model || vehicle.NicknameId is not { } nickname
                         || vehicle.YearId is not { } year)
                     {
-                        Failed(report, $"{rowKey}: ข้อมูลรถไม่ครบ (จังหวัด/ยี่ห้อ/รุ่น/โฉม/ปี) — แก้ที่ต้นทางแล้วรันซ้ำ");
+                        Failed(report, $"{rowKey}: ข้อมูลรถไม่ครบ (จังหวัด/ยี่ห้อ/รุ่น/โฉม/ปี) แก้ที่ต้นทางแล้วรันซ้ำ");
                         return;
                     }
 
@@ -878,7 +878,7 @@ public sealed class ConversionService(
                             : null;
                         if (same is not null)
                         {
-                            report.Messages.Add($"{rowKey}: เจ้าของที่ปลายทางมีรถทะเบียนนี้แล้ว (Car {same.Id}) — จับคู่แทนการสร้างซ้ำ");
+                            report.Messages.Add($"{rowKey}: เจ้าของที่ปลายทางมีรถทะเบียนนี้แล้ว (Car {same.Id}) จับคู่แทนการสร้างซ้ำ");
                             await RecordAsync(type, sourceId, Id(same.Id), report, created: false, ct);
                             return;
                         }

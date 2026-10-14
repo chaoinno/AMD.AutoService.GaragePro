@@ -181,7 +181,7 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
         // Host ว่าง = DNS ของ "" คืน address ทุกตัวของเครื่องตัวเอง แล้ว FluentFTP ไล่ต่อทีละตัวจน timeout (หลายนาทีต่อไฟล์)
         // พบตอนรัน spadmin บนเครื่อง dev ที่ไม่มี Ftp:Host — ให้ล้มทันทีพร้อมบอกค่าที่ขาดแทน
         if (string.IsNullOrWhiteSpace(_ftp.Host))
-            throw new InvalidOperationException("ยังไม่ได้ตั้ง Ftp:Host — ไฟล์แนบใช้งานไม่ได้");
+            throw new InvalidOperationException("ยังไม่ได้ตั้ง Ftp:Host ไฟล์แนบใช้งานไม่ได้");
         return new(_ftp.Host, _ftp.Username, _ftp.Password, _ftp.Port);
     }
 
@@ -214,7 +214,7 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
 
         /// <summary>เรียกได้หลังอ่านจน EOF แล้วเท่านั้น (คือหลัง UploadStream อัปโหลดสำเร็จ)</summary>
         public string GetSha256Hex() => _sha256Hex
-            ?? throw new InvalidOperationException("Stream ยังอ่านไม่จบ — เรียก GetSha256Hex ก่อนอัปโหลดเสร็จ");
+            ?? throw new InvalidOperationException("Stream ยังอ่านไม่จบ เรียก GetSha256Hex ก่อนอัปโหลดเสร็จ");
 
         public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
         {

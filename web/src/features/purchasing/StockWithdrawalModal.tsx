@@ -80,7 +80,7 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
   // [UI] ปุ่มที่ปิดต้องบอกเหตุผลเสมอ — คำขอที่ยังไม่ทราบผลส่งซ้ำได้เสมอ (server replay ด้วย RequestId เดิม ไม่เบิกซ้ำ)
   const blockedReason = uncertain ? null
     : plan.isPending ? 'กำลังโหลดรายการที่อนุมัติ…'
-      : plan.isError ? 'โหลดรายการที่อนุมัติไม่สำเร็จ — กด "ลองใหม่" ก่อน'
+      : plan.isError ? 'โหลดรายการที่อนุมัติไม่สำเร็จ กด "ลองใหม่" ก่อน'
         : !toWithdraw.length
           ? planLines.length
             ? 'เบิกครบทุกรายการที่ลูกค้าอนุมัติแล้ว ไม่มีอะไรเหลือให้เบิก'
@@ -88,7 +88,7 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
           : invalid.length
             ? `จำนวนเบิกของ ${invalid.map(x => x.code).join(', ')} ต้องเป็นจำนวนเต็ม 0 ถึงยอดที่ยังไม่ได้เบิก`
             : short.length
-              ? `ยอดพร้อมใช้ไม่พอสำหรับ ${short.map(x => x.code).join(', ')} — ลดจำนวนลงเพื่อเบิกเท่าที่มีก่อน ส่วนที่เหลือเบิกต่อในใบถัดไปได้`
+              ? `ยอดพร้อมใช้ไม่พอสำหรับ ${short.map(x => x.code).join(', ')} ลดจำนวนลงเพื่อเบิกเท่าที่มีก่อน ส่วนที่เหลือเบิกต่อในใบถัดไปได้`
               : !selected.length
                 ? 'กรุณาระบุจำนวนเบิกอย่างน้อย 1 รายการ'
                 : null
@@ -158,11 +158,11 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
 
         <p className="section-help">
           รายการด้านล่างมาจากบรรทัดอะไหล่ที่ลูกค้าอนุมัติในใบเสนอราคาที่เซ็นแล้วทุกใบของงานนี้ หักจำนวนที่เบิกไปแล้วในใบเบิกก่อนหน้า
-          — ใส่ 0 ถ้ายังไม่เบิกรายการนั้นรอบนี้ · ถ้าต้องใช้สินค้าเพิ่ม ให้ออกใบเสนอราคาใหม่หรือฉบับแก้ไขแล้วให้ลูกค้าอนุมัติก่อน
+          ใส่ 0 ถ้ายังไม่เบิกรายการนั้นรอบนี้ · ถ้าต้องใช้สินค้าเพิ่ม ให้ออกใบเสนอราคาใหม่หรือฉบับแก้ไขแล้วให้ลูกค้าอนุมัติก่อน
         </p>
         {adHocCount > 0 && (
           <p role="status" className="section-help">
-            มี {adHocCount} รายการนอกแคตตาล็อกที่ลูกค้าอนุมัติ — เป็นของซื้อนอกที่ไม่มีในคลัง จึงไม่อยู่ในใบเบิก
+            มี {adHocCount} รายการนอกแคตตาล็อกที่ลูกค้าอนุมัติ เป็นของซื้อนอกที่ไม่มีในคลัง จึงไม่อยู่ในใบเบิก
           </p>
         )}
         {unavailableItems.length > 0 && (
@@ -203,7 +203,7 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
                           value={quantities[line.catalogItemId] ?? ''}
                           onChange={e => setQuantities(old => ({ ...old, [line.catalogItemId]: e.target.value }))}
                         />
-                      ) : '—'}
+                      ) : '-'}
                     </td>
                     <td>{line.available}</td>
                     <td><LineStatus line={line} quantity={qtyOf(line)} /></td>

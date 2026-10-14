@@ -22,7 +22,7 @@ export function PricingPage() {
           </article>
           <article className="landing-feature landing-pricing__card">
             <p className="landing-eyebrow">สำหรับงานที่ครบขึ้น</p>
-            <h2 className="landing-h2">แพ็กเกจเต็ม — ติดต่อสอบถาม</h2>
+            <h2 className="landing-h2">แพ็กเกจเต็ม: ติดต่อสอบถาม</h2>
             <p>เพิ่มความสามารถสำหรับการจัดการอู่บริการ:</p>
             <ul className="landing-package-list">
               {FULL_PACKAGE.map((feature) => <li key={feature}><Check aria-hidden="true" /> {feature}</li>)}

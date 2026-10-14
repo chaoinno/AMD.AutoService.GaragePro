@@ -118,7 +118,7 @@ public sealed class NotificationService(
             : null;
 
     private static Result<T> NoStaff<T>() => Result<T>.Fail(
-        "NOTIFICATION_NO_STAFF_PROFILE", "บัญชีนี้ไม่ได้ผูกกับข้อมูลพนักงาน — ออกจากระบบแล้วเข้าใหม่อีกครั้ง");
+        "NOTIFICATION_NO_STAFF_PROFILE", "บัญชีนี้ไม่ได้ผูกกับข้อมูลพนักงาน ออกจากระบบแล้วเข้าใหม่อีกครั้ง");
 
     private static Result<NotificationCountDto> NotFound() => Result<NotificationCountDto>.Fail(
         "NOTIFICATION_NOT_FOUND", "ไม่พบการแจ้งเตือนนี้ หรือไม่ใช่การแจ้งเตือนของคุณ");

@@ -214,7 +214,7 @@ public sealed class QuotationTemplateService(
         {
             var key = duplicates.CodeDuplicates.FirstOrDefault().Key ?? duplicates.NameDuplicates.First().Key;
             return Result<List<QuotationTemplateLine>>.Fail(
-                "QUOTE_TEMPLATE_DUPLICATE_LINE", $"เทมเพลตมีรายการซ้ำกัน: {key} — รวมเป็นบรรทัดเดียวก่อนบันทึก");
+                "QUOTE_TEMPLATE_DUPLICATE_LINE", $"เทมเพลตมีรายการซ้ำกัน: {key}, รวมเป็นบรรทัดเดียวก่อนบันทึก");
         }
 
         // รหัสแคตตาล็อกทุกตัวต้องมีอยู่จริงในสาขานี้ ณ ตอนบันทึก — กันเทมเพลตพังตั้งแต่ต้น
@@ -228,7 +228,7 @@ public sealed class QuotationTemplateService(
             if (missing.Count > 0)
                 return Result<List<QuotationTemplateLine>>.Fail(
                     "QUOTE_TEMPLATE_ITEM_MISSING",
-                    $"รหัส {string.Join(", ", missing)} ไม่มีในแคตตาล็อกของสาขานี้ — แก้ไขหรือลบรายการนั้นก่อนบันทึก");
+                    $"รหัส {string.Join(", ", missing)} ไม่มีในแคตตาล็อกของสาขานี้ แก้ไขหรือลบรายการนั้นก่อนบันทึก");
         }
 
         return Result<List<QuotationTemplateLine>>.Ok(lines);

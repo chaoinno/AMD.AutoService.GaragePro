@@ -194,7 +194,7 @@ export function QuotationTemplatePage() {
       <ConfirmModal
         open={Boolean(statusTarget)}
         title={statusTarget?.isActive ? 'ปิดใช้งานเทมเพลต' : 'เปิดใช้งานเทมเพลต'}
-        description="ข้อมูลจะไม่ถูกลบและสามารถเปิดใช้งานกลับมาได้ — เทมเพลตที่ปิดใช้งานจะไม่แสดงในตัวเลือกเพิ่มรายการอีก"
+        description="ข้อมูลจะไม่ถูกลบและสามารถเปิดใช้งานกลับมาได้ เทมเพลตที่ปิดใช้งานจะไม่แสดงในตัวเลือกเพิ่มรายการอีก"
         onClose={() => { setStatusTarget(null); statusMutation.reset() }}
         footer={
           <>
@@ -354,7 +354,7 @@ function QuotationTemplateFormModal({ open, templateId, onClose }: { open: boole
             {errors.lines ? <p className="field-error">{errors.lines}</p> : null}
 
             {lines.length === 0 ? (
-              <p className="form-message">ยังไม่มีรายการ — ค้นหาสินค้าหรือเพิ่มรายการนอกแคตตาล็อกด้านบน</p>
+              <p className="form-message">ยังไม่มีรายการ ค้นหาสินค้าหรือเพิ่มรายการนอกแคตตาล็อกด้านบน</p>
             ) : (
               <div className="template-table-scroll">
                 <table className="master-table template-lines">

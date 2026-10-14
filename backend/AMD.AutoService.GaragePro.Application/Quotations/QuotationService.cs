@@ -75,7 +75,7 @@ public sealed class QuotationService(
         if (draft is not null)
             return Result<QuotationDto>.Fail(
                 "QUOTE_ALREADY_EXISTS",
-                $"งานนี้มีใบเสนอราคาฉบับร่าง {draft.Code} อยู่แล้ว — ส่งใบนั้นให้ลูกค้าก่อนจึงจะสร้างใบใหม่ได้");
+                $"งานนี้มีใบเสนอราคาฉบับร่าง {draft.Code} อยู่แล้ว ส่งใบนั้นให้ลูกค้าก่อนจึงจะสร้างใบใหม่ได้");
 
         if (await ReceiptIssuedError(job.Id, ct) is { } receiptError) return receiptError;
 
@@ -174,11 +174,11 @@ public sealed class QuotationService(
 
         if (!template.IsActive)
             return Result<QuotationDto>.Fail("QUOTE_TEMPLATE_INACTIVE",
-                $"เทมเพลต {template.Code} {template.Name} ถูกปิดใช้งานอยู่ — เปิดใช้งานที่เมนูข้อมูลหลักก่อน หรือเลือกเทมเพลตอื่น");
+                $"เทมเพลต {template.Code} {template.Name} ถูกปิดใช้งานอยู่ เปิดใช้งานที่เมนูข้อมูลหลักก่อน หรือเลือกเทมเพลตอื่น");
 
         if (template.Lines.Count == 0)
             return Result<QuotationDto>.Fail("QUOTE_TEMPLATE_EMPTY",
-                $"เทมเพลต {template.Code} {template.Name} ยังไม่มีรายการ — เพิ่มรายการในเทมเพลตก่อนนำมาใช้");
+                $"เทมเพลต {template.Code} {template.Name} ยังไม่มีรายการ เพิ่มรายการในเทมเพลตก่อนนำมาใช้");
 
         // อ่านราคา/ชื่อ/ต้นทุนสดจากแคตตาล็อกครั้งเดียวทั้งชุด (batch) — ชื่อ/ราคาที่ cache ไว้ในเทมเพลตใช้แสดงผล
         // เท่านั้น ห้ามอ่านตรงนี้ (กันชื่อ/ราคาเก่าค้าง — เหมือนเส้นทางแคตตาล็อกของ AddLineAsync ทุกประการ)
@@ -193,7 +193,7 @@ public sealed class QuotationService(
         if (missing.Count > 0)
             return Result<QuotationDto>.Fail("QUOTE_TEMPLATE_ITEM_MISSING",
                 $"เทมเพลต {template.Code} อ้างถึงรหัส {string.Join(", ", missing)} ที่ไม่มีในแคตตาล็อกของสาขานี้แล้ว " +
-                $"({missing.Count} รหัส) — ยังไม่ได้เพิ่มรายการใดเลย แก้เทมเพลตที่เมนูข้อมูลหลักก่อน");
+                $"({missing.Count} รหัส) ยังไม่ได้เพิ่มรายการใดเลย แก้เทมเพลตที่เมนูข้อมูลหลักก่อน");
 
         // [BIZ] รายการซ้ำ (กับที่มีอยู่แล้วในใบนี้) → หยุดทั้งหมด ไม่เพิ่มสักบรรทัด ไม่ auto-merge/ไม่ข้ามเงียบๆ
         // (ไม่มี endpoint ลบใบเสนอราคา การเพิ่มครึ่งๆ จะทำให้ผู้ใช้ไม่รู้ว่าอะไรเข้าไปแล้วบ้าง)
@@ -207,7 +207,7 @@ public sealed class QuotationService(
                 .Concat(duplicates.NameDuplicates.Select(g => g.Key)).ToList();
             return Result<QuotationDto>.Fail("QUOTE_TEMPLATE_DUPLICATE_LINE",
                 $"เทมเพลต {template.Code} มี {keys.Count} รายการที่ซ้ำกับใบเสนอราคานี้อยู่แล้ว ({string.Join(", ", keys)}) " +
-                "— ยังไม่ได้เพิ่มรายการใดเลย ลบรายการเดิมออกก่อนหรือเลือกเทมเพลตอื่น");
+                "ยังไม่ได้เพิ่มรายการใดเลย ลบรายการเดิมออกก่อนหรือเลือกเทมเพลตอื่น");
         }
 
         var nextSequence = q.Lines.Count == 0 ? 1 : q.Lines.Max(l => l.Sequence) + 1;
@@ -342,7 +342,7 @@ public sealed class QuotationService(
         if (!validation.IsValid)
             return Result<QuotationDto>.Fail(new ApiError(
                 "QUOTE_VALIDATION_FAILED",
-                "ใบเสนอราคายังส่งไม่ได้ — มี " + validation.Errors.Count + " ข้อที่ต้องแก้",
+                "ใบเสนอราคายังส่งไม่ได้ มี " + validation.Errors.Count + " ข้อที่ต้องแก้",
                 Details: QuotationMapper.ToDto(validation)));
 
         q!.Status = QuotationStatus.Sent;
@@ -367,7 +367,7 @@ public sealed class QuotationService(
 
         if (previous.Status is QuotationStatus.Superseded)
             return Result<QuotationDto>.Fail("QUOTE_ALREADY_SUPERSEDED",
-                $"{previous.Code} ถูกแทนที่ไปแล้ว — ให้ออกฉบับแก้ไขจากเวอร์ชันล่าสุดแทน");
+                $"{previous.Code} ถูกแทนที่ไปแล้ว ให้ออกฉบับแก้ไขจากเวอร์ชันล่าสุดแทน");
 
         if (await ReceiptIssuedError(previous.JobId, ct) is { } receiptError) return receiptError;
 
@@ -459,7 +459,7 @@ public sealed class QuotationService(
 
         if (q.Status is not (QuotationStatus.Sent or QuotationStatus.Partial))
             return Result<QuotationDto>.Fail("QUOTE_NOT_OPEN_FOR_DECISION",
-                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} — รับการตัดสินใจไม่ได้");
+                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} รับการตัดสินใจไม่ได้");
 
         var line = q.Lines.FirstOrDefault(l => l.Id == lineId);
         if (line is null)
@@ -489,7 +489,7 @@ public sealed class QuotationService(
 
         if (q.Status is not (QuotationStatus.Sent or QuotationStatus.Partial))
             return Result<QuotationDto>.Fail("QUOTE_NOT_OPEN_FOR_DECISION",
-                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} — เซ็นยืนยันไม่ได้");
+                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} เซ็นยืนยันไม่ได้");
 
         if (await ReceiptIssuedError(q.JobId, ct) is { } receiptError) return receiptError;
 
@@ -585,7 +585,7 @@ public sealed class QuotationService(
         return receipt is null
             ? null
             : Result<QuotationDto>.Fail("QUOTE_RECEIPT_ISSUED",
-                $"งานนี้ออกใบเสร็จ {receipt.DocumentNo} แล้ว — เพิ่มหรือแก้ใบเสนอราคาไม่ได้อีก");
+                $"งานนี้ออกใบเสร็จ {receipt.DocumentNo} แล้ว เพิ่มหรือแก้ใบเสนอราคาไม่ได้อีก");
     }
 
     private Quotation NewQuotation(
@@ -628,13 +628,13 @@ public sealed class QuotationService(
 
         if (!q.IsEditable)
             return (null, Result<QuotationDto>.Fail("QUOTE_NOT_EDITABLE",
-                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} — แก้ไขไม่ได้ " +
+                $"ใบเสนอราคาอยู่ในสถานะ {QuotationMapper.StatusLabel(q.Status)} แก้ไขไม่ได้ " +
                 "ถ้าต้องการเปลี่ยนราคาให้ออกฉบับแก้ไข"));
 
         // [UI] แก้พร้อมกัน — คนที่ไม่ได้ถือสิทธิ์เห็นเป็น read-only
         if (q.LockedByUserId is not null && q.LockedByUserId != user.UserId)
             return (null, Result<QuotationDto>.Fail("QUOTE_LOCKED_BY_OTHER",
-                $"{q.LockedByUserName} กำลังแก้ไขใบนี้อยู่ — รอสักครู่หรือขอสิทธิ์แก้ไข"));
+                $"{q.LockedByUserName} กำลังแก้ไขใบนี้อยู่ รอสักครู่หรือขอสิทธิ์แก้ไข"));
 
         return (q, null);
     }
@@ -678,7 +678,7 @@ public sealed class QuotationService(
 
         if (request.Name.Trim().Length > 300)
             return Result<QuotationDto>.Fail("QUOTE_LINE_NAME_TOO_LONG",
-                "ชื่อรายการยาวเกินไป — ไม่เกิน 300 ตัวอักษร", nameof(request.Name));
+                "ชื่อรายการยาวเกินไป ไม่เกิน 300 ตัวอักษร", nameof(request.Name));
 
         if (request.Type is null)
             return Result<QuotationDto>.Fail("QUOTE_LINE_TYPE_REQUIRED",

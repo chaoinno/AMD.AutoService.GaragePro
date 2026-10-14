@@ -266,7 +266,7 @@ public class SelfServeStatusServiceTests
         result.Data!.RequestedAt.Should().Be(Now);
         repo.Recorded.Should().ContainSingle().Which.Actor.Should().Be("SP1042.M01");
         sales.Sent.Should().ContainSingle();
-        sales.Sent[0].Key.Should().Be(requestId, "requestId ของ client เป็น X-Line-Retry-Key — กดซ้ำไม่ได้ข้อความซ้ำ");
+        sales.Sent[0].Key.Should().Be(requestId, "requestId ของ client เป็น X-Line-Retry-Key, กดซ้ำไม่ได้ข้อความซ้ำ");
         sales.Sent[0].Text.Should().Be(
             "🔁 ขอต่ออายุ/สนใจแพ็กเกจ: อู่ อู่ช่างเอก (SP1042) · โทร 081-234-5678 · หมดอายุ 02/11/2569 · " +
             "หมายเหตุ: สนใจฟีเจอร์: จัดซื้อ โทร: 099-999-9999");

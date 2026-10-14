@@ -131,7 +131,7 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
               children: [
                 const Text('เลขไมล์ขณะรับรถ', style: TextStyle(fontSize: 14, color: T.muted, height: 1.5)),
                 Text(
-                  job == null ? 'กำลังโหลด…' : missing ? 'ยังไม่ได้บันทึก — ต้องบันทึกก่อนส่ง' : formatKm(km),
+                  job == null ? 'กำลังโหลด…' : missing ? 'ยังไม่ได้บันทึก ต้องบันทึกก่อนส่ง' : formatKm(km),
                   style: TextStyle(
                       fontSize: missing ? 15 : 18,
                       fontWeight: FontWeight.w700,
@@ -194,7 +194,7 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
           ),
           async.maybeWhen(
             data: (photos) => photos.isEmpty
-                ? const Text('ยังไม่มีรูป — ถ่ายรอบคันไว้เป็นหลักฐานก่อนรับรถ',
+                ? const Text('ยังไม่มีรูป ถ่ายรอบคันไว้เป็นหลักฐานก่อนรับรถ',
                     style: TextStyle(fontSize: 14, color: T.muted, height: 1.7))
                 : Wrap(
                     spacing: T.s8,
@@ -312,7 +312,7 @@ class _IntakeChecklistPageState extends ConsumerState<IntakeChecklistPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('$labelTh — ${item.labelTh}',
+            Text('$labelTh: ${item.labelTh}',
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1.5)),
             const Text('ต้องระบุรายละเอียดเสมอ เพื่อให้ลูกค้าและช่างเห็นตรงกัน',
                 style: TextStyle(fontSize: 14, color: T.muted, height: 1.7)),

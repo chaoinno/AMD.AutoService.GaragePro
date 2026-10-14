@@ -113,7 +113,7 @@ public class PlanPolicyTests
         var lapsed = PlanPolicy.Evaluate(end.AddDays(1), Branch(end), paid, Options);
         lapsed.IsReadOnly.Should().BeTrue();
         lapsed.IsLocked.Should().BeFalse();
-        lapsed.Features.Should().Be(PlanFeature.All, "ยังจ่ายเงินแล้ว — อ่าน/พิมพ์ทุกส่วนได้");
+        lapsed.Features.Should().Be(PlanFeature.All, "ยังจ่ายเงินแล้ว อ่าน/พิมพ์ทุกส่วนได้");
 
         PlanPolicy.Evaluate(end.AddDays(90), Branch(end), paid, Options).IsLocked.Should().BeTrue();
     }

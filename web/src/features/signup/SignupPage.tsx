@@ -101,7 +101,7 @@ export function SignupPage() {
   if (config.data?.enabled === false || disabled) return (
     <section className="signup-closed landing-container">
       <p className="landing-eyebrow">ทดลองใช้ฟรี 30 วัน</p>
-      <h1>{HEADLINE} — เปิดรับสมัครเร็วๆ นี้</h1>
+      <h1>{HEADLINE} เปิดรับสมัครเร็วๆ นี้</h1>
       <p className="landing-body">โปรแกรมสำหรับอู่บริการและอู่เซอร์วิส ทดลองใช้ 30 วันโดยไม่ต้องใส่บัตรเครดิต</p>
       <h2 className="landing-h2">สอบถามทีมงานระหว่างรอเปิดรับสมัคร</h2>
       <p className="landing-body">ติดต่อผ่าน LINE โทรศัพท์ หรือฝากข้อมูลเพื่อขอ Demo ได้</p>

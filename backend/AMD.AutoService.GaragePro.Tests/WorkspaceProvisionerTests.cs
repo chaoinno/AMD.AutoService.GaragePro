@@ -188,7 +188,7 @@ public class WorkspaceProvisionerTests
         h.Repository.Stored.Should().ContainSingle().Which.Status.Should().Be(WorkspaceStatus.Active);
         h.Repository.Stored.Single().ProvisionError.Should().BeNull();
         h.Repository.Shadow.Branches.Should().ContainSingle("Branch ต้องไม่ถูกสร้างซ้ำ");
-        h.Repository.Shadow.Users.Should().ContainSingle("เจ้าของต้องไม่ถูกสร้างซ้ำ — รอบก่อนสร้างแล้วต้องหาเจอด้วยชื่อผู้ใช้");
+        h.Repository.Shadow.Users.Should().ContainSingle("เจ้าของต้องไม่ถูกสร้างซ้ำ รอบก่อนสร้างแล้วต้องหาเจอด้วยชื่อผู้ใช้");
         h.StaffCreates.Count.Should().Be(failAt == "owner" ? 2 : 1);
     }
 
@@ -329,7 +329,7 @@ public class WorkspaceProvisionerTests
         (await plain.Provisioner.ProvisionAsync(plain.Request() with { OwnerStoredPassword = "plain-text" })).Success.Should().BeTrue();
         var plainPassword = plain.StaffCreates.Single().Account!.StoredPassword;
 
-        hasher.IsHashed(googlePassword).Should().BeTrue("Google signup ไม่มีรหัสผ่าน — ต้องได้ค่าสุ่มที่ hash แล้ว ไม่ใช่ค่าว่าง");
+        hasher.IsHashed(googlePassword).Should().BeTrue("Google signup ไม่มีรหัสผ่าน ต้องได้ค่าสุ่มที่ hash แล้ว ไม่ใช่ค่าว่าง");
         hasher.IsHashed(plainPassword).Should().BeTrue();
         plainPassword.Should().NotBe("plain-text");
         hasher.Verify(plainPassword, "plain-text").Should().BeTrue();

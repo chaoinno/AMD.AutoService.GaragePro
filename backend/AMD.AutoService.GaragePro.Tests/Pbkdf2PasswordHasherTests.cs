@@ -37,7 +37,7 @@ public class Pbkdf2PasswordHasherTests
         var first = _hasher.Hash("same-password");
         var second = _hasher.Hash("same-password");
 
-        first.Should().NotBe(second, "salt สุ่มใหม่ทุกครั้ง — hash เท่ากันแปลว่าไม่มี salt");
+        first.Should().NotBe(second, "salt สุ่มใหม่ทุกครั้ง, hash เท่ากันแปลว่าไม่มี salt");
         first.Should().StartWith(Pbkdf2PasswordHasher.Prefix);
         first.Length.Should().Be(Pbkdf2PasswordHasher.EncodedLength);
         first.Length.Should().BeLessThanOrEqualTo(100, "[User].Password เป็น nvarchar(100)");

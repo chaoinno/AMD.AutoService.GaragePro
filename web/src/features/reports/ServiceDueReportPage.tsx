@@ -128,10 +128,10 @@ function ReportBody({ report }: { report: ServiceDueReport }) {
         </span>
       </div>
       {report.items.length === 0 ? (
-        <p className="purchase-empty">ไม่มีรถที่ครบกำหนดในช่วงนี้ — ลองขยายช่วงวันนัด (นัดมาจากใบส่งมอบที่บันทึกตั้งแต่ 2026-10-08 เท่านั้น)</p>
+        <p className="purchase-empty">ไม่มีรถที่ครบกำหนดในช่วงนี้ ลองขยายช่วงวันนัด (นัดมาจากใบส่งมอบที่บันทึกตั้งแต่ 2026-10-08 เท่านั้น)</p>
       ) : (
         <Card className="management-table-card">
-          <p className="section-help report-table-note">ไมล์นัดแสดงประกอบเท่านั้น — ระบบไม่รู้เลขไมล์ปัจจุบันของรถ จึงจัดลำดับตามวันนัด</p>
+          <p className="section-help report-table-note">ไมล์นัดแสดงประกอบเท่านั้น ระบบไม่รู้เลขไมล์ปัจจุบันของรถ จึงจัดลำดับตามวันนัด</p>
           <ManagementTable data={report.items} sortScope="loaded" columns={[
             { id: 'due', header: 'วันนัด', size: 140, value: (x) => x.nextServiceDueOn, render: (x) => <strong>{formatDateOnly(x.nextServiceDueOn)}</strong> },
             { id: 'status', header: 'สถานะ', size: 170, value: (x) => x.daysUntilDue, render: (x) => <DueStatus item={x} /> },

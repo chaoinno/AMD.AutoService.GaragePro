@@ -11,13 +11,13 @@ public static class SignupErrors
     public const string EmailSendFailedCode = "SIGNUP_EMAIL_SEND_FAILED";
 
     public static ApiError EmailSendFailed() => new(EmailSendFailedCode,
-        $"ส่งอีเมลรหัสยืนยันไม่สำเร็จ — กรุณาลองใหม่อีกครั้งในอีกสักครู่ หรือสมัครด้วย Google หรือติดต่อ {PlanErrors.ContactLine}");
+        $"ส่งอีเมลรหัสยืนยันไม่สำเร็จ กรุณาลองใหม่อีกครั้งในอีกสักครู่ หรือสมัครด้วย Google หรือติดต่อ {PlanErrors.ContactLine}");
 
     /// <summary>อ่านรายชื่อจังหวัดจากฐานอ้างอิงไม่ได้ (503) — ช่องจังหวัดไม่บังคับ เว็บซ่อนช่องแล้วสมัครต่อได้</summary>
     public const string LookupUnavailableCode = "SIGNUP_LOOKUP_UNAVAILABLE";
 
     public static ApiError LookupUnavailable() => new(LookupUnavailableCode,
-        "โหลดรายชื่อจังหวัดไม่ได้ในขณะนี้ — เว้นช่องจังหวัดไว้แล้วสมัครต่อได้ (ไม่บังคับ)");
+        "โหลดรายชื่อจังหวัดไม่ได้ในขณะนี้ เว้นช่องจังหวัดไว้แล้วสมัครต่อได้ (ไม่บังคับ)");
 
     /// <summary>
     /// email/verify: รหัส OTP ถูกแต่รหัสผ่านไม่ตรงกับที่ตั้งตอน email/start (422 · field <c>password</c>) — นับเป็นการลองผิด
@@ -27,7 +27,7 @@ public static class SignupErrors
     public const string PasswordMismatchCode = "SIGNUP_PASSWORD_MISMATCH";
 
     public static ApiError PasswordMismatch(int? attemptsLeft = null) => new(PasswordMismatchCode,
-        "รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร — กรุณาตรวจสอบหรือเริ่มสมัครใหม่",
+        "รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร กรุณาตรวจสอบหรือเริ่มสมัครใหม่",
         "password",
         attemptsLeft is null ? null : new { attemptsLeft });
 

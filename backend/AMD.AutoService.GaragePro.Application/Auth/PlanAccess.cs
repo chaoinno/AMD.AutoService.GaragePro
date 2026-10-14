@@ -11,8 +11,8 @@ namespace AMD.AutoService.GaragePro.Application.Auth;
 /// </summary>
 public static class PlanAccess
 {
-    public const string PlanChangedReason = "แพ็กเกจของอู่เปลี่ยนแล้ว — กรุณาเข้าสู่ระบบใหม่";
-    public const string PlanLockedReason = "ช่วงทดลองใช้สิ้นสุดแล้ว — ติดต่อ " + PlanErrors.ContactLine;
+    public const string PlanChangedReason = "แพ็กเกจของอู่เปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่";
+    public const string PlanLockedReason = "ช่วงทดลองใช้สิ้นสุดแล้ว ติดต่อ " + PlanErrors.ContactLine;
 
     /// <summary>legacy → null (ไม่ส่งใน JSON เลย · ไม่มี claim) · อื่นๆ → DTO ที่เว็บ/แอปอ่าน</summary>
     public static WorkspacePlanDto? ToDto(WorkspacePlan plan, DateTime nowUtc)

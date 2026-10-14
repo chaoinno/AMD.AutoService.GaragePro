@@ -88,7 +88,7 @@ function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClos
     : mutation.isPending ? 'กำลังส่งคำขอ…' : null
 
   const title = request.featureLabel
-    ? `สนใจ${request.featureLabel} — ติดต่อทีมงาน`
+    ? `สนใจ${request.featureLabel} ติดต่อทีมงาน`
     : request.error?.code === 'PLAN_LIMIT_REACHED'
       ? 'ครบจำนวนที่แพ็กเกจทดลองใช้รองรับ'
       : request.error?.code === 'TRIAL_EXPIRED'
@@ -99,7 +99,7 @@ function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClos
     <ConfirmModal
       open
       title={title}
-      description="ส่งคำขอถึงทีมขาย ServicePro พร้อมชื่ออู่และเบอร์โทรที่ใช้สมัคร — ทีมงานจะติดต่อกลับ"
+      description="ส่งคำขอถึงทีมขาย ServicePro พร้อมชื่ออู่และเบอร์โทรที่ใช้สมัคร ทีมงานจะติดต่อกลับ"
       onClose={onClose}
       size="medium"
       footer={
@@ -148,7 +148,7 @@ function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClos
             <div>
               <AlertTitle>{isApiError(failed) ? failed.messageTh : 'ส่งคำขอไม่สำเร็จ'}</AlertTitle>
               <AlertDescription>
-                รหัสติดตาม (traceId): {isApiError(failed) ? failed.traceId : 'ไม่พบรหัสติดตาม'} — กด "ส่งคำขอถึงทีมงาน" อีกครั้ง หรือทัก LINE {LINE_OA_ID}
+                รหัสติดตาม (traceId): {isApiError(failed) ? failed.traceId : 'ไม่พบรหัสติดตาม'} กด "ส่งคำขอถึงทีมงาน" อีกครั้ง หรือทัก LINE {LINE_OA_ID}
               </AlertDescription>
             </div>
           </Alert>

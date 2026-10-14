@@ -60,8 +60,8 @@ const METHOD_LABEL: Record<Payment['method'], string> = {
 }
 
 const NOTE: Record<BillingKind, string> = {
-  statement: 'ใบแจ้งยอดนี้แสดงรายการที่ลูกค้าอนุมัติและยอดที่ต้องชำระ ณ วันที่พิมพ์ — ไม่ใช่ใบเสร็จรับเงินหรือใบกำกับภาษี',
-  receipt: 'ได้รับเงินตามรายการข้างต้นไว้ถูกต้องแล้ว — ใบเสร็จรับเงินนี้ไม่ใช่ใบกำกับภาษี',
+  statement: 'ใบแจ้งยอดนี้แสดงรายการที่ลูกค้าอนุมัติและยอดที่ต้องชำระ ณ วันที่พิมพ์ ไม่ใช่ใบเสร็จรับเงินหรือใบกำกับภาษี',
+  receipt: 'ได้รับเงินตามรายการข้างต้นไว้ถูกต้องแล้ว ใบเสร็จรับเงินนี้ไม่ใช่ใบกำกับภาษี',
   taxInvoice: 'ราคาสินค้า/บริการไม่รวมภาษีมูลค่าเพิ่ม · ภาษีมูลค่าเพิ่มแสดงแยกไว้ในยอดสรุป',
 }
 
@@ -215,7 +215,7 @@ export function BillingDocument({ data, copyLabel }: { data: BillingDocumentData
               {data.payments.map((p) => (
                 <tr key={p.id}>
                   <td>{METHOD_LABEL[p.method]}</td>
-                  <td>{p.reference || '—'}</td>
+                  <td>{p.reference || '-'}</td>
                   <td>{formatDateTime(p.receivedAt)}</td>
                   <td className="document-number">{formatMoney(p.amount)}</td>
                 </tr>
@@ -267,7 +267,7 @@ function GroupRows({
           <td>{line.description}</td>
           <td className="document-number">{formatNumber(line.quantity)} {line.unit}</td>
           <td className="document-number">{formatMoney(line.unitPrice)}</td>
-          <td className="document-number">{line.discountAmount > 0 ? formatMoney(line.discountAmount) : '—'}</td>
+          <td className="document-number">{line.discountAmount > 0 ? formatMoney(line.discountAmount) : '-'}</td>
           <td className="document-number">{formatMoney(line.netAmount)}</td>
         </tr>
       ))}

@@ -71,7 +71,7 @@ public static class CommandParser
         new("show", "รายละเอียดอู่ · บัญชีเจ้าของ · วันแพ็กเกจ · การใช้ลิมิต · audit ล่าสุด",
             [Workspace], ["spadmin show --workspace SP1042"]),
 
-        new("extend", "เลื่อนวันหมดอายุ (Branch.EndPackageDate + สำเนา sp_Workspace) — ติดลบได้ · Expired → Active ถ้าวันใหม่ยังไม่ถึง",
+        new("extend", "เลื่อนวันหมดอายุ (Branch.EndPackageDate + สำเนา sp_Workspace) ติดลบได้ · Expired → Active ถ้าวันใหม่ยังไม่ถึง",
         [
             Workspace,
             new("days", "จำนวนวัน (+ ต่ออายุ / - ย่น)", Required: true, ValueHint: "D"),
@@ -98,7 +98,7 @@ public static class CommandParser
         ],
         ["spadmin suspend --workspace SP1042 --reason \"สแปม\""], Mutates: true),
 
-        new("purge", "ลบข้อมูลอู่ทั้งหมดทันที (svc_* · ไฟล์แนบ · ลูกค้า/รถ/พนักงาน) คงไว้แค่อีเมลกันสมัครซ้ำ — ย้อนกลับไม่ได้",
+        new("purge", "ลบข้อมูลอู่ทั้งหมดทันที (svc_* · ไฟล์แนบ · ลูกค้า/รถ/พนักงาน) คงไว้แค่อีเมลกันสมัครซ้ำ ย้อนกลับไม่ได้",
         [
             Workspace,
             Yes,
@@ -107,7 +107,7 @@ public static class CommandParser
         ],
         ["spadmin purge --workspace SP1042 --yes"], Mutates: true),
 
-        new("run-jobs", "รันงานรายวันเองทันที (ไม่ลง sp_JobRun) — ส่งอีเมล/LINE จริงถ้าตั้งค่าไว้",
+        new("run-jobs", "รันงานรายวันเองทันที (ไม่ลง sp_JobRun) ส่งอีเมล/LINE จริงถ้าตั้งค่าไว้",
         [
             new("task", "งาน (ค่าเริ่มต้น maintenance)", ValueHint: "task", Allowed: ["maintenance", "summary"]),
             new("as-of", "จำลองเวลาปัจจุบัน: ISO (2026-12-31T03:30:00+07:00) · วันที่ (2026-12-31) · ห่างจากตอนนี้ (+91d / -1d)",
@@ -116,7 +116,7 @@ public static class CommandParser
         ],
         ["spadmin run-jobs", "spadmin run-jobs --task maintenance --as-of +91d"]),
 
-        new("convert", "ย้ายข้อมูลหลัก (หมวดหมู่/คลัง/สินค้า/เทมเพลต/พนักงาน/ลูกค้า/รถ) ไปสาขา GaragePro จริง — รัน --dry-run ก่อนเสมอ",
+        new("convert", "ย้ายข้อมูลหลัก (หมวดหมู่/คลัง/สินค้า/เทมเพลต/พนักงาน/ลูกค้า/รถ) ไปสาขา GaragePro จริง รัน --dry-run ก่อนเสมอ",
         [
             Workspace,
             new("target-branch", "Branch.Id ปลายทาง (สร้างใน GaragePro Admin กลุ่ม 7 แล้ว)", Required: true, ValueHint: "M"),
@@ -124,7 +124,7 @@ public static class CommandParser
                 ValueHint: "U"),
             new("target-shard", "shard ปลายทาง (ค่าเริ่มต้น db2)", ValueHint: "db2"),
             new("dry-run", "อ่าน+ตรวจอย่างเดียว ไม่เขียนอะไรเลย", IsFlag: true),
-            new("out", "เขียนรายงาน JSON ลงไฟล์ (มีชื่อผู้ใช้พนักงานใหม่ — เก็บเป็นความลับ)", ValueHint: "report.json"),
+            new("out", "เขียนรายงาน JSON ลงไฟล์ (มีชื่อผู้ใช้พนักงานใหม่ เก็บเป็นความลับ)", ValueHint: "report.json"),
             new("allow-failures", "ปิดการย้าย (converted) แม้บางรายการล้ม", IsFlag: true),
             Yes,
             By
@@ -177,7 +177,7 @@ public static class CommandParser
         {
             var token = tokens[i];
             if (!token.StartsWith("--", StringComparison.Ordinal) || token.Length == 2)
-                return Error(spec, $"ไม่เข้าใจ '{token}' — ค่าต้องตามหลังชื่อตัวเลือก เช่น --workspace SP1042");
+                return Error(spec, $"ไม่เข้าใจ '{token}' ค่าต้องตามหลังชื่อตัวเลือก เช่น --workspace SP1042");
 
             var body = token[2..];
             string? inlineValue = null;
@@ -243,7 +243,7 @@ public static class CommandParser
         var sb = new StringBuilder();
         if (Find(command) is { } spec)
         {
-            sb.AppendLine($"spadmin {spec.Name} — {spec.Summary}");
+            sb.AppendLine($"spadmin {spec.Name}: {spec.Summary}");
             sb.AppendLine();
             sb.AppendLine("ตัวเลือก:");
             foreach (var option in spec.Options.Concat(GlobalOptions))
@@ -260,7 +260,7 @@ public static class CommandParser
             return sb.ToString();
         }
 
-        sb.AppendLine("spadmin — เครื่องมือทีมงานของอู่ทดลองใช้ ServicePro (shard sp1)");
+        sb.AppendLine("spadmin: เครื่องมือทีมงานของอู่ทดลองใช้ ServicePro (shard sp1)");
         sb.AppendLine();
         sb.AppendLine("วิธีใช้: spadmin <คำสั่ง> [ตัวเลือก]   ·   spadmin <คำสั่ง> --help");
         sb.AppendLine();

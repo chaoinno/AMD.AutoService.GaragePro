@@ -38,17 +38,17 @@ export function trialBannerCopy(tone: TrialTone, daysLabel: string, suspended = 
     case 'warn':
       return {
         title: `ทดลองใช้ · ${daysLabel}`,
-        detail: 'ใกล้ครบช่วงทดลองใช้ — สมัครแพ็กเกจหรือขอต่ออายุก่อนระบบเป็นอ่านอย่างเดียว',
+        detail: 'ใกล้ครบช่วงทดลองใช้ สมัครแพ็กเกจหรือขอต่ออายุก่อนระบบเป็นอ่านอย่างเดียว',
       }
     case 'expired':
       return suspended
         ? {
-            title: 'บัญชีทดลองใช้ถูกระงับ — ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
+            title: 'บัญชีทดลองใช้ถูกระงับ ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
             detail: `ติดต่อทีมงานทาง LINE ${LINE_OA_ID} เพื่อขอเปิดใช้งานอีกครั้ง`,
           }
         : {
-            title: 'ช่วงทดลองใช้ครบ 30 วันแล้ว — ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
-            detail: 'ข้อมูลของอู่ยังอยู่ครบ — ขอต่ออายุหรือสมัครแพ็กเกจได้เลย',
+            title: 'ช่วงทดลองใช้ครบ 30 วันแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
+            detail: 'ข้อมูลของอู่ยังอยู่ครบ ขอต่ออายุหรือสมัครแพ็กเกจได้เลย',
           }
   }
 }
@@ -67,7 +67,7 @@ export function isExtensionRecentlyRequested(requestedAt: string | null | undefi
   return now.getTime() - at < 24 * 60 * 60 * 1000
 }
 
-export const EXTENSION_REQUESTED_REASON = 'ส่งคำขอแล้ว — ทีมงานจะติดต่อกลับ'
+export const EXTENSION_REQUESTED_REASON = 'ส่งคำขอแล้ว ทีมงานจะติดต่อกลับ'
 
 /** หมายเหตุที่ส่งไปกับคำขอเมื่อกด "สนใจฟีเจอร์นี้" บนหน้าฟีเจอร์ที่ล็อก (ทีมขายเห็นใน LINE) */
 export function featureInterestNote(featureLabel: string): string {

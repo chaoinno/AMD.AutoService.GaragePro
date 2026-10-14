@@ -54,7 +54,7 @@ function LockedFeatureContent({ feature }: { feature: FeatureInfo }) {
               title={alreadyRequested ? EXTENSION_REQUESTED_REASON : undefined}
               onClick={() => openTrialDialog({ note: featureInterestNote(feature.label), featureLabel: feature.label })}
             >
-              <Send aria-hidden="true" /> สนใจฟีเจอร์นี้ — ติดต่อเรา
+              <Send aria-hidden="true" /> สนใจฟีเจอร์นี้ ติดต่อเรา
             </Button>
             <a className="ui-button ui-button--outline ui-button--size-default" href={LINE_OA_URL} target="_blank" rel="noopener noreferrer">
               ทัก LINE {LINE_OA_ID} <ExternalLink aria-hidden="true" />
@@ -67,7 +67,7 @@ function LockedFeatureContent({ feature }: { feature: FeatureInfo }) {
             </p>
           ) : null}
           <p className="trace-id">
-            รหัสติดตาม (traceId): <span>ไม่ใช่คำขอ API — ล็อกตามแพ็กเกจของอู่</span>
+            รหัสติดตาม (traceId): <span>ไม่ใช่คำขอ API, ล็อกตามแพ็กเกจของอู่</span>
           </p>
         </div>
       </div>

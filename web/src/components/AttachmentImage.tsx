@@ -52,7 +52,7 @@ export function AttachmentImage({
     content = (
       <span
         className={`attachment-image attachment-image--error ${className}`}
-        title="โหลดรูปไม่สำเร็จ — ไฟล์อาจถูกลบหรือหมดสิทธิ์เข้าถึง"
+        title="โหลดรูปไม่สำเร็จ ไฟล์อาจถูกลบหรือหมดสิทธิ์เข้าถึง"
       >
         <ImageOff className="status-chip__icon" aria-hidden="true" />
       </span>

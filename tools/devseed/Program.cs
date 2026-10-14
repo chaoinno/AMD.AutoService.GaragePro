@@ -78,7 +78,7 @@ var catalogCount = catalog?.GetArrayLength() ?? 0;
 
 if (catalogCount == 0)
 {
-    Console.Error.WriteLine($"สาขา {branchId} ยังไม่มีแคตตาล็อก — เพิ่มบรรทัดในใบเสนอราคาไม่ได้");
+    Console.Error.WriteLine($"สาขา {branchId} ยังไม่มีแคตตาล็อก เพิ่มบรรทัดในใบเสนอราคาไม่ได้");
     Console.Error.WriteLine("แก้ BranchId ใน backend/.../DevSeed.cs แล้วรีสตาร์ท API หรือใช้ --branch 105");
     return 1;
 }
@@ -164,7 +164,7 @@ foreach (var r in results.Where(r => r.QuotationId is not null))
 }
 
 foreach (var r in results.Where(r => r.QuotationId is null))
-    Console.WriteLine($"✕ {r.Label} — {r.Error}");
+    Console.WriteLine($"✕ {r.Label}: {r.Error}");
 
 return 0;
 
@@ -178,7 +178,7 @@ async Task<SeedResult> SeedDraftAsync(JobRow job, long? techId)
     Console.WriteLine($"  ✓ ฉบับร่าง {q.Code}");
     return q with
     {
-        Label = "ฉบับร่าง — ทดสอบหน้าแก้ไข 3 พาเนล",
+        Label = "ฉบับร่าง: ทดสอบหน้าแก้ไข 3 พาเนล",
         WebPage = "edit",
         MobileNote = "ยังไม่โผล่ในแอป (ต้องกดส่งให้ลูกค้าก่อน)"
     };
@@ -195,7 +195,7 @@ async Task<SeedResult> SeedSentAsync(JobRow job, long? techId)
     Console.WriteLine($"  ✓ รออนุมัติ {q.Code}");
     return q with
     {
-        Label = "รออนุมัติ — ทดสอบการอนุมัติบนแอป",
+        Label = "รออนุมัติ: ทดสอบการอนุมัติบนแอป",
         WebPage = "document",
         MobileNote = "เปิดแอป → เห็นในคิว → กดเข้าไปอนุมัติรายบรรทัดและเซ็นได้"
     };
@@ -243,7 +243,7 @@ async Task<SeedResult> SeedSignedAsync(JobRow job, long? techId)
     Console.WriteLine($"  ✓ อนุมัติบางส่วน + เซ็นแล้ว {q.Code}");
     return q with
     {
-        Label = "อนุมัติบางส่วน + เซ็นแล้ว — ทดสอบเอกสารและลายเซ็น",
+        Label = "อนุมัติบางส่วน + เซ็นแล้ว: ทดสอบเอกสารและลายเซ็น",
         WebPage = "document",
         MobileNote = "เปิดในแอปได้ แต่เป็นอ่านอย่างเดียว (เซ็นแล้ว)"
     };
@@ -273,7 +273,7 @@ async Task<SeedResult> SeedRevisedAsync(JobRow job, long? techId)
     {
         QuotationId = revisionId,
         Code = $"{revisionCode} (ฉบับเดิม {q.Code} ถูกแทนที่)",
-        Label = "ฉบับแก้ไข v2 — ทดสอบ versioning · การอนุมัติเดิมเป็นโมฆะ",
+        Label = "ฉบับแก้ไข v2: ทดสอบ versioning · การอนุมัติเดิมเป็นโมฆะ",
         WebPage = "edit",
         MobileNote = "ยังไม่โผล่ในแอป (ฉบับแก้ไขเป็นร่าง ต้องกดส่งก่อน)"
     };
@@ -434,7 +434,7 @@ async Task<JsonElement?> SendAsync(Func<Task<HttpResponseMessage>> send, string 
     }
     catch (HttpRequestException)
     {
-        Console.Error.WriteLine($"    {path} → เชื่อมต่อ API ไม่ได้ ({api}) — API รันอยู่หรือเปล่า");
+        Console.Error.WriteLine($"    {path} → เชื่อมต่อ API ไม่ได้ ({api}) API รันอยู่หรือเปล่า");
         return null;
     }
     catch (JsonException)

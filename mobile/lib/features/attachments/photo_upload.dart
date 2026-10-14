@@ -57,7 +57,7 @@ Future<List<Attachment>> pickAndUploadPhotos(
     // ตรวจที่เครื่องก่อน — ไม่ต้องเสียเวลาอัปโหลดแล้วค่อยโดน ATTACHMENT_TOO_LARGE กลับมา
     if (bytes.lengthInBytes > AttachmentLimits.maxSizeBytes) {
       if (context.mounted) {
-        _toast(context, 'ไฟล์ ${file.name} ใหญ่เกิน 15 MB — ถ่ายใหม่หรือเลือกไฟล์อื่น');
+        _toast(context, 'ไฟล์ ${file.name} ใหญ่เกิน 15 MB ถ่ายใหม่หรือเลือกไฟล์อื่น');
       }
       continue;
     }

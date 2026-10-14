@@ -243,7 +243,7 @@ public sealed partial class WorkspaceRepository(
 
             if (linked != 1)
                 throw new InvalidOperationException(
-                    $"workspace {workspace.Id} was linked to a Branch concurrently (or no longer exists) — Branch insert rolled back");
+                    $"workspace {workspace.Id} was linked to a Branch concurrently (or no longer exists), Branch insert rolled back");
 
             await tx.CommitAsync(ct);
         }
@@ -330,7 +330,7 @@ public sealed partial class WorkspaceRepository(
     {
         if (!_legacy.ConnectionStrings.TryGetValue(shardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{shardKey}' — ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey} " +
+                $"ไม่รู้จัก shard '{shardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey} " +
                 "(ค่าเดียวกับ SelfServe:ConnectionString)");
 
         return new SqlConnection(cs);

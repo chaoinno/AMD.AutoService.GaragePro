@@ -400,7 +400,7 @@ public class WorkspacePurgerTests
 
         planned.Should().OnlyHaveUniqueItems();
         planned.Should().BeEquivalentTo(modelTypes,
-            "ตารางใหม่ใน ServiceDbContext ต้องเพิ่มใน ServicePurgePlan ด้วย — ไม่งั้นข้อมูลของอู่ที่ลบแล้วจะค้างอยู่เงียบๆ");
+            "ตารางใหม่ใน ServiceDbContext ต้องเพิ่มใน ServicePurgePlan ด้วย ไม่งั้นข้อมูลของอู่ที่ลบแล้วจะค้างอยู่เงียบๆ");
 
         foreach (var step in ServicePurgePlan.Steps)
             step.Table.Should().Be(db.Model.FindEntityType(step.Entity)!.GetTableName(), "ชื่อในรายงานต้องตรงกับตารางจริง");

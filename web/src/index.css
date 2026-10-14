@@ -5151,7 +5151,7 @@ body[data-plan='trial'] .quotation-document::before {
 }
 
 body[data-plan='trial'] .document-footer::after {
-  content: 'เอกสารจากระบบทดลองใช้ ServicePro — service.garage-pro.net';
+  content: 'เอกสารจากระบบทดลองใช้ ServicePro, service.garage-pro.net';
   display: block;
   margin-top: 6px;
   color: #64748b;

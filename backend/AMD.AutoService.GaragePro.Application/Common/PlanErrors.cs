@@ -19,15 +19,15 @@ public static class PlanErrors
 
     /// <summary>403 — คำขอเขียนในช่วงอ่านอย่างเดียว (หลัง EndPackageDate · ยังเข้าสู่ระบบได้)</summary>
     public static ApiError TrialExpired(int trialDays = 30) => new(TrialExpiredCode,
-        $"ช่วงทดลองใช้ {trialDays} วันสิ้นสุดแล้ว — ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้ ติดต่อ {ContactLine} เพื่อสมัครแพ็กเกจ");
+        $"ช่วงทดลองใช้ {trialDays} วันสิ้นสุดแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้ ติดต่อ {ContactLine} เพื่อสมัครแพ็กเกจ");
 
     /// <summary>403 ที่ login — เลยช่วงอ่านอย่างเดียว (+ReadOnlyDays) หรือถูกระงับ (<see cref="WorkspacePlan.IsLocked"/>)</summary>
     public static ApiError TrialLocked() => new(TrialExpiredCode,
-        $"ช่วงทดลองใช้สิ้นสุดแล้วและบัญชีถูกปิดการใช้งาน — ติดต่อ {ContactLine} เพื่อสมัครแพ็กเกจหรือขอเปิดใช้งานอีกครั้ง");
+        $"ช่วงทดลองใช้สิ้นสุดแล้วและบัญชีถูกปิดการใช้งาน ติดต่อ {ContactLine} เพื่อสมัครแพ็กเกจหรือขอเปิดใช้งานอีกครั้ง");
 
     /// <summary>403 — [RequireFeature] บน controller/action ที่แพ็กเกจไม่มี</summary>
     public static ApiError FeatureLocked(PlanFeature feature) => new(FeatureLockedCode,
-        $"ฟีเจอร์นี้เปิดในแพ็กเกจเต็ม — ติดต่อ {ContactLine}",
+        $"ฟีเจอร์นี้เปิดในแพ็กเกจเต็ม ติดต่อ {ContactLine}",
         Details: new
         {
             feature = PlanFeatureNames.ToJsonNames(feature),
@@ -37,7 +37,7 @@ public static class PlanErrors
     /// <summary>422 — <see cref="IWorkspacePolicy.CheckLimitAsync"/> ก่อน insert พนักงาน/สินค้า/ลูกค้า/จ๊อบ</summary>
     public static ApiError LimitReached(PlanLimitKind kind, int max) => new(LimitReachedCode,
         $"ครบจำนวนที่แพ็กเกจทดลองใช้รองรับแล้ว ({PlanLimitNames.LabelTh(kind)} สูงสุด " +
-        $"{max.ToString("N0", CultureInfo.InvariantCulture)}) — ติดต่อ {ContactLine}",
+        $"{max.ToString("N0", CultureInfo.InvariantCulture)}) ติดต่อ {ContactLine}",
         Details: new { kind = PlanLimitNames.ToJsonName(kind), max });
 
     /// <summary>HTTP status ของรหัสในชุดนี้ — null = ไม่ใช่ error ของแพ็กเกจ ให้ controller ใช้ mapping เดิมต่อ</summary>

@@ -60,7 +60,7 @@ public sealed class SelfServeAdminService(
         if (ws.BranchId is not null && snapshot.Branch is null)
             warnings.Add($"ไม่พบแถว Branch {ws.BranchId} ใน shard {options.ShardKey}");
         if (snapshot.Branch?.EndsAtUtc is { } branchEnd && ws.TrialEndsAt is { } copy && Math.Abs((branchEnd - copy).TotalMinutes) > 1)
-            warnings.Add("วันหมดอายุใน Branch ไม่ตรงกับสำเนา sp_Workspace.TrialEndsAt — Branch เป็นตัวจริง (แก้ด้วย extend/set-plan)");
+            warnings.Add("วันหมดอายุใน Branch ไม่ตรงกับสำเนา sp_Workspace.TrialEndsAt, Branch เป็นตัวจริง (แก้ด้วย extend/set-plan)");
 
         var limited = ws.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended;
         var limits = options.Limits.ToPlanLimits();
@@ -90,7 +90,7 @@ public sealed class SelfServeAdminService(
         var current = EndsAt(snapshot);
         if (current is null && ws.Plan == WorkspacePlanKind.Paid)
             return Fail(SelfServeAdminErrors.Refused(
-                "แพ็กเกจ paid นี้ไม่มีวันหมดอายุ — กำหนดวันด้วย set-plan --plan paid --until yyyy-MM-dd แทน"));
+                "แพ็กเกจ paid นี้ไม่มีวันหมดอายุ กำหนดวันด้วย set-plan --plan paid --until yyyy-MM-dd แทน"));
 
         var now = Now;
         var newEnd = (current ?? now).AddDays(days);
@@ -161,7 +161,7 @@ public sealed class SelfServeAdminService(
             case WorkspacePlanKind.Trial:
                 end = untilUtc ?? current;
                 if (end is null)
-                    return Fail(SelfServeAdminErrors.Validation("อู่นี้ไม่มีวันหมดอายุเดิม — ต้องระบุ --until yyyy-MM-dd", "until"));
+                    return Fail(SelfServeAdminErrors.Validation("อู่นี้ไม่มีวันหมดอายุเดิม ต้องระบุ --until yyyy-MM-dd", "until"));
                 setEnd = untilUtc is not null;
                 statusTo = Reactivated(ws.Status, end.Value, now);
                 clearPurge = statusTo != ws.Status;
@@ -219,9 +219,9 @@ public sealed class SelfServeAdminService(
         var ws = snapshot.Workspace;
         var code = SelfServeText.WorkspaceCode(ws.WorkspaceNo);
         if (ws.Status is WorkspaceStatus.Purged or WorkspaceStatus.Provisioning)
-            return (null, SelfServeAdminErrors.Refused($"อู่ {code} อยู่สถานะ {ws.Status} — เปลี่ยนแพ็กเกจไม่ได้"));
+            return (null, SelfServeAdminErrors.Refused($"อู่ {code} อยู่สถานะ {ws.Status} เปลี่ยนแพ็กเกจไม่ได้"));
         if (ws.Plan == WorkspacePlanKind.Converted)
-            return (null, SelfServeAdminErrors.Refused($"อู่ {code} ย้ายไปสาขาจริงแล้ว (converted) — แก้แพ็กเกจที่สาขาปลายทางแทน"));
+            return (null, SelfServeAdminErrors.Refused($"อู่ {code} ย้ายไปสาขาจริงแล้ว (converted) แก้แพ็กเกจที่สาขาปลายทางแทน"));
         if (ws.BranchId is null || snapshot.Branch is null)
             return (null, SelfServeAdminErrors.Refused($"อู่ {code} ไม่มีแถว Branch ใน shard {options.ShardKey}"));
         if (repository.CheckWritableDatabase() is { } mismatch)

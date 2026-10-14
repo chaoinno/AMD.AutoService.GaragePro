@@ -29,7 +29,7 @@ export function CycleTimeReportPage() {
       <section className="report-page-heading">
         <div>
           <h2><Clock3 aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />รอบเวลาต่อขั้นตอนงาน</h2>
-          <p>เวลาเฉลี่ยที่จ๊อบค้างในแต่ละสถานะ คำนวณจากประวัติเปลี่ยนสถานะจริง — เฉพาะจ๊อบที่เปิดในช่วงที่เลือก</p>
+          <p>เวลาเฉลี่ยที่จ๊อบค้างในแต่ละสถานะ คำนวณจากประวัติเปลี่ยนสถานะจริง เฉพาะจ๊อบที่เปิดในช่วงที่เลือก</p>
         </div>
         <div className="report-date-filter">
           <label>จากวันที่<Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
@@ -42,8 +42,8 @@ export function CycleTimeReportPage() {
           <>
             <div className="stat-tile-grid">
               <StatTile icon={Hourglass} label="จ๊อบที่ปิดในช่วงนี้" value={query.data.completedJobCount} hint="เสร็จสมบูรณ์หรือยกเลิก" />
-              <StatTile icon={TimerReset} label="รอบเวลาเฉลี่ย" value={query.data.averageTotalHours != null ? `${query.data.averageTotalHours} ชม.` : '—'} hint="ตั้งแต่เปิดจ๊อบถึงปิดงาน" />
-              <StatTile icon={TimerReset} label="รอบเวลา P90" value={query.data.p90TotalHours != null ? `${query.data.p90TotalHours} ชม.` : '—'} hint="90% ของจ๊อบที่ปิดใช้เวลาไม่เกินนี้ (ยังไม่มี SLA เป้าหมายยืนยัน)" />
+              <StatTile icon={TimerReset} label="รอบเวลาเฉลี่ย" value={query.data.averageTotalHours != null ? `${query.data.averageTotalHours} ชม.` : '-'} hint="ตั้งแต่เปิดจ๊อบถึงปิดงาน" />
+              <StatTile icon={TimerReset} label="รอบเวลา P90" value={query.data.p90TotalHours != null ? `${query.data.p90TotalHours} ชม.` : '-'} hint="90% ของจ๊อบที่ปิดใช้เวลาไม่เกินนี้ (ยังไม่มี SLA เป้าหมายยืนยัน)" />
             </div>
 
             <h3 className="report-section-title">เวลาเฉลี่ยต่อสถานะ (ชั่วโมง)</h3>
@@ -70,7 +70,7 @@ export function CycleTimeReportPage() {
                   { id: 'customer', header: 'ลูกค้า', value: (j) => j.customerName, render: (j) => j.customerName },
                   { id: 'status', header: 'สถานะปัจจุบัน', value: (j) => j.statusLabelTh, render: (j) => <span className={`job-status-chip job-status-${j.status}`}>{j.statusLabelTh}</span> },
                   { id: 'hours', header: 'ค้างมาแล้ว', value: (j) => j.hoursInStatus, render: (j) => <span className="report-num">{j.hoursInStatus} ชม.</span> },
-                  { id: 'overdue', header: 'เกินนัดหรือไม่', value: (j) => (j.isOverdue ? 1 : 0), render: (j) => (j.isOverdue ? <span className="job-status-chip job-status-waitparts">เกินนัด</span> : '—') },
+                  { id: 'overdue', header: 'เกินนัดหรือไม่', value: (j) => (j.isOverdue ? 1 : 0), render: (j) => (j.isOverdue ? <span className="job-status-chip job-status-waitparts">เกินนัด</span> : '-') },
                 ]} />
               </Card>
             )}

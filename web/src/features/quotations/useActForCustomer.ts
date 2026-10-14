@@ -48,11 +48,11 @@ export function useActForCustomer(quotation: Quotation | undefined) {
   const blockedReason = !['frontdesk', 'office', 'manager'].includes(role)
     ? 'สำหรับพนักงานหน้าร้าน ธุรการ หรือผู้จัดการเท่านั้น'
     : needsAdvance && !['office', 'manager'].includes(role)
-      ? 'จ๊อบยังไม่ถึงขั้น "รออนุมัติ" — ต้องให้ผู้จัดการหรือธุรการดำเนินการ'
+      ? 'จ๊อบยังไม่ถึงขั้น "รออนุมัติ" ต้องให้ผู้จัดการหรือธุรการดำเนินการ'
       : job?.status === 'waitinspect' && !checklistDone
         ? checklistQuery.isPending
           ? 'กำลังตรวจสอบ checklist สภาพรถขณะรับ'
-          : 'ยังไม่ได้ส่ง checklist สภาพรถขณะรับ — ส่งให้ครบก่อนจึงข้ามขั้นตรวจสอบได้'
+          : 'ยังไม่ได้ส่ง checklist สภาพรถขณะรับ ส่งให้ครบก่อนจึงข้ามขั้นตรวจสอบได้'
         : null
 
   return { job, visible, blockedReason }

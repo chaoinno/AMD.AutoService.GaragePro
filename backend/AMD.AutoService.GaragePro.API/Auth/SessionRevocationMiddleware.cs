@@ -53,7 +53,7 @@ public sealed class SessionRevocationMiddleware(
             {
                 // [BIZ] fail-open: Garage DB ล่มต้องไม่เตะทุกคนออกจากแอปพร้อมกัน (login ใหม่ก็ไม่ได้อยู่ดี
                 // และงานที่กรอกค้างจะหาย) — ไม่ cache ความล้มเหลว คำขอถัดไปจะลองตรวจใหม่เอง
-                logger.LogWarning(ex, "ตรวจสถานะพนักงานไม่สำเร็จ — ปล่อยคำขอผ่านไปก่อน");
+                logger.LogWarning(ex, "ตรวจสถานะพนักงานไม่สำเร็จ ปล่อยคำขอผ่านไปก่อน");
                 reason = null;
             }
         }

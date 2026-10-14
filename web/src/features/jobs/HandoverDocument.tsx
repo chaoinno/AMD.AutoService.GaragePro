@@ -70,7 +70,7 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
               <tr key={item.id}>
                 <td>{item.name}</td>
                 <td>{item.updatedAt ? (item.isReturned ? 'คืนแล้ว/ไม่มี' : 'สูญหาย') : 'ยังไม่ตรวจ'}</td>
-                <td>{item.note || '—'}</td>
+                <td>{item.note || '-'}</td>
               </tr>
             ))}
           </tbody>

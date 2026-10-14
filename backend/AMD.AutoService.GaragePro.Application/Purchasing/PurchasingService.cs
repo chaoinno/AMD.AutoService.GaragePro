@@ -456,7 +456,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             lot.RemainingQuantity -= quantity; item.OnHand -= quantity;
             movements.Add(MapMovement(movement));
         }
-        Audit(item.Id, "Stock", "issued", $"เบิก FIFO {number}: {item.Code} จำนวน {input.Quantity} — {input.Reason.Trim()}");
+        Audit(item.Id, "Stock", "issued", $"เบิก FIFO {number}: {item.Code} จำนวน {input.Quantity}, {input.Reason.Trim()}");
         return movements;
     }, true, ct);
 
@@ -508,7 +508,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             }
         }
         Audit(job?.Id ?? Guid.Empty, "Stock", "withdrawn",
-            $"เบิกสินค้า {number}: {movements.Select(x => x.CatalogItemId).Distinct().Count()} รายการ โดย {requesterName} — {input.Reason.Trim()}"
+            $"เบิกสินค้า {number}: {movements.Select(x => x.CatalogItemId).Distinct().Count()} รายการ โดย {requesterName}, {input.Reason.Trim()}"
             + (job is not null ? $" (งาน {job.JobNo})" : ""));
         return await BuildWithdrawalDto(movements, ct);
     }, true, ct);
@@ -572,7 +572,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         {
             var match = remaining.FirstOrDefault(x => x.CatalogItemId == line.CatalogItemId);
             Require(match is not null, "WITHDRAWAL_NOT_APPROVED",
-                "มีสินค้าที่ไม่อยู่ในรายการที่ลูกค้าอนุมัติ หรือเบิกครบไปแล้ว — ใบเบิกของงานเพิ่มสินค้าเองไม่ได้");
+                "มีสินค้าที่ไม่อยู่ในรายการที่ลูกค้าอนุมัติ หรือเบิกครบไปแล้ว ใบเบิกของงานเพิ่มสินค้าเองไม่ได้");
             Require(line.Quantity <= match!.RemainingQuantity, "WITHDRAWAL_EXCEEDS_APPROVED",
                 $"เบิก {match.Code} ได้ไม่เกินยอดที่อนุมัติและยังไม่ได้เบิก ({match.RemainingQuantity} {match.Unit})");
         }

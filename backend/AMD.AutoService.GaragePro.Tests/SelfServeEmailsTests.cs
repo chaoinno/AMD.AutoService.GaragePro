@@ -38,7 +38,7 @@ public class SelfServeEmailsTests
             }
 
             email.Subject.Should().Contain("ServicePro");
-            email.TextBody.Should().EndWith("— ServicePro");
+            email.TextBody.Should().EndWith("ทีมงาน ServicePro");
             email.HtmlBody.Should().StartWith("<div").And.EndWith("</div>");
             email.Tag.Should().NotBeNullOrWhiteSpace();
         }

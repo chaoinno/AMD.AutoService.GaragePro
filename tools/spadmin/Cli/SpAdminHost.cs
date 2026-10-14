@@ -95,7 +95,7 @@ public static class SpAdminHost
     {
         if (!SelfServeInfrastructure.IsConfigured(configuration))
             return """
-                ยังไม่ได้ตั้งค่า SelfServe:ConnectionString — spadmin ต้องต่อฐาน GarageSelfServe
+                ยังไม่ได้ตั้งค่า SelfServe:ConnectionString, spadmin ต้องต่อฐาน GarageSelfServe
                 (self-serve database is not configured: set SelfServe:ConnectionString)
                 · เครื่อง dev: dotnet user-secrets set "SelfServe:ConnectionString" "..." --project backend/AMD.AutoService.GaragePro.API
                 · container: รันผ่าน docker compose run ของ service api (ใช้ env file เดียวกับ API)

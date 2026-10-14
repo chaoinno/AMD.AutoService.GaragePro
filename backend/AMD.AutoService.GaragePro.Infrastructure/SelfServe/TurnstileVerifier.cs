@@ -53,7 +53,7 @@ public sealed class TurnstileVerifier : ITurnstileVerifier
         {
             if (_isProduction)
             {
-                _logger.LogError("ไม่ได้ตั้ง SelfServe:Turnstile:SecretKey บน Production — ปฏิเสธคำขอสมัครทั้งหมด");
+                _logger.LogError("ไม่ได้ตั้ง SelfServe:Turnstile:SecretKey บน Production ปฏิเสธคำขอสมัครทั้งหมด");
                 return false;
             }
 

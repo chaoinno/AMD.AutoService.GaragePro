@@ -40,7 +40,7 @@ public sealed partial class BlocklistRefresher : IBlocklistSource
         var domains = Parse(text);
         if (domains.Count < MinimumEntries)
             throw new InvalidOperationException(
-                $"รายชื่อโดเมนจาก blocklist มีแค่ {domains.Count} รายการ — น่าจะดาวน์โหลดผิดไฟล์ จึงไม่นำเข้า");
+                $"รายชื่อโดเมนจาก blocklist มีแค่ {domains.Count} รายการ น่าจะดาวน์โหลดผิดไฟล์ จึงไม่นำเข้า");
         return domains;
     }
 

@@ -176,11 +176,11 @@ class ApiClient {
       'NETWORK_ERROR',
       switch (e.type) {
         DioExceptionType.connectionError =>
-          'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — ตรวจสอบสัญญาณและ VPN แล้วลองใหม่',
+          'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบสัญญาณและ VPN แล้วลองใหม่',
         DioExceptionType.receiveTimeout ||
         DioExceptionType.connectionTimeout ||
         DioExceptionType.sendTimeout =>
-          'เซิร์ฟเวอร์ไม่ตอบกลับภายในเวลาที่กำหนด — ลองใหม่อีกครั้ง',
+          'เซิร์ฟเวอร์ไม่ตอบกลับภายในเวลาที่กำหนด ลองใหม่อีกครั้ง',
         _ when status != null => 'เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP $status)',
         _ => 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (${e.type.name})',
       },

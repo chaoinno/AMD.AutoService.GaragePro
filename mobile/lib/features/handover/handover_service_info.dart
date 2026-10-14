@@ -68,7 +68,7 @@ class _HandoverServiceInfoState extends ConsumerState<HandoverServiceInfo> {
       : null;
 
   String? get _blockedReason {
-    if (_intakeKm == null) return 'งานนี้ยังไม่มีเลขไมล์ขณะรับรถ — บันทึกที่หน้าตรวจสภาพรถขณะรับก่อน';
+    if (_intakeKm == null) return 'งานนี้ยังไม่มีเลขไมล์ขณะรับรถ บันทึกที่หน้าตรวจสภาพรถขณะรับก่อน';
     if (_handoverKm == null) return _handoverError ?? 'กรอกเลขไมล์ตอนส่งมอบ';
     if (_nextKm == null) return _nextError ?? 'กรอกเลขไมล์ที่นัดครั้งถัดไป';
     if (_months == null) return _monthsError ?? 'เลือกระยะเวลานัดครั้งถัดไป';

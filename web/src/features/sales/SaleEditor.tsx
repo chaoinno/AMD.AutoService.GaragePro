@@ -107,9 +107,9 @@ export function SaleEditor({ sale }: { sale: Sale }) {
     : busy
       ? 'กำลังบันทึกการแก้ไขล่าสุด รอสักครู่'
       : shortLines.length
-        ? `${shortLines[0]?.name} ในคลังที่เลือกมีไม่พอ — ลดจำนวนหรือเปลี่ยนคลังก่อน`
+        ? `${shortLines[0]?.name} ในคลังที่เลือกมีไม่พอ ลดจำนวนหรือเปลี่ยนคลังก่อน`
         : sale.totalAmount <= 0
-          ? 'ยอดสุทธิเป็น 0 บาท ชำระเงินไม่ได้ — ตรวจส่วนลด/โปรโมชัน'
+          ? 'ยอดสุทธิเป็น 0 บาท ชำระเงินไม่ได้ ตรวจส่วนลด/โปรโมชัน'
           : null
 
   return (
@@ -131,7 +131,7 @@ export function SaleEditor({ sale }: { sale: Sale }) {
 
       {saveError ? (
         <div className="sale-save-error">
-          <ErrorAlert title="บันทึกการแก้ไขไม่สำเร็จ — หน้าจอแสดงค่าล่าสุดที่ระบบบันทึกไว้แล้ว" error={saveError} />
+          <ErrorAlert title="บันทึกการแก้ไขไม่สำเร็จ หน้าจอแสดงค่าล่าสุดที่ระบบบันทึกไว้แล้ว" error={saveError} />
           <Button variant="ghost" size="icon" aria-label="ปิดข้อความ" onClick={() => setSaveError(null)}><X aria-hidden="true" /></Button>
         </div>
       ) : null}
@@ -231,7 +231,7 @@ function ProductPanel({ sale, save }: { sale: Sale; save: SaveFn }) {
       ? results.data
       : await queryClient.fetchQuery({ queryKey: ['catalog', term], queryFn: () => searchCatalog(term) }).catch(() => [])
     const exact = list.find((item) => item.type === 'part' && item.id && item.code.toLowerCase() === term.toLowerCase())
-    if (!exact) { setNotice(`ไม่พบรหัส "${term}" ตรงตัว — เลือกสินค้าจากรายการด้านล่าง`); return }
+    if (!exact) { setNotice(`ไม่พบรหัส "${term}" ตรงตัว เลือกสินค้าจากรายการด้านล่าง`); return }
     const next = await add(exact)
     if (next) setText('')
     inputRef.current?.focus()
@@ -480,7 +480,7 @@ function SaleLineRow({ index, saleId, line, promotions: options, save, onSchedul
       </div>
 
       {qtyError || discountError ? (
-        <p className="sale-line__error" role="alert"><CircleAlert aria-hidden="true" /> {qtyError ?? discountError} — ยังไม่บันทึกจนกว่าจะแก้ให้ถูก</p>
+        <p className="sale-line__error" role="alert"><CircleAlert aria-hidden="true" /> {qtyError ?? discountError} ยังไม่บันทึกจนกว่าจะแก้ให้ถูก</p>
       ) : null}
       {line.discountAmount > 0 || line.promotionAmount > 0 ? (
         <p className="sale-line__breakdown">
@@ -492,7 +492,7 @@ function SaleLineRow({ index, saleId, line, promotions: options, save, onSchedul
       {short ? (
         <p className="sale-line__stock" role="alert">
           <TriangleAlert aria-hidden="true" />
-          {available > 0 ? `คลังที่เลือกมีพร้อมขายเพียง ${formatNumber(available)} ${line.unit}` : 'คลังที่เลือกไม่มีสินค้านี้พร้อมขาย'} — ลดจำนวนหรือเปลี่ยนคลังก่อนชำระเงิน
+          {available > 0 ? `คลังที่เลือกมีพร้อมขายเพียง ${formatNumber(available)} ${line.unit}` : 'คลังที่เลือกไม่มีสินค้านี้พร้อมขาย'} ลดจำนวนหรือเปลี่ยนคลังก่อนชำระเงิน
         </p>
       ) : null}
     </li>
@@ -598,7 +598,7 @@ function SummaryPanel({ sale, save, onScheduleChange, checkoutBlockedReason, onC
               ))}
             </Select>
             {promoBelowMin ? (
-              <small className="sale-field__warn"><TriangleAlert aria-hidden="true" /> ยอดยังไม่ถึงขั้นต่ำ {formatMoney(selectedBillPromo!.minSubtotal)} บาท — โปรนี้ยังไม่ลดให้</small>
+              <small className="sale-field__warn"><TriangleAlert aria-hidden="true" /> ยอดยังไม่ถึงขั้นต่ำ {formatMoney(selectedBillPromo!.minSubtotal)} บาท โปรนี้ยังไม่ลดให้</small>
             ) : null}
           </label>
 

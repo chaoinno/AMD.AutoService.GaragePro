@@ -106,11 +106,11 @@ export function WorkIntervalsPage() {
       header: 'คุณภาพข้อมูล',
       value: (r: WorkIntervalRow) => (r.isVoided ? 3 : r.isAutoCapped ? 2 : r.durationSeconds == null ? 1 : 0),
       render: (r: WorkIntervalRow) => {
-        if (r.isVoided) return <span className="report-lowsample">ยกเลิกแล้ว — {r.voidReason}</span>
+        if (r.isVoided) return <span className="report-lowsample">ยกเลิกแล้ว: {r.voidReason}</span>
         if (r.isAutoCapped)
-          return <span className="report-lowsample">ระบบตัดให้เพราะลืมกดหยุด — ไม่เข้าการคำนวณ</span>
+          return <span className="report-lowsample">ระบบตัดให้เพราะลืมกดหยุด ไม่เข้าการคำนวณ</span>
         if (r.durationSeconds == null) return <span className="report-lowsample">ยังจับเวลาอยู่</span>
-        if (r.editedAt) return <span className="report-lowsample">แก้เวลาแล้ว — {r.editReason}</span>
+        if (r.editedAt) return <span className="report-lowsample">แก้เวลาแล้ว: {r.editReason}</span>
         return 'ปกติ'
       },
     },
@@ -140,7 +140,7 @@ export function WorkIntervalsPage() {
             เวลาทำงานของช่าง
           </h2>
           <p>
-            ข้อมูลดิบจากการจับเวลาบนมือถือ — ยังไม่ใช่รายงานประเมินประสิทธิภาพ
+            ข้อมูลดิบจากการจับเวลาบนมือถือ ยังไม่ใช่รายงานประเมินประสิทธิภาพ
             หน้านี้มีไว้ตรวจและแก้คาบที่ผิดก่อนจะเอาข้อมูลไปใช้จริง
           </p>
         </div>
@@ -272,7 +272,7 @@ function EditIntervalModal({
       <p className="section-help">
         {interval.vehicleRegistration} · {interval.jobNo}
         {interval.isAutoCapped
-          ? ' — ระบบตัดเวลานี้ให้เองเพราะลืมกดหยุด แก้แล้วจะกลับเข้าการคำนวณ'
+          ? ' ระบบตัดเวลานี้ให้เองเพราะลืมกดหยุด แก้แล้วจะกลับเข้าการคำนวณ'
           : ''}
       </p>
       {blockedReason ? <p className="section-help">{blockedReason}</p> : null}
@@ -342,7 +342,7 @@ function VoidIntervalModal({
     >
       <p className="section-help">
         <TimerOff aria-hidden="true" style={{ width: 15, verticalAlign: -2, marginRight: 4 }} />
-        คาบจะไม่เข้าการคำนวณอีกต่อไป แต่แถวยังอยู่ในระบบพร้อมเหตุผล — ลบทิ้งจริงไม่ได้
+        คาบจะไม่เข้าการคำนวณอีกต่อไป แต่แถวยังอยู่ในระบบพร้อมเหตุผล ลบทิ้งจริงไม่ได้
         เพราะจะแยกไม่ออกว่าเวลาที่หายไปคือ “ไม่เคยมี” หรือ “ถูกลบ”
       </p>
       {!reason.trim() ? <p className="section-help">ต้องระบุเหตุผลที่ยกเลิก</p> : null}

@@ -103,7 +103,7 @@ export function JobChatPanel({
             {isApiError(query.error) ? query.error.messageTh : 'โหลดข้อความไม่สำเร็จ'}
           </div>
         ) : messages.length === 0 ? (
-          <div className="job-chat-panel__status">ยังไม่มีข้อความในงานนี้ — เริ่มพิมพ์ได้เลย</div>
+          <div className="job-chat-panel__status">ยังไม่มีข้อความในงานนี้ เริ่มพิมพ์ได้เลย</div>
         ) : (
           messages.map((message) => (
             <JobChatBubble

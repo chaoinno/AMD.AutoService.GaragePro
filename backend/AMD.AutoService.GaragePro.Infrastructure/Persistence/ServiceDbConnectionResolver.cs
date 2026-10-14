@@ -36,7 +36,7 @@ public sealed class ServiceDbConnectionResolver(IConfiguration configuration, IO
         if (string.IsNullOrWhiteSpace(_options.ConnectionString))
             throw new InvalidOperationException(
                 $"shard '{shardKey}' เป็นอู่ทดลองใช้ (self-serve) แต่ยังไม่ได้ตั้งค่า {SelfServeOptions.SectionName}:ConnectionString " +
-                "— ตั้งใน dotnet user-secrets / env file (SelfServe__ConnectionString) · ห้ามชี้ไปฐาน GarageService");
+                "ตั้งใน dotnet user-secrets / env file (SelfServe__ConnectionString) · ห้ามชี้ไปฐาน GarageService");
 
         return _options.ConnectionString;
     }

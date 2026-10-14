@@ -14,7 +14,7 @@ export function AboutSection() {
           <p className="landing-eyebrow">เกี่ยวกับเรา</p>
           <h2 id="landing-about-title" className="landing-h2">Armadillo Tech Co., Ltd.</h2>
           <p className="landing-lead">
-            ผู้พัฒนา ServicePro — ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ
+            ผู้พัฒนา ServicePro ระบบบริหารอู่ที่เข้าใจธุรกิจของคุณ
             และเปลี่ยนทุกข้อมูลหน้างานให้เป็นแรงขับเคลื่อนการเติบโต
           </p>
           <p className="landing-body">

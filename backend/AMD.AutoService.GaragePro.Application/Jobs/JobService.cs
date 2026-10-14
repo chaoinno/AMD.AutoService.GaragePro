@@ -157,7 +157,7 @@ public sealed class JobService(
 
         var message = field == "promiseAt"
             ? $"วันเวลานัดส่งมอบต้องไม่ก่อนวันเวลาที่รถเข้า ({FormatLocal(arrivalUtc.Value)} น.)"
-            : $"วันเวลานัดเข้าต้องไม่เลยวันเวลานัดส่งมอบ ({FormatLocal(promiseUtc.Value)} น.) — เลื่อนวันส่งมอบก่อน";
+            : $"วันเวลานัดเข้าต้องไม่เลยวันเวลานัดส่งมอบ ({FormatLocal(promiseUtc.Value)} น.) เลื่อนวันส่งมอบก่อน";
         return Result<bool>.Fail("JOB_VALIDATION", message, field);
     }
 
@@ -227,7 +227,7 @@ public sealed class JobService(
                 break;
             default:
                 return Result<JobCalendarDto>.Fail(
-                    "JOB_VALIDATION", $"ไม่รู้จักตัวกรองวันที่ '{dateField}' — ใช้ appointment หรือ promise", nameof(dateField));
+                    "JOB_VALIDATION", $"ไม่รู้จักตัวกรองวันที่ '{dateField}' ใช้ appointment หรือ promise", nameof(dateField));
         }
 
         JobStatus? status = null;
@@ -400,7 +400,7 @@ public sealed class JobService(
         var job = await jobs.GetAsync(jobId, ct);
         if (job is null || job.BranchId != user.BranchId || job.LegacyShardKey != user.ShardKey)
             return Result<JobTransitionResultDto>.Fail(
-                "JOB_NOT_FOUND", "ไม่พบข้อมูลสถานะของจ๊อบนี้ — เปิดหน้าจ๊อบอีกครั้งก่อนเปลี่ยนสถานะ");
+                "JOB_NOT_FOUND", "ไม่พบข้อมูลสถานะของจ๊อบนี้ เปิดหน้าจ๊อบอีกครั้งก่อนเปลี่ยนสถานะ");
 
         // ตรวจโครงสร้างก่อน (เส้นทางนี้มีจริงไหม · role/เครื่องทำได้ไหม) โดยสมมติว่า guard ผ่านหมด
         // ต้องมาก่อนการบังคับ reason ด้านล่าง ไม่งั้น transition ที่เป็นไปไม่ได้เลย เช่น กำลังซ่อม → พร้อมส่งมอบ
@@ -421,7 +421,7 @@ public sealed class JobService(
             if (string.IsNullOrWhiteSpace(request.Reason))
                 return Result<JobTransitionResultDto>.Fail(
                     "JOB_TRANSITION_NEEDS_REASON",
-                    "ขั้นตอนนี้ยังไม่มีระบบตรวจสอบอัตโนมัติ (อยู่ระหว่างพัฒนา) — กรุณาระบุเหตุผลเพื่อยืนยันด้วยตนเอง",
+                    "ขั้นตอนนี้ยังไม่มีระบบตรวจสอบอัตโนมัติ (อยู่ระหว่างพัฒนา) กรุณาระบุเหตุผลเพื่อยืนยันด้วยตนเอง",
                     nameof(request.Reason));
 
             var requiredGuard = to == JobStatus.Cancelled
@@ -512,7 +512,7 @@ public sealed class JobService(
             return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
 
         if (JobStateMachine.IsTerminal(job.Status))
-            return Result<JobDto>.Fail("JOB_APPOINTMENT_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดหมายไม่ได้");
+            return Result<JobDto>.Fail("JOB_APPOINTMENT_LOCKED", "จ๊อบนี้ปิดแล้ว แก้ไขวันเวลานัดหมายไม่ได้");
 
         if (job.JobTypeId != AppointmentTypeId)
             return Result<JobDto>.Fail(
@@ -569,7 +569,7 @@ public sealed class JobService(
             return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
 
         if (JobStateMachine.IsTerminal(job.Status))
-            return Result<JobDto>.Fail("JOB_PROMISE_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขวันเวลานัดส่งมอบไม่ได้");
+            return Result<JobDto>.Fail("JOB_PROMISE_LOCKED", "จ๊อบนี้ปิดแล้ว แก้ไขวันเวลานัดส่งมอบไม่ได้");
 
         var promiseResult = ValidatePromise(request.PromiseAt);
         if (!promiseResult.Success)
@@ -624,11 +624,11 @@ public sealed class JobService(
             return Result<JobDto>.Fail("JOB_NOT_FOUND", $"ไม่พบงานเลขที่ {jobId}");
 
         if (JobStateMachine.IsTerminal(job.Status))
-            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "จ๊อบนี้ปิดแล้ว — แก้ไขเลขไมล์ไม่ได้");
+            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "จ๊อบนี้ปิดแล้ว แก้ไขเลขไมล์ไม่ได้");
 
         var handover = await handoverRepo.GetByJobAsync(job.Id, ct);
         if (handover?.IsLocked == true)
-            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "ส่งมอบรถแล้ว — แก้ไขเลขไมล์ขณะรับรถไม่ได้");
+            return Result<JobDto>.Fail("JOB_MILEAGE_LOCKED", "ส่งมอบรถแล้ว แก้ไขเลขไมล์ขณะรับรถไม่ได้");
 
         var mileageResult = ValidateMileage(request.MileageAtIntake, required: true);
         if (!mileageResult.Success)

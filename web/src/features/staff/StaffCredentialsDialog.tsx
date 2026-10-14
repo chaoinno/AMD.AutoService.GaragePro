@@ -34,7 +34,7 @@ export function StaffCredentialsDialog({ credentials, onClose }: { credentials: 
     onClose()
   }
 
-  const closeReason = 'ติ๊ก "คัดลอกหรือจดรหัสผ่านแล้ว" ก่อนปิด — รหัสผ่านนี้เปิดดูซ้ำไม่ได้'
+  const closeReason = 'ติ๊ก "คัดลอกหรือจดรหัสผ่านแล้ว" ก่อนปิด รหัสผ่านนี้เปิดดูซ้ำไม่ได้'
 
   return (
     <ConfirmModal
@@ -55,7 +55,7 @@ export function StaffCredentialsDialog({ credentials, onClose }: { credentials: 
           <Alert variant="warning">
             <TriangleAlert aria-hidden="true" />
             <div>
-              <AlertTitle>รหัสผ่านแสดงครั้งเดียว — คัดลอกหรือจดไว้ให้ช่างก่อนปิด</AlertTitle>
+              <AlertTitle>รหัสผ่านแสดงครั้งเดียว คัดลอกหรือจดไว้ให้ช่างก่อนปิด</AlertTitle>
               <AlertDescription>ถ้าลืม ผู้จัดการตั้งรหัสผ่านใหม่ได้จากหน้าแก้ไขพนักงาน</AlertDescription>
             </div>
           </Alert>

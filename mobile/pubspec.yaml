@@ -1,5 +1,5 @@
 name: garage_pro_service_ops
-description: "โปรแกรมสำหรับอู่บริการ ServicePro — แอปหน้าร้านและช่าง: รับรถ คิวงาน อนุมัติราคา ส่งมอบรถ / ServicePro service-shop app for front desk and technicians."
+description: "โปรแกรมสำหรับอู่บริการ ServicePro แอปหน้าร้านและช่าง: รับรถ คิวงาน อนุมัติราคา ส่งมอบรถ / ServicePro service-shop app for front desk and technicians."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

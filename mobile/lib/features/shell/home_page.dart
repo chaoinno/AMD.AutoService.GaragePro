@@ -27,7 +27,7 @@ class HomePage extends ConsumerWidget {
           icon: Icons.help_outline,
           title: 'บทบาทนี้ยังไม่รองรับบนมือถือ',
           body: 'ระบบไม่รู้จักบทบาท "${session?.user.role ?? '-'}" '
-              'จึงไม่ทราบว่าควรเปิดหน้าจอไหนให้ — ติดต่อผู้ดูแลระบบเพื่อตั้งบทบาทให้ถูกต้อง',
+              'จึงไม่ทราบว่าควรเปิดหน้าจอไหนให้ ติดต่อผู้ดูแลระบบเพื่อตั้งบทบาทให้ถูกต้อง',
           tone: StateTone.warn,
           actionLabel: 'ออกจากระบบ',
           onAction: () => ref.read(sessionProvider.notifier).clear(),
@@ -278,7 +278,7 @@ class _CountTile extends ConsumerWidget {
                     fontFamily: T.fontMono, fontSize: 28, fontWeight: FontWeight.w700)),
             loading: () => const SizedBox(
                 height: 34, width: 34, child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-            error: (_, _) => const Text('—',
+            error: (_, _) => const Text('-',
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: T.faint)),
           ),
           const Text('งานที่ยังไม่ปิด',

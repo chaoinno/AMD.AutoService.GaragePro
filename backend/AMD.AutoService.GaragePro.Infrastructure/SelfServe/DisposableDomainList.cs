@@ -35,7 +35,7 @@ public static class DisposableDomainList
     private static HashSet<string> Load()
     {
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException($"ไม่พบ embedded resource {ResourceName} — ตรวจ EmbeddedResource ใน csproj");
+            ?? throw new InvalidOperationException($"ไม่พบ embedded resource {ResourceName} ตรวจ EmbeddedResource ใน csproj");
         using var reader = new StreamReader(stream);
 
         var set = new HashSet<string>(StringComparer.Ordinal);

@@ -62,7 +62,7 @@ public sealed class PlanUsageCounter(
     {
         if (!_legacy.ConnectionStrings.TryGetValue(shardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{shardKey}' — ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey}");
+                $"ไม่รู้จัก shard '{shardKey}' ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings:{shardKey}");
 
         await using var db = new SqlConnection(cs);
         return await db.ExecuteScalarAsync<int>(

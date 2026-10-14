@@ -112,7 +112,7 @@ public sealed class TaxInvoiceService(
         if (lines.Count == 0 || lines.Sum(l => l.NetAmount) != receipt!.NetAmount)
             return Result<TaxInvoiceDto>.Fail(
                 "TAX_INVOICE_TOTAL_MISMATCH",
-                "รายการที่อนุมัติไม่ตรงกับยอดในใบเสร็จ — ออกใบกำกับภาษีไม่ได้ กรุณาแจ้งผู้ดูแลระบบ");
+                "รายการที่อนุมัติไม่ตรงกับยอดในใบเสร็จ ออกใบกำกับภาษีไม่ได้ กรุณาแจ้งผู้ดูแลระบบ");
 
         var docNo = await repo.NextDocumentNoAsync(user.ShardKey, user.BranchId, Now.AddHours(7), ct);
         var invoice = new TaxInvoice
@@ -166,9 +166,9 @@ public sealed class TaxInvoiceService(
         receipt is null
             ? "ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อน จึงจะออกใบกำกับภาษีได้"
             : !job.VatIncluded || receipt.VatAmount <= 0m
-                ? "งานนี้ไม่ได้คิดภาษีมูลค่าเพิ่ม — ออกใบกำกับภาษีไม่ได้"
+                ? "งานนี้ไม่ได้คิดภาษีมูลค่าเพิ่ม ออกใบกำกับภาษีไม่ได้"
                 : seller?.TaxId is null
-                    ? "สาขานี้ยังไม่มีเลขประจำตัวผู้เสียภาษี 13 หลักในข้อมูลสาขาของ GaragePro — ให้ผู้ดูแลระบบเพิ่มก่อนออกใบกำกับภาษี"
+                    ? "สาขานี้ยังไม่มีเลขประจำตัวผู้เสียภาษี 13 หลักในข้อมูลสาขาของ GaragePro ให้ผู้ดูแลระบบเพิ่มก่อนออกใบกำกับภาษี"
                     : null;
 
     private static string BlockedCode(Job job, Receipt? receipt) =>

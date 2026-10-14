@@ -88,7 +88,7 @@ public sealed class WorkTimeService(
         if (rework is null)
             return Result<StartWorkResultDto>.Fail(
                 "WORK_JOB_NOT_REPAIRABLE",
-                $"งานนี้อยู่สถานะ “{JobStateMachine.Describe(job.Status)}” — เริ่มจับเวลาได้เมื่ออนุมัติซ่อมแล้วเท่านั้น");
+                $"งานนี้อยู่สถานะ “{JobStateMachine.Describe(job.Status)}” เริ่มจับเวลาได้เมื่ออนุมัติซ่อมแล้วเท่านั้น");
 
         // ต้องดันสถานะ "ก่อน" mutate ของเรา เพราะ JobService.TransitionAsync มี SaveChanges ของตัวเอง
         // ถ้าสลับลำดับ SaveChanges ของมันจะ flush คาบที่เรายังสร้างไม่เสร็จไปด้วย
@@ -143,7 +143,7 @@ public sealed class WorkTimeService(
 
         await repo.AddAsync(pause, ct);
         await WriteEventAsync(job, pause, "work.paused",
-            string.IsNullOrWhiteSpace(request.Reason) ? "พักงาน" : $"พักงาน — {request.Reason!.Trim()}", ct);
+            string.IsNullOrWhiteSpace(request.Reason) ? "พักงาน" : $"พักงาน: {request.Reason!.Trim()}", ct);
 
         var saved = await CommitAsync(request.RequestId, ct);
         return saved.Success
@@ -196,7 +196,7 @@ public sealed class WorkTimeService(
 
         CloseNow(open, WorkEndReason.Manual);
         await WriteEventAsync(job, open, "work.stopped",
-            string.IsNullOrWhiteSpace(request.Reason) ? "หยุดจับเวลา" : $"หยุดจับเวลา — {request.Reason!.Trim()}", ct);
+            string.IsNullOrWhiteSpace(request.Reason) ? "หยุดจับเวลา" : $"หยุดจับเวลา: {request.Reason!.Trim()}", ct);
         await repo.SaveChangesAsync(ct);
 
         return Result<WorkIntervalDto>.Ok(WorkMapper.ToDto(open, job));
@@ -305,7 +305,7 @@ public sealed class WorkTimeService(
             return Result<WorkIntervalDto>.Fail("WORK_ALREADY_VOIDED", "ช่วงเวลานี้ถูกยกเลิกไปแล้ว");
         if (interval.IsOpen)
             return Result<WorkIntervalDto>.Fail(
-                "WORK_STILL_OPEN", "ช่วงเวลานี้ยังจับเวลาอยู่ — ต้องให้หยุดก่อนจึงจะแก้ย้อนหลังได้");
+                "WORK_STILL_OPEN", "ช่วงเวลานี้ยังจับเวลาอยู่ ต้องให้หยุดก่อนจึงจะแก้ย้อนหลังได้");
 
         if (request.EndedAt < request.StartedAt)
             return Result<WorkIntervalDto>.Fail(
@@ -331,7 +331,7 @@ public sealed class WorkTimeService(
         var job = await jobs.GetAsync(interval.JobId, ct);
         if (job is not null)
             await WriteEventAsync(job, interval, "work.edited",
-                $"แก้เวลาทำงานของ {interval.TechnicianName} — {interval.EditReason}", ct);
+                $"แก้เวลาทำงานของ {interval.TechnicianName}: {interval.EditReason}", ct);
         await repo.SaveChangesAsync(ct);
 
         return Result<WorkIntervalDto>.Ok(WorkMapper.ToDto(interval, job));
@@ -361,7 +361,7 @@ public sealed class WorkTimeService(
         var job = await jobs.GetAsync(interval.JobId, ct);
         if (job is not null)
             await WriteEventAsync(job, interval, "work.voided",
-                $"ยกเลิกช่วงเวลาของ {interval.TechnicianName} — {interval.VoidReason}", ct);
+                $"ยกเลิกช่วงเวลาของ {interval.TechnicianName}: {interval.VoidReason}", ct);
         await repo.SaveChangesAsync(ct);
 
         return Result<WorkIntervalDto>.Ok(WorkMapper.ToDto(interval, job));
@@ -399,7 +399,7 @@ public sealed class WorkTimeService(
         if (await CurrentStaff.ResolveAsync(user, legacyUsers, ct) is long staffId) return Result<long>.Ok(staffId);
 
         return Result<long>.Fail(
-            "WORK_NO_STAFF_PROFILE", "บัญชีนี้ไม่ได้ผูกกับข้อมูลพนักงาน — ออกจากระบบแล้วเข้าใหม่อีกครั้ง");
+            "WORK_NO_STAFF_PROFILE", "บัญชีนี้ไม่ได้ผูกกับข้อมูลพนักงาน ออกจากระบบแล้วเข้าใหม่อีกครั้ง");
     }
 
     /// <summary>null = สถานะนี้จับเวลาไม่ได้ · true = เป็นการกลับมาแก้งานหลังเข้า QC (docs/09 §5.5)</summary>

@@ -251,7 +251,7 @@ public sealed class SelfServeLifecycleRepository(
     {
         if (!_legacy.ConnectionStrings.TryGetValue(_options.ShardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{_options.ShardKey}' — ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
+                $"ไม่รู้จัก shard '{_options.ShardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
 
         await using var connection = new SqlConnection(cs);
         var rows = await connection.QueryAsync<(int Id, DateTime? EndPackageDate)>(

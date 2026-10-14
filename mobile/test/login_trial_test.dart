@@ -62,7 +62,7 @@ class _LoginLockedAdapter implements HttpClientAdapter {
         'data': null,
         'error': {
           'code': 'TRIAL_EXPIRED',
-          'messageTh': '$_lockedMessage — ติดต่อ LINE @garagepro เพื่อสมัครแพ็กเกจหรือขอเปิดใช้งานอีกครั้ง',
+          'messageTh': '$_lockedMessage ติดต่อ LINE @garagepro เพื่อสมัครแพ็กเกจหรือขอเปิดใช้งานอีกครั้ง',
         },
         'traceId': 'trace-login',
       })),

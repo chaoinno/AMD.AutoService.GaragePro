@@ -214,7 +214,7 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
             if (!preview.Success) return Refused(preview.Error!);
             var ws = preview.Data!.Snapshot.Workspace;
             error.WriteLine($"จะลบข้อมูลทั้งหมดของ {SelfServeText.WorkspaceCode(ws.WorkspaceNo)} · {ws.Name} ({ws.Plan}/{ws.Status}) " +
-                            "— ย้อนกลับไม่ได้");
+                            "ย้อนกลับไม่ได้");
             return Usage("ยืนยันด้วย --yes" + (ws.Plan is WorkspacePlanKind.Paid or WorkspacePlanKind.Converted
                 ? " --allow-paid (อู่นี้จ่ายเงิน/ย้ายไปสาขาจริงแล้ว)" : ""));
         }
@@ -225,7 +225,7 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
         var report = result.Data!;
         if (report.AlreadyPurged)
         {
-            output.WriteLine($"{SelfServeText.WorkspaceCode(report.WorkspaceNo)} ถูกลบไปแล้วก่อนหน้านี้ — ไม่มีอะไรต้องทำ");
+            output.WriteLine($"{SelfServeText.WorkspaceCode(report.WorkspaceNo)} ถูกลบไปแล้วก่อนหน้านี้ ไม่มีอะไรต้องทำ");
             return ExitCodes.Ok;
         }
 
@@ -279,7 +279,7 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
 
         var dryRun = command.Has("dry-run");
         if (!dryRun && !command.Has("yes"))
-            return Usage("การย้ายจริงต้องยืนยันด้วย --yes — รัน --dry-run ก่อนเสมอ และย้ายเฉพาะเมื่อสร้างสาขาปลายทางใน " +
+            return Usage("การย้ายจริงต้องยืนยันด้วย --yes, รัน --dry-run ก่อนเสมอ และย้ายเฉพาะเมื่อสร้างสาขาปลายทางใน " +
                          "GaragePro Admin แล้วและเจ้าของอู่อนุมัติแล้ว");
 
         var request = new ConversionRequest(no, command.Get("target-shard") ?? "db2", branch, user, dryRun, Actor(command),
@@ -306,7 +306,7 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
         if (report.StaffAccounts.Count > 0)
         {
             output.WriteLine();
-            output.WriteLine("บัญชีพนักงานใหม่ที่สาขาปลายทาง (รหัสผ่านเริ่มต้น = ชื่อผู้ใช้ ตามกติกาสาขาเดิม — ให้เปลี่ยนทันที):");
+            output.WriteLine("บัญชีพนักงานใหม่ที่สาขาปลายทาง (รหัสผ่านเริ่มต้น = ชื่อผู้ใช้ ตามกติกาสาขาเดิม ให้เปลี่ยนทันที):");
             foreach (var a in report.StaffAccounts) output.WriteLine($"  · {a.FullName}: {a.UserName} (Staff {a.TargetStaffId})");
         }
 
@@ -326,7 +326,7 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
         if (command.Get("out") is { } path)
         {
             await File.WriteAllTextAsync(path, JsonSerializer.Serialize(report, ReportJson), ct);
-            output.WriteLine($"เขียนรายงานแล้ว: {Path.GetFullPath(path)} (มีชื่อผู้ใช้พนักงาน — เก็บเป็นความลับ)");
+            output.WriteLine($"เขียนรายงานแล้ว: {Path.GetFullPath(path)} (มีชื่อผู้ใช้พนักงาน เก็บเป็นความลับ)");
         }
 
         return report.TotalFailed == 0 ? ExitCodes.Ok : ExitCodes.CompletedWithFailures;

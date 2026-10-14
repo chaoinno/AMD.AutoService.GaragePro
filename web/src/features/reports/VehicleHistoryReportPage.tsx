@@ -74,17 +74,17 @@ export function VehicleHistoryReportPage() {
           query={searchQuery.data ? { ...searchQuery, data: searchQuery.data.items } : searchQuery}
           loadingTitle="กำลังค้นหารถ"
           emptyTitle="ไม่พบรถที่ตรงกับคำค้น"
-          emptyReason={`ไม่มีงานในสาขานี้ที่ทะเบียนหรือเบอร์โทรมี "${q}" — ลองพิมพ์เฉพาะตัวเลขของทะเบียน หรือเบอร์โทร 4 ตัวท้าย`}
+          emptyReason={`ไม่มีงานในสาขานี้ที่ทะเบียนหรือเบอร์โทรมี "${q}" ลองพิมพ์เฉพาะตัวเลขของทะเบียน หรือเบอร์โทร 4 ตัวท้าย`}
           onRetry={() => void searchQuery.refetch()}
         >
           {searchQuery.data ? (
             <Card className="management-table-card">
               {searchQuery.data.truncated ? (
-                <p className="section-help report-table-note">ผลลัพธ์มากเกินไป แสดงเฉพาะรถที่เข้าล่าสุด — พิมพ์ให้เจาะจงขึ้นเพื่อดูให้ครบ</p>
+                <p className="section-help report-table-note">ผลลัพธ์มากเกินไป แสดงเฉพาะรถที่เข้าล่าสุด พิมพ์ให้เจาะจงขึ้นเพื่อดูให้ครบ</p>
               ) : null}
               <ManagementTable data={searchQuery.data.items} sortScope="loaded" columns={[
                 { id: 'plate', header: 'ทะเบียน', size: 140, value: (v) => v.vehicleRegistration, render: (v) => <strong>{v.vehicleRegistration}</strong> },
-                { id: 'model', header: 'รุ่น', size: 180, value: (v) => v.vehicleModel ?? '', render: (v) => v.vehicleModel || '—' },
+                { id: 'model', header: 'รุ่น', size: 180, value: (v) => v.vehicleModel ?? '', render: (v) => v.vehicleModel || '-' },
                 { id: 'customer', header: 'ลูกค้า', size: 200, value: (v) => v.customerName, render: (v) => <>{v.customerName}<small className="purchase-sub">{v.customerPhone ?? ''}</small></> },
                 { id: 'visits', header: 'จำนวนครั้ง', size: 110, value: (v) => v.visitCount, render: (v) => <span className="report-num">{formatNumber(v.visitCount)}</span> },
                 { id: 'last', header: 'เข้าล่าสุด', size: 190, value: (v) => new Date(v.lastVisitAt).getTime(), render: (v) => <>{formatDateTime(v.lastVisitAt)}<small className="purchase-sub">{v.lastJobNo}</small></> },
@@ -146,7 +146,7 @@ function HistoryBody({ history }: { history: VehicleHistory }) {
       </Card>
 
       {!history.showAmounts ? (
-        <p className="section-help">บทบาทของคุณไม่เห็นยอดเงิน — แสดงเฉพาะรายการงานที่ทำ</p>
+        <p className="section-help">บทบาทของคุณไม่เห็นยอดเงิน แสดงเฉพาะรายการงานที่ทำ</p>
       ) : null}
 
       <ol className="vehicle-history-timeline">

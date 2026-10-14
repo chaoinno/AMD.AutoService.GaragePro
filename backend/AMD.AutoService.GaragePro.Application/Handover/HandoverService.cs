@@ -100,10 +100,10 @@ public sealed class HandoverService(
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)
             return Result<HandoverDto>.Fail(
-                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ — เปิดหน้าส่งมอบก่อน");
+                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ เปิดหน้าส่งมอบก่อน");
 
         if (record.IsLocked)
-            return Result<HandoverDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว — แก้ไขไม่ได้");
+            return Result<HandoverDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว แก้ไขไม่ได้");
 
         record.MileageAtHandover = request.MileageAtHandover;
         record.NextServiceMileage = request.NextServiceMileage;
@@ -124,7 +124,7 @@ public sealed class HandoverService(
         if (job.MileageAtIntake is null)
             return Result<bool>.Fail(
                 "HANDOVER_INTAKE_MILEAGE_REQUIRED",
-                "งานนี้ยังไม่มีเลขไมล์ขณะรับรถ — บันทึกที่ขั้นรับรถของการ์ดจ๊อบก่อน");
+                "งานนี้ยังไม่มีเลขไมล์ขณะรับรถ บันทึกที่ขั้นรับรถของการ์ดจ๊อบก่อน");
 
         if (!Odometer.IsValid(mileageAtHandover))
             return Result<bool>.Fail(
@@ -162,10 +162,10 @@ public sealed class HandoverService(
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)
             return Result<HandoverChecklistItemDto>.Fail(
-                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ — เปิดหน้าส่งมอบก่อน");
+                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ เปิดหน้าส่งมอบก่อน");
 
         if (record.IsLocked)
-            return Result<HandoverChecklistItemDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว — แก้ไขไม่ได้");
+            return Result<HandoverChecklistItemDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว แก้ไขไม่ได้");
 
         var item = record.Items.FirstOrDefault(i => i.Id == itemId);
         if (item is null)
@@ -198,12 +198,12 @@ public sealed class HandoverService(
         if (receipt is null)
             return Result<HandoverDto>.Fail(
                 "HANDOVER_RECEIPT_REQUIRED",
-                "ยังออกใบเสร็จของงานนี้ไม่สำเร็จ — ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อนจึงจะส่งมอบรถได้");
+                "ยังออกใบเสร็จของงานนี้ไม่สำเร็จ ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อนจึงจะส่งมอบรถได้");
 
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)
             return Result<HandoverDto>.Fail(
-                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ — เปิดหน้าส่งมอบก่อน");
+                "HANDOVER_NOT_FOUND", "ยังไม่มีข้อมูลส่งมอบของงานนี้ เปิดหน้าส่งมอบก่อน");
 
         if (record.IsLocked)
             return Result<HandoverDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว");

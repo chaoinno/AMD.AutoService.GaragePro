@@ -82,7 +82,7 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
   // [BIZ] API ปฏิเสธการส่ง checklist ถ้ายังไม่มีเลขไมล์ (INTAKE_MILEAGE_REQUIRED) — บอกและให้บันทึกได้ตรงนี้เลย
   const missingMileage = job.mileageAtIntake == null
   const submitBlockedReason = pendingCount > 0
-    ? `ยังตรวจไม่ครบ — เหลืออีก ${pendingCount} รายการ`
+    ? `ยังตรวจไม่ครบ เหลืออีก ${pendingCount} รายการ`
     : missingMileage ? 'ยังไม่ได้บันทึกเลขไมล์ขณะรับรถ' : undefined
 
   return (
@@ -101,7 +101,7 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
           <span>เลขไมล์ขณะรับรถ:</span>
           {missingMileage ? (
             <span className="job-detail-overdue" role="status">
-              <AlertTriangle aria-hidden="true" /> ยังไม่ได้บันทึก — ต้องบันทึกก่อนส่ง checklist
+              <AlertTriangle aria-hidden="true" /> ยังไม่ได้บันทึก ต้องบันทึกก่อนส่ง checklist
             </span>
           ) : (
             <strong className="job-detail-mileage">{formatKm(job.mileageAtIntake)}</strong>
@@ -137,7 +137,7 @@ export function IntakeChecklistPanel({ job }: { job: Job }) {
             {submitBlockedReason ? (
               <span className="intake-checklist__submit-hint">{submitBlockedReason}</span>
             ) : issueCount > 0 ? (
-              <span className="intake-checklist__submit-hint">พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ — ตรวจทานก่อนส่ง</span>
+              <span className="intake-checklist__submit-hint">พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ ตรวจทานก่อนส่ง</span>
             ) : null}
             <Button
               onClick={() => submitMutation.mutate()}

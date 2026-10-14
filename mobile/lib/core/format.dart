@@ -40,4 +40,4 @@ String stopwatchHms(Duration d) {
 
 /// ชั่วโมงแบบอ่านง่ายสำหรับสรุป — `2.5 ชม.` · null → `—`
 String hoursLabel(double? hours, {int decimals = 1}) =>
-    hours == null ? '—' : '${hours.toStringAsFixed(decimals)} ชม.';
+    hours == null ? '-' : '${hours.toStringAsFixed(decimals)} ชม.';

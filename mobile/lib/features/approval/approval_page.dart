@@ -71,7 +71,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                   icon: Icons.swap_horiz,
                   title: 'ใบเสนอราคาฉบับแก้ไข (เวอร์ชัน ${q.version})',
                   body: '${q.revisionReason}\n'
-                      'การอนุมัติในเวอร์ชันก่อนหน้าเป็นโมฆะ — กรุณาตัดสินใจใหม่ทุกรายการ',
+                      'การอนุมัติในเวอร์ชันก่อนหน้าเป็นโมฆะ กรุณาตัดสินใจใหม่ทุกรายการ',
                   tone: StateTone.warn,
                 ),
                 const SizedBox(height: T.s16),
@@ -92,7 +92,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
                   icon: Icons.lock_outline,
                   title: 'ยังไม่เปิดให้ลูกค้าตัดสินใจ (${q.statusLabelTh})',
                   body: q.status == 'draft'
-                      ? 'ใบนี้ยังเป็นร่าง — ธุรการต้องกด "ส่งให้ลูกค้าอนุมัติ" จากเว็บก่อน'
+                      ? 'ใบนี้ยังเป็นร่าง ธุรการต้องกด "ส่งให้ลูกค้าอนุมัติ" จากเว็บก่อน'
                       : 'ใบเสนอราคานี้ไม่อยู่ในสถานะที่ลูกค้าอนุมัติได้แล้ว',
                   tone: StateTone.neutral,
                 ),
@@ -151,9 +151,9 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
 
     final reason = switch (0) {
       _ when !q.isOpenForDecision => 'ใบเสนอราคายังไม่ได้ส่งให้ลูกค้า (${q.statusLabelTh})',
-      _ when q.isExpired => 'ใบเสนอราคาหมดอายุ — ต้องออกฉบับใหม่ก่อน',
+      _ when q.isExpired => 'ใบเสนอราคาหมดอายุ ต้องออกฉบับใหม่ก่อน',
       _ when pending > 0 => 'ยังเหลือ $pending รายการที่ยังไม่ได้ตัดสินใจ',
-      _ when approved == 0 => 'ยังไม่มีรายการที่อนุมัติ — เลือกอย่างน้อย 1 รายการ',
+      _ when approved == 0 => 'ยังไม่มีรายการที่อนุมัติ เลือกอย่างน้อย 1 รายการ',
       _ => null,
     };
 
@@ -280,7 +280,7 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       if (_beforeApproved.contains(job.status)) {
         await ref.read(jobsApiProvider).transition(q.jobId, 'approved');
       } else if (mounted) {
-        _toast('บันทึกการอนุมัติเรียบร้อย — รายการที่อนุมัติรวมเข้ายอดชำระของงานนี้');
+        _toast('บันทึกการอนุมัติเรียบร้อย รายการที่อนุมัติรวมเข้ายอดชำระของงานนี้');
       }
       ref
         ..invalidate(jobDetailProvider(q.jobId))
@@ -292,9 +292,9 @@ class _ApprovalPageState extends ConsumerState<ApprovalPage> {
       // ธุรการ/ผู้จัดการจากเว็บ · ต้องบอกทางแก้ให้ชัด ไม่ใช่โยนข้อความ error ดิบๆ ให้ช่างงง
       if (mounted) {
         _toast(e.code == 'JOB_TRANSITION_NOT_ALLOWED'
-            ? 'บันทึกลายเซ็นเรียบร้อยแล้ว — แต่สถานะงานยังไม่ขยับ '
+            ? 'บันทึกลายเซ็นเรียบร้อยแล้ว แต่สถานะงานยังไม่ขยับ '
                 'ให้ธุรการเปิดใบเสนอราคานี้บนเว็บแล้วกด "ดำเนินการแทนลูกค้า" เพื่อให้สถานะตามมา'
-            : 'เซ็นเรียบร้อย แต่จ๊อบยังไม่เปลี่ยนสถานะ — ${e.messageTh}');
+            : 'เซ็นเรียบร้อย แต่จ๊อบยังไม่เปลี่ยนสถานะ: ${e.messageTh}');
       }
     }
   }

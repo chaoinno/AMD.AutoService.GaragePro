@@ -34,7 +34,7 @@ export function SalesMarginReportPage() {
       <section className="report-page-heading">
         <div>
           <h2><TrendingUp aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />ยอดขาย-ต้นทุน-กำไร</h2>
-          <p>รวมเฉพาะบรรทัดที่ลูกค้าอนุมัติแล้ว — ต้นทุน/กำไรเห็นได้เฉพาะผู้จัดการ</p>
+          <p>รวมเฉพาะบรรทัดที่ลูกค้าอนุมัติแล้ว ต้นทุน/กำไรเห็นได้เฉพาะผู้จัดการ</p>
         </div>
         <div className="report-date-filter">
           <label>จากวันที่<Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>

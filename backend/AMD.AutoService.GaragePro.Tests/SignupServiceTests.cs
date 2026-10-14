@@ -648,7 +648,7 @@ public sealed class SignupServiceTests
         var victim = await h.Service.VerifyEmailAsync(new EmailSignupVerifyRequest(Email, newestCode, victimPassword), Client);
         victim.Error!.Code.Should().Be(SignupErrors.PasswordMismatchCode);
         victim.Error.Field.Should().Be("password");
-        victim.Error.MessageTh.Should().Be("รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร — กรุณาตรวจสอบหรือเริ่มสมัครใหม่");
+        victim.Error.MessageTh.Should().Be("รหัสผ่านไม่ตรงกับที่ตั้งไว้ตอนเริ่มสมัคร กรุณาตรวจสอบหรือเริ่มสมัครใหม่");
         SignupErrors.StatusCodeFor(victim.Error.Code).Should().Be(422);
         var pending = h.Repo.Account(Normalized);
         pending.Status.Should().Be(SelfServeAccountStatus.Pending);
@@ -860,7 +860,7 @@ public sealed class SignupServiceTests
 
         replay.Success.Should().BeTrue();
         replay.Data!.WorkspaceNo.Should().Be("SP1001");
-        replay.Data.SampleTechnicians.Should().BeNull("รหัสผ่านเก็บเป็น hash — คืนซ้ำไม่ได้ (อยู่ในอีเมลต้อนรับแล้ว)");
+        replay.Data.SampleTechnicians.Should().BeNull("รหัสผ่านเก็บเป็น hash คืนซ้ำไม่ได้ (อยู่ในอีเมลต้อนรับแล้ว)");
         h.Provisioner.Requests.Should().ContainSingle();
         h.Notifier.Sent.Should().ContainSingle();
         h.Email.Sent.Count(m => m.Tag == "welcome").Should().Be(1);

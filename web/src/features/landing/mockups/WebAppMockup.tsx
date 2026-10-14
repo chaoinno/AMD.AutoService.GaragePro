@@ -26,10 +26,10 @@ type Row = {
 // เลือกสถานะที่สีไม่ซ้ำกัน (waitapprove กับ inprogress ใช้สีเดียวกันใน index.css จึงไม่ใส่คู่กัน)
 const ROWS: Row[] = [
   { jobNo: 'JB2610090105001', plate: '1กข 2468', model: 'Toyota Yaris', status: 'inprogress', amount: '4,280.00' },
-  { jobNo: 'JB2610090105002', plate: '3ขค 5521', model: 'Honda City', status: 'waitquote', amount: '—' },
+  { jobNo: 'JB2610090105002', plate: '3ขค 5521', model: 'Honda City', status: 'waitquote', amount: '-' },
   { jobNo: 'JB2610090105003', plate: '7กด 9013', model: 'Isuzu D-Max', status: 'qc', amount: '8,640.00' },
   { jobNo: 'JB2610090105004', plate: '2ฒม 1180', model: 'Mazda 2', status: 'ready', amount: '3,150.00' },
-  { jobNo: 'JB2610090105005', plate: '5ศธ 7342', model: 'Ford Ranger', status: 'waitinspect', amount: '—' },
+  { jobNo: 'JB2610090105005', plate: '5ศธ 7342', model: 'Ford Ranger', status: 'waitinspect', amount: '-' },
 ]
 
 const STATUS: Record<Row['status'], { label: string; icon: LucideIcon }> = {

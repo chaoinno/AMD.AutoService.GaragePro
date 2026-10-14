@@ -54,7 +54,7 @@ public sealed class IntakeChecklistService(
         var result = IntakeMapper.ParseToken(request.Result);
         if (result is null || result == IntakeCheckResult.Pending)
             return Result<IntakeChecklistItemDto>.Fail(
-                "INTAKE_RESULT_INVALID", "ผลตรวจไม่ถูกต้อง — ต้องเป็น ok / issue / na", nameof(request.Result));
+                "INTAKE_RESULT_INVALID", "ผลตรวจไม่ถูกต้อง ต้องเป็น ok / issue / na", nameof(request.Result));
 
         if (result is IntakeCheckResult.Issue or IntakeCheckResult.NotApplicable
             && string.IsNullOrWhiteSpace(request.Note))
@@ -69,7 +69,7 @@ public sealed class IntakeChecklistService(
 
         if (checklist.IsLocked)
             return Result<IntakeChecklistItemDto>.Fail(
-                "INTAKE_LOCKED", "ส่ง checklist นี้ไปแล้ว — แก้ไขไม่ได้");
+                "INTAKE_LOCKED", "ส่ง checklist นี้ไปแล้ว แก้ไขไม่ได้");
 
         var item = checklist.Items.First(i => i.ItemCode == itemCode);
         item.Result = result.Value;
@@ -101,7 +101,7 @@ public sealed class IntakeChecklistService(
         var pending = checklist.Items.Where(i => i.Result == IntakeCheckResult.Pending).ToList();
         if (pending.Count > 0)
             return Result<SubmitIntakeChecklistResultDto>.Fail(
-                "INTAKE_INCOMPLETE", $"ยังตรวจไม่ครบ — เหลืออีก {pending.Count} รายการ");
+                "INTAKE_INCOMPLETE", $"ยังตรวจไม่ครบ เหลืออีก {pending.Count} รายการ");
 
         // [BIZ] เพิ่ม 2026-10-08 — ใบรับรถต้องมีเลขไมล์ (ครอบจ๊อบที่เปิดก่อนมีกฎบังคับไมล์ตอนเปิดจ๊อบ และรถนัดหมาย
         // ที่ยังไม่ได้แปลง) ValidateJobAsync ผ่านแล้วจึงมีจ๊อบแน่นอน
@@ -123,8 +123,8 @@ public sealed class IntakeChecklistService(
             EntityType = nameof(IntakeChecklist),
             EventType = "intake_checklist.submitted",
             DescriptionTh = issueCount > 0
-                ? $"ส่ง checklist สภาพรถขณะรับ — พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ"
-                : "ส่ง checklist สภาพรถขณะรับ — ทุกรายการปกติ",
+                ? $"ส่ง checklist สภาพรถขณะรับ: พบสภาพที่ต้องบันทึกไว้ {issueCount} รายการ"
+                : "ส่ง checklist สภาพรถขณะรับ: ทุกรายการปกติ",
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,

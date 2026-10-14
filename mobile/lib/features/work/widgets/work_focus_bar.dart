@@ -111,7 +111,7 @@ class _WorkFocusBarState extends ConsumerState<WorkFocusBar> {
                     ),
                     if (state.isStale)
                       const Text(
-                        'เชื่อมต่อไม่ได้ — เวลาที่แสดงอาจไม่ตรง',
+                        'เชื่อมต่อไม่ได้ เวลาที่แสดงอาจไม่ตรง',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 12, color: T.amber500, height: 1.4),
                       )

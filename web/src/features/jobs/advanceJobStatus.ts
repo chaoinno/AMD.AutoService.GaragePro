@@ -7,7 +7,7 @@ import type { JobStatusToken } from '../../api/types'
  * จึงต้องส่ง reason เสมอ
  */
 export const INSPECTION_BYPASS_REASON =
-  'ยืนยันแทนขั้นตรวจสอบจากเว็บ — ใช้ checklist สภาพรถ 20 รายการที่ส่งแล้วแทนตรวจเช็ค 31 รายการของช่างบนมือถือ (อยู่ระหว่างพัฒนา)'
+  'ยืนยันแทนขั้นตรวจสอบจากเว็บ ใช้ checklist สภาพรถ 20 รายการที่ส่งแล้วแทนตรวจเช็ค 31 รายการของช่างบนมือถือ (อยู่ระหว่างพัฒนา)'
 
 /** สถานะที่ยังไม่ถึง "รออนุมัติ" — ต้องไต่ขึ้นไปทีละขั้นเพราะ state machine ไม่มีทางลัด */
 const BEFORE_WAIT_APPROVE: JobStatusToken[] = ['waitinspect', 'waitquote']

@@ -140,7 +140,7 @@ public static class JobStateMachine
         if (!transition.AllowedRoles.Contains(role))
             return TransitionResult.Fail(
                 "JOB_TRANSITION_FORBIDDEN_ROLE",
-                $"บทบาทนี้ไม่มีสิทธิ์ทำรายการนี้ — ต้องเป็น {string.Join(" หรือ ", transition.AllowedRoles.Select(DescribeRole))}");
+                $"บทบาทนี้ไม่มีสิทธิ์ทำรายการนี้ ต้องเป็น {string.Join(" หรือ ", transition.AllowedRoles.Select(DescribeRole))}");
 
         if (!transition.AllowedSources.Contains(source))
             return TransitionResult.Fail(

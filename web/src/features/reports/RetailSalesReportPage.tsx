@@ -157,7 +157,7 @@ function ReportBody({ report }: { report: RetailSalesReport }) {
             { id: 'receipt', header: 'เลขที่', value: (v) => v.receiptNo ?? '', render: (v) => <Link className="report-link" to={`/sales/${v.saleId}`}>{v.receiptNo ?? 'บิลขาย'}</Link> },
             { id: 'paid', header: 'ชำระเมื่อ', value: (v) => (v.completedAt ? new Date(v.completedAt).getTime() : 0), render: (v) => formatDateTime(v.completedAt) },
             { id: 'voided', header: 'ยกเลิกเมื่อ', value: (v) => (v.voidedAt ? new Date(v.voidedAt).getTime() : 0), render: (v) => <>{formatDateTime(v.voidedAt)}<small className="purchase-sub">{v.voidedByName ?? ''}</small></> },
-            { id: 'reason', header: 'เหตุผล', size: 240, value: (v) => v.voidReason ?? '', render: (v) => v.voidReason || '—' },
+            { id: 'reason', header: 'เหตุผล', size: 240, value: (v) => v.voidReason ?? '', render: (v) => v.voidReason || '-' },
             { id: 'amount', header: 'ยอดบิล', value: (v) => v.totalAmount, render: (v) => <Money value={v.totalAmount} /> },
           ]} />
         </Card>

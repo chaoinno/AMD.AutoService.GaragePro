@@ -92,7 +92,7 @@ public static class SelfServeEmails
         paragraphs.Add("ระหว่างทดลองใช้ ฟีเจอร์ขั้นสูงยังปิดอยู่: " + PlanFeatureNames.LabelTh(PlanFeature.All));
         paragraphs.Add($"สอบถามหรือสนใจแพ็กเกจ: {Contact()}");
 
-        return Build(WelcomeTag, $"ยินดีต้อนรับสู่ ServicePro — อู่ {name} ({code}) พร้อมใช้งานแล้ว", [.. paragraphs]);
+        return Build(WelcomeTag, $"ยินดีต้อนรับสู่ ServicePro | อู่ {name} ({code}) พร้อมใช้งานแล้ว", [.. paragraphs]);
     }
 
     /// <summary>
@@ -175,8 +175,8 @@ public static class SelfServeEmails
                 .Append("</p>");
         }
 
-        text.Append("\n\n— ServicePro");
-        html.Append("<p style=\"color:#64748b\">— ServicePro</p></div>");
+        text.Append("\n\nทีมงาน ServicePro");
+        html.Append("<p style=\"color:#64748b\">ทีมงาน ServicePro</p></div>");
         return new EmailContent(subject, text.ToString(), html.ToString(), tag);
     }
 }

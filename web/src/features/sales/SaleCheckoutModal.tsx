@@ -77,11 +77,11 @@ export function SaleCheckoutModal({ open, sale, onClose }: { open: boolean; sale
   const changeSatang = toSatang(received) - cashSatang
 
   const blockedReason = rows.some((row) => toSatang(row.amount) <= 0)
-    ? 'ทุกช่องทางต้องมียอดมากกว่า 0 — ลบช่องทางที่ไม่ใช้ออก'
+    ? 'ทุกช่องทางต้องมียอดมากกว่า 0 ลบช่องทางที่ไม่ใช้ออก'
     : remainingSatang > 0
       ? `ยอดชำระยังขาดอีก ${formatMoney(fromSatang(remainingSatang))} บาท`
       : remainingSatang < 0
-        ? `ยอดชำระเกินยอดบิล ${formatMoney(fromSatang(-remainingSatang))} บาท — เงินทอนให้ใส่ที่ช่อง "รับเงินสดมา"`
+        ? `ยอดชำระเกินยอดบิล ${formatMoney(fromSatang(-remainingSatang))} บาท เงินทอนให้ใส่ที่ช่อง "รับเงินสดมา"`
         : cashSatang > 0 && changeSatang < 0
           ? `รับเงินสดมาไม่พอ ขาดอีก ${formatMoney(fromSatang(-changeSatang))} บาท`
           : null
@@ -138,7 +138,7 @@ export function SaleCheckoutModal({ open, sale, onClose }: { open: boolean; sale
             <div>
               <strong>{unknownOutcome ? 'ยังไม่ทราบผลการชำระเงิน' : 'มีคำขอชำระเงินครั้งก่อนที่ยังไม่ทราบผล'}</strong>
               <p>
-                ระบบอาจบันทึกไปแล้ว — ส่งคำขอเดิมซ้ำได้อย่างปลอดภัย ระบบจะไม่รับเงินซ้ำ
+                ระบบอาจบันทึกไปแล้ว ส่งคำขอเดิมซ้ำได้อย่างปลอดภัย ระบบจะไม่รับเงินซ้ำ
                 ({pending.payments.map((p) => `${paymentMethodLabel(p.method)} ${formatMoney(p.amount)}`).join(' + ')})
               </p>
               <Button size="sm" variant="ghost" disabled={checkout.isPending} onClick={discardPending}>ทิ้งคำขอเดิมแล้วกรอกใหม่</Button>
@@ -185,7 +185,7 @@ export function SaleCheckoutModal({ open, sale, onClose }: { open: boolean; sale
                 variant="outline"
                 size="sm"
                 disabled={remainingSatang <= 0}
-                title={remainingSatang <= 0 ? 'ยอดครบแล้ว — ลดยอดช่องทางเดิมก่อนถ้าจะแบ่งจ่าย' : undefined}
+                title={remainingSatang <= 0 ? 'ยอดครบแล้ว ลดยอดช่องทางเดิมก่อนถ้าจะแบ่งจ่าย' : undefined}
                 onClick={() => setRows((current) => [...current, { key: Date.now(), method: 'transfer', amount: fromSatang(remainingSatang), reference: '' }])}
               >
                 <Plus aria-hidden="true" /> แบ่งจ่ายอีกช่องทาง
@@ -221,7 +221,7 @@ export function SaleCheckoutModal({ open, sale, onClose }: { open: boolean; sale
 
         {checkout.isError ? (
           <ErrorAlert
-            title={unknownOutcome ? 'เชื่อมต่อไม่สำเร็จ — กด "ส่งคำขอเดิมอีกครั้ง"' : 'รับชำระเงินไม่สำเร็จ — ยังไม่ได้ตัดสต็อกหรือบันทึกเงิน'}
+            title={unknownOutcome ? 'เชื่อมต่อไม่สำเร็จ กด "ส่งคำขอเดิมอีกครั้ง"' : 'รับชำระเงินไม่สำเร็จ ยังไม่ได้ตัดสต็อกหรือบันทึกเงิน'}
             error={checkout.error}
           />
         ) : null}

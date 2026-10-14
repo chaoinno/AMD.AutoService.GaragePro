@@ -331,7 +331,7 @@ public sealed class WorkspacePurgeData(
             throw new InvalidOperationException("ปฏิเสธการลบ: shard ไม่ใช่อู่ทดลองใช้");
         if (!_legacy.ConnectionStrings.TryGetValue(_options.ShardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{_options.ShardKey}' — ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
+                $"ไม่รู้จัก shard '{_options.ShardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
 
         var connection = new SqlConnection(cs);
         try

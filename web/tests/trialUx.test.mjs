@@ -24,7 +24,7 @@ const bannerFor = (plan) => trialBannerCopy(trialTone(plan, now), formatDaysLeft
 
 // ---- เช็คลิสต์ --------------------------------------------------------------------------------------
 
-test('checklist ticks each step only from real data — the owner alone does not count as the first technician', () => {
+test('checklist ticks each step only from real data, the owner alone does not count as the first technician', () => {
   const fresh = deriveChecklist({ checklist: { staffCount: 1, catalogCount: 0, jobCount: 0, quotationSentCount: 0, mobileLoginSeen: false } })
   assert.deepEqual(fresh.map((item) => item.key), ['staff', 'catalog', 'job', 'quotation', 'mobile'])
   assert.deepEqual(fresh.map((item) => item.done), [false, false, false, false, false])
@@ -87,7 +87,7 @@ test('banner: legacy/paid/no plan render nothing; trial is neutral, ≤7 days wa
   assert.equal(bannerFor(trial({ daysLeft: 0 })).title, 'ทดลองใช้ · หมดอายุวันนี้')
 
   const expired = bannerFor(trial({ daysLeft: -3, readOnly: true }))
-  assert.equal(expired.title, 'ช่วงทดลองใช้ครบ 30 วันแล้ว — ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้')
+  assert.equal(expired.title, 'ช่วงทดลองใช้ครบ 30 วันแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้')
   assert.match(bannerFor({ kind: 'suspended', readOnly: true, features: [] }).title, /ถูกระงับ/)
 })
 

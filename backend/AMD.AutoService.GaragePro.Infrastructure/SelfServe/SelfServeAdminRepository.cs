@@ -124,7 +124,7 @@ public sealed class SelfServeAdminRepository(
                             ?? throw new InvalidOperationException($"ไม่พบ workspace {change.WorkspaceId}");
             if (workspace.BranchId != change.BranchId)
                 throw new InvalidOperationException(
-                    $"สาขาของ workspace เปลี่ยนไประหว่างทำงาน ({workspace.BranchId} ≠ {change.BranchId}) — ยกเลิก");
+                    $"สาขาของ workspace เปลี่ยนไประหว่างทำงาน ({workspace.BranchId} ≠ {change.BranchId}) ยกเลิก");
 
             if (change.SetBranchEnd)
             {
@@ -135,7 +135,7 @@ public sealed class SelfServeAdminRepository(
                         new SqlParameter("@BranchId", change.BranchId)
                     ], ct);
                 if (rows != 1)
-                    throw new InvalidOperationException($"ไม่พบแถว Branch {change.BranchId} ในฐาน self-serve — ยกเลิก");
+                    throw new InvalidOperationException($"ไม่พบแถว Branch {change.BranchId} ในฐาน self-serve ยกเลิก");
 
                 workspace.TrialEndsAt = change.EndsAtUtc;   // สำเนาต้องตรงกับ Branch เสมอ (Workspace.cs)
             }
@@ -164,7 +164,7 @@ public sealed class SelfServeAdminRepository(
     {
         if (!_legacy.ConnectionStrings.TryGetValue(_options.ShardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{_options.ShardKey}' — ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
+                $"ไม่รู้จัก shard '{_options.ShardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
 
         await using var connection = new SqlConnection(cs);
         var rows = await connection.QueryAsync<(int Id, DateTime? EndPackageDate)>(

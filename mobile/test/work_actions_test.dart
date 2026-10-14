@@ -29,7 +29,7 @@ void main() {
       expect(AppRole.technician.canEditWorkTime, isFalse);
     });
 
-    test('isWorkshop ไม่ใช่สิ่งเดียวกับ canTrackWorkTime — หัวหน้าช่างอยู่ในกลุ่มแรกแต่ไม่อยู่ในกลุ่มหลัง', () {
+    test('isWorkshop ไม่ใช่สิ่งเดียวกับ canTrackWorkTime หัวหน้าช่างอยู่ในกลุ่มแรกแต่ไม่อยู่ในกลุ่มหลัง', () {
       expect(AppRole.lead.isWorkshop, isTrue);
       expect(AppRole.lead.canTrackWorkTime, isFalse);
     });

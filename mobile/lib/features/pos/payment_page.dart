@@ -70,7 +70,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                 label: summary.balanceSettled ? 'ออกใบเสร็จ' : 'บันทึกรับชำระ',
                 // [UI] ปุ่มที่กดไม่ได้ต้องบอกเหตุผล — server ปฏิเสธซ้ำด้วย POS_QUOTATION_AWAITING_CUSTOMER
                 disabledReason: summary.balanceSettled && summary.awaitingCustomerQuotationCodes.isNotEmpty
-                    ? 'ใบเสนอราคา ${summary.awaitingCustomerQuotationCodes.join(', ')} ยังรอลูกค้าตัดสินใจ — '
+                    ? 'ใบเสนอราคา ${summary.awaitingCustomerQuotationCodes.join(', ')} ยังรอลูกค้าตัดสินใจ '
                         'ให้จบก่อนออกใบเสร็จรวม'
                     : null,
                 onPressed: _busy ||
@@ -92,7 +92,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
             InfoBanner(
               icon: Icons.sync_problem_outlined,
               title: 'มีคำขอรับชำระที่ยังไม่ทราบผล',
-              body: '${PaymentMethods.labelOf(_pending!.method)} ${money(_pending!.amount)} บาท — '
+              body: '${PaymentMethods.labelOf(_pending!.method)} ${money(_pending!.amount)} บาท '
                   'กด "ลองใหม่" เพื่อยืนยันคำขอเดิม (ใช้รหัสคำขอเดิม จึงไม่เก็บเงินซ้ำ)',
               tone: StateTone.warn,
             ),
@@ -384,7 +384,7 @@ class _PaymentPageState extends ConsumerState<PaymentPage> {
                 controller: refCtrl,
                 style: const TextStyle(fontSize: 16),
                 decoration: InputDecoration(
-                  labelText: 'อ้างอิง (เลขที่สลิป/เลขอนุมัติ) — ไม่บังคับ',
+                  labelText: 'อ้างอิง (เลขที่สลิป/เลขอนุมัติ) ไม่บังคับ',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(T.rInput)),
                 ),
               ),

@@ -62,8 +62,8 @@ export function SaleDetail({ sale }: { sale: Sale }) {
         <div className="sale-void-banner print-hidden" role="status">
           <Ban aria-hidden="true" />
           <div>
-            <strong>บิลนี้ถูกยกเลิกแล้ว — สต็อกคืนเข้าล็อตเดิมเรียบร้อย</strong>
-            <p>{formatDateTime(sale.voidedAt)} · เหตุผล: {sale.voidReason || '—'} · คืนเงินลูกค้าทำนอกระบบ</p>
+            <strong>บิลนี้ถูกยกเลิกแล้ว สต็อกคืนเข้าล็อตเดิมเรียบร้อย</strong>
+            <p>{formatDateTime(sale.voidedAt)} · เหตุผล: {sale.voidReason || '-'} · คืนเงินลูกค้าทำนอกระบบ</p>
           </div>
         </div>
       ) : null}

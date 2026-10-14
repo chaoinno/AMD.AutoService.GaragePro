@@ -104,7 +104,7 @@ public sealed class SelfServeStatusService(
         var requestId = input.RequestId?.Trim();
         if (string.IsNullOrEmpty(requestId) || requestId.Length > MaxRequestIdLength)
             return Result<ExtensionRequestedDto>.Fail(SelfServeLifecycleErrors.Validation(
-                "คำขอไม่ถูกต้อง — กรุณาปิดหน้าต่างแล้วกดขอต่ออายุอีกครั้ง", "requestId"));
+                "คำขอไม่ถูกต้อง กรุณาปิดหน้าต่างแล้วกดขอต่ออายุอีกครั้ง", "requestId"));
         if (input.Note is { Length: > MaxNoteLength })
             return Result<ExtensionRequestedDto>.Fail(SelfServeLifecycleErrors.Validation(
                 $"หมายเหตุยาวเกิน {MaxNoteLength} ตัวอักษร", "note"));

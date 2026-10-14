@@ -55,7 +55,7 @@ export function usePageMeta(path: string) {
       canonical?.remove()
       document.head.querySelectorAll('script[data-page-jsonld], meta[property="og:url"], meta[name="robots"]').forEach((tag) => tag.remove())
       document.title = 'ServicePro'
-      setMeta('name', 'description', 'ServicePro — แพลตฟอร์มบริหารงานอู่บริการซ่อมบำรุงรถยนต์ รับรถ เสนอราคา ซ่อม QC ชำระเงิน และส่งมอบรถในระบบเดียว ทั้งบนเว็บและแอปมือถือ')
+      setMeta('name', 'description', 'ServicePro แพลตฟอร์มบริหารงานอู่บริการซ่อมบำรุงรถยนต์ รับรถ เสนอราคา ซ่อม QC ชำระเงิน และส่งมอบรถในระบบเดียว ทั้งบนเว็บและแอปมือถือ')
       setMeta('property', 'og:title', 'ServicePro | แพลตฟอร์มบริหารงานอู่บริการซ่อมบำรุงรถยนต์')
       setMeta('property', 'og:description', 'รับรถ เสนอราคา ซ่อม QC ชำระเงิน และส่งมอบรถในระบบเดียว ทั้งบนเว็บและแอปมือถือ')
     }

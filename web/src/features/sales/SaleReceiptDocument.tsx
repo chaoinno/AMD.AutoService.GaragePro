@@ -30,11 +30,11 @@ export function SaleReceiptDocument({ sale, branchName }: { sale: Sale; branchNa
       <section className="document-info-grid">
         <InfoBlock title="ลูกค้า">
           <InfoRow label="ชื่อ" value={sale.customerName || 'ลูกค้าทั่วไป'} strong />
-          <InfoRow label="เบอร์โทร" value={sale.customerPhone || '—'} />
+          <InfoRow label="เบอร์โทร" value={sale.customerPhone || '-'} />
         </InfoBlock>
         <InfoBlock title="ข้อมูลเอกสาร">
           <InfoRow label="วันที่ขาย" value={formatDateTime(sale.completedAt || sale.createdAt)} strong />
-          <InfoRow label="ผู้รับเงิน" value={sale.payments[0]?.receivedByName || '—'} />
+          <InfoRow label="ผู้รับเงิน" value={sale.payments[0]?.receivedByName || '-'} />
           {voided ? <InfoRow label="ยกเลิกเมื่อ" value={`${formatDateTime(sale.voidedAt)} · ${sale.voidReason || ''}`} /> : null}
         </InfoBlock>
       </section>
@@ -64,7 +64,7 @@ export function SaleReceiptDocument({ sale, branchName }: { sale: Sale; branchNa
                 <td className="document-number">{formatNumber(line.quantity)} {line.unit}</td>
                 <td className="document-number">{formatMoney(line.unitPrice)}</td>
                 <td className="document-number">
-                  {line.discountAmount + line.promotionAmount > 0 ? `−${formatMoney(line.discountAmount + line.promotionAmount)}` : '—'}
+                  {line.discountAmount + line.promotionAmount > 0 ? `−${formatMoney(line.discountAmount + line.promotionAmount)}` : '-'}
                 </td>
                 <td className="document-number">{formatMoney(line.netAmount)}</td>
               </tr>
@@ -84,7 +84,7 @@ export function SaleReceiptDocument({ sale, branchName }: { sale: Sale; branchNa
               </li>
             ))}
           </ul>
-          <p>ใบเสร็จรับเงิน — ยังไม่รองรับใบกำกับภาษีเต็มรูปแบบ</p>
+          <p>ใบเสร็จรับเงิน ยังไม่รองรับใบกำกับภาษีเต็มรูปแบบ</p>
         </div>
         <div className="money-summary document-money-summary">
           <Row label="รวมเป็นเงิน" value={sale.grossAmount} />

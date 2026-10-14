@@ -27,7 +27,7 @@ export function DoneStep({ result }: { result: SignupResult }) {
       {result.sampleTechnicians?.length ? (
         <section className="signup-credentials" aria-labelledby="signup-credentials-title">
           <h2 id="signup-credentials-title">บัญชีช่างตัวอย่าง</h2>
-          <p>แสดงครั้งเดียว — เก็บไว้ให้ช่างใช้เข้าแอป</p>
+          <p>แสดงครั้งเดียว เก็บไว้ให้ช่างใช้เข้าแอป</p>
           {result.sampleTechnicians.map((technician) => (
             <div className="signup-credential" key={technician.userName}>
               <div><span>รหัสเข้าแอป</span><code>{technician.userName}</code><button type="button" className="signup-copy" aria-label={`คัดลอกรหัสเข้าแอป ${technician.userName}`} onClick={() => void copy(technician.userName)}><Copy size={18} aria-hidden="true" /> คัดลอก</button></div>

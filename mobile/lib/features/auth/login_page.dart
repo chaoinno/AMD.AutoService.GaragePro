@@ -260,7 +260,7 @@ class _SalesContact extends StatelessWidget {
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(const ClipboardData(text: _lineId));
-              showAppMessage('คัดลอก $_lineId แล้ว — เปิด LINE แล้วค้นหาเพื่อนด้วย ID นี้');
+              showAppMessage('คัดลอก $_lineId แล้ว เปิด LINE แล้วค้นหาเพื่อนด้วย ID นี้');
             },
             style: TextButton.styleFrom(minimumSize: const Size(T.touchMin, T.touchMin)),
             icon: const Icon(Icons.copy, size: 16),

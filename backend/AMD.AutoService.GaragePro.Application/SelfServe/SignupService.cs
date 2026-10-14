@@ -441,7 +441,7 @@ public sealed class SignupService(
 
         if (provisioner is null)
         {
-            log.Error(null, "signup: ไม่มี IWorkspaceProvisioner ลงทะเบียนไว้ — เปิดอู่ไม่ได้");
+            log.Error(null, "signup: ไม่มี IWorkspaceProvisioner ลงทะเบียนไว้ เปิดอู่ไม่ได้");
             return await FailAsync<SignupWorkspaceResultDto>(step, SelfServeErrors.SignupProvisionFailed(), client,
                 domain, account.Id, ct, "no-provisioner");
         }
@@ -669,7 +669,7 @@ public sealed class SignupService(
                 return SelfServeErrors.SignupEmailDomainInvalid();
             case EmailDomainVerdict.Unknown:
                 // [BIZ] DNS ของเราล่มต้องไม่ทำให้สมัครไม่ได้ทั้งระบบ — ปล่อยผ่าน (ยังต้องยืนยัน OTP อยู่ดี)
-                log.Info("signup: ตรวจโดเมน {Domain} ไม่ได้ (DNS) — ปล่อยผ่าน", domain);
+                log.Info("signup: ตรวจโดเมน {Domain} ไม่ได้ (DNS) ปล่อยผ่าน", domain);
                 return null;
             default:
                 return null;
@@ -689,7 +689,7 @@ public sealed class SignupService(
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // อ่านรายชื่อจังหวัดไม่ได้ (db2 ล่ม) — ไม่บล็อกการสมัครเพราะช่องนี้ไม่บังคับ
-            log.Warning(ex, "signup: อ่านรายชื่อจังหวัดไม่ได้ — ข้ามการตรวจ provinceId {ProvinceId}", provinceId);
+            log.Warning(ex, "signup: อ่านรายชื่อจังหวัดไม่ได้ ข้ามการตรวจ provinceId {ProvinceId}", provinceId);
             return (true, null);
         }
     }
@@ -698,7 +698,7 @@ public sealed class SignupService(
     {
         if (starterData is null)
         {
-            log.Warning(null, "signup: ไม่มี IStarterDataService — ข้ามข้อมูลตัวอย่างของ workspace {WorkspaceId}", workspaceId);
+            log.Warning(null, "signup: ไม่มี IStarterDataService ข้ามข้อมูลตัวอย่างของ workspace {WorkspaceId}", workspaceId);
             return [];
         }
 
@@ -711,7 +711,7 @@ public sealed class SignupService(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            log.Warning(ex, "signup: ใส่ข้อมูลตัวอย่างล้ม workspace {WorkspaceId} — การสมัครยังสำเร็จ", workspaceId);
+            log.Warning(ex, "signup: ใส่ข้อมูลตัวอย่างล้ม workspace {WorkspaceId} การสมัครยังสำเร็จ", workspaceId);
             return [];
         }
     }
@@ -720,7 +720,7 @@ public sealed class SignupService(
     {
         if (!notifier.IsConfigured)
         {
-            log.Info("signup: ไม่ได้ตั้งค่า LINE — ข้ามการแจ้งทีมขาย ({WorkspaceNo})", info.WorkspaceNo);
+            log.Info("signup: ไม่ได้ตั้งค่า LINE ข้ามการแจ้งทีมขาย ({WorkspaceNo})", info.WorkspaceNo);
             return;
         }
 

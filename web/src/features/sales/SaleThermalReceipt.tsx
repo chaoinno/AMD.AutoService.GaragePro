@@ -63,7 +63,7 @@ export function SaleThermalReceipt({ sale, branchName, format, change = 0 }: {
         <dl className="sale-thermal__meta">
           <div><dt>เลขที่</dt><dd>{sale.receiptNo}</dd></div>
           <div><dt>วันที่</dt><dd>{formatDateTime(sale.completedAt || sale.createdAt)}</dd></div>
-          <div><dt>ผู้รับเงิน</dt><dd>{sale.payments[0]?.receivedByName || '—'}</dd></div>
+          <div><dt>ผู้รับเงิน</dt><dd>{sale.payments[0]?.receivedByName || '-'}</dd></div>
           <div><dt>ลูกค้า</dt><dd>{sale.customerName || 'ลูกค้าทั่วไป'}</dd></div>
           {sale.customerPhone ? <div><dt>โทร</dt><dd>{sale.customerPhone}</dd></div> : null}
         </dl>
@@ -118,7 +118,7 @@ export function SaleThermalReceipt({ sale, branchName, format, change = 0 }: {
 
         <footer className="sale-thermal__foot">
           <span>ขอบคุณที่ใช้บริการ</span>
-          <small>ใบเสร็จรับเงิน — ไม่ใช่ใบกำกับภาษีเต็มรูป</small>
+          <small>ใบเสร็จรับเงิน ไม่ใช่ใบกำกับภาษีเต็มรูป</small>
         </footer>
       </article>
     </>

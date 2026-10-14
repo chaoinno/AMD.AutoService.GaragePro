@@ -19,26 +19,26 @@ public static class SelfServeAuthErrors
     public const int MinimumStaffPasswordLength = 8;
 
     public static ApiError GoogleNotRegistered() => new(GoogleNotRegisteredCode,
-        "ยังไม่มีบัญชีสำหรับอีเมลนี้ — สมัครทดลองใช้ได้ที่หน้า ทดลองใช้ฟรี");
+        "ยังไม่มีบัญชีสำหรับอีเมลนี้ สมัครทดลองใช้ได้ที่หน้า ทดลองใช้ฟรี");
 
     public static ApiError GoogleDisabled() => new(GoogleDisabledCode,
-        $"เข้าสู่ระบบด้วย Google ยังไม่เปิดให้บริการ — ใช้อีเมลและรหัสผ่าน หรือติดต่อ {PlanErrors.ContactLine}");
+        $"เข้าสู่ระบบด้วย Google ยังไม่เปิดให้บริการ ใช้อีเมลและรหัสผ่าน หรือติดต่อ {PlanErrors.ContactLine}");
 
     public static ApiError StaffRoleRequired() => new(StaffRoleRequiredCode,
         "กรุณาเลือกบทบาทของพนักงาน", "role");
 
     public static ApiError StaffWorkspaceNotFound() => new(StaffWorkspaceNotFoundCode,
-        $"ไม่พบข้อมูลอู่ของสาขานี้ จึงสร้างบัญชีพนักงานไม่ได้ — ติดต่อ {PlanErrors.ContactLine}");
+        $"ไม่พบข้อมูลอู่ของสาขานี้ จึงสร้างบัญชีพนักงานไม่ได้ ติดต่อ {PlanErrors.ContactLine}");
 
     public static ApiError StaffPasswordTooShort() => new(StaffPasswordTooShortCode,
         $"รหัสผ่านใหม่ต้องยาวอย่างน้อย {MinimumStaffPasswordLength} ตัวอักษร", "password");
 
     public static ApiError StaffAccountConflict() => new(StaffAccountConflictCode,
-        "สร้างชื่อผู้ใช้ของพนักงานไม่สำเร็จเพราะมีการเพิ่มพนักงานพร้อมกัน — กรุณาลองอีกครั้ง");
+        "สร้างชื่อผู้ใช้ของพนักงานไม่สำเร็จเพราะมีการเพิ่มพนักงานพร้อมกัน กรุณาลองอีกครั้ง");
 
     /// <summary>403 — เขียนไม่ได้เพราะแพ็กเกจแบบชำระเงินสิ้นสุดแล้ว/ย้ายไปสาขาจริงแล้ว (code เดียวกับ trial ให้ client จัดการทางเดียว)</summary>
     public static ApiError PaidPlanReadOnly() => new(PlanErrors.TrialExpiredCode,
-        $"แพ็กเกจของอู่สิ้นสุดแล้ว — ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้ ติดต่อ {PlanErrors.ContactLine} เพื่อต่ออายุ");
+        $"แพ็กเกจของอู่สิ้นสุดแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้ ติดต่อ {PlanErrors.ContactLine} เพื่อต่ออายุ");
 
     public static int? StatusCodeFor(string? code) => code switch
     {

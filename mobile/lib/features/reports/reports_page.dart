@@ -201,12 +201,12 @@ class _CycleTimeTab extends ConsumerWidget {
                   Expanded(
                       child: StatTile(
                           label: 'เฉลี่ย (ชม.)',
-                          value: report.averageTotalHours?.toStringAsFixed(1) ?? '—')),
+                          value: report.averageTotalHours?.toStringAsFixed(1) ?? '-')),
                   const SizedBox(width: T.s8),
                   Expanded(
                       child: StatTile(
                           label: 'P90 (ชม.)',
-                          value: report.p90TotalHours?.toStringAsFixed(1) ?? '—')),
+                          value: report.p90TotalHours?.toStringAsFixed(1) ?? '-')),
                 ],
               ),
               const SizedBox(height: T.s8),
@@ -306,7 +306,7 @@ class _SalesMarginTab extends ConsumerWidget {
                         child: StatTile(
                             label: 'อัตรากำไร',
                             value: report.marginPercent == null
-                                ? '—'
+                                ? '-'
                                 : '${report.marginPercent!.toStringAsFixed(1)}%')),
                   ],
                 ),

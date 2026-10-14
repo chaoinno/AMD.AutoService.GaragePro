@@ -83,7 +83,7 @@ public sealed class LegacyReader(IOptions<LegacyShardOptions> options) : ILegacy
     {
         if (!_options.ConnectionStrings.TryGetValue(shardKey, out var cs))
             throw new InvalidOperationException(
-                $"ไม่รู้จัก shard '{shardKey}' — ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings");
+                $"ไม่รู้จัก shard '{shardKey}' ตั้งค่าใน {LegacyShardOptions.SectionName}:ConnectionStrings");
 
         return new SqlConnection(cs);
     }

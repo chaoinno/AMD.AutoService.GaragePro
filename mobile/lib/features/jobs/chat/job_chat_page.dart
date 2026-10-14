@@ -323,7 +323,7 @@ class _JobChatPageState extends ConsumerState<JobChatPage> {
       return const StateBlock(
         icon: Icons.forum_outlined,
         title: 'ยังไม่มีข้อความ',
-        body: 'เริ่มคุยกับทีมเกี่ยวกับงานนี้ได้เลย — แนบรูปและเรียกชื่อด้วย @ ได้',
+        body: 'เริ่มคุยกับทีมเกี่ยวกับงานนี้ได้เลย แนบรูปและเรียกชื่อด้วย @ ได้',
       );
     }
 

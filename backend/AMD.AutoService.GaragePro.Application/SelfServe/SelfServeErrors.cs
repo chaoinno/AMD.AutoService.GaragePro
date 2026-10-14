@@ -40,36 +40,36 @@ public static class SelfServeErrors
     public const string SampleForbiddenCode = "SELFSERVE_SAMPLE_FORBIDDEN";                      // 403
 
     public static ApiError AuthRateLimited(int? retryAfterSeconds = null) => new(AuthRateLimitedCode,
-        $"พยายามเข้าสู่ระบบผิดพลาดหลายครั้งเกินไป — กรุณารอ{Wait(retryAfterSeconds)}แล้วลองใหม่",
+        $"พยายามเข้าสู่ระบบผิดพลาดหลายครั้งเกินไป กรุณารอ{Wait(retryAfterSeconds)}แล้วลองใหม่",
         Details: RetryDetails(retryAfterSeconds));
 
     public static ApiError AuthBranchForbidden() => new(AuthBranchForbiddenCode,
         "ไม่มีสิทธิ์เข้าถึงสาขานี้");
 
     public static ApiError SignupRateLimited(int? retryAfterSeconds = null) => new(SignupRateLimitedCode,
-        $"ส่งคำขอสมัครถี่เกินไป — กรุณารอ{Wait(retryAfterSeconds)}แล้วลองใหม่ หรือติดต่อ {PlanErrors.ContactLine}",
+        $"ส่งคำขอสมัครถี่เกินไป กรุณารอ{Wait(retryAfterSeconds)}แล้วลองใหม่ หรือติดต่อ {PlanErrors.ContactLine}",
         Details: RetryDetails(retryAfterSeconds));
 
     public static ApiError PosReceiptConflict() => new(PosReceiptConflictCode,
-        "เลขที่ใบเสร็จถูกใช้ไปแล้วจากการออกใบเสร็จพร้อมกัน — กรุณาลองออกใบเสร็จอีกครั้ง");
+        "เลขที่ใบเสร็จถูกใช้ไปแล้วจากการออกใบเสร็จพร้อมกัน กรุณาลองออกใบเสร็จอีกครั้ง");
 
     public static ApiError SignupDisabled() => new(SignupDisabledCode,
-        $"ระบบสมัครทดลองใช้ปิดให้บริการชั่วคราว — ติดต่อ {PlanErrors.ContactLine}");
+        $"ระบบสมัครทดลองใช้ปิดให้บริการชั่วคราว ติดต่อ {PlanErrors.ContactLine}");
 
     public static ApiError SignupValidation(string messageTh, string? field = null) =>
         new(SignupValidationCode, messageTh, field);
 
     public static ApiError SignupBotCheckFailed() => new(SignupBotCheckFailedCode,
-        "การยืนยันว่าไม่ใช่บอทไม่ผ่าน — กรุณาลองใหม่อีกครั้ง");
+        "การยืนยันว่าไม่ใช่บอทไม่ผ่าน กรุณาลองใหม่อีกครั้ง");
 
     public static ApiError SignupEmailDisposable() => new(SignupEmailDisposableCode,
         "ไม่รองรับอีเมลชั่วคราว กรุณาใช้อีเมลที่ใช้งานจริง", "email");
 
     public static ApiError SignupEmailDomainInvalid() => new(SignupEmailDomainInvalidCode,
-        "โดเมนของอีเมลนี้รับอีเมลไม่ได้ — กรุณาตรวจสอบตัวสะกดของอีเมล", "email");
+        "โดเมนของอีเมลนี้รับอีเมลไม่ได้ กรุณาตรวจสอบตัวสะกดของอีเมล", "email");
 
     public static ApiError SignupOtpThrottled(int? retryAfterSeconds = null) => new(SignupOtpThrottledCode,
-        $"ขอรหัสยืนยันถี่เกินไป — กรุณารอ{Wait(retryAfterSeconds)}แล้วขอรหัสใหม่",
+        $"ขอรหัสยืนยันถี่เกินไป กรุณารอ{Wait(retryAfterSeconds)}แล้วขอรหัสใหม่",
         Details: RetryDetails(retryAfterSeconds));
 
     public static ApiError SignupOtpInvalid(int? attemptsLeft = null) => new(SignupOtpInvalidCode,
@@ -78,28 +78,28 @@ public static class SelfServeErrors
         attemptsLeft is null ? null : new { attemptsLeft });
 
     public static ApiError SignupOtpExpired() => new(SignupOtpExpiredCode,
-        "รหัสยืนยันหมดอายุแล้ว — กรุณากดขอรหัสใหม่", "code");
+        "รหัสยืนยันหมดอายุแล้ว กรุณากดขอรหัสใหม่", "code");
 
     public static ApiError SignupOtpLocked() => new(SignupOtpLockedCode,
-        "ใส่รหัสยืนยันผิดเกินกำหนด — กรุณากดขอรหัสใหม่", "code");
+        "ใส่รหัสยืนยันผิดเกินกำหนด กรุณากดขอรหัสใหม่", "code");
 
     public static ApiError SignupTokenInvalid() => new(SignupTokenInvalidCode,
-        "ขั้นตอนการสมัครหมดอายุหรือไม่ถูกต้อง — กรุณาเริ่มสมัครใหม่อีกครั้ง");
+        "ขั้นตอนการสมัครหมดอายุหรือไม่ถูกต้อง กรุณาเริ่มสมัครใหม่อีกครั้ง");
 
     public static ApiError SignupGoogleInvalid() => new(SignupGoogleInvalidCode,
-        "ยืนยันบัญชี Google ไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง");
+        "ยืนยันบัญชี Google ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
 
     public static ApiError SignupAccountExists() => new(SignupAccountExistsCode,
-        "อีเมลนี้มีบัญชีอยู่แล้ว — กรุณาเข้าสู่ระบบ หรือใช้อีเมลอื่น", "email");
+        "อีเมลนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ หรือใช้อีเมลอื่น", "email");
 
     public static ApiError SignupProvisionFailed() => new(SignupProvisionFailedCode,
-        $"สร้างอู่ไม่สำเร็จ — กรุณาลองใหม่อีกครั้ง หรือติดต่อ {PlanErrors.ContactLine}");
+        $"สร้างอู่ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือติดต่อ {PlanErrors.ContactLine}");
 
     public static ApiError NotApplicable() => new(NotApplicableCode,
         "ใช้ได้เฉพาะอู่ที่สมัครทดลองใช้ด้วยตัวเองเท่านั้น");
 
     public static ApiError ExtensionAlreadyRequested() => new(ExtensionAlreadyRequestedCode,
-        "ส่งคำขอต่ออายุไปแล้ววันนี้ — ทีมงานจะติดต่อกลับโดยเร็ว");
+        "ส่งคำขอต่ออายุไปแล้ววันนี้ ทีมงานจะติดต่อกลับโดยเร็ว");
 
     public static ApiError SampleForbidden() => new(SampleForbiddenCode,
         "เฉพาะเจ้าของอู่ (ผู้จัดการ) เท่านั้นที่จัดการข้อมูลตัวอย่างได้");

@@ -126,6 +126,6 @@ public class SelfServeLifecycleSqlTranslationTests
         using var db = new SelfServeDbContext((DbContextOptions<SelfServeDbContext>)options.Options);
 
         db.Workspaces.Where(w => w.Status != WorkspaceStatus.Purged).ToQueryString().Should().Contain("N'Purged'",
-            "Status เป็น string ในฐาน — repository เทียบ enum ได้โดยไม่ต้องรู้ตัวเลข");
+            "Status เป็น string ในฐาน, repository เทียบ enum ได้โดยไม่ต้องรู้ตัวเลข");
     }
 }

@@ -23,7 +23,7 @@ export async function copyText(text: string, label: string): Promise<boolean> {
     toast.success(`คัดลอก${label}แล้ว`)
     return true
   } catch {
-    toast.error(`คัดลอก${label}ไม่สำเร็จ — เลือกข้อความแล้วคัดลอกเอง`)
+    toast.error(`คัดลอก${label}ไม่สำเร็จ เลือกข้อความแล้วคัดลอกเอง`)
     return false
   }
 }

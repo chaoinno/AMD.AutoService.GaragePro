@@ -71,7 +71,7 @@ export function JobsBoard({ query, onSelectJob }: { query: string; onSelectJob: 
         variant="empty"
         title={query ? 'ไม่พบรถในอู่ที่ตรงกับคำค้น' : 'ไม่มีรถในอู่ที่ยังไม่ปิดงาน'}
         reason={query
-          ? `ไม่มีจ๊อบรถในอู่ที่ยังเปิดอยู่ตรงกับ "${query}" — ลองล้างคำค้นหรือดูมุมมองรายการ`
+          ? `ไม่มีจ๊อบรถในอู่ที่ยังเปิดอยู่ตรงกับ "${query}" ลองล้างคำค้นหรือดูมุมมองรายการ`
           : 'จ๊อบที่ปิดงานแล้วหรือเป็นรถนัดหมายจะไม่แสดงบนบอร์ดนี้'}
         actionLabel="โหลดใหม่"
         onAction={() => void boardQuery.refetch()}
@@ -108,7 +108,7 @@ export function JobsBoard({ query, onSelectJob }: { query: string; onSelectJob: 
           <TriangleAlert aria-hidden="true" />
           <div>
             <strong>แสดงได้สูงสุด {board.limit.toLocaleString('th-TH')} คัน</strong>
-            <p>มีรถในอู่มากกว่านี้ — พิมพ์ค้นหาทะเบียนหรือเลขจ๊อบเพื่อหาคันที่ไม่อยู่บนบอร์ด</p>
+            <p>มีรถในอู่มากกว่านี้ พิมพ์ค้นหาทะเบียนหรือเลขจ๊อบเพื่อหาคันที่ไม่อยู่บนบอร์ด</p>
           </div>
         </div>
       ) : null}
@@ -116,7 +116,7 @@ export function JobsBoard({ query, onSelectJob }: { query: string; onSelectJob: 
       {boardQuery.isError ? (
         <p className="jobs-board__stale" role="alert">
           <TriangleAlert aria-hidden="true" />
-          รีเฟรชล่าสุดไม่สำเร็จ ข้อมูลบนบอร์ดอาจไม่เป็นปัจจุบัน —{' '}
+          รีเฟรชล่าสุดไม่สำเร็จ ข้อมูลบนบอร์ดอาจไม่เป็นปัจจุบัน{' '}
           {isApiError(boardQuery.error) ? `${boardQuery.error.messageTh} (traceId: ${boardQuery.error.traceId ?? '-'})` : 'ลองกดรีเฟรช'}
         </p>
       ) : null}

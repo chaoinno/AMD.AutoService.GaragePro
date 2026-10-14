@@ -144,7 +144,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
       return StateBlock(
         icon: Icons.person_off_outlined,
         title: 'ไม่พบลูกค้า',
-        body: 'ไม่พบลูกค้าที่ตรงกับ "${_searchCtrl.text.trim()}" — '
+        body: 'ไม่พบลูกค้าที่ตรงกับ "${_searchCtrl.text.trim()}" '
             'สร้างลูกค้าใหม่ได้จากปุ่มด้านล่าง',
         actionLabel: 'สร้างลูกค้าใหม่',
         onAction: _createCustomer,
@@ -161,7 +161,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
             child: OutlinedButton.icon(
               onPressed: _busy ? null : _createCustomer,
               icon: const Icon(Icons.person_add_alt),
-              label: const Text('ไม่ใช่ลูกค้าเหล่านี้ — สร้างลูกค้าใหม่',
+              label: const Text('ไม่ใช่ลูกค้าเหล่านี้ สร้างลูกค้าใหม่',
                   style: TextStyle(fontSize: 15)),
             ),
           );
@@ -318,7 +318,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
           icon: Icons.schedule,
           label: 'วันเวลานัดส่งมอบรถ (ไม่บังคับ)',
           value: _promiseAt,
-          placeholder: 'แตะเพื่อเลือก — เว้นว่างได้',
+          placeholder: 'แตะเพื่อเลือก เว้นว่างได้',
           error: promiseError(_promiseAt, arrival: _appointmentAt, now: DateTime.now()),
           onTap: _pickPromise,
           onClear: _promiseAt == null ? null : () => setState(() => _promiseAt = null),
@@ -485,7 +485,7 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                'รถคันนี้ยังมีงานที่ยังไม่เสร็จ ($existing) — ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ',
+                'รถคันนี้ยังมีงานที่ยังไม่เสร็จ ($existing) ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ',
                 style: const TextStyle(fontSize: 15, height: 1.6),
               ),
             ),
@@ -574,7 +574,7 @@ class _NewCustomerSheetState extends State<_NewCustomerSheet> {
           children: [
             const Text('สร้างลูกค้าใหม่',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, height: 1.5)),
-            const Text('กรอกเท่าที่จำเป็นตอนรับรถ — ที่อยู่และข้อมูลอื่นเพิ่มทีหลังที่เว็บได้',
+            const Text('กรอกเท่าที่จำเป็นตอนรับรถ ที่อยู่และข้อมูลอื่นเพิ่มทีหลังที่เว็บได้',
                 style: TextStyle(fontSize: 14, color: T.muted, height: 1.7)),
             const SizedBox(height: T.s12),
             TextField(

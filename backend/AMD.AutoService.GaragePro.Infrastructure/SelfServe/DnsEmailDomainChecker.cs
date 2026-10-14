@@ -86,7 +86,7 @@ public sealed class DnsEmailDomainChecker(IMemoryCache cache, ILogger<DnsEmailDo
 
     private EmailDomainVerdict Unknown(string domain, string? reason)
     {
-        logger.LogWarning("ตรวจ DNS ของโดเมน {Domain} ไม่ได้ ({Reason}) — ปล่อยผ่าน", domain, reason);
+        logger.LogWarning("ตรวจ DNS ของโดเมน {Domain} ไม่ได้ ({Reason}) ปล่อยผ่าน", domain, reason);
         return EmailDomainVerdict.Unknown;
     }
 

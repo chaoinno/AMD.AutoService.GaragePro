@@ -22,7 +22,7 @@ export function DashboardReportPage() {
       <section className="report-page-heading">
         <div>
           <h2><LayoutDashboard aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />ภาพรวมวันนี้</h2>
-          <p>สถานะจ๊อบทั้งหมด งานที่เกินนัด และยอดรับชำระวันนี้ — รีเฟรชอัตโนมัติทุก 1 นาที</p>
+          <p>สถานะจ๊อบทั้งหมด งานที่เกินนัด และยอดรับชำระวันนี้ รีเฟรชอัตโนมัติทุก 1 นาที</p>
         </div>
       </section>
 
@@ -84,7 +84,7 @@ function RetailTodayWidget({ retail }: { retail: RetailSalesToday }) {
         <StatTile icon={Wallet} label="ยอดขายหน้าร้าน" value={<Money value={retail.totalAmount} />} hint="รวม VAT · ไม่รวมบิลที่ยกเลิก" />
         <StatTile icon={ReceiptText} label="บิลที่ชำระแล้ว" value={retail.billCount} hint={retail.billCount > 0 ? `เฉลี่ย ${(retail.totalAmount / retail.billCount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} บาท/บิล` : 'ยังไม่มีบิลวันนี้'} />
         <StatTile icon={Package} label="จำนวนสินค้าที่ขาย" value={retail.itemQuantity} hint="ชิ้น/หน่วย รวมทุกบิล" />
-        <StatTile icon={FileEdit} label="บิลร่างค้าง" value={retail.draftCount} tone={retail.draftCount > 0 ? 'warning' : 'default'} hint={retail.draftCount > 0 ? 'ยังไม่ชำระเงิน — ตรวจที่หน้าขาย' : 'ไม่มีบิลค้าง'} />
+        <StatTile icon={FileEdit} label="บิลร่างค้าง" value={retail.draftCount} tone={retail.draftCount > 0 ? 'warning' : 'default'} hint={retail.draftCount > 0 ? 'ยังไม่ชำระเงิน ตรวจที่หน้าขาย' : 'ไม่มีบิลค้าง'} />
       </div>
     </Card>
   )

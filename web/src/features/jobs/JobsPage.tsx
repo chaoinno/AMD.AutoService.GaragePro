@@ -222,7 +222,7 @@ export function JobsPage() {
       sortDescFirst: true,
       cell: ({ row }) => (
         <time className="job-created-at">
-          {row.original.appointmentAt ? formatDateTime(row.original.appointmentAt) : '—'}
+          {row.original.appointmentAt ? formatDateTime(row.original.appointmentAt) : '-'}
         </time>
       ),
     },
@@ -234,7 +234,7 @@ export function JobsPage() {
       sortDescFirst: true,
       cell: ({ row }) => (
         <time className={`job-created-at${row.original.isOverdue ? ' job-promise--overdue' : ''}`}>
-          {row.original.promiseAt ? formatDateTime(row.original.promiseAt) : '—'}
+          {row.original.promiseAt ? formatDateTime(row.original.promiseAt) : '-'}
           {row.original.isOverdue ? (
             <span className="job-promise__overdue-label"><TriangleAlert aria-hidden="true" /> เกินกำหนด</span>
           ) : null}
@@ -308,7 +308,7 @@ export function JobsPage() {
         {jobsQuery.hasNextPage ? <div ref={sentinelRef} className="jobs-table-sentinel" aria-hidden="true" /> : null}
         {jobsQuery.isError && jobs.length ? (
           <p className="jobs-table-loadmore-error" role="alert">
-            โหลดรายการเพิ่มเติมไม่สำเร็จ — {isApiError(jobsQuery.error) ? jobsQuery.error.messageTh : 'ลองใหม่อีกครั้ง'}
+            โหลดรายการเพิ่มเติมไม่สำเร็จ {isApiError(jobsQuery.error) ? jobsQuery.error.messageTh : 'ลองใหม่อีกครั้ง'}
           </p>
         ) : null}
       </Card>
@@ -559,7 +559,7 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
     onSuccess: (job) => {
       if (job.existingOpenJobNo) {
         toast.warning(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`, {
-          description: `รถคันนี้ยังมีงานที่ยังไม่เสร็จ (${job.existingOpenJobNo}) — ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ`,
+          description: `รถคันนี้ยังมีงานที่ยังไม่เสร็จ (${job.existingOpenJobNo}) ตรวจสอบว่าไม่ได้เปิดซ้ำโดยไม่ตั้งใจ`,
         })
       } else {
         toast.success(`เปิดจ๊อบ ${job.jobNo} เรียบร้อยแล้ว`)
@@ -615,7 +615,7 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
     <ConfirmModal
       open={open}
       title="เปิดจ๊อบ"
-      description="เลือกลูกค้าและรถที่มีอยู่แล้ว หรือสร้างใหม่ — ข้อมูลจ๊อบจะบันทึกในระบบนี้เท่านั้น"
+      description="เลือกลูกค้าและรถที่มีอยู่แล้ว หรือสร้างใหม่ ข้อมูลจ๊อบจะบันทึกในระบบนี้เท่านั้น"
       onClose={close}
       size="large"
       footer={

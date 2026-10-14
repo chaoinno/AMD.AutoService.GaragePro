@@ -223,7 +223,7 @@ export function CatalogPanel({
           variant="outline"
           size="sm"
           disabled={readOnly}
-          title={readOnly ? 'ใบเสนอราคานี้ไม่ได้อยู่ในสถานะร่าง — แก้ไขไม่ได้' : undefined}
+          title={readOnly ? 'ใบเสนอราคานี้ไม่ได้อยู่ในสถานะร่าง แก้ไขไม่ได้' : undefined}
           onClick={() => setShowTemplatePicker(true)}
         >
           <FileStack aria-hidden="true" /> เพิ่มรายการด้วยเทมเพลต
