@@ -27,6 +27,14 @@
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Application\AMD.AutoService.GaragePro.Application.csproj" />
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Domain\AMD.AutoService.GaragePro.Domain.csproj" />
     <ProjectReference Include="..\AMD.AutoService.GaragePro.Infrastructure\AMD.AutoService.GaragePro.Infrastructure.csproj" />
+    <!-- กติกาล้วนของชั้น API (RateLimiting/RateLimitRules) — ทดสอบโดยไม่ยก host/WebApplicationFactory -->
+    <ProjectReference Include="..\AMD.AutoService.GaragePro.API\AMD.AutoService.GaragePro.API.csproj" />
   </ItemGroup>
+
+  <!-- [SECURITY] project reference ไป API คัด appsettings.Development.json (มี connection string จริง — CLAUDE.md [RISK])
+       มาไว้ใน bin ของเทสต์ด้วย เทสต์ไม่ได้ใช้ไฟล์นี้ — ลบทิ้งไม่ให้ความลับกระจายไปอีกที่ -->
+  <Target Name="RemoveApiDevelopmentSettings" AfterTargets="Build">
+    <Delete Files="$(OutDir)appsettings.Development.json" />
+  </Target>
 
 </Project>

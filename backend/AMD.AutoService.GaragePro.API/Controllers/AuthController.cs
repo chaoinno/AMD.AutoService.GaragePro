@@ -19,8 +19,13 @@ namespace AMD.AutoService.GaragePro.API.Controllers;
 [Produces("application/json")]
 public sealed class AuthController(IAuthService service) : ControllerBase
 {
+    /// <summary>
+    /// [SECURITY] จำกัด 3 ชั้น: ต่อ IP 10 ครั้ง/นาที (policy นี้) · ต่อ IP 50 ครั้ง/ชม. (global limiter ตาม path)
+    /// · ต่อ username ผิด 10 ครั้ง/15 นาที (AuthService) — ทุกชั้นตอบ 429 AUTH_RATE_LIMITED พร้อม Retry-After
+    /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(RateLimiting.RateLimitPolicies.AuthLogin)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct) =>
         Render(await service.LoginAsync(request, ct));
 
@@ -67,6 +72,7 @@ public sealed class AuthController(IAuthService service) : ControllerBase
         var status = result.Error!.Code switch
         {
             "AUTH_INVALID_CREDENTIALS" => StatusCodes.Status401Unauthorized,
+            "AUTH_RATE_LIMITED" => StatusCodes.Status429TooManyRequests,
             "AUTH_NOT_STAFF" or "AUTH_BRANCH_FORBIDDEN" or "AUTH_SWITCH_FORBIDDEN" or "SHIFT_CLOSE_FORBIDDEN"
                 => StatusCodes.Status403Forbidden,
             "AUTH_USER_NOT_FOUND" or "SHIFT_NOT_FOUND" or "SHIFT_SESSION_NOT_FOUND"
@@ -74,6 +80,10 @@ public sealed class AuthController(IAuthService service) : ControllerBase
             "SHIFT_ALREADY_CLOSED" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status422UnprocessableEntity
         };
+
+        // ถูกบล็อกต่อ username — บอกเวลาเท่ากับ window เต็ม (ขอบบน: ตัวนับอาจหมดก่อนนั้น) client อ่าน header นี้เป็น retryAfterSeconds
+        if (status == StatusCodes.Status429TooManyRequests)
+            Response.Headers.RetryAfter = LoginAttemptPolicy.WindowSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
         return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));
     }
