@@ -297,3 +297,50 @@ Events → client:
 | Idempotency | header `Idempotency-Key` (payments) + `clientLocalId` (sync) |
 | Concurrency | `rowVersion` ทุก aggregate root · 409 + `QUOTE_VERSION_STALE` |
 | Error codes | ทุก business rule ที่ fail มี code ตายตัว → client แปลเป็นข้อความไทย + ปุ่มถัดไป |
+
+---
+
+## 16 · Self-serve trial (shard `sp1`) **[เพิ่ม 2026-10-14]**
+
+> อู่ที่สมัครเองอยู่ shard `sp1` = ฐาน `GarageSelfServe` (ตารางรูปร่างเหมือน Garage + `svc_*` + `sp_*`) · API/เว็บ/แอปตัวเดียวกับลูกค้าเดิม
+> ภาพรวมและการตัดสินใจ: [12-self-serve-trial-proposal.md](12-self-serve-trial-proposal.md) · ทุก endpoint ด้านล่างตอบ envelope เดิม
+> ถ้า API ไม่ได้ตั้ง `SelfServe:ConnectionString` = ไม่มี self-serve: signup ตอบ `SIGNUP_DISABLED` (503) · `/selfserve/*` ตอบ `SELFSERVE_NOT_APPLICABLE` (404)
+
+### 16.1 สมัคร (anonymous · rate limit ต่อ IP แยกจากฟอร์มติดต่อ — `API/RateLimiting/RateLimitRules.cs`)
+| Method · Path | Body → Data | หมายเหตุ |
+|---|---|---|
+| `GET /api/v1/public/signup/config` | → `{enabled, googleEnabled, emailEnabled, turnstileSiteKey?}` | `SelfServe:Enabled=false` → `enabled:false` (เว็บแสดง "เปิดรับสมัครเร็วๆ นี้") · Production ที่อีเมลยังเป็น `log` → `emailEnabled:false` |
+| `GET /api/v1/public/signup/provinces` | → `[{id, name}]` | อ่านตาราง `province` (cache 24 ชม.) |
+| `POST …/email/start` | `{requestId, email, password, turnstileToken, website, consent:true}` → `{resendAfterSeconds}` | honeypot `website` มีค่า = 200 หลอก · อีเมลที่มีบัญชีแล้ว = 200 เหมือนกัน (ส่งอีเมล "มีบัญชีอยู่แล้ว" แทน OTP) · 3/ชม. + 10/วันต่อ IP |
+| `POST …/email/resend` | `{email}` → `{resendAfterSeconds}` | ≥ 60 วิ · ≤ 3 ครั้ง/ชม./อีเมล |
+| `POST …/email/verify` | `{email, code, password}` → `{signupToken, expiresAt}` | **ตรวจ OTP ก่อน แล้วตรวจรหัสผ่านกับที่ตั้งตอน start** (กันคนอื่นสั่ง start ทับด้วยรหัสของตัวเอง) · ผิดรวม 5 ครั้ง = `SIGNUP_OTP_LOCKED` · token ใช้ครั้งเดียว 15 นาที |
+| `POST …/google` | `{idToken, turnstileToken, website}` → `{signupToken, expiresAt}` | ตรวจ ID token กับ Google (`SelfServe:Google:ClientId`) ต้อง `email_verified` · บัญชีที่ใช้งานอยู่แล้ว = `SIGNUP_ACCOUNT_EXISTS` |
+| `POST …/workspace` | `{requestId, signupToken, garageName, phone, provinceId?, size? ('1-3'\|'4-10'\|'10+'), sampleData}` → ฟิลด์ `LoginResult` ทั้งหมด + `workspaceNo` + `sampleTechnicians?[{userName,password}]` | สร้างสาขา (กลุ่ม 7) + เจ้าของ `SPnnnn.M01` (Manager ผ่าน override · **ไม่ใช่ IsAdministrator**) + กะ + หมวดหมู่/คลังตั้งต้น + ข้อมูลตัวอย่าง (best effort) + LINE ทีมขาย + อีเมลต้อนรับ · ส่งซ้ำด้วย token+requestId เดิม = ผลเดิม (ไม่สร้างซ้ำ) |
+
+### 16.2 เข้าสู่ระบบ
+- `POST /api/v1/auth/login` เดิม รับ **อีเมลเจ้าของ** (หา `sp_Account` → `SPnnnn.M01`) หรือ **`SPnnnn.Xnn`** (พนักงาน) หรือรหัสพนักงาน GaragePro เดิม → shard ตามที่หาเจอ
+- `POST /api/v1/auth/google {idToken}` → `LoginResult` · บัญชีไม่มี = `AUTH_GOOGLE_NOT_REGISTERED` (404) · ไม่ได้ตั้ง Google = `AUTH_GOOGLE_DISABLED` (503)
+- `AuthUser.plan = {kind: trial|paid|legacy|suspended, trialEndsAt?, daysLeft?, readOnly, features[], limits?}` + `AuthUser.workspace = {workspaceNo, name}` — **สาขา GaragePro เดิมไม่มีสองฟิลด์นี้** (null ถูกตัดออกจาก JSON) · JWT มี claim `plan`/`plan_exp`
+- login ตอนแพ็กเกจ locked (หมดอายุเกิน 90 วันหรือถูกระงับ) = `TRIAL_EXPIRED` (403) · ช่วงอ่านอย่างเดียวยัง login ได้
+
+### 16.3 แพ็กเกจและข้อจำกัด (บังคับที่ API)
+| สถานการณ์ | ผล |
+|---|---|
+| ฟีเจอร์ขั้นสูงบน trial (`[RequireFeature]`) | 403 `PLAN_FEATURE_LOCKED` — จัดซื้อ/ซัพพลายเออร์ · สต็อก/เบิก/คลัง · POS/โปรโมชัน · ใบกำกับภาษี · รายงานขั้นสูง (รอบเวลา/ยอดขาย-กำไร/ขายหน้าร้าน/สต็อก/เวลาทำงานช่าง) · ส่งออก Excel · สลับสาขา — **ยกเว้น GET รายการคลัง/ซัพพลายเออร์** (ฟอร์มสินค้าใช้) |
+| เกินลิมิต (`SelfServe:Limits`: พนักงาน 5 · สินค้า 200 · ลูกค้า 200 · จ๊อบ 100) | 422 `PLAN_LIMIT_REACHED` |
+| เขียนข้อมูลหลังหมดอายุ (อ่านอย่างเดียว 90 วัน) | 403 `TRIAL_EXPIRED` — GET ได้ปกติ · ยกเว้น `/auth/*`, `/public/*`, `/selfserve/*`, `/notifications/*` |
+| สร้างพนักงานบน sp1 | ต้องส่ง `role` · ระบบเติมเพศ/ตำแหน่ง/แผนกเอง · username `SPnnnn.Tnn` (ช่าง/หัวหน้าช่าง) หรือ `.Snn` · `account.initialPassword` คืนครั้งเดียว |
+
+### 16.4 สถานะอู่ทดลอง (`[Authorize]` · shard ต้องเป็น sp1 ไม่งั้น 404 `SELFSERVE_NOT_APPLICABLE`)
+| Method · Path | หมายเหตุ |
+|---|---|
+| `GET /api/v1/selfserve/status` | `{workspaceNo, name, plan, status, readOnly, trialEndsAt, daysLeft, limits{staff,catalog,customers,jobs: {used,max}}, sampleDataLoadedAt?, extensionRequestedAt?, checklist{staffCount, catalogCount, jobCount, quotationSentCount, mobileLoginSeen}}` |
+| `POST /api/v1/selfserve/extension-request` `{requestId, note?}` | แจ้ง LINE ทีมขาย · ซ้ำภายใน 24 ชม. = 409 `SELFSERVE_EXTENSION_ALREADY_REQUESTED` |
+| `POST /api/v1/selfserve/sample-data` · `POST …/sample-data/clear` | ผู้จัดการเท่านั้น (`SELFSERVE_SAMPLE_FORBIDDEN`) · ล้างตาม ledger `sp_SampleEntity` กดซ้ำได้ |
+
+### 16.5 งานเบื้องหลังและเครื่องมือผู้ดูแล
+- งานรายวันใน API (`SelfServeDailyJob`, ปิดได้ด้วย `SelfServe:Jobs:Enabled=false`): 03:30 เตือนก่อนหมด 7/1 วัน · หมดอายุวันที่ 30 · อีเมลชวนกลับวันที่ 45 หลังหมด · ลบข้อมูลเมื่อพ้นช่วงอ่านอย่างเดียว (เก็บ `NormalizedEmail` ไว้กันสมัครซ้ำ) · อู่ที่ย้ายไป db2 แล้วลบเมื่อพ้น `PurgeAfter` · ล้างอู่ที่สร้างค้าง > 1 ชม. · 08:30 สรุปส่ง LINE ทีมขาย · กันรันซ้ำข้ามเครื่องด้วย `sp_JobRun`
+- `tools/spadmin` (CLI): `list · show · extend · set-plan · suspend · purge · run-jobs · convert` — รายละเอียดใน `tools/spadmin/README.md` · **`convert` ย้ายเฉพาะข้อมูลหลัก** (หมวดหมู่ · คลัง · สินค้า · เทมเพลต · พนักงาน · ลูกค้า · รถ) ไปสาขา GaragePro ที่สร้างด้วย GaragePro Admin แล้ว ผ่าน service เดิม · `--dry-run` ก่อนเสมอ
+
+### 16.6 Error code ใหม่ (ข้อความไทยอยู่ที่ `Application/SelfServe/*Errors.cs`, `Application/Common/PlanErrors.cs`, `Application/Auth/SelfServeAuthErrors.cs`)
+`SIGNUP_DISABLED` · `SIGNUP_VALIDATION` · `SIGNUP_BOT_CHECK_FAILED` · `SIGNUP_EMAIL_DISPOSABLE` · `SIGNUP_EMAIL_DOMAIN_INVALID` · `SIGNUP_EMAIL_SEND_FAILED` · `SIGNUP_LOOKUP_UNAVAILABLE` · `SIGNUP_OTP_THROTTLED` · `SIGNUP_OTP_INVALID` · `SIGNUP_OTP_EXPIRED` · `SIGNUP_OTP_LOCKED` · `SIGNUP_PASSWORD_MISMATCH` · `SIGNUP_TOKEN_INVALID` · `SIGNUP_GOOGLE_INVALID` · `SIGNUP_ACCOUNT_EXISTS` · `SIGNUP_PROVISION_FAILED` · `SIGNUP_RATE_LIMITED` · `AUTH_RATE_LIMITED` · `AUTH_GOOGLE_NOT_REGISTERED` · `AUTH_GOOGLE_DISABLED` · `TRIAL_EXPIRED` · `PLAN_FEATURE_LOCKED` · `PLAN_LIMIT_REACHED` · `STAFF_ROLE_REQUIRED` · `STAFF_ACCOUNT_CONFLICT` · `STAFF_PASSWORD_TOO_SHORT` · `STAFF_PASSWORD_TOO_LONG` · `STAFF_WORKSPACE_NOT_FOUND` · `SELFSERVE_NOT_APPLICABLE` · `SELFSERVE_VALIDATION` · `SELFSERVE_EXTENSION_ALREADY_REQUESTED` · `SELFSERVE_NOTIFY_FAILED` · `SELFSERVE_SAMPLE_FORBIDDEN` · `SELFSERVE_SAMPLE_UNAVAILABLE` · `SELFSERVE_SAMPLE_FAILED` · `SELFSERVE_SAMPLE_WORKSPACE_NOT_READY` · `SELFSERVE_SAMPLE_CLEAR_INCOMPLETE` · `SELFSERVE_WORKSPACE_NOT_FOUND` · `SELFSERVE_PURGE_REFUSED` · `POS_RECEIPT_CONFLICT` (409 — เลขใบเสร็จชน) · `AUTH_BRANCH_FORBIDDEN` (ขอกะของสาขาอื่น)
