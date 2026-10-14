@@ -242,6 +242,22 @@ public class WorkspacePurgerTests
     }
 
     [Fact]
+    public async Task Converted_workspace_needs_an_explicit_confirmation()
+    {
+        // S5: ข้อมูลหลักย้ายไปสาขาจริงแล้ว = ลูกค้าที่จ่ายเงิน — ลบได้เฉพาะเมื่อยืนยัน (spadmin --allow-paid / job หลัง PurgeAfter)
+        var h = Create();
+        h.Data.Target = h.Data.Target! with { Plan = WorkspacePlanKind.Converted };
+
+        var refused = await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target.WorkspaceId, "system"));
+        refused.Error!.Code.Should().Be(SelfServeLifecycleErrors.PurgeRefusedCode);
+        refused.Error.MessageTh.Should().Contain("converted");
+        h.Log.Should().NotContain("svc");
+
+        (await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target.WorkspaceId, "system", AllowPaid: true)))
+            .Success.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Already_purged_workspace_is_a_no_op()
     {
         var h = Create();

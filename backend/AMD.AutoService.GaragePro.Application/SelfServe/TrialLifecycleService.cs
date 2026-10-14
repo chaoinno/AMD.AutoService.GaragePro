@@ -57,7 +57,9 @@ public sealed record LifecycleAction(LifecycleActionKind Kind, string? NoticeKin
 /// <summary>
 /// กติกาล้วนของงานรายวัน (ไม่มี I/O ไม่มีนาฬิกา) — แยกออกมาให้เทสต์วันที่ 0/23/29/30/75/120 ได้ตรงๆ
 /// · [BIZ] เฉพาะแพ็กเกจ trial ที่ได้อีเมลเตือน/หมดอายุ/ชวนกลับ · suspended มีแค่การลบเมื่อครบกำหนด
-///   · paid/converted ไม่ถูกแตะเลย (ลูกค้าที่จ่ายเงินห้ามถูกลบอัตโนมัติ — converted ให้ทีมงานลบด้วย spadmin)
+///   · paid ไม่ถูกแตะเลย (ลูกค้าที่จ่ายเงินห้ามถูกลบอัตโนมัติ)
+///   · converted (ย้ายข้อมูลหลักไปสาขาจริงแล้ว — S5) ถูกลบเมื่อเลย sp_Workspace.PurgeAfter ที่ตัวย้ายตั้งไว้ (+30 วัน) เท่านั้น
+///     ไม่มี PurgeAfter = ไม่ลบ · การลบส่งการยืนยันอู่ที่จ่ายเงิน/ย้ายแล้วให้ IWorkspacePurger เอง (AllowPaid)
 /// · วันหมดอายุ = Branch.EndPackageDate (ตัวจริงที่ PlanPolicy ใช้) → ไม่มีจึงใช้สำเนาใน sp_Workspace
 /// · วันลบ = วันหมดอายุ + Trial:ReadOnlyDays แต่ไม่ก่อน sp_Workspace.PurgeAfter (ทีมงานเลื่อนการลบได้ ลดลงไม่ได้)
 /// </summary>
@@ -87,7 +89,11 @@ public static class TrialLifecycleRules
 
         var ws = w.Workspace;
         if (ws.BranchId is null || ws.Status is WorkspaceStatus.Purged or WorkspaceStatus.Provisioning) return [];
-        if (ws.Plan is WorkspacePlanKind.Paid or WorkspacePlanKind.Converted) return [];
+
+        // ข้อมูลอยู่ที่สาขาปลายทางแล้ว — สำเนาใน sp1 เก็บไว้ตรวจเทียบจนถึง PurgeAfter (ไม่ส่งอีเมล/ไม่เปลี่ยนสถานะ)
+        if (ws.Plan == WorkspacePlanKind.Converted)
+            return ws.PurgeAfter is { } purgeAfter && nowUtc >= purgeAfter ? [new LifecycleAction(LifecycleActionKind.Purge)] : [];
+        if (ws.Plan == WorkspacePlanKind.Paid) return [];
         if (ExpiresAt(w) is not { } expiresAt) return [];
 
         // ครบกำหนดลบแล้ว — ไม่ต้องส่งอะไรอีก (ลบทั้งอู่รวมแถว notice ไม่ได้ เพราะ notice อยู่คนละฐาน — ไม่เป็นไร)
@@ -314,7 +320,9 @@ public sealed class TrialLifecycleService(
                 break;
             case LifecycleActionKind.Purge:
             {
-                var result = await purger.PurgeAsync(new WorkspacePurgeRequest(ws.Id, Actor), ct);
+                // อู่ที่ย้ายไปสาขาจริงแล้ว: purger ปฏิเสธถ้าไม่ยืนยัน — Decide คืน Purge ให้ converted เฉพาะเมื่อเลย PurgeAfter แล้ว
+                var result = await purger.PurgeAsync(new WorkspacePurgeRequest(ws.Id, Actor,
+                    AllowPaid: ws.Plan == WorkspacePlanKind.Converted), ct);
                 if (!result.Success)
                     throw new InvalidOperationException($"{result.Error!.Code}: {result.Error.MessageTh}");
                 if (!result.Data!.AlreadyPurged) counts["purged"]++;
