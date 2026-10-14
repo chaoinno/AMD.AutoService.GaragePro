@@ -23,6 +23,7 @@ import type { CustomerSummary, CustomerVehicleSummary, Job, JobCalendarDateField
 import { isApiError } from '../../api/client'
 import { AppShell } from '../../components/AppShell'
 import { WelcomeChecklist } from '../plan/WelcomeChecklist'
+import { useSessionPlan } from '../plan/usePlan'
 import { ConfirmModal } from '../../components/ConfirmModal'
 import { DataTable } from '../../components/DataTable'
 import { JobStatusChip } from '../../components/JobStatusChip'
@@ -519,6 +520,8 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null)
   const [customerSearch, setCustomerSearch] = useState('')
+  // [UX] อู่ทดลองใช้: ปุ่มเรียกลูกค้าตัวอย่าง (นามสกุลมีคำว่า "ตัวอย่าง") คนลองครั้งแรกไม่ต้องคิดชื่อลูกค้าเอง
+  const isTrial = useSessionPlan().plan?.kind === 'trial'
   const [creatingCustomer, setCreatingCustomer] = useState(false)
   const debouncedCustomerSearch = useDebounced(customerSearch)
 
@@ -667,6 +670,14 @@ function CreateJobModal({ open, onClose }: { open: boolean; onClose: () => void 
                   placeholder="ค้นหาชื่อ เบอร์โทร หรือเลขบัตร อย่างน้อย 2 ตัว"
                 />
               </div>
+              {isTrial && !customerSearch.trim() ? (
+                <p className="section-help">
+                  ทดลองใช้: มีลูกค้าตัวอย่างให้ลองเลือก{' '}
+                  <Button type="button" variant="link" size="sm" onClick={() => setCustomerSearch('ตัวอย่าง')}>
+                    ใช้ลูกค้าตัวอย่าง
+                  </Button>
+                </p>
+              ) : null}
               {customerSearch.trim().length >= 2 ? (
                 <div className="owner-results">
                   {customersQuery.isPending ? (

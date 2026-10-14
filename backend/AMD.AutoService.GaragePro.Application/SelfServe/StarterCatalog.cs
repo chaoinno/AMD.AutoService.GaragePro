@@ -127,11 +127,19 @@ public static class StarterCatalog
 
     public sealed record Customer(string Code, string FirstName, string LastName, string Phone);
 
+    /// <summary>
+    /// ลูกค้าตัวอย่าง · คนที่ 3 (<see cref="FirstJobCustomerIndex"/>) ไม่มีจ๊อบ ตั้งใจเว้นไว้ให้ "เปิดจ๊อบแรก" เอง
+    /// (ลูกค้าคนอื่นมีจ๊อบตัวอย่างค้างอยู่ เปิดจ๊อบซ้ำแล้วจะเจอคำเตือน "รถคันนี้ยังมีงานค้าง" ทำให้คนลองครั้งแรกงง: พบตอนซ้อม E2E)
+    /// · เว็บ/แอปมีปุ่ม "ใช้ลูกค้าตัวอย่าง" ที่ค้นด้วยคำว่า "ตัวอย่าง" (<see cref="SampleMark"/>) จึงต้องคงคำนี้ไว้ในนามสกุล
+    /// </summary>
     public static readonly IReadOnlyList<Customer> Customers =
     [
         new("SAMPLE-C01", "คุณสมชาย", $"ใจดี {SampleMark}", "0811111111"),
-        new("SAMPLE-C02", "คุณสุดา", $"รักรถ {SampleMark}", "0822222222")
+        new("SAMPLE-C02", "คุณสุดา", $"รักรถ {SampleMark}", "0822222222"),
+        new("SAMPLE-C03", "คุณวิชัย", $"มาใหม่ {SampleMark}", "0833333333")
     ];
+
+    public const int FirstJobCustomerIndex = 2;
 
     /// <summary>รถของลูกค้าตัวอย่างลำดับเดียวกัน (index ตรงกับ <see cref="Customers"/>) · ยี่ห้อ/รุ่น/ปีเลือกจากข้อมูลอ้างอิงจริงตอนสร้าง</summary>
     public sealed record Vehicle(string Code, string Registration);
@@ -139,7 +147,8 @@ public static class StarterCatalog
     public static readonly IReadOnlyList<Vehicle> Vehicles =
     [
         new("SAMPLE-V01", "1กข 1234"),
-        new("SAMPLE-V02", "2ขค 5678")
+        new("SAMPLE-V02", "2ขค 5678"),
+        new("SAMPLE-V03", "3กค 9012")
     ];
 
     /// <summary>ปีรถตัวอย่าง = ปีปัจจุบัน − ค่านี้ (รถอายุ 3 ปี — ช่วงที่เข้าเช็คระยะ/เปลี่ยนเบรกบ่อยที่สุด)</summary>

@@ -75,9 +75,19 @@ public class StarterCatalogTests
     {
         StarterCatalog.Technicians.Should().OnlyContain(t => $"{t.FirstName} {t.LastName}".Contains(StarterCatalog.SampleMark));
         StarterCatalog.Customers.Should().OnlyContain(c => c.LastName.Contains(StarterCatalog.SampleMark));
-        StarterCatalog.Customers.Select(c => c.Code).Should().Equal("SAMPLE-C01", "SAMPLE-C02");
-        StarterCatalog.Vehicles.Select(v => v.Code).Should().Equal("SAMPLE-V01", "SAMPLE-V02");
+        StarterCatalog.Customers.Select(c => c.Code).Should().Equal("SAMPLE-C01", "SAMPLE-C02", "SAMPLE-C03");
+        StarterCatalog.Vehicles.Select(v => v.Code).Should().Equal("SAMPLE-V01", "SAMPLE-V02", "SAMPLE-V03");
         StarterCatalog.Customers.Should().HaveSameCount(StarterCatalog.Vehicles, "รถคันที่ i เป็นของลูกค้าคนที่ i");
+    }
+
+    [Fact]
+    public void One_sample_customer_is_left_without_a_job_for_the_first_job_exercise()
+    {
+        // ลูกค้าที่มีจ๊อบค้าง เปิดจ๊อบซ้ำแล้วขึ้นเตือน "รถคันนี้ยังมีงานค้าง" ทำให้คนลองครั้งแรกงง
+        StarterCatalog.Customers.Should().HaveCountGreaterThan(StarterCatalog.FirstJobCustomerIndex);
+        StarterCatalog.Jobs.Should().NotContain(j => j.Index == StarterCatalog.FirstJobCustomerIndex);
+        StarterCatalog.Customers[StarterCatalog.FirstJobCustomerIndex].LastName.Should().Contain("ตัวอย่าง",
+            "ปุ่ม 'ใช้ลูกค้าตัวอย่าง' บนเว็บ/แอปค้นด้วยคำนี้");
     }
 
     [Fact]

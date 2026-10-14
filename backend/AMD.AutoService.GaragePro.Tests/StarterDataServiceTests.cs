@@ -56,8 +56,8 @@ public class StarterDataServiceTests
                 [StarterDataService.EntityTypes.CatalogItem] = 42,
                 [StarterDataService.EntityTypes.QuotationTemplate] = 2,
                 [StarterDataService.EntityTypes.Staff] = 2,
-                [StarterDataService.EntityTypes.Customer] = 2,
-                [StarterDataService.EntityTypes.Car] = 2,
+                [StarterDataService.EntityTypes.Customer] = 3,
+                [StarterDataService.EntityTypes.Car] = 3,
                 [StarterDataService.EntityTypes.Job] = 2,
                 [StarterDataService.EntityTypes.Quotation] = 2,
                 [StarterDataService.EntityTypes.Attachment] = 1
@@ -68,8 +68,8 @@ public class StarterDataServiceTests
         world.Seeded.Should().Be(("sp1", BranchId));
         world.Repo.Tags.Should().BeEquivalentTo(new[]
         {
-            ("customer", 1L, "SAMPLE-C01"), ("customer", 2L, "SAMPLE-C02"),
-            ("car", 11L, "SAMPLE-V01"), ("car", 12L, "SAMPLE-V02")
+            ("customer", 1L, "SAMPLE-C01"), ("customer", 2L, "SAMPLE-C02"), ("customer", 3L, "SAMPLE-C03"),
+            ("car", 11L, "SAMPLE-V01"), ("car", 12L, "SAMPLE-V02"), ("car", 13L, "SAMPLE-V03")
         });
     }
 
@@ -176,7 +176,7 @@ public class StarterDataServiceTests
         world.Jobs.Should().BeEmpty();
         world.Store.Ledger.Should().NotContain(e =>
             e.EntityType == StarterDataService.EntityTypes.Car || e.EntityType == StarterDataService.EntityTypes.Job);
-        world.Store.Ledger.Count(e => e.EntityType == StarterDataService.EntityTypes.Customer).Should().Be(2);
+        world.Store.Ledger.Count(e => e.EntityType == StarterDataService.EntityTypes.Customer).Should().Be(3);
         world.Repo.Tags.Should().OnlyContain(t => t.Kind == "customer");
     }
 
@@ -259,8 +259,8 @@ public class StarterDataServiceTests
         // ลำดับย้อนการสร้าง: จ๊อบ → รถ → ลูกค้า → ช่าง → เทมเพลต → แคตตาล็อก (ภายในกลุ่มตัวที่สร้างทีหลังก่อน)
         var kinds = world.Repo.Deleted.Select(d => d.Kind).Distinct().ToList();
         kinds.Should().Equal("jobs", "car", "customer", "templates", "catalog");
-        world.Repo.Deleted.Where(d => d.Kind == "car").Select(d => d.Id).Should().Equal("12", "11");
-        world.Repo.Deleted.Where(d => d.Kind == "customer").Select(d => d.Id).Should().Equal("2", "1");
+        world.Repo.Deleted.Where(d => d.Kind == "car").Select(d => d.Id).Should().Equal("13", "12", "11");
+        world.Repo.Deleted.Where(d => d.Kind == "customer").Select(d => d.Id).Should().Equal("3", "2", "1");
         world.Repo.Deleted.Single(d => d.Kind == "jobs").Id.Should().Be(string.Join(",", world.Jobs.Select(j => j.Id).OrderBy(id => id)));
         world.Repo.Deleted.Where(d => d.Kind == "catalog").Select(d => d.Id).Should().Equal(
             ledgerBefore.Where(e => e.EntityType == StarterDataService.EntityTypes.CatalogItem)

@@ -10,6 +10,7 @@ import '../../core/format.dart';
 import '../../core/job_schedule.dart';
 import '../../core/mileage.dart';
 import '../../core/tokens.dart';
+import '../../models/auth.dart';
 import '../../models/customer.dart';
 import '../../models/job.dart';
 import '../../widgets/common.dart';
@@ -133,10 +134,21 @@ class _CreateJobPageState extends ConsumerState<CreateJobPage> {
     }
 
     if (_searchCtrl.text.trim().isEmpty) {
-      return const StateBlock(
+      // [UX] อู่ทดลองใช้: ปุ่มเรียกลูกค้าตัวอย่าง (นามสกุลมีคำว่า "ตัวอย่าง") คนลองครั้งแรกไม่ต้องคิดชื่อลูกค้าเอง
+      final isTrial = ref.watch(sessionProvider)?.user.plan?.kind == PlanKind.trial;
+      return StateBlock(
         icon: Icons.person_search_outlined,
         title: 'ค้นหาลูกค้าก่อน',
-        body: 'พิมพ์ชื่อ เบอร์โทร หรือทะเบียนรถ เพื่อหาลูกค้าที่มีอยู่แล้วในระบบ',
+        body: isTrial
+            ? 'พิมพ์ชื่อ เบอร์โทร หรือทะเบียนรถ หรือลองใช้ลูกค้าตัวอย่างที่เตรียมไว้ให้'
+            : 'พิมพ์ชื่อ เบอร์โทร หรือทะเบียนรถ เพื่อหาลูกค้าที่มีอยู่แล้วในระบบ',
+        actionLabel: isTrial ? 'ใช้ลูกค้าตัวอย่าง' : null,
+        onAction: isTrial
+            ? () {
+                _searchCtrl.text = 'ตัวอย่าง';
+                _search(_searchCtrl.text);
+              }
+            : null,
       );
     }
 

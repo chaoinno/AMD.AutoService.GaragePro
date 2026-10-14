@@ -108,7 +108,9 @@ function count(value: number | undefined): number {
  * · พนักงาน > 1 เพราะเจ้าของอู่นับเป็นพนักงานคนแรกอยู่แล้ว
  * · ฟิลด์ที่ server ไม่ส่ง (ถูกตัดเพราะ null) ถือว่ายังไม่ได้ทำ
  */
-export function deriveChecklist(status: Pick<SelfServeStatus, 'checklist'> | null | undefined): ChecklistItem[] {
+export function deriveChecklist(
+  status: Pick<SelfServeStatus, 'checklist' | 'sampleDataLoadedAt'> | null | undefined,
+): ChecklistItem[] {
   const c = status?.checklist ?? {}
   const jobCount = count(c.jobCount)
   return [
@@ -129,7 +131,9 @@ export function deriveChecklist(status: Pick<SelfServeStatus, 'checklist'> | nul
     {
       key: 'job',
       label: 'เปิดจ๊อบแรก',
-      hint: 'เลือกลูกค้าและรถ แล้วรับรถพร้อมเช็คลิสต์สภาพรถ',
+      hint: status?.sampleDataLoadedAt
+        ? 'ลองกับลูกค้าตัวอย่าง "คุณวิชัย มาใหม่" ที่ยังไม่มีงานค้าง แล้วรับรถพร้อมเช็คลิสต์สภาพรถ'
+        : 'เลือกลูกค้าและรถ แล้วรับรถพร้อมเช็คลิสต์สภาพรถ',
       done: jobCount > 0,
       action: { kind: 'createJob', label: 'ไปทำ' },
     },
