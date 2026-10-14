@@ -44,7 +44,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/09-technician-time-tracking.md](docs/09-technician-time-tracking.md) | จับเวลาช่างต่อจ๊อบ · สลับคัน · โหมดโฟกัสบนมือถือ — **เก็บเวลาทำแล้ว · รายงานประเมินยังไม่ได้ทำ** |
 | [docs/03-api-contract.md](docs/03-api-contract.md) §3/§11/§12 | **[เพิ่ม 2026-10-08]** endpoint เลขไมล์ · `handover/service-info` · `reports/vehicle-history` · `reports/service-due` |
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
-| [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · ยังไม่ได้ทดสอบกับฐานจริง]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
+| [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -1806,9 +1806,26 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **deploy (ยังไม่ทำ)**: `deploy/selfserve/provision-selfserve-db.sh` (สร้างฐาน + login `gp_selfserve_app`/`gp_selfserve_migrate` + **GRANT SELECT 15 ตารางใน Garage**) ·
     `deploy-production.sh` รัน migration 3 target เมื่อ env file มี `SelfServe__ConnectionString` · รับสมัครใหม่ปิดไว้จนกว่า `SELFSERVE_ENABLED=true` ·
     คีย์ไม่บังคับ `Production:SelfServe:{Google,Turnstile,Email,SalesLineGroupId}` ใน user-secrets → bootstrap · `make-service-canonical.sh` (301 gpservice→service ต้อง `certbot --expand` ก่อน)
-  · ทดสอบแล้ว (2026-10-14 บน branch รวม): `dotnet build` 0 error · `dotnet test` **1107 ผ่าน / 16 ข้าม** (SQL integration ที่ต้องมีฐาน `GarageSelfServe_Dev`) ·
-    Web `tsc -b`/`vite build`/prerender ผ่าน · `node --test` **59** · Mobile `dart analyze` สะอาด · `flutter test` **118** · เบราว์เซอร์ (หน้าสาธารณะ 1440/375 ไม่มี hydration warning)
-  · **ยังไม่ได้ทดสอบกับฐาน/API จริงเลย** — ต้องสร้าง `GarageSelfServe_Dev` + รัน migration (รวม 2 ตัวของ ServiceDb ที่**มีผลกับ production ทันทีเพราะฐานร่วม**) แล้วเดิน E2E ตาม plan §6
+  · ทดสอบแล้ว (2026-10-14 บน branch รวม): `dotnet build` 0 error · `dotnet test` **1109 ผ่าน / 16 ข้าม** · SQL integration กับ `GarageSelfServe_Dev` **32 ผ่าน**
+    (ตั้ง `GARAGEPRO_SELFSERVE_SQL_CONNECTION`/`_RECEIPT_`/`_PURCHASING_` = connection ของ `gp_selfserve_app` — ห้ามชี้ Garage/GarageService) ·
+    Web `tsc -b`/`vite build`/prerender ผ่าน · `node --test` **60** · Mobile `dart analyze` สะอาด · `flutter test` **118** · เบราว์เซอร์ (หน้าสาธารณะ 1440/375 ไม่มี hydration warning)
+  · **ฐาน dev + migration (2026-10-14 · ผู้ใช้อนุมัติ)**: `GarageSelfServe_Dev` บน 10.10.4.11 สร้างด้วย `provision-selfserve-db.sh` (smoke ผ่าน) · connection string ของ
+    `gp_selfserve_app`/`gp_selfserve_migrate` อยู่ใน user-secrets ของ API (`SelfServe:ConnectionString` · `LegacyShards:ConnectionStrings:sp1` · `SelfServe:MigrationConnectionString`) ·
+    migration svc_*/sp_* ลงฐานนี้ด้วย login migrate (**API dev migrate sp1 ตอนสตาร์ตไม่ได้** เพราะใช้ login app ที่ไม่มี DDL — ใช้ `dotnet ef database update` + env ของ migrate) ·
+    **`AddReceiptScope` + `ScopeMasterDataByBranch` รันกับ GarageService (ฐานร่วม production) แล้ว** — backfill ได้ใบเสร็จ 12 · ซัพพลายเออร์ 5 · หมวดหมู่ 3 · คลัง 1 เป็น db2/227 ครบ ·
+    **[RISK] ตั้งแต่ตอนนี้จน deploy โค้ดใหม่ production (โค้ด `main`) ออกใบเสร็จ/สร้างซัพพลายเออร์/สร้างหมวดหมู่ไม่ได้** (คอลัมน์ใหม่ NOT NULL ไม่มี default) — ตรวจแล้วมีใช้แค่สาขาทดสอบ 227/105
+  · **E2E กับ API local + ฐานจริง (2026-10-14)** ผ่าน: #2 สมัครอีเมล→OTP (log)→เปิดอู่ SP1006 + ข้อมูลตัวอย่างครบ (แคตตาล็อก 42 · จ๊อบตัวอย่าง `waitapprove`/`inprogress` · ลายเซ็นขึ้น FTP) ·
+    #4 อีเมลชั่วคราว/โดเมนไม่มี MX/บัญชีเดิม (จุด+`+tag` ของ Gmail → อีเมล "มีบัญชีแล้ว") /honeypot · #5 เพิ่มช่างบนเว็บ → หน้าต่างรหัส → ล็อกอินแบบมือถือ → เริ่มจับเวลา ·
+    เจ้าของไม่ใช่ admin · #6 ฟีเจอร์ล็อก 403 + `LockedFeaturePage` · พนักงานคนที่ 6 → 422 · #7 CSS ลายน้ำ · #8 `spadmin extend --days -31` → token เดิมถูกเตะ ≤60 วิ ·
+    GET ได้/เขียน 403 `TRIAL_EXPIRED` · ขอต่ออายุได้ · #9 `set-plan suspended` → login 403 + เว็บแสดงเหตุผล · #10 `run-jobs --as-of +91d` ลบครบ คง `NormalizedEmail` สมัครซ้ำไม่ได้ ·
+    #11 `convert --dry-run` ไป db2/227 (105 ถูกปฏิเสธเพราะไม่ใช่กลุ่ม Service) · #12 สมัครครั้งที่ 4/ชม. → 429 + `Retry-After` · login ถี่ → 429 · #13 prerender/sitemap/robots ใน build
+  · **บั๊กที่ E2E เจอและแก้แล้ว**: purge ของแถว shadow ล้มทุกครั้ง (`#temp` หายเพราะสร้างใน `sp_executesql`) · เช็คลิสต์ต้อนรับนับข้อมูลตัวอย่าง (ขึ้น 4/5 ทันที) ·
+    เว็บไม่แสดงเหตุผลที่ถูกออกจากระบบ (401 ทำให้ฟอร์ม login mount สองรอบ — อ่าน notice แบบ peek แล้วลบตอนกดเข้าสู่ระบบ) · purge ลบแถวก่อนไฟล์ → หยุดกลางทางแล้วไฟล์ FTP ค้าง
+    ไม่มีใครรู้ path (สลับเป็นลบไฟล์ก่อน) · `FtpAttachmentStorage` Host ว่างไล่ต่อทุก address ของเครื่องจน timeout (ล้มทันทีแล้ว) · spadmin dev ไม่มีค่า FTP · ชื่อจังหวัดมีช่องว่างต่อท้าย
+  · **ยังไม่ได้ทดสอบ**: Google sign-in (ยังไม่มี client id) · E2E บนแอปจริงใน simulator (ทดสอบ API แบบ `X-Client-Source: mobile` แทน) · ล็อกอินบัญชีเดิมของสาขา 227/105 ผ่าน API ใหม่
+    (ต้องใช้รหัสผ่านจริง — ไม่ดึงจากฐาน) · ล็อก OTP ผิด 5 ครั้งกับฐานจริง (ชนลิมิต IP ก่อน — unit test ครอบ) · nginx rate limit/301/Rich Results (หลัง deploy)
+  · ค้นพบระหว่าง E2E ไม่ได้แก้ (นอกขอบเขต): เลขจ๊อบ/PR/PO/รหัสพนักงาน format ปีตาม culture ของเครื่อง — Mac ที่ตั้ง region ไทยได้ `JB69…` (production container ไม่โดน) ·
+    ImageSharp ขึ้นเป็นช่องโหว่ระดับ high (`NU1903`) · จังหวัด "บึงกาฬ (pak)"/"เบตง" ในรายการ legacy โผล่ในหน้าสมัคร · ยังไม่มีลืมรหัสผ่าน (อีเมลบอกให้ติดต่อ LINE)
   · ข้อจำกัดที่รู้: อีเมลยังเป็น `LoggingEmailSender` (Production ปิดสมัครด้วยอีเมลจนกว่าจะตั้งผู้ให้บริการ) · nginx ยังไม่จำกัด `/auth/google` (ASP.NET จำกัดแล้ว) ·
     ผู้ดูแลระบบถูกซ่อนจากรายชื่อ mention (เดิม) · ข้อความ LINE/อีเมลใช้ปี พ.ศ.
 
