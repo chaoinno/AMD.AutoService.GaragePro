@@ -20,7 +20,8 @@ public sealed class CachedSignupReferenceData(ICustomerVehicleRepository lookups
             return cached;
 
         var rows = await lookups.GetProvincesAsync(ct);
-        IReadOnlyList<SignupProvinceDto> provinces = rows.Select(p => new SignupProvinceDto(p.Id, p.Name)).ToList();
+        // ชื่อใน Garage.dbo.province มีช่องว่างต่อท้าย (เช่น "กระบี่   ") — ตัดก่อนส่งให้หน้าสมัคร
+        IReadOnlyList<SignupProvinceDto> provinces = rows.Select(p => new SignupProvinceDto(p.Id, p.Name.Trim())).ToList();
         cache.Set(ProvincesKey, provinces, Ttl);
         return provinces;
     }

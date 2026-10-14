@@ -108,14 +108,28 @@ public sealed class SelfServeLifecycleRepository(
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId, CancellationToken ct = default)
+    public async Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId,
+        IReadOnlyCollection<Guid>? excludeQuotationIds = null, CancellationToken ct = default)
     {
         var options = new DbContextOptionsBuilder<ServiceDbContext>()
             .UseSqlServer(connections.Resolve(shardKey), sql => sql.EnableRetryOnFailure(3))
             .Options;
         await using var service = new ServiceDbContext(options);
-        return await QuotationsEverSent(service, shardKey, branchId).CountAsync(ct);
+        var query = QuotationsEverSent(service, shardKey, branchId);
+        if (excludeQuotationIds is { Count: > 0 })
+        {
+            var excluded = excludeQuotationIds.ToList();
+            query = query.Where(q => !excluded.Contains(q.Id));
+        }
+        return await query.CountAsync(ct);
     }
+
+    public async Task<IReadOnlyList<SampleLedgerItem>> GetSampleEntitiesAsync(Guid workspaceId,
+        CancellationToken ct = default) =>
+        await db.SampleEntities.AsNoTracking()
+            .Where(e => e.WorkspaceId == workspaceId)
+            .Select(e => new SampleLedgerItem(e.EntityType, e.EntityId))
+            .ToListAsync(ct);
 
     /// <summary>แยกเป็น query ล้วนให้เทสต์ตรวจ SQL ที่แปลได้โดยไม่ต้องมีฐาน</summary>
     internal static IQueryable<Domain.Entities.Quotation> QuotationsEverSent(ServiceDbContext service, string shardKey,

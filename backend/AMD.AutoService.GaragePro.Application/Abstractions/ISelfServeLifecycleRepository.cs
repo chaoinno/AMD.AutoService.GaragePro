@@ -33,6 +33,9 @@ public sealed record LifecycleWorkspace(
     DateTime? BranchEndsAt,
     IReadOnlySet<string> NoticesSent);
 
+/// <summary>หนึ่งแถวใน sp_SampleEntity — <see cref="EntityId"/> เป็นข้อความ (Guid ของ svc_* หรือ id ตัวเลขของตาราง shadow)</summary>
+public sealed record SampleLedgerItem(string EntityType, string EntityId);
+
 /// <summary>
 /// ที่เก็บข้อมูลของวงจรชีวิตอู่ทดลองใช้ (sp_* ใน GarageSelfServe + ตัวนับใบเสนอราคาใน svc_* ของ shard sp1)
 /// · ทุกเมธอดที่ "claim" (job run · notice · extension) ต้อง atomic ที่ฐานข้อมูล — instance ที่สองต้องได้ false
@@ -56,8 +59,15 @@ public interface ISelfServeLifecycleRepository
     Task RevertExtensionRequestAsync(Guid workspaceId, DateTime requestedAt, DateTime? previous,
         CancellationToken ct = default);
 
-    /// <summary>ใบเสนอราคาที่เคยส่งลูกค้าแล้ว (SentAt มีค่า หรือสถานะ ส่งแล้ว/อนุมัติบางส่วน/อนุมัติ/ไม่อนุมัติ) ของสาขา</summary>
-    Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId, CancellationToken ct = default);
+    /// <summary>
+    /// ใบเสนอราคาที่เคยส่งลูกค้าแล้ว (SentAt มีค่า หรือสถานะ ส่งแล้ว/อนุมัติบางส่วน/อนุมัติ/ไม่อนุมัติ) ของสาขา
+    /// ไม่นับใบใน <paramref name="excludeQuotationIds"/> (ใบของข้อมูลตัวอย่าง)
+    /// </summary>
+    Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId,
+        IReadOnlyCollection<Guid>? excludeQuotationIds = null, CancellationToken ct = default);
+
+    /// <summary>แถว ledger ข้อมูลตัวอย่าง (sp_SampleEntity) ของอู่ — ชนิดตาม <see cref="SelfServe.StarterDataService.EntityTypes"/></summary>
+    Task<IReadOnlyList<SampleLedgerItem>> GetSampleEntitiesAsync(Guid workspaceId, CancellationToken ct = default);
 
     /// <summary>INSERT sp_WorkspaceNotice — false = ส่งไปแล้ว (ชน unique (WorkspaceId, Kind))</summary>
     Task<bool> TryAddNoticeAsync(Guid workspaceId, string kind, DateTime sentAt, CancellationToken ct = default);

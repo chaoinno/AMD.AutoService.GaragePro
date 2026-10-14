@@ -40,6 +40,8 @@ public class SelfServeStatusServiceTests
             Now.AddDays(-10), Now.AddDays(-2), null, null, Now.AddDays(-10), Guid.NewGuid(), "owner@example.com");
 
         public int QuotationsSent { get; set; } = 3;
+        public List<SampleLedgerItem> Sample { get; } = [];
+        public IReadOnlyCollection<Guid>? ExcludedQuotations { get; private set; }
         public List<(DateTime At, string Actor, string? Note)> Recorded { get; } = [];
         public List<DateTime?> Reverted { get; } = [];
         public bool ClaimSucceeds { get; set; } = true;
@@ -65,8 +67,15 @@ public class SelfServeStatusServiceTests
             return Task.CompletedTask;
         }
 
-        public Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId, CancellationToken ct = default) =>
-            Task.FromResult(QuotationsSent);
+        public Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId,
+            IReadOnlyCollection<Guid>? excludeQuotationIds = null, CancellationToken ct = default)
+        {
+            ExcludedQuotations = excludeQuotationIds;
+            return Task.FromResult(QuotationsSent - (excludeQuotationIds?.Count ?? 0));
+        }
+
+        public Task<IReadOnlyList<SampleLedgerItem>> GetSampleEntitiesAsync(Guid workspaceId,
+            CancellationToken ct = default) => Task.FromResult<IReadOnlyList<SampleLedgerItem>>(Sample);
 
         public Task<bool> TryAddNoticeAsync(Guid workspaceId, string kind, DateTime sentAt, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -206,6 +215,31 @@ public class SelfServeStatusServiceTests
             new SelfServeLimitUsageDto(2, 200), new SelfServeLimitUsageDto(5, 100)));
         status.Checklist.Should().Be(new SelfServeChecklistDto(2, 42, 5, 3, true));
         status.SampleDataLoadedAt.Should().Be(Now.AddDays(-10));
+    }
+
+    [Fact]
+    public async Task Checklist_counts_only_what_the_owner_did_but_limits_still_count_sample_data()
+    {
+        // ข้อมูลตัวอย่างหลังสมัคร: ช่าง 1 · จ๊อบ 2 · ใบเสนอราคาที่ส่งแล้ว 2 (+ ลูกค้า/แคตตาล็อก) — ไม่ควรทำให้เช็คลิสต์ติ๊กเอง
+        var (service, repo, _, _, _) = Create();
+        var sampleQuotes = new[] { Guid.NewGuid(), Guid.NewGuid() };
+        repo.Sample.AddRange([
+            new(StarterDataService.EntityTypes.Staff, "501"),
+            new(StarterDataService.EntityTypes.Job, Guid.NewGuid().ToString()),
+            new(StarterDataService.EntityTypes.Job, Guid.NewGuid().ToString()),
+            new(StarterDataService.EntityTypes.Quotation, sampleQuotes[0].ToString()),
+            new(StarterDataService.EntityTypes.Quotation, sampleQuotes[1].ToString()),
+            new(StarterDataService.EntityTypes.CatalogItem, Guid.NewGuid().ToString()),
+            new(StarterDataService.EntityTypes.Customer, "77")
+        ]);
+
+        var status = (await service.GetStatusAsync()).Data!;
+
+        status.Checklist.Should().Be(new SelfServeChecklistDto(1, 42, 3, 1, true),
+            "ช่าง 2−1 · จ๊อบ 5−2 · ใบที่ส่ง 3 ไม่นับ 2 ใบตัวอย่าง · แคตตาล็อกไม่หัก (ขั้น 'ตรวจรายการ')");
+        repo.ExcludedQuotations.Should().BeEquivalentTo(sampleQuotes);
+        status.Limits.Staff.Used.Should().Be(2, "ลิมิตแพ็กเกจยังนับข้อมูลตัวอย่าง");
+        status.Limits.Jobs.Used.Should().Be(5);
     }
 
     [Fact]

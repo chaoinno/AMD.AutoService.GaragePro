@@ -53,7 +53,19 @@ public sealed class SelfServeStatusService(
         var catalog = await usage.CountAsync(options.ShardKey, branchId, PlanLimitKind.CatalogItems, ct);
         var customers = await usage.CountAsync(options.ShardKey, branchId, PlanLimitKind.Customers, ct);
         var jobs = await usage.CountAsync(options.ShardKey, branchId, PlanLimitKind.Jobs, ct);
-        var quotationsSent = await repository.CountQuotationsEverSentAsync(options.ShardKey, branchId, ct);
+
+        // [BIZ] เช็คลิสต์ "เริ่มใช้ใน 5 ขั้น" นับเฉพาะสิ่งที่เจ้าของอู่ทำเอง — ไม่งั้นข้อมูลตัวอย่าง (ช่าง 2 · จ๊อบ 2 · ใบเสนอราคาที่ส่งแล้ว)
+        // ทำให้ขึ้น 4/5 ตั้งแต่วินาทีแรกทั้งที่ยังไม่ได้ลองอะไรเลย (พบตอน E2E) · ลิมิตแพ็กเกจยังนับรวม เพราะข้อมูลตัวอย่างใช้โควตาจริง
+        // · แคตตาล็อกไม่หัก — ขั้นนั้นคือ "ตรวจรายการ" ที่เตรียมไว้ให้อยู่แล้ว
+        // · ช่าง/จ๊อบหักตามจำนวนใน ledger (ล้างข้อมูลตัวอย่างแล้ว ledger หายไปด้วย) ใบเสนอราคาตัดด้วย id ตรงๆ
+        var sample = await repository.GetSampleEntitiesAsync(workspace.Id, ct);
+        int SampleCount(string type) => sample.Count(e => e.EntityType == type);
+        var sampleQuotationIds = sample
+            .Where(e => e.EntityType == StarterDataService.EntityTypes.Quotation)
+            .Select(e => Guid.TryParse(e.EntityId, out var id) ? id : Guid.Empty)
+            .Where(id => id != Guid.Empty)
+            .ToList();
+        var quotationsSent = await repository.CountQuotationsEverSentAsync(options.ShardKey, branchId, sampleQuotationIds, ct);
 
         var endsAt = plan.ExpiresAt ?? workspace.TrialEndsAt;
         var limits = new SelfServeLimitsDto(
@@ -73,7 +85,12 @@ public sealed class SelfServeStatusService(
             limits,
             workspace.SampleDataLoadedAt,
             workspace.ExtensionRequestedAt,
-            new SelfServeChecklistDto(staff, catalog, jobs, quotationsSent, workspace.MobileLoginSeenAt is not null)));
+            new SelfServeChecklistDto(
+                Math.Max(0, staff - SampleCount(StarterDataService.EntityTypes.Staff)),
+                catalog,
+                Math.Max(0, jobs - SampleCount(StarterDataService.EntityTypes.Job)),
+                quotationsSent,
+                workspace.MobileLoginSeenAt is not null)));
     }
 
     public async Task<Result<ExtensionRequestedDto>> RequestExtensionAsync(ExtensionRequestInput input,

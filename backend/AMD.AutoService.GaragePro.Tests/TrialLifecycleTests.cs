@@ -61,8 +61,12 @@ public class TrialLifecycleTests
         public Task RevertExtensionRequestAsync(Guid workspaceId, DateTime requestedAt, DateTime? previous,
             CancellationToken ct = default) => throw new NotSupportedException();
 
-        public Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId, CancellationToken ct = default) =>
+        public Task<int> CountQuotationsEverSentAsync(string shardKey, int branchId,
+            IReadOnlyCollection<Guid>? excludeQuotationIds = null, CancellationToken ct = default) =>
             throw new NotSupportedException();
+
+        public Task<IReadOnlyList<SampleLedgerItem>> GetSampleEntitiesAsync(Guid workspaceId,
+            CancellationToken ct = default) => throw new NotSupportedException();
 
         public Task<bool> TryAddNoticeAsync(Guid workspaceId, string kind, DateTime sentAt, CancellationToken ct = default) =>
             Task.FromResult(Notices.Add((workspaceId, kind)));
