@@ -1,7 +1,9 @@
 using AMD.AutoService.GaragePro.API.Auth;
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.SelfServe;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,6 +31,24 @@ public sealed class AuthController(IAuthService service) : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct) =>
         Render(await service.LoginAsync(request, ct));
 
+    /// <summary>
+    /// เข้าสู่ระบบด้วย Google (เจ้าของอู่ที่สมัครเอง) — รับ ID token จาก Google Identity Services คืนรูปเดียวกับ /login
+    /// · ไม่สร้างบัญชีใหม่: อีเมลที่ยังไม่สมัครได้ 404 AUTH_GOOGLE_NOT_REGISTERED (สมัครที่ /public/signup/google)
+    /// · ไม่ได้ตั้ง self-serve หรือยังไม่มีตัวตรวจ token ของ Google → 503 AUTH_GOOGLE_DISABLED
+    /// · [SECURITY] จำกัดอัตราด้วย policy เดียวกับ /login
+    /// </summary>
+    [HttpPost("google")]
+    [AllowAnonymous]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(RateLimiting.RateLimitPolicies.AuthLogin)]
+    public async Task<IActionResult> Google([FromBody] GoogleLoginRequest request, CancellationToken ct)
+    {
+        // ลงทะเบียนเฉพาะเมื่อตั้ง self-serve — resolve แบบ optional ไม่ให้ controller ทั้งตัวพังบน deployment ที่ไม่มี sp1
+        if (HttpContext.RequestServices.GetService<IGoogleLoginService>() is not { } google)
+            return Render(Result<LoginResultDto>.Fail(SelfServeAuthErrors.GoogleDisabled()));
+
+        return Render(await google.LoginAsync(request, ct));
+    }
+
     /// <summary>กะของสาขา — ใช้ token ขั้นแรกได้</summary>
     [HttpGet("branches/{branchId:int}/shifts")]
     [Authorize]
@@ -54,14 +74,17 @@ public sealed class AuthController(IAuthService service) : ControllerBase
         Render(await service.GetMeAsync(ct));
 
     /// <summary>สาขาที่ผู้ดูแลระบบสลับไปได้ — บัญชีผู้ดูแลระบบชื่อเดียวกันในสาขาอื่น</summary>
+    /// <remarks>B5: แพ็กเกจที่ไม่มีฟีเจอร์หลายสาขา (ทดลองใช้) ได้ 403 PLAN_FEATURE_LOCKED · legacy ไม่มีผล</remarks>
     [HttpGet("switchable-branches")]
     [Authorize]
+    [RequireFeature(PlanFeature.MultiBranch)]
     public async Task<IActionResult> GetSwitchableBranches(CancellationToken ct) =>
         Render(await service.GetSwitchableBranchesAsync(ct));
 
     /// <summary>สลับสาขา — คืน token ใหม่ในนามบัญชีของสาขาที่เลือก (รูปเดียวกับ login)</summary>
     [HttpPost("switch-branch")]
     [Authorize]
+    [RequireFeature(PlanFeature.MultiBranch)]
     public async Task<IActionResult> SwitchBranch([FromBody] SwitchBranchRequest request, CancellationToken ct) =>
         Render(await service.SwitchBranchAsync(request, ct));
 
@@ -69,7 +92,11 @@ public sealed class AuthController(IAuthService service) : ControllerBase
     {
         if (result.Success) return Ok(Envelope.From(result, HttpContext.TraceIdentifier));
 
-        var status = result.Error!.Code switch
+        // TRIAL_EXPIRED (ล็อกแล้ว login ไม่ได้) 403 · PLAN_* · AUTH_RATE_LIMITED/AUTH_BRANCH_FORBIDDEN · AUTH_GOOGLE_*
+        var status = PlanErrors.StatusCodeFor(result.Error!.Code)
+            ?? SelfServeAuthErrors.StatusCodeFor(result.Error.Code)
+            ?? SelfServeErrors.StatusCodeFor(result.Error.Code)
+            ?? result.Error.Code switch
         {
             "AUTH_INVALID_CREDENTIALS" => StatusCodes.Status401Unauthorized,
             "AUTH_RATE_LIMITED" => StatusCodes.Status429TooManyRequests,

@@ -239,7 +239,8 @@ public sealed class JobsController(
 
         if (!result.Success)
         {
-            var status = result.Error?.Code switch
+            // B5: PLAN_LIMIT_REACHED (ครบจำนวนจ๊อบของแพ็กเกจทดลองใช้) → 422
+            var status = PlanErrors.StatusCodeFor(result.Error?.Code) ?? result.Error?.Code switch
             {
                 "CUSTOMER_NOT_FOUND" or "VEHICLE_NOT_FOUND" => StatusCodes.Status404NotFound,
                 _ => StatusCodes.Status400BadRequest

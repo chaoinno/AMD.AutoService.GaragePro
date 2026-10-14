@@ -129,9 +129,11 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
-// [SECURITY] API อยู่หลัง Nginx เสมอ (container bind 127.0.0.1 เท่านั้น) — ใช้ X-Forwarded-For ตัวขวาสุด
-// ที่ Nginx เติมเอง (ForwardLimit = 1) เป็น IP จริงของผู้ใช้ ไม่งั้นทุกคำขอจะเป็น IP ของ docker gateway
-// แล้ว rate limit ต่อ IP กลายเป็นเพดานรวมของทั้งโลก · ค่าที่ client ปลอมมาจะอยู่ทางซ้ายและถูกข้าม
+// [SECURITY] API อยู่หลัง Cloudflare → Nginx เสมอ (container bind 127.0.0.1 เท่านั้น) — ใช้ X-Forwarded-For ตัวขวาสุด
+// ที่ Nginx เติมเอง (ForwardLimit = 1) ไม่งั้นทุกคำขอจะเป็น IP ของ docker gateway · ค่าที่ client ปลอมมาอยู่ทางซ้ายและถูกข้าม
+// [RISK] ค่าที่ Nginx เติมคือ $remote_addr ของ Nginx — **เป็น IP จริงของผู้ใช้ก็ต่อเมื่อติดตั้ง real_ip จาก
+// deploy/production/add-api-rate-limit.sh แล้ว** (set_real_ip_from ช่วง Cloudflare + real_ip_header CF-Connecting-IP)
+// ก่อนติดตั้ง ค่านี้คือ IP ของ Cloudflare edge — rate limit ต่อ IP จึงเป็นเพดานรวมต่อ edge node ไม่ใช่ต่อผู้ใช้
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
     o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;

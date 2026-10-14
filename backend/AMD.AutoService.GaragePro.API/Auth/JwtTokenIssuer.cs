@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using Microsoft.Extensions.Options;
@@ -126,6 +128,17 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
         // ไปแล้วด้วย AUTH_NOT_STAFF — เช็คไว้เพื่อไม่ให้ claim ว่างหลุดเข้า token ถ้ากฎนั้นเปลี่ยน
         if (user.StaffId is long staffId)
             claims.Add(new Claim(GarageClaims.StaffId, staffId.ToString()));
+
+        // B5 — แพ็กเกจของอู่ที่สมัครเอง (legacy ไม่มี Plan ใน DTO = ไม่มี claim = token รูปเดิมทุกประการ)
+        // plan_exp ใส่เมื่อแพ็กเกจมีวันหมดอายุ (trial เสมอ · paid/suspended ถ้ามีกำหนด) — SessionRevocation เทียบสถานะ
+        // อ่านอย่างเดียวจากค่านี้ ถ้า paid ที่มีวันหมดไม่มี claim จะถูกเตะออกวนซ้ำหลังวันหมด
+        if (user.Plan is { } plan)
+        {
+            claims.Add(new Claim(GarageClaims.Plan, plan.Kind));
+            if (PlanAccess.ToUnixSeconds(plan.TrialEndsAt) is long planExpiresAt)
+                claims.Add(new Claim(GarageClaims.PlanExpiresAt,
+                    planExpiresAt.ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64));
+        }
 
         return claims;
     }

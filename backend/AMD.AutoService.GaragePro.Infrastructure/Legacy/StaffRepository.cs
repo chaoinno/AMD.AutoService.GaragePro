@@ -82,8 +82,8 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default,
         StaffAccountSpec? account = null)
     {
-        // TODO(B5): เมื่อ account ไม่ null ให้ INSERT [User] ด้วย account.UserName/account.StoredPassword (hash)
-        //           แทน @Code/@Code ด้านล่าง — รอบ C0 รับพารามิเตอร์ไว้เฉยๆ พฤติกรรมเดิมไม่เปลี่ยน
+        // B5 — account ไม่ null (อู่ที่สมัครเอง sp1): [User] ได้ชื่อผู้ใช้ SP0000.X00 + รหัสผ่านที่ hash แล้ว
+        // แทน Code/Code plaintext ของ legacy · null = พฤติกรรมเดิมทุกตัวอักษร
         if (request.BranchId != scope.BranchId) return null;
         await using var db = Open(scope.ShardKey);
         await db.OpenAsync(ct);
@@ -109,26 +109,59 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
                     new { Picture = savedImage, Id = staffId }, tx, cancellationToken: ct));
             }
             await InsertAssignmentsAsync(db, tx, staffId, request, ct);
-            // [SECURITY] plaintext password ตามการตัดสินใจของ user เมื่อ 2026-08-28 — hashing ทำเป็นงานแยกได้โดยไม่กระทบ schema
+            // [SECURITY] legacy: plaintext password ตามการตัดสินใจของ user เมื่อ 2026-08-28 — hashing ทำเป็นงานแยกได้โดยไม่กระทบ schema
+            // sp1: ค่าที่ผู้เรียก hash มาแล้ว (IPasswordHasher) · IsAdministrator = 0 เสมอทั้งสองทาง (sp1 ห้ามมี admin — แผน §2)
             await db.ExecuteAsync(new CommandDefinition("""
                 INSERT [User] (UserName,Password,CreatedDate,LastUpdated,Status,IsAdministrator,IsStaff,StaffId,
                     IsCustomer,IsInsuranceAgent,IsAgent)
-                VALUES (@Code,@Code,GETDATE(),GETDATE(),1,0,1,@StaffId,0,0,0);
+                VALUES (@UserName,@StoredPassword,GETDATE(),GETDATE(),1,0,1,@StaffId,0,0,0);
                 INSERT StaffRepairTypeNPoint (StaffId,RepairTypeNPointId,Point,LastUpdated)
                 SELECT @StaffId,r.Id,1,GETDATE() FROM RepairTypeNPoint r WHERE ISNULL(r.Status,1)<>0;
-                """, new { Code = code, StaffId = staffId }, tx, cancellationToken: ct));
+                """, new
+                {
+                    UserName = account?.UserName ?? code,
+                    StoredPassword = account?.StoredPassword ?? code,
+                    StaffId = staffId
+                }, tx, cancellationToken: ct));
             var after = await ReadAuditSnapshotAsync(db, tx, staffId, ct);
             await WriteAuditAsync(db, tx, scope, null, after, [], after.Assignments, ct);
             await tx.CommitAsync(ct);
             return await GetInternalAsync(db, null, request.BranchId, true, staffId, ct);
         }
-        catch
+        catch (Exception ex)
         {
             await tx.RollbackAsync(CancellationToken.None);
             if (savedImage is not null) await imageStorage.DeleteAsync(savedImage, CancellationToken.None);
+
+            // ชื่อผู้ใช้ที่ระบบตั้ง (sp1) ชน IX_User — ผู้เรียกถามเลขใหม่แล้วลองอีกครั้ง (StaffService) ·
+            // legacy โยนต่อแบบเดิม (Code ออกภายใต้ applock อยู่แล้ว การชนเป็นข้อผิดพลาดจริง)
+            if (account is not null && ex is SqlException { Number: 2601 or 2627 })
+                throw new UniqueConstraintViolationException("IX_User", ex);
             throw;
         }
     }
+
+    /// <summary>
+    /// เลขถัดไปของชื่อผู้ใช้ที่ขึ้นต้นด้วย prefix (ทั้ง shard — UserName unique ทั้งตาราง) · ส่วนท้ายที่ไม่ใช่ตัวเลขล้วนไม่นับ
+    /// · TRY_CONVERT ไม่ใช่ CONVERT: ค่าแปลกๆ อย่าง "SP1001.Tx1" ต้องถูกข้าม ไม่ใช่ทำให้ทั้ง query ล้ม
+    /// · prefix ของระบบมีแค่ตัวอักษร/ตัวเลข/จุด จึงไม่มี wildcard ของ LIKE ปน (escape ไว้กันพลาดอยู่ดี)
+    /// </summary>
+    public async Task<int> GetNextUserNameSequenceAsync(LegacyRequestScope scope, string userNamePrefix,
+        CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userNamePrefix);
+        await using var db = Open(scope.ShardKey);
+        return await db.ExecuteScalarAsync<int>(new CommandDefinition(NextUserNameSequenceSql,
+            new { Pattern = EscapeLike(userNamePrefix) + "%", PrefixLength = userNamePrefix.Length },
+            cancellationToken: ct));
+    }
+
+    internal const string NextUserNameSequenceSql = """
+        SELECT ISNULL(MAX(CASE WHEN LEN(u.UserName) > @PrefixLength
+                               THEN TRY_CONVERT(int, SUBSTRING(u.UserName, @PrefixLength + 1, 50)) END), 0) + 1
+        FROM [User] u WITH (READUNCOMMITTED)
+        WHERE u.UserName LIKE @Pattern ESCAPE '\';
+        """;
 
     public async Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default)
@@ -160,7 +193,8 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
                 UPDATE [User] SET UserName=@UserName,Password=CASE WHEN @Password IS NULL THEN Password ELSE @Password END,
                     IsStaff=1,StaffId=@Id,LastUpdated=GETDATE() WHERE StaffId=@Id;
                 """, p, tx, cancellationToken: ct));
-            // [SECURITY] Password ที่ระบุใหม่ยังเป็น plaintext ตามการตัดสินใจของ user เมื่อ 2026-08-28
+            // [SECURITY] Password ที่ระบุใหม่ยังเป็น plaintext ตามการตัดสินใจของ user เมื่อ 2026-08-28 (legacy)
+            // · อู่ที่สมัครเอง (sp1) StaffService hash มาให้ก่อนแล้ว และคง UserName เดิมไว้ (B5)
             await DiffAssignmentsAsync(db, tx, id, request, ct);
             var after = await ReadAuditSnapshotAsync(db, tx, id, ct);
             await WriteAuditAsync(db, tx, scope, before, after, before.Assignments, after.Assignments, ct);
@@ -427,11 +461,15 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         }
     }
 
+    /// <summary>
+    /// UserIdChanged มี FK ไป [User].Id (FK_ChangeLog_User) — ผู้กระทำที่ยังไม่มีแถว [User] (UserId = 0: เปิดอู่ใหม่ของ S2
+    /// สร้างเจ้าของเป็นพนักงานคนแรก) บันทึกเป็น NULL แทนการชน FK จนทั้ง transaction ย้อน · legacy มี id จริงเสมอ ค่าไม่เปลี่ยน
+    /// </summary>
     private static Task<int> InsertLogAsync(SqlConnection db, SqlTransaction tx, LegacyRequestScope scope,
         string entity, long id, string property, string? oldValue, string? newValue, CancellationToken ct) =>
         db.ExecuteAsync(new CommandDefinition("""
             INSERT ChangeLog (EntityName,PropertyName,PrimaryKeyValue,OldValue,NewValue,DateChanged,UserIdChanged,UserFullNameChanged)
-            VALUES (@Entity,@Property,@Id,@OldValue,@NewValue,GETDATE(),@UserId,@UserName);
+            VALUES (@Entity,@Property,@Id,@OldValue,@NewValue,GETDATE(),NULLIF(@UserId,0),@UserName);
             """, new { Entity = entity, Property = property, Id = id.ToString(), OldValue = Limit(oldValue, 500), NewValue = Limit(newValue, 500), scope.UserId, UserName = scope.UserName ?? scope.UserId.ToString() }, tx, cancellationToken: ct));
 
     private SqlConnection Open(string shardKey)

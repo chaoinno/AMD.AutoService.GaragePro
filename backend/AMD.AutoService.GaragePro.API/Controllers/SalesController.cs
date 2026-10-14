@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AMD.AutoService.GaragePro.API.Controllers;
 
 [ApiController, Route("api/v1/sales"), Produces("application/json"), Authorize, RequireShiftSession]
+[RequireFeature(PlanFeature.Pos)]   // B5: ขายหน้าร้าน (POS)
 public sealed class SalesController(ISaleService service) : ControllerBase
 {
     [HttpGet]

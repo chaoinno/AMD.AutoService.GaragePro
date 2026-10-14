@@ -118,6 +118,7 @@ public static class DependencyInjection
         services.AddScoped<ILegacyUserReader, LegacyUserReader>();
         services.AddScoped<IAuthRepository, AuthRepository>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ILoginIdentityResolver>(SelfServeInfrastructure.CreateLoginIdentityResolver); // B5: อีเมล/SP0000.X00 → sp1 · อื่นๆ → db2
         services.AddSingleton<ILoginAttemptLimiter, AMD.AutoService.GaragePro.Infrastructure.Auth.MemoryLoginAttemptLimiter>();
 
         services.AddScoped<IAttachmentRepository, AttachmentRepository>();

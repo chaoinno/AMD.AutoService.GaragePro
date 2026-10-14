@@ -16,6 +16,17 @@ public interface IStaffRepository
     Task<StaffDetailDto?> CreateAsync(LegacyRequestScope scope, bool isAdministrator,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default,
         StaffAccountSpec? account = null);
+    /// <summary>
+    /// เลขลำดับถัดไปของชื่อผู้ใช้ที่ขึ้นต้นด้วย <paramref name="userNamePrefix"/> (เช่น "SP1001.T" → 3 เมื่อมี T01, T02)
+    /// — นับจาก [User].UserName ทั้ง shard เพราะ UserName unique ทั้งตาราง (IX_User) · ส่วนท้ายที่ไม่ใช่ตัวเลขไม่นับ
+    /// · ไม่ล็อก: สองคำขอพร้อมกันได้เลขเดียวกันได้ — CreateAsync ชน IX_User แล้วโยน UniqueConstraintViolationException
+    ///   ผู้เรียก (StaffService ของ B5) ถามเลขใหม่แล้วลองอีกครั้ง
+    /// · default member เพื่อไม่ต้องแก้ fake ในเทสต์ที่ไม่เกี่ยวข้อง — StaffRepository ตัวจริง (B5) implement
+    /// </summary>
+    Task<int> GetNextUserNameSequenceAsync(LegacyRequestScope scope, string userNamePrefix,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("repository นี้ไม่รองรับการออกชื่อผู้ใช้ของอู่ที่สมัครเอง");
+
     Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default);
     Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id,

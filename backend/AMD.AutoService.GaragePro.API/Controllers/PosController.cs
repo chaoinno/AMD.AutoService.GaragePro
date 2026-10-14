@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -47,11 +48,13 @@ public sealed class PosController(IPosService service, ITaxInvoiceService taxInv
 
     /// <summary>สถานะใบกำกับภาษี: ออกแล้ว/ยัง · เหตุผลที่ยังออกไม่ได้ · ข้อมูลผู้ซื้อที่เติมจากลูกค้าให้แก้ก่อนออก</summary>
     [HttpGet("jobs/{jobId:guid}/tax-invoice")]
+    [RequireFeature(PlanFeature.TaxInvoice)]   // B5 — เว็บแสดง messageTh เป็นเหตุผลที่ออกไม่ได้
     public async Task<IActionResult> GetTaxInvoice(Guid jobId, CancellationToken ct) =>
         Render(await taxInvoices.GetStateAsync(jobId, ct));
 
     /// <summary>ออกใบกำกับภาษีเต็มรูป (IV-) — ต้องออกใบเสร็จแล้วและงานคิด VAT · ออกได้ใบเดียวต่องาน (เรียกซ้ำคืนใบเดิม)</summary>
     [HttpPost("jobs/{jobId:guid}/tax-invoice")]
+    [RequireFeature(PlanFeature.TaxInvoice)]
     public async Task<IActionResult> IssueTaxInvoice(
         Guid jobId, [FromBody] IssueTaxInvoiceRequest request, CancellationToken ct) =>
         Render(await taxInvoices.IssueAsync(jobId, request, ct));

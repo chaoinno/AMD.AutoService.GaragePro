@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
@@ -21,6 +22,7 @@ public abstract class PurchasingApiController : ControllerBase
 
 [ApiController, Authorize, RequireShiftSession, Produces("application/json")]
 [Route("api/v1/purchase-requests")]
+[RequireFeature(PlanFeature.Purchasing)]   // B5: แพ็กเกจทดลองใช้ → PLAN_FEATURE_LOCKED
 public sealed class PurchaseRequestsController(PurchasingService service) : PurchasingApiController
 {
     /// <summary>ค้นหาใบขอซื้อ PR ของสาขาที่เข้าสู่ระบบ พร้อมกรองสถานะและแบ่งหน้า</summary>
@@ -79,6 +81,7 @@ public sealed class PurchaseRequestsController(PurchasingService service) : Purc
 
 [ApiController, Authorize, RequireShiftSession, Produces("application/json")]
 [Route("api/v1/purchase-orders")]
+[RequireFeature(PlanFeature.Purchasing)]
 public sealed class PurchaseOrdersController(PurchasingService service) : PurchasingApiController
 {
     /// <summary>ค้นหาใบสั่งซื้อ PO ของสาขาที่เข้าสู่ระบบ พร้อมกรองสถานะและแบ่งหน้า</summary>
@@ -159,6 +162,7 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
 
 [ApiController, Authorize, RequireShiftSession, Produces("application/json")]
 [Route("api/v1/inventory")]
+[RequireFeature(PlanFeature.Inventory)]    // ยอดยกมา · เบิก (issues/withdrawals) · สต็อก FIFO
 public sealed class StockFIFOController(PurchasingService service) : PurchasingApiController
 {
     /// <summary>ค้นหาสต็อกอะไหล่ของสาขาปัจจุบัน — พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</summary>

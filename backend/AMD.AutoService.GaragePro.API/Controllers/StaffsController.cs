@@ -1,7 +1,9 @@
 using AMD.AutoService.GaragePro.API.Auth;
+using AMD.AutoService.GaragePro.Application.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Application.Staff;
+using AMD.AutoService.GaragePro.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,6 +34,11 @@ public sealed class StaffsController(IStaffService service) : ControllerBase
         Render(await service.PreviewCodeAsync(branchId, ct));
 
     /// <summary>เพิ่มพนักงานและบัญชีผู้ใช้ โดยใช้สาขาจาก JWT อัตโนมัติ (รูปไม่บังคับ)</summary>
+    /// <remarks>
+    /// อู่ที่สมัครเอง (แพ็กเกจทดลองใช้/ชำระเงิน): ส่งแค่ firstName/lastName/phoneNumber1/role — ระบบเติมเพศ/ตำแหน่ง/แผนก
+    /// ตั้งชื่อผู้ใช้ SP0000.T00 (ช่าง/หัวหน้าช่าง) หรือ SP0000.S00 และคืนรหัสผ่านเริ่มต้นครั้งเดียวใน account.initialPassword
+    /// · ครบจำนวนพนักงานของแพ็กเกจ = 422 PLAN_LIMIT_REACHED · ไม่ส่ง role = 422 STAFF_ROLE_REQUIRED · สาขาเดิมไม่ใช้ role
+    /// </remarks>
     [HttpPost]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(6 * 1024 * 1024)]
@@ -68,7 +75,9 @@ public sealed class StaffsController(IStaffService service) : ControllerBase
         if (result.Success)
             return created ? StatusCode(StatusCodes.Status201Created, Envelope.From(result, HttpContext.TraceIdentifier))
                 : Ok(Envelope.From(result, HttpContext.TraceIdentifier));
-        var status = result.Error!.Code switch
+        var status = PlanErrors.StatusCodeFor(result.Error!.Code)
+            ?? SelfServeAuthErrors.StatusCodeFor(result.Error.Code)
+            ?? result.Error.Code switch
         {
             "STAFF_NOT_FOUND" or "STAFF_IMAGE_NOT_FOUND" => StatusCodes.Status404NotFound,
             "STAFF_BRANCH_FORBIDDEN" or "STAFF_ORGANIZATION_FORBIDDEN" => StatusCodes.Status403Forbidden,
@@ -134,8 +143,12 @@ public sealed class StaffForm
     public int[] AdditionalSectorIds { get; set; } = [];
     public string? UserName { get; set; }
     public string? Password { get; set; }
+
+    /// <summary>บทบาท (FrontDesk/Technician/Office/Cashier/Manager/Lead) — บังคับเฉพาะอู่ที่สมัครเอง · สาขาเดิมไม่ใช้ค่านี้</summary>
+    public UserRole? Role { get; set; }
+
     public IFormFile? Image { get; set; }
     public StaffUpsertRequest ToRequest() => new(BranchId,FirstName,LastName,GenderId,IdCard,Address1,Address2,ProvinceId,
         AmphureId,DistrictId,ZipCode,PhoneNumber1,PhoneNumber2,Email,LineId,Salary,StaffSkillLevelId,ExperienceYear,
-        ExperienceMonth,StartJobDate,EndJobDate,Note,MainSectorId,PositionId,AdditionalSectorIds,UserName,Password);
+        ExperienceMonth,StartJobDate,EndJobDate,Note,MainSectorId,PositionId,AdditionalSectorIds,UserName,Password,Role);
 }

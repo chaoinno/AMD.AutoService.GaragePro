@@ -1,5 +1,6 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Catalog;
+using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
@@ -74,6 +75,40 @@ public sealed class CatalogServiceTests
         Assert.Equal("CATALOG_STOCK_LOCKED", invalid.Error?.Code); Assert.Equal(10, item.OnHand);
         var valid = await service.UpdateAsync(item.Id, ValidInput() with { OnOrder = item.OnOrder, Name = "ชื่อใหม่" });
         Assert.True(valid.Success); Assert.True(valid.Data!.StockLocked); Assert.Equal("ชื่อใหม่", item.Name);
+    }
+
+    // ---------- B5: ลิมิตจำนวนสินค้าของแพ็กเกจทดลองใช้ ----------
+
+    [Fact]
+    public async Task Create_is_blocked_when_the_catalog_limit_is_reached()
+    {
+        var repository = new StubRepository();
+        var policy = new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial());
+        policy.ReachedLimits.Add(PlanLimitKind.CatalogItems);
+        var service = new CatalogService(repository, new StubUser(UserRole.Manager), null, policy);
+
+        var result = await service.CreateAsync(ValidInput());
+        var purchasePart = await service.CreatePurchasePartAsync(new PurchasePartCreateRequest("อะไหล่", "ชิ้น", "P-1"));
+
+        Assert.Equal(PlanErrors.LimitReachedCode, result.Error?.Code);
+        Assert.Equal(PlanErrors.LimitReachedCode, purchasePart.Error?.Code);
+        Assert.Null(repository.Added);
+        Assert.Empty(repository.Events);
+    }
+
+    [Fact]
+    public async Task Duplicate_code_is_reported_before_the_limit_and_under_limit_creates()
+    {
+        var policy = new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial());
+        policy.ReachedLimits.Add(PlanLimitKind.CatalogItems);
+        var duplicate = new StubRepository { CodeExists = true };
+        Assert.Equal("CATALOG_CODE_DUPLICATE",
+            (await new CatalogService(duplicate, new StubUser(UserRole.Manager), null, policy).CreateAsync(ValidInput())).Error?.Code);
+
+        var open = new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial());
+        var repository = new StubRepository();
+        Assert.True((await new CatalogService(repository, new StubUser(UserRole.Manager), null, open).CreateAsync(ValidInput())).Success);
+        Assert.Equal([PlanLimitKind.CatalogItems], open.LimitChecks);
     }
 
     private static CatalogUpsertRequest ValidInput() => new(

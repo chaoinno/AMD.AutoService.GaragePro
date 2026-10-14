@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.API.Auth;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Reports;
@@ -25,6 +26,7 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     /// <param name="fromDate">เริ่มช่วง (UTC) — ค่าเริ่มต้นย้อนหลัง 30 วัน</param>
     /// <param name="toDate">สิ้นสุดช่วง (UTC) — ค่าเริ่มต้นปัจจุบัน</param>
     [HttpGet("cycle-time")]
+    [RequireFeature(PlanFeature.AdvancedReports)]   // B5
     public async Task<IActionResult> CycleTime(DateTime? fromDate, DateTime? toDate, CancellationToken ct) =>
         Render(await service.GetCycleTimeAsync(fromDate, toDate, ct));
 
@@ -32,6 +34,7 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     /// <param name="fromDate">เริ่มช่วง (UTC) — ค่าเริ่มต้นวันที่ 1 ของเดือนปัจจุบัน</param>
     /// <param name="toDate">สิ้นสุดช่วง (UTC) — ค่าเริ่มต้นปัจจุบัน</param>
     [HttpGet("sales-margin")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> SalesMargin(DateTime? fromDate, DateTime? toDate, CancellationToken ct) =>
         Render(await service.GetSalesMarginAsync(fromDate, toDate, ct));
 
@@ -39,11 +42,13 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     /// <param name="fromDate">วันที่เริ่ม (ปฏิทินไทย yyyy-MM-dd รวมวันนี้) — ค่าเริ่มต้นวันที่ 1 ของเดือน</param>
     /// <param name="toDate">วันที่สิ้นสุด (ปฏิทินไทย yyyy-MM-dd รวมวันนี้) — ค่าเริ่มต้นวันนี้ · ช่วงยาวสุด 366 วัน</param>
     [HttpGet("retail-sales")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> RetailSales(DateOnly? fromDate, DateOnly? toDate, CancellationToken ct) =>
         Render(await service.GetRetailSalesAsync(fromDate, toDate, ct));
 
     /// <summary>มูลค่าสต็อก อายุสต็อกคงเหลือ (FIFO) และสินค้าเสียหาย</summary>
     [HttpGet("stock")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> Stock(CancellationToken ct) => Render(await service.GetStockAsync(ct));
 
     /// <summary>ค้นรถจากทะเบียนหรือเบอร์โทร (ตัดช่องว่าง/ขีดก่อนเทียบ) — ทุกบทบาท · เฉพาะงานในระบบนี้ของสาขาปัจจุบัน</summary>
