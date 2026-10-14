@@ -1,8 +1,13 @@
 namespace AMD.AutoService.GaragePro.Domain.Entities;
 
+/// <summary>
+/// หมวดหมู่สินค้าของสาขา — [BIZ] แยกต่อ (ชาร์ด, สาขา) · หมวดแม่ต้องอยู่สาขาเดียวกัน (ตรวจที่ CatalogCategoryService)
+/// </summary>
 public class CatalogCategory
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public string LegacyShardKey { get; set; } = string.Empty;
+    public int LegacyBranchId { get; set; }
     public string Code { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public Guid? ParentCategoryId { get; set; }

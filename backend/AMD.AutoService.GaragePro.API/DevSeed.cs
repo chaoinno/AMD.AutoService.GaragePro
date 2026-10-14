@@ -1,3 +1,4 @@
+using AMD.AutoService.GaragePro.Application.MasterData;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using AMD.AutoService.GaragePro.Infrastructure.Persistence;
@@ -16,7 +17,18 @@ public static class DevSeed
 
     public static async Task RunAsync(ServiceDbContext db)
     {
+        // [RISK] ฐาน dev ตอนนี้คือ ServiceDb ตัวจริง (ใช้ร่วมกับ production) — ทุกอย่างในไฟล์นี้ต้องอยู่หลังด่านนี้
+        // ไม่งั้นการสตาร์ท API โหมด Development จะเขียนข้อมูลตัวอย่างลงสาขาจริง (105 เป็นอู่ลูกค้าจริง)
         if (await db.CatalogItems.AnyAsync()) return;
+
+        // หมวดหมู่ SVC/PART/FLUID + คลัง MAIN ของสาขา dev — ชุดเดียวกับที่สาขาใหม่ของ self-serve ได้ (idempotent)
+        await new BranchDefaultsSeeder(new MasterDataRepository(db), TimeProvider.System).EnsureAsync(Shard, BranchId);
+        var categories = await db.CatalogCategories
+            .Where(x => x.LegacyShardKey == Shard && x.LegacyBranchId == BranchId)
+            .ToDictionaryAsync(x => x.Code, x => x.Id);
+        var mainWarehouse = await db.Warehouses
+            .Where(x => x.LegacyShardKey == Shard && x.LegacyBranchId == BranchId && x.Code == BranchDefaultsSeeder.DefaultWarehouseCode)
+            .Select(x => (Guid?)x.Id).FirstOrDefaultAsync();
 
         db.CatalogItems.AddRange(
             Part("P-BRK-0421", "ผ้าเบรกหน้า Bendix MKT", "Yaris Ativ 2563–2566 · Vios", "ชุด", 890, 1290, 6, 2, 0),
@@ -34,6 +46,15 @@ public static class DevSeed
             Labor("L-AC-03", "ล้างแอร์และเปลี่ยนกรองแอร์", "มาตรฐาน 1.0 ชม.", 280, 500, 1.0m),
             Labor("L-ALN-04", "ตั้งศูนย์และถ่วงล้อ", "มาตรฐาน 1.0 ชม.", 320, 600, 1.0m),
             Labor("L-PM40-01", "ค่าแรงเช็คระยะ 40,000 กม.", "มาตรฐาน 2.0 ชม.", 480, 900, 2.0m));
+
+        // ผูกหมวด/คลังเริ่มต้นให้สินค้าตัวอย่าง (ข้ามได้ถ้าสาขามีหมวด/คลังของตัวเองอยู่แล้วโดยไม่มีรหัสเหล่านี้)
+        foreach (var item in db.ChangeTracker.Entries<CatalogItem>()
+                     .Where(x => x.State == EntityState.Added).Select(x => x.Entity))
+        {
+            var categoryCode = item.Type == LineType.Labor ? "SVC" : item.Code.StartsWith("P-OIL") ? "FLUID" : "PART";
+            item.CategoryId = categories.TryGetValue(categoryCode, out var categoryId) ? categoryId : null;
+            if (item.Type == LineType.Part) item.WarehouseId = mainWarehouse;
+        }
 
         await db.SaveChangesAsync();
     }

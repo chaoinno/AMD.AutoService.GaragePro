@@ -62,8 +62,8 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     }
     public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Items.SingleOrDefaultAsync(x => x.Id == id, ct);
     public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => db.Warehouses.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
-    // Suppliers are global master data in the existing schema. Documents remain tenant scoped.
-    public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => db.Suppliers.SingleOrDefaultAsync(x => x.Id == id, ct);
+    // Suppliers are branch master data (ScopeMasterDataByBranch) — another branch's id behaves as not found.
+    public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => db.Suppliers.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct) => await Items.AsNoTracking()
         .Where(x => x.Type == LineType.Part && (q == null || x.Code.Contains(q) || x.Name.Contains(q)))
         .OrderBy(x => x.Code).Take(200).ToListAsync(ct);

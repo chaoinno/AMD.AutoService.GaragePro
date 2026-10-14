@@ -11,12 +11,15 @@ public sealed class CatalogCategoryConfiguration : IEntityTypeConfiguration<Cata
         builder.ToTable("svc_CatalogCategory");
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).ValueGeneratedNever();
+        builder.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
         builder.Property(x => x.Code).HasMaxLength(30).IsRequired();
         builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
         builder.Property(x => x.IsActive).HasDefaultValue(true);
         builder.Property(x => x.CreatedDate).HasColumnType("datetime2");
         builder.Property(x => x.LastUpdated).HasColumnType("datetime2");
-        builder.HasIndex(x => x.Code).IsUnique().HasDatabaseName("UX_svc_CatalogCategory_Code");
+        // ชื่อ index คงเดิมโดยตั้งใจ — MasterDataSupport.ConflictCode/MasterDataRepository.KnownConstraints จับจากชื่อนี้
+        builder.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Code })
+            .IsUnique().HasDatabaseName("UX_svc_CatalogCategory_Code");
         builder.HasIndex(x => x.ParentCategoryId);
         builder.HasOne(x => x.ParentCategory).WithMany(x => x.Children)
             .HasForeignKey(x => x.ParentCategoryId).OnDelete(DeleteBehavior.NoAction);

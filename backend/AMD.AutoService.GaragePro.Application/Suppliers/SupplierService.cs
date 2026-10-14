@@ -28,7 +28,8 @@ public sealed class SupplierService(
         string? keyword, bool includeInactive, int page = 1, int pageSize = 25, CancellationToken ct = default)
     {
         page = Math.Max(1, page); pageSize = Math.Clamp(pageSize, 1, 100);
-        var all = (await repository.SearchSuppliersAsync(MasterDataSupport.Clean(keyword), includeInactive, ct)).Select(Map).ToList();
+        var all = (await repository.SearchSuppliersAsync(
+            user.ShardKey, user.BranchId, MasterDataSupport.Clean(keyword), includeInactive, ct)).Select(Map).ToList();
         var totalPages = (int)Math.Ceiling(all.Count / (double)pageSize);
         var items = all.Skip((page - 1) * pageSize).Take(pageSize).ToList();
         return Result<PagedResult<SupplierDto>>.Ok(new(items, page, pageSize, all.Count, totalPages));
@@ -36,7 +37,7 @@ public sealed class SupplierService(
 
     public async Task<Result<SupplierDto>> GetAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await repository.GetSupplierAsync(id, ct);
+        var entity = await repository.GetSupplierAsync(user.ShardKey, user.BranchId, id, ct);
         return entity is null
             ? Result<SupplierDto>.Fail("SUPPLIER_NOT_FOUND", "ไม่พบซัพพลายเออร์")
             : Result<SupplierDto>.Ok(Map(entity));
@@ -49,11 +50,13 @@ public sealed class SupplierService(
         var normalized = Normalize(request);
         var error = Validate(normalized);
         if (error is not null) return Result<SupplierDto>.Fail(error);
-        if (await repository.SupplierCodeExistsAsync(normalized.Code, null, ct))
+        if (await repository.SupplierCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, null, ct))
             return Result<SupplierDto>.Fail("SUPPLIER_CODE_DUPLICATE", "รหัสซัพพลายเออร์นี้มีอยู่แล้ว", "code");
 
+        // [SECURITY] สาขามาจาก JWT เท่านั้น — ซัพพลายเออร์เป็นข้อมูลของสาขาที่สร้าง
         var entity = new Supplier
         {
+            LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId,
             Code = normalized.Code, Name = normalized.Name, ContactName = normalized.ContactName,
             Phone = normalized.Phone, Email = normalized.Email, Address = normalized.Address,
             TaxId = normalized.TaxId, PaymentTerms = normalized.PaymentTerms, Note = normalized.Note,
@@ -73,9 +76,9 @@ public sealed class SupplierService(
         var normalized = Normalize(request);
         var error = Validate(normalized);
         if (error is not null) return Result<SupplierDto>.Fail(error);
-        var entity = await repository.GetSupplierAsync(id, ct);
+        var entity = await repository.GetSupplierAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<SupplierDto>.Fail("SUPPLIER_NOT_FOUND", "ไม่พบซัพพลายเออร์");
-        if (await repository.SupplierCodeExistsAsync(normalized.Code, id, ct))
+        if (await repository.SupplierCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, id, ct))
             return Result<SupplierDto>.Fail("SUPPLIER_CODE_DUPLICATE", "รหัสซัพพลายเออร์นี้มีอยู่แล้ว", "code");
 
         entity.Code = normalized.Code; entity.Name = normalized.Name; entity.ContactName = normalized.ContactName;
@@ -92,7 +95,7 @@ public sealed class SupplierService(
     {
         var forbidden = MasterDataSupport.EnsureManager(user);
         if (forbidden is not null) return Result<bool>.Fail(forbidden);
-        var entity = await repository.GetSupplierAsync(id, ct);
+        var entity = await repository.GetSupplierAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<bool>.Fail("SUPPLIER_NOT_FOUND", "ไม่พบซัพพลายเออร์");
         entity.IsActive = request.IsActive; entity.LastUpdated = Now;
         await repository.AddEventAsync(MasterDataSupport.Event(user, entity.Id, nameof(Supplier),
@@ -122,7 +125,8 @@ public sealed class SupplierService(
             return Result<CatalogItemSupplierDto>.Fail("SUPPLIER_LINK_VALUE_INVALID", "ราคา ระยะเวลารอ และจำนวนสั่งขั้นต่ำต้องไม่น้อยกว่า 0");
         if (await catalog.GetAsync(user.ShardKey, user.BranchId, catalogItemId, ct) is null)
             return Result<CatalogItemSupplierDto>.Fail("CATALOG_NOT_FOUND", "ไม่พบสินค้าในสาขาปัจจุบัน");
-        var supplier = await repository.GetSupplierAsync(supplierId, ct);
+        // [SECURITY] ผูกได้เฉพาะซัพพลายเออร์ของสาขาเดียวกับสินค้า — id ของสาขาอื่นได้ผลเหมือนไม่พบ
+        var supplier = await repository.GetSupplierAsync(user.ShardKey, user.BranchId, supplierId, ct);
         if (supplier is null || !supplier.IsActive)
             return Result<CatalogItemSupplierDto>.Fail("SUPPLIER_NOT_FOUND", "ไม่พบซัพพลายเออร์ที่เปิดใช้งาน");
 

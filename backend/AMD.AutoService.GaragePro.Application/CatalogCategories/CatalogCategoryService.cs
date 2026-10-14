@@ -24,7 +24,8 @@ public sealed class CatalogCategoryService(
     public async Task<Result<IReadOnlyList<CatalogCategoryDto>>> SearchAsync(
         string? keyword, bool includeInactive, CancellationToken ct = default)
     {
-        var entities = await repository.SearchCategoriesAsync(MasterDataSupport.Clean(keyword), includeInactive, ct);
+        var entities = await repository.SearchCategoriesAsync(
+            user.ShardKey, user.BranchId, MasterDataSupport.Clean(keyword), includeInactive, ct);
         var childrenByParent = entities.Where(x => x.ParentCategoryId.HasValue)
             .GroupBy(x => x.ParentCategoryId!.Value)
             .ToDictionary(x => x.Key, x => x.OrderBy(y => y.SortOrder).ThenBy(y => y.Code).ToList());
@@ -36,7 +37,7 @@ public sealed class CatalogCategoryService(
 
     public async Task<Result<CatalogCategoryDto>> GetAsync(Guid id, CancellationToken ct = default)
     {
-        var entity = await repository.GetCategoryAsync(id, ct);
+        var entity = await repository.GetCategoryAsync(user.ShardKey, user.BranchId, id, ct);
         return entity is null
             ? Result<CatalogCategoryDto>.Fail("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้า")
             : Result<CatalogCategoryDto>.Ok(Map(entity));
@@ -50,13 +51,15 @@ public sealed class CatalogCategoryService(
         var normalized = Normalize(request);
         var error = Validate(normalized);
         if (error is not null) return Result<CatalogCategoryDto>.Fail(error);
-        if (await repository.CategoryCodeExistsAsync(normalized.Code, null, ct))
+        if (await repository.CategoryCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, null, ct))
             return Result<CatalogCategoryDto>.Fail("CATEGORY_CODE_DUPLICATE", "รหัสหมวดหมู่นี้มีอยู่แล้ว", "code");
+        // [BIZ] หมวดแม่ต้องอยู่สาขาเดียวกัน — ค้นด้วย scope ของสาขา หมวดของสาขาอื่นจึงได้ "ไม่พบ" เหมือนหมวดที่ไม่มีอยู่
         if (normalized.ParentCategoryId.HasValue &&
-            await repository.GetCategoryAsync(normalized.ParentCategoryId.Value, ct) is not { IsActive: true })
+            await repository.GetCategoryAsync(user.ShardKey, user.BranchId, normalized.ParentCategoryId.Value, ct) is not { IsActive: true })
             return Result<CatalogCategoryDto>.Fail("CATEGORY_PARENT_NOT_FOUND", "ไม่พบหมวดหมู่หลักที่เปิดใช้งาน", "parentCategoryId");
         var entity = new CatalogCategory
         {
+            LegacyShardKey = user.ShardKey, LegacyBranchId = user.BranchId,
             Code = normalized.Code, Name = normalized.Name, ParentCategoryId = normalized.ParentCategoryId,
             SortOrder = normalized.SortOrder, CreatedDate = Now, LastUpdated = Now
         };
@@ -75,13 +78,13 @@ public sealed class CatalogCategoryService(
         var normalized = Normalize(request);
         var error = Validate(normalized);
         if (error is not null) return Result<CatalogCategoryDto>.Fail(error);
-        var entity = await repository.GetCategoryAsync(id, ct);
+        var entity = await repository.GetCategoryAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<CatalogCategoryDto>.Fail("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้า");
-        if (await repository.CategoryCodeExistsAsync(normalized.Code, id, ct))
+        if (await repository.CategoryCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, id, ct))
             return Result<CatalogCategoryDto>.Fail("CATEGORY_CODE_DUPLICATE", "รหัสหมวดหมู่นี้มีอยู่แล้ว", "code");
         if (normalized.ParentCategoryId.HasValue)
         {
-            if (await repository.GetCategoryAsync(normalized.ParentCategoryId.Value, ct) is not { IsActive: true })
+            if (await repository.GetCategoryAsync(user.ShardKey, user.BranchId, normalized.ParentCategoryId.Value, ct) is not { IsActive: true })
                 return Result<CatalogCategoryDto>.Fail("CATEGORY_PARENT_NOT_FOUND", "ไม่พบหมวดหมู่หลักที่เปิดใช้งาน", "parentCategoryId");
             if (await repository.CategoryWouldCycleAsync(id, normalized.ParentCategoryId.Value, ct))
             return Result<CatalogCategoryDto>.Fail("CATEGORY_CIRCULAR_REFERENCE", "ไม่สามารถย้ายหมวดหมู่ไปอยู่ใต้ตัวเองหรือหมวดย่อยของตัวเองได้", "parentCategoryId");
@@ -98,7 +101,7 @@ public sealed class CatalogCategoryService(
     {
         var forbidden = MasterDataSupport.EnsureManager(user);
         if (forbidden is not null) return Result<bool>.Fail(forbidden);
-        var entity = await repository.GetCategoryAsync(id, ct);
+        var entity = await repository.GetCategoryAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<bool>.Fail("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้า");
         // [BIZ] ปิดหมวดที่ยังมีหมวดย่อย active ไม่ได้ แม้ client จะซ่อนปุ่มแล้วก็ตาม
         if (!request.IsActive && await repository.CategoryHasChildrenAsync(id, activeOnly: true, ct))
@@ -115,7 +118,7 @@ public sealed class CatalogCategoryService(
     {
         var forbidden = MasterDataSupport.EnsureManager(user);
         if (forbidden is not null) return Result<bool>.Fail(forbidden);
-        var entity = await repository.GetCategoryAsync(id, ct);
+        var entity = await repository.GetCategoryAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<bool>.Fail("CATEGORY_NOT_FOUND", "ไม่พบหมวดหมู่สินค้า");
         // [BIZ] ไม่ลบ hierarchy ที่ยังมีลูก เพื่อไม่ให้ tree ขาดกลาง
         if (await repository.CategoryHasChildrenAsync(id, activeOnly: false, ct))

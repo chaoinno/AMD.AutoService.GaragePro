@@ -40,7 +40,7 @@ public sealed class WarehouseService(
         var normalized = Normalize(request);
         var error = Validate(normalized);
         if (error is not null) return Result<WarehouseDto>.Fail(error);
-        if (await repository.WarehouseCodeExistsAsync(normalized.Code, null, ct))
+        if (await repository.WarehouseCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, null, ct))
             return Result<WarehouseDto>.Fail("WAREHOUSE_CODE_DUPLICATE", "รหัสคลังนี้มีอยู่แล้ว", "code");
 
         // [SECURITY] shard/branch มาจาก JWT เท่านั้น และตรวจว่ามีสาขาจริงใน legacy แบบ read-only
@@ -69,7 +69,7 @@ public sealed class WarehouseService(
         if (error is not null) return Result<WarehouseDto>.Fail(error);
         var entity = await repository.GetWarehouseAsync(user.ShardKey, user.BranchId, id, ct);
         if (entity is null) return Result<WarehouseDto>.Fail("WAREHOUSE_NOT_FOUND", "ไม่พบคลังในสาขาปัจจุบัน");
-        if (await repository.WarehouseCodeExistsAsync(normalized.Code, id, ct))
+        if (await repository.WarehouseCodeExistsAsync(user.ShardKey, user.BranchId, normalized.Code, id, ct))
             return Result<WarehouseDto>.Fail("WAREHOUSE_CODE_DUPLICATE", "รหัสคลังนี้มีอยู่แล้ว", "code");
         entity.Code = normalized.Code; entity.Name = normalized.Name; entity.Address = normalized.Address; entity.LastUpdated = Now;
         await repository.AddEventAsync(MasterDataSupport.Event(user, entity.Id, nameof(Warehouse),
