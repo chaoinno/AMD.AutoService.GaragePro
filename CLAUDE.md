@@ -1867,7 +1867,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     เพราะสคริปต์ rsync `deploy/production` จากเครื่องที่รัน · `SELFSERVE_ENABLED=false`): GarageService ไม่มี migration ค้าง · ข้าม migration self-serve
     (env file ไม่มีคีย์) · container healthy · public health ผ่าน · `signup/config` → `enabled:false` · CORS ทั้งสองโดเมน 204 · หน้าสาธารณะทุกหน้า 200 ·
     API ไม่มี error ใน log 15 นาทีแรก · **ค้าง**: `/robots.txt` ที่ Cloudflare ยังเป็น HTML เก่า (cache HIT อายุ 8 ชม. · origin ถูกแล้ว) ต้อง purge หรือรอหมดอายุ ·
-    ยังไม่ได้รัน `add-api-rate-limit.sh` (ต้อง sudo) · `make-service-canonical.sh` ยังไม่ติดตั้ง (gpservice ยังตอบ 200) · `site.webmanifest` ได้ MIME
+    **`add-api-rate-limit.sh` ติดตั้งแล้ว 2026-10-15 22:32** (ผู้ใช้รัน: conf.d `garagepro-service-ratelimit.conf` + แทรกบล็อกใน vhost API 1 จุด ·
+    สำรอง `.bak-20261015223238` · `nginx -t` ผ่าน · ยิง login 20 ครั้งได้ 429 จาก Nginx 14 ครั้ง · warning `protocol options redefined`/`conflicting server name
+    reports.garage-pro.net` มาจาก vhost อื่นที่มีอยู่เดิม) · ยังไม่ได้ยืนยันจาก access log ว่า `$remote_addr` เป็น IP จริง (user deployment อ่าน log ไม่ได้) · `make-service-canonical.sh` ยังไม่ติดตั้ง (gpservice ยังตอบ 200) · `site.webmanifest` ได้ MIME
     `application/octet-stream` (nginx ไม่รู้จักนามสกุล · ไม่กระทบการใช้งาน) · ยังไม่ได้ทดสอบออกใบเสร็จจริงบน production หลัง deploy
 
 ### ยังไม่ได้ทำ
