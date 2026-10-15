@@ -1863,6 +1863,12 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ฐานจริง: GarageService ไม่มี migration ค้าง (ล่าสุด `ScopeMasterDataByBranch`) · ยังไม่มีฐาน `GarageSelfServe` (มีแต่ `_Dev`) · login `gp_selfserve_*` มีแล้ว
     (provision production จะไม่เปลี่ยนรหัส = ใช้ login/รหัสเดียวกับฐาน dev) · server: env file ไม่มีคีย์ SelfServe · ยังไม่ติดตั้ง `add-api-rate-limit.sh`
     → **rate limit login ต่อ IP นับตาม IP ของ Cloudflare edge จนกว่าจะติดตั้ง** (10/นาที · 50/ชม. ต่อ edge)
+  · **Deploy production แล้ว 2026-10-15** (`main` = `271665c` รวม self-serve + Cloudflare email · `./scripts/deploy-production.sh` จาก worktree ที่อยู่ commit นั้น
+    เพราะสคริปต์ rsync `deploy/production` จากเครื่องที่รัน · `SELFSERVE_ENABLED=false`): GarageService ไม่มี migration ค้าง · ข้าม migration self-serve
+    (env file ไม่มีคีย์) · container healthy · public health ผ่าน · `signup/config` → `enabled:false` · CORS ทั้งสองโดเมน 204 · หน้าสาธารณะทุกหน้า 200 ·
+    API ไม่มี error ใน log 15 นาทีแรก · **ค้าง**: `/robots.txt` ที่ Cloudflare ยังเป็น HTML เก่า (cache HIT อายุ 8 ชม. · origin ถูกแล้ว) ต้อง purge หรือรอหมดอายุ ·
+    ยังไม่ได้รัน `add-api-rate-limit.sh` (ต้อง sudo) · `make-service-canonical.sh` ยังไม่ติดตั้ง (gpservice ยังตอบ 200) · `site.webmanifest` ได้ MIME
+    `application/octet-stream` (nginx ไม่รู้จักนามสกุล · ไม่กระทบการใช้งาน) · ยังไม่ได้ทดสอบออกใบเสร็จจริงบน production หลัง deploy
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
