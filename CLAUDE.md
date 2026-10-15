@@ -1855,6 +1855,15 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     หน้า error ไม่ใช่ JSON · permanent bounce · เครือข่ายล่ม · log ไม่มีเนื้อหา/ที่อยู่/token · ขาดคีย์ทีละตัว · DI เลือก cloudflare · provider ไม่รู้จัก throw) ·
     `dotnet test` เต็มชุด 1129 ผ่าน / skipped 16 (เดิม 1113) · **ยังไม่เคยยิง Cloudflare จริง** (ยังไม่มีบัญชี Workers Paid/token) · ตัวเลข error code มาจากเอกสาร Cloudflare ไม่ได้ทดลองเห็นจริง
 
+- 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
+  `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม
+  ไฟล์ Development ให้โปรเจกต์ที่ Dockerfile publish) · หลังแก้: image API มี `efbundle`/`efbundle-selfserve`/spadmin และไม่มี `appsettings.Development.json`
+  · รัน container โหมด Production ด้วยค่าหลอกแบบ env file ปัจจุบัน (ไม่มีคีย์ SelfServe): `/health` 200 · `signup/config` → `enabled:false` · image เว็บ: `/healthz`
+  และทุกหน้าสาธารณะ 200 · `/features` มี H1/canonical โดยไม่ต้อง JS · robots/sitemap 200 (build บน Mac arm64 · server เป็น x86_64)
+  · ฐานจริง: GarageService ไม่มี migration ค้าง (ล่าสุด `ScopeMasterDataByBranch`) · ยังไม่มีฐาน `GarageSelfServe` (มีแต่ `_Dev`) · login `gp_selfserve_*` มีแล้ว
+    (provision production จะไม่เปลี่ยนรหัส = ใช้ login/รหัสเดียวกับฐาน dev) · server: env file ไม่มีคีย์ SelfServe · ยังไม่ติดตั้ง `add-api-rate-limit.sh`
+    → **rate limit login ต่อ IP นับตาม IP ของ Cloudflare edge จนกว่าจะติดตั้ง** (10/นาที · 50/ชม. ต่อ edge)
+
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
   ลูกค้า+รถ → เปิดจ๊อบ → เช็คลิสต์ 20 รายการ + รูป) · ตรวจเช็ค 31 รายการ 8 หมวดของช่าง

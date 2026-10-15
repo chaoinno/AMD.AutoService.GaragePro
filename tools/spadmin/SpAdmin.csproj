@@ -24,7 +24,9 @@
 
   <ItemGroup>
     <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-    <Content Include="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <!-- Condition: .dockerignore ตัด appsettings.Development.json ทุกไฟล์ออกจาก build context (กัน secret เข้า image)
+         ถ้าอ้างแบบไม่มีเงื่อนไข dotnet publish ใน Dockerfile.api ล้มด้วย MSB3030 -->
+    <Content Include="appsettings.Development.json" Condition="Exists('appsettings.Development.json')" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>
