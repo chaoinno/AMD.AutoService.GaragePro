@@ -1870,7 +1870,21 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     · ยังพิสูจน์จาก log ไม่ได้ว่า `CloudflareEmailSender` อ่านค่าครบ (log ตั้งค่าไม่ครบออกตอน resolve ครั้งแรก ซึ่งยังไม่เกิดเพราะปิดรับสมัคร)
   · **deploy ต้องรันจาก checkout ที่ `deploy/production` เป็นรุ่นปัจจุบัน** (worktree `feat/cloudflare-email` หรือ main ที่ pull แล้ว) ห้ามรันจาก main checkout ที่ตามหลังอยู่
     เพราะสคริปต์ rsync `deploy/production` จากเครื่องที่รันด้วย `--delete` จะเอาไฟล์รุ่นเก่า (ไม่มี self-serve) ขึ้นไปทับ
-  · ฐาน `GarageSelfServe` (production) ยังไม่มี (ตรวจ 2026-10-16 มีแต่ `_Dev` · login `gp_selfserve_app`/`gp_selfserve_migrate` มีแล้ว) · ยังไม่มี Turnstile
+  · **[2026-10-16] ฐาน `GarageSelfServe` (production) สร้างแล้ว** (ผู้ใช้รัน `provision-selfserve-db.sh` ด้วย sa · ต้องใช้ go-sqlcmd:
+    `PATH="/opt/homebrew/opt/sqlcmd/bin:$PATH"` เพราะ `/opt/homebrew/bin/sqlcmd` ชี้ mssql-tools18 ที่โหลด OpenSSL 4 ไม่ได้) · login สองตัวมีอยู่แล้วจากฐาน dev
+    รหัสเดิม · **บทเรียน: ช่องรหัส login ในสคริปต์ "ignored if it already exists" ไม่ได้ถูกละเลยทั้งหมด** ขั้น 07 smoke ใช้รหัสที่พิมพ์ login จริง
+    พิมพ์อะไรก็ได้ = smoke ล้มด้วย `Login failed` ทั้งที่ฐานสร้างครบ (ต้องพิมพ์รหัสจริงของ login) → รัน `07-smoke.sql` ซ้ำด้วยรหัสจริงผ่าน (`SMOKE OK`)
+    · `gp_selfserve_migrate` = `db_ddladmin` · `Production:SelfServe:{ConnectionString,MigrationConnectionString}` = ค่า dev เปลี่ยนเฉพาะ `Database=GarageSelfServe`
+    · bootstrap รอบสอง: env file เพิ่ม `SelfServe__ConnectionString`/`SelfServe__MigrationConnectionString`/`LegacyShards__ConnectionStrings__sp1` (บรรทัดเดิมอยู่ครบ)
+  · **Deploy รอบสอง 2026-10-16 (ยังปิดรับสมัคร)**: migrate ลง `GarageSelfServe` ครบ: `svc_*` 46 ตาราง (23 migration ถึง `ScopeMasterDataByBranch`) · `sp_*` 10 ตาราง
+    (`InitSelfServe`) · ตรงกับ 24 migration ในโค้ด · Branch/User 0 แถว · API healthy ไม่มี `fail`/`crit` · `SelfServeDailyJob` รันแล้ว (maintenance ok 0 รายการ)
+    · **summary 08:30 ส่ง LINE ทุกวันแล้ว** (รอบแรกรันทันทีหลัง deploy) ไปกลุ่ม `LineMessaging:ContactGroupId` เพราะยังไม่ตั้ง `SalesLineGroupId` ·
+    ข้อความ "สรุปทดลองใช้ …: สมัครใหม่ 0 · …" ส่งแม้ยังปิดรับสมัคร (ไม่มีตัวปิดเฉพาะ summary · `SelfServe:Jobs:Enabled=false` ปิดทั้ง maintenance ด้วย)
+    · **ผู้ใช้ยืนยัน 2026-10-16 ให้ส่งเข้ากลุ่มฟอร์มติดต่อเดิมต่อ ไม่ต้องตั้ง `SalesLineGroupId`**
+  · **[2026-10-16] Turnstile พร้อมแล้ว**: widget `ServicePro signup` (hostname service + gpservice · Managed) · site key `0x4AAAAAAFYJg2mFt1ES4J4t` (ไม่ใช่ความลับ) ·
+    secret key ทดสอบกับ siteverify ด้วย token ปลอมได้ `invalid-input-response` (= secret ถูก) · bootstrap รอบสาม: env file มี `SelfServe__Turnstile__*` (บรรทัดเดิมครบ)
+    · zsh: `read -p` = coprocess ใช้ `printf "...: " && read -rs K` แทนในคำสั่งที่ให้ผู้ใช้รัน
+  · **ยังเหลือก่อนเปิดรับสมัคร**: `SELFSERVE_ENABLED=true` deploy (ผู้ใช้รัน) · privacy/terms ยังเป็น placeholder · ไม่มี Google (สมัครด้วยอีเมลอย่างเดียว)
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
   `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม
