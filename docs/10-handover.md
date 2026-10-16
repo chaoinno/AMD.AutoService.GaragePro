@@ -1,11 +1,41 @@
-# Handover — สถานะระบบ ณ 2026-09-22
+# Handover — สถานะระบบ ณ 2026-10-16
 
 เอกสารนี้ **สั้นโดยตั้งใจ** ไว้ให้คนหรือ agent ที่เพิ่งเข้ามาเห็นภาพใน 5 นาทีว่า
 "ตอนนี้อยู่ตรงไหน · ห้ามพลาดอะไร · ทำอะไรต่อ" — รายละเอียดเต็มอยู่ที่
-[CLAUDE.md](../CLAUDE.md) (1,400 บรรทัด) และ `docs/01`–`docs/09`
+[CLAUDE.md](../CLAUDE.md) และ `docs/01`–`docs/16`
 
 > อัปเดตเอกสารนี้ทุกครั้งที่ deploy หรือเปลี่ยนการตัดสินใจระดับนโยบาย
 > ถ้ามันล้าสมัยเมื่อไหร่ มันจะอันตรายกว่าไม่มีเลย
+>
+> **อัปเดต 2026-10-16:** หัวข้อ 0, ตารางในหัวข้อ 1 และกับดักใหม่ในหัวข้อ 4 · หัวข้อ 2–3 และส่วนที่เหลือของหัวข้อ 1
+> ยังเป็นของ 2026-09-22 ยังไม่ได้ทบทวน (เช่น สถานะแจกแอปมือถือเปลี่ยนไปแล้ว ดู CLAUDE.md)
+
+---
+
+## 0. เปิดรับสมัครทดลองใช้ (self-serve): เปิดแล้ว 2026-10-16
+
+**สถานะ**
+- **เปิดรับสมัครบน production แล้ว** (deploy `222e661` · `SELFSERVE_ENABLED=true`) · สมัครได้ด้วยอีเมลอย่างเดียว (ยังไม่ตั้ง Google)
+  · `signup/config` ตอบ `enabled`/`emailEnabled` เป็น true และมี `turnstileSiteKey` · Turnstile บนหน้าสมัครขึ้น "สำเร็จ!" (เจ้าของตรวจ)
+- ฐาน `GarageSelfServe` (production) สร้างและ migrate ครบ · งานรายวันส่งสรุปเข้ากลุ่ม LINE ฟอร์มติดต่อทุกวัน 08:30 (เจ้าของยืนยันให้ใช้กลุ่มนี้)
+- อีเมล Cloudflare ส่งจริงได้ ผู้ส่ง `no-reply@service.garage-pro.net` ([docs/16](16-cloudflare-email-setup.md))
+- หน้า `/terms` และ `/privacy` ฉบับถ้อยคำกว้างขึ้น production แล้ว (PR #6) · ยังไม่ผ่านนักกฎหมาย
+- log ของ API มี `fail` เรื่อง duplicate key ที่ `sp_JobRun` ทุกครั้งที่ container เริ่มใหม่ในวันที่งานรายวันรันไปแล้ว **เป็นเรื่องปกติ**
+  (unique index กันงานรันซ้ำ โค้ดดัก error 2601/2627 แล้วข้าม แต่ EF พิมพ์ error ก่อน)
+
+**ทำต่อตามลำดับ**
+- [ ] สมัครจริงด้วยอีเมลหนึ่งกล่อง: ได้รหัส 6 หลัก · เปิดอู่ได้ · ได้อีเมลต้อนรับ · กลุ่ม LINE ได้แจ้งเตือนสมัครใหม่ · login เว็บได้ แล้วลบอู่ทดสอบด้วย `spadmin purge`
+- [ ] ทีมเจ้าของตั้งให้ `support@service.garage-pro.net` รับอีเมลได้ ([docs/16 §7](16-cloudflare-email-setup.md)) · **ตอนนี้ยังไม่มี MX อีเมลที่ส่งมาจะถูกตีกลับ** ทั้งที่หน้านโยบายบอกให้ติดต่อทางนี้
+- [ ] หลัง support@ รับอีเมลได้: ใส่ `Production:SelfServe:Email:ReplyToAddress` → `bootstrap-production-secrets.sh` → deploy
+- [ ] **deploy ทุกรอบต่อจากนี้ต้องใส่ `SELFSERVE_ENABLED=true`** ไม่งั้นปิดรับสมัครเองเงียบๆ (รันจาก checkout ที่ `deploy/production` เป็นรุ่นล่าสุดของ main):
+  `SELFSERVE_ENABLED=true REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` · agent ถูกบล็อกไม่ให้รัน deploy production เจ้าของรันเอง
+
+**ยังต้องตัดสินใจ**
+- ค่า `SELFSERVE_ENABLED` ไม่ถูกจำไว้ ควรย้ายไปอยู่ใน env file ผ่าน bootstrap ไหม (กันลืมใส่ตอน deploy)
+- แอปมือถือที่ login อู่ทดลองได้ (`1.1.0+3`) ยังไม่ปล่อย อู่ที่สมัครแล้วโหลดแอปตามลิงก์ในอีเมลต้อนรับจะ login ไม่ได้ จนกว่าจะปล่อยรุ่นนี้
+- ข้อกำหนด/นโยบาย: ยังมี 26 ข้อที่ต้องตัดสินใจ และยังไม่ผ่านนักกฎหมาย รายการอยู่ใน Claude Doc
+  "ร่างข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว ServicePro" (ลิงก์ใน CLAUDE.md)
+- หน้านโยบายเดิมของ GaragePro (garage-pro.net/privacy-policy) ยังใช้ที่อยู่ปทุมธานีและเบอร์ 096-031-1773 ไม่ตรงกับหน้าแรก
 
 ---
 
@@ -13,13 +43,13 @@
 
 | | |
 |---|---|
-| Production commit | `50032f4` (deploy 2026-09-22) |
-| Web | https://gpservice.garage-pro.net — healthy |
+| Production commit | `222e661` (deploy 2026-10-16 · **เปิดรับสมัครทดลองใช้แล้ว**) |
+| Web | https://service.garage-pro.net (และ gpservice.garage-pro.net) — healthy |
 | API | https://gpservice-api.garage-pro.net — healthy |
-| Mobile | **ยังไม่ได้แจกให้ใครใช้** — รันได้เฉพาะเครื่อง dev |
-| Migration | ไม่มี `(Pending)` ค้าง |
+| Mobile | ดู CLAUDE.md หัวข้อ Android release · ลิงก์ App Store บนเว็บยังตอบ 404 (เจ้าของรับทราบ รอ Apple) |
+| Migration | GarageService และ GarageSelfServe ไม่มี `(Pending)` ค้าง |
 
-**deploy ล่าสุดเปลี่ยนอะไรที่ผู้ใช้รู้สึกได้:**
+**ส่วนที่เหลือของหัวข้อนี้เป็นของ deploy 2026-09-22:**
 1. 🔴 **ต้องออกใบเสร็จก่อนถึงจะให้ลูกค้าเซ็นรับรถได้** (`HANDOVER_RECEIPT_REQUIRED`) —
    เปลี่ยนลำดับงานหน้าเคาน์เตอร์จริง ถ้าหน้าร้านเคยเซ็นก่อนเก็บเงินจะถูกบล็อกทันที
 2. ทุกบทบาทปฏิบัติการ (รวมช่าง/หัวหน้าช่าง/หน้าร้าน) ส่งมอบรถ + ปิดงานได้
@@ -79,6 +109,11 @@ backend + API + UI บนมือถือเสร็จและทดสอ�
 | Dart: ใช้ `List` เป็น family key ของ Riverpod | เทียบด้วย identity ⇒ ยิง API ไม่หยุด ใช้สตริงที่เรียงแล้วแทน |
 | Guid PK ต้อง `ValueGeneratedNever()` | ไม่งั้น EF ยิง UPDATE แทน INSERT |
 | ตัวเลขเวลา/เงินต้องใช้ฟอนต์ tabular | ไม่งั้นแถบนาฬิกาสั่นทั้งแถบทุกวินาที |
+| deploy โดยไม่ใส่ `SELFSERVE_ENABLED=true` | หลังเปิดรับสมัครแล้ว deploy รอบไหนลืมใส่ ระบบปิดรับสมัครเองเงียบๆ |
+| รัน `deploy-production.sh` จาก checkout ที่ตามหลัง main | สคริปต์ rsync `deploy/production` จากเครื่องที่รันด้วย `--delete` จะเอาไฟล์รุ่นเก่าขึ้นไปทับ (checkout หลักบน Mac ตามหลังอยู่) |
+| `bootstrap-production-secrets.sh` เขียนทับ env file ทั้งไฟล์ | ค่าที่ไม่อยู่ใน user-secrets บน Mac หายจาก server (เคยลบค่า LINE ไปแล้วครั้งหนึ่ง) · สำรองไฟล์ก่อนรันทุกครั้ง |
+| `provision-selfserve-db.sh` | ต้องใช้ go-sqlcmd (`PATH="/opt/homebrew/opt/sqlcmd/bin:$PATH"`) · ช่องรหัส login ต้องพิมพ์รหัสจริง เพราะ smoke test ใช้ login ด้วยรหัสนั้น |
+| คำสั่ง `read -p` ใน zsh | zsh ตีความเป็น coprocess ใช้ `printf "...: " && read -rs K` แทน |
 
 รายการเต็ม (พร้อมอาการและวิธีแก้) อยู่ที่ CLAUDE.md หัวข้อ **"บทเรียนที่เจ็บมาแล้ว"**
 — **อ่านก่อนเริ่มแก้โค้ด คุ้มค่าเวลา 10 นาที**

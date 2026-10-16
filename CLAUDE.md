@@ -1885,7 +1885,12 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **[2026-10-16] Turnstile พร้อมแล้ว**: widget `ServicePro signup` (hostname service + gpservice · Managed) · site key `0x4AAAAAAFYJg2mFt1ES4J4t` (ไม่ใช่ความลับ) ·
     secret key ทดสอบกับ siteverify ด้วย token ปลอมได้ `invalid-input-response` (= secret ถูก) · bootstrap รอบสาม: env file มี `SelfServe__Turnstile__*` (บรรทัดเดิมครบ)
     · zsh: `read -p` = coprocess ใช้ `printf "...: " && read -rs K` แทนในคำสั่งที่ให้ผู้ใช้รัน
-  · **ยังเหลือก่อนเปิดรับสมัคร**: `SELFSERVE_ENABLED=true` deploy (ผู้ใช้รัน) · privacy/terms ยังเป็น placeholder · ไม่มี Google (สมัครด้วยอีเมลอย่างเดียว)
+  · **[2026-10-16] เปิดรับสมัครทดลองใช้บน production แล้ว** (ผู้ใช้ deploy `222e661` ด้วย `SELFSERVE_ENABLED=true` · รวมหน้า /terms /privacy จาก PR #6):
+    `signup/config` → `enabled:true` `emailEnabled:true` `googleEnabled:false` + `turnstileSiteKey` · หน้าสมัคร Turnstile ขึ้น "สำเร็จ!" (ผู้ใช้ตรวจ) ·
+    /terms /privacy ตอบ 200 พร้อมเนื้อหาใหม่ · container API มี `SelfServe__Enabled=true`
+    · log มี `fail` duplicate key `UX_sp_JobRun_JobName_RunDate` (maintenance/summary) ตอน container เริ่มใหม่ = **ปกติ** (claim รอบวันซ้ำ
+      `SelfServeLifecycleRepository` ดัก 2601/2627 แล้วคืน false แต่ EF log error ก่อน) · ยังไม่ได้ทดสอบสมัครจริงบน production
+    · งานค้าง/การตัดสินใจทั้งหมดสรุปที่ [docs/10 หัวข้อ 0](docs/10-handover.md) · วิธีตั้งรับอีเมล support@ ที่ [docs/16 §7](docs/16-cloudflare-email-setup.md)
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
   `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม
