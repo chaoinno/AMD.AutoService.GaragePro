@@ -27,9 +27,10 @@ services:
       VehicleImages__RootPath: /app/storage/vehicle-images
       StaffImages__RootPath: /app/storage/staff-images
       # self-serve trial (shard sp1) — มีผลเฉพาะเมื่อ env file มี SelfServe__ConnectionString
-      # [BIZ] รับสมัครใหม่ปิดไว้ก่อนจนกว่าเจ้าของสั่งเปิด: SELFSERVE_ENABLED=true ./scripts/deploy-production.sh
-      #       (ปิดรับสมัครแล้วอู่ที่มีอยู่ยังใช้งาน/หมดอายุตามปกติ)
-      SelfServe__Enabled: ${SELFSERVE_ENABLED:-false}
+      # [BIZ] สวิตช์รับสมัครใหม่ SelfServe__Enabled อยู่ใน env file ที่เดียว (user-secrets Production:SelfServe:Enabled → bootstrap)
+      #       ไม่มีบรรทัดนั้น = ปิดรับสมัคร (ค่าเริ่มต้นของ SelfServeOptions) · ปิดแล้วอู่ที่มีอยู่ยังใช้งาน/หมดอายุตามปกติ
+      #       ห้ามใส่ SelfServe__Enabled ใน environment นี้: environment ชนะ env_file และเดิมการลืมใส่ SELFSERVE_ENABLED
+      #       ตอน deploy ครั้งเดียวก็ปิดรับสมัครเงียบๆ
       SelfServe__ShardKey: sp1
       SelfServe__PublicBaseUrl: https://service.garage-pro.net
       SelfServe__Trial__Days: "30"
