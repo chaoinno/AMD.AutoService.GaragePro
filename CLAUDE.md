@@ -1860,6 +1860,17 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     (ผู้ใช้ทดสอบ `from` แบบ string จาก `welcome@` ผ่านก่อน) · SMTP relay `smtp.mx.cloudflare.net:465` ตอบ banner + `AUTH PLAIN LOGIN` (ไม่ได้ส่งผ่าน SMTP)
     · `Production:SelfServe:Email:{Provider,ApiKey,AccountId,FromAddress,FromName}` อยู่ใน user-secrets ของ Mac แล้ว **ยังไม่ขึ้นเซิร์ฟเวอร์** (รอ bootstrap + deploy ช่วงเปิดรับสมัคร) ·
     ยังไม่ตั้ง `ReplyToAddress` · แก้ docs/16 + `env.example` ให้ใช้โดเมนนี้แล้ว · ยังไม่ได้ทดสอบผ่าน API ของระบบ (สมัครด้วยอีเมลจริงแล้วได้ OTP)
+  · **[2026-10-16] รัน `bootstrap-production-secrets.sh` แล้ว** (`REMOTE_HOST=deployment@10.10.3.13`): env file บน server มี `SelfServe__Email__*` 5 คีย์ · สำรองไฟล์เดิมที่
+    `garagepro-service.env.bak-20261016100050`
+  · **[แก้แล้ว] bootstrap เคยลบ `LineMessaging__*` ทิ้ง** เพราะ user-secrets บน Mac ไม่มี `LineMessaging:ChannelAccessToken`/`ContactGroupId` (เคยใส่ไว้บน server ด้วยมือ)
+    → คืนจากไฟล์สำรองบน server (ทุกบรรทัดเดิมตรงกัน) แล้วผู้ใช้ย้ายสองคีย์เข้า user-secrets ของ Mac (hash ตรงกับ server) · bootstrap ครั้งต่อไปไม่ลบแล้ว
+  · **Deploy production แล้ว 2026-10-16** (ผู้ใช้รันจาก worktree `feat/cloudflare-email` · server pull `main` = `8af159b` รวมลิงก์ App Store): container ใหม่ healthy ·
+    public `/health`/`/healthz` 200 · container API มี `SelfServe__Email__*` 5 ตัว + `LineMessaging__*` 2 ตัว · log ไม่มี error · `signup/config` ตอบ `emailEnabled:false`
+    **ถูกต้องตามโค้ด** (`EmailEnabled = Enabled && EmailDeliveryAvailable` · ยังปิดรับสมัคร) · `SelfServeDailyJob` ปิดอยู่เพราะยังไม่มี `SelfServe:ConnectionString`
+    · ยังพิสูจน์จาก log ไม่ได้ว่า `CloudflareEmailSender` อ่านค่าครบ (log ตั้งค่าไม่ครบออกตอน resolve ครั้งแรก ซึ่งยังไม่เกิดเพราะปิดรับสมัคร)
+  · **deploy ต้องรันจาก checkout ที่ `deploy/production` เป็นรุ่นปัจจุบัน** (worktree `feat/cloudflare-email` หรือ main ที่ pull แล้ว) ห้ามรันจาก main checkout ที่ตามหลังอยู่
+    เพราะสคริปต์ rsync `deploy/production` จากเครื่องที่รันด้วย `--delete` จะเอาไฟล์รุ่นเก่า (ไม่มี self-serve) ขึ้นไปทับ
+  · ฐาน `GarageSelfServe` (production) ยังไม่มี (ตรวจ 2026-10-16 มีแต่ `_Dev` · login `gp_selfserve_app`/`gp_selfserve_migrate` มีแล้ว) · ยังไม่มี Turnstile
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
   `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม
