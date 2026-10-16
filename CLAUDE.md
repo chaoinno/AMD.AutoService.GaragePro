@@ -45,7 +45,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/03-api-contract.md](docs/03-api-contract.md) §3/§11/§12 | **[เพิ่ม 2026-10-08]** endpoint เลขไมล์ · `handover/service-info` · `reports/vehicle-history` · `reports/service-due` |
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
-| [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · ยังไม่ merge/deploy]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
+| [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -1854,7 +1854,38 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · secrets: `env.example` + `bootstrap-production-secrets.sh` รับ `Production:SelfServe:Email:{AccountId,ReplyToAddress}` เพิ่ม (คีย์ Provider/ApiKey/FromAddress/FromName มีอยู่แล้ว) · ไม่มี migration · ไม่แตะเว็บ/แอป
   · ทดสอบแล้ว: `CloudflareEmailSenderTests.cs` 16 (รูปแบบคำขอ/Bearer/Content-Length · ไม่มี html/reply_to · queued นับเป็นส่งแล้ว · 401/403/429/400 ได้ code โดยไม่มีที่อยู่/OTP ในข้อความ ·
     หน้า error ไม่ใช่ JSON · permanent bounce · เครือข่ายล่ม · log ไม่มีเนื้อหา/ที่อยู่/token · ขาดคีย์ทีละตัว · DI เลือก cloudflare · provider ไม่รู้จัก throw) ·
-    `dotnet test` เต็มชุด 1129 ผ่าน / skipped 16 (เดิม 1113) · **ยังไม่เคยยิง Cloudflare จริง** (ยังไม่มีบัญชี Workers Paid/token) · ตัวเลข error code มาจากเอกสาร Cloudflare ไม่ได้ทดลองเห็นจริง
+    `dotnet test` เต็มชุด 1129 ผ่าน / skipped 16 (เดิม 1113) · ตัวเลข error code มาจากเอกสาร Cloudflare ไม่ได้ทดลองเห็นจริง
+  · **[อัปเดต 2026-10-16] ยิง Cloudflare จริงแล้ว ส่งได้** · โดเมนที่ onboard คือ **`service.garage-pro.net`** (ไม่ใช่ `garage-pro.net` ที่เอกสารเดิมแนะนำ)
+    ผู้ส่งต้องเป็น `@service.garage-pro.net` · DNS: `cf-bounce`/DKIM ครบ · DMARC `p=reject` (SPF/DKIM ไม่ผ่าน = ตีกลับทั้งฉบับ) ·
+    REST แบบ `from` object `address`/`name` เดียวกับ `BuildPayload` จาก `ServicePro <no-reply@service.garage-pro.net>` ได้ HTTP 200 `queued` แล้วเข้ากล่อง Gmail ชื่อผู้ส่งถูก
+    (ผู้ใช้ทดสอบ `from` แบบ string จาก `welcome@` ผ่านก่อน) · SMTP relay `smtp.mx.cloudflare.net:465` ตอบ banner + `AUTH PLAIN LOGIN` (ไม่ได้ส่งผ่าน SMTP)
+    · `Production:SelfServe:Email:{Provider,ApiKey,AccountId,FromAddress,FromName}` อยู่ใน user-secrets ของ Mac แล้ว **ยังไม่ขึ้นเซิร์ฟเวอร์** (รอ bootstrap + deploy ช่วงเปิดรับสมัคร) ·
+    ยังไม่ตั้ง `ReplyToAddress` · แก้ docs/16 + `env.example` ให้ใช้โดเมนนี้แล้ว · ยังไม่ได้ทดสอบผ่าน API ของระบบ (สมัครด้วยอีเมลจริงแล้วได้ OTP)
+  · **[2026-10-16] รัน `bootstrap-production-secrets.sh` แล้ว** (`REMOTE_HOST=deployment@10.10.3.13`): env file บน server มี `SelfServe__Email__*` 5 คีย์ · สำรองไฟล์เดิมที่
+    `garagepro-service.env.bak-20261016100050`
+  · **[แก้แล้ว] bootstrap เคยลบ `LineMessaging__*` ทิ้ง** เพราะ user-secrets บน Mac ไม่มี `LineMessaging:ChannelAccessToken`/`ContactGroupId` (เคยใส่ไว้บน server ด้วยมือ)
+    → คืนจากไฟล์สำรองบน server (ทุกบรรทัดเดิมตรงกัน) แล้วผู้ใช้ย้ายสองคีย์เข้า user-secrets ของ Mac (hash ตรงกับ server) · bootstrap ครั้งต่อไปไม่ลบแล้ว
+  · **Deploy production แล้ว 2026-10-16** (ผู้ใช้รันจาก worktree `feat/cloudflare-email` · server pull `main` = `8af159b` รวมลิงก์ App Store): container ใหม่ healthy ·
+    public `/health`/`/healthz` 200 · container API มี `SelfServe__Email__*` 5 ตัว + `LineMessaging__*` 2 ตัว · log ไม่มี error · `signup/config` ตอบ `emailEnabled:false`
+    **ถูกต้องตามโค้ด** (`EmailEnabled = Enabled && EmailDeliveryAvailable` · ยังปิดรับสมัคร) · `SelfServeDailyJob` ปิดอยู่เพราะยังไม่มี `SelfServe:ConnectionString`
+    · ยังพิสูจน์จาก log ไม่ได้ว่า `CloudflareEmailSender` อ่านค่าครบ (log ตั้งค่าไม่ครบออกตอน resolve ครั้งแรก ซึ่งยังไม่เกิดเพราะปิดรับสมัคร)
+  · **deploy ต้องรันจาก checkout ที่ `deploy/production` เป็นรุ่นปัจจุบัน** (worktree `feat/cloudflare-email` หรือ main ที่ pull แล้ว) ห้ามรันจาก main checkout ที่ตามหลังอยู่
+    เพราะสคริปต์ rsync `deploy/production` จากเครื่องที่รันด้วย `--delete` จะเอาไฟล์รุ่นเก่า (ไม่มี self-serve) ขึ้นไปทับ
+  · **[2026-10-16] ฐาน `GarageSelfServe` (production) สร้างแล้ว** (ผู้ใช้รัน `provision-selfserve-db.sh` ด้วย sa · ต้องใช้ go-sqlcmd:
+    `PATH="/opt/homebrew/opt/sqlcmd/bin:$PATH"` เพราะ `/opt/homebrew/bin/sqlcmd` ชี้ mssql-tools18 ที่โหลด OpenSSL 4 ไม่ได้) · login สองตัวมีอยู่แล้วจากฐาน dev
+    รหัสเดิม · **บทเรียน: ช่องรหัส login ในสคริปต์ "ignored if it already exists" ไม่ได้ถูกละเลยทั้งหมด** ขั้น 07 smoke ใช้รหัสที่พิมพ์ login จริง
+    พิมพ์อะไรก็ได้ = smoke ล้มด้วย `Login failed` ทั้งที่ฐานสร้างครบ (ต้องพิมพ์รหัสจริงของ login) → รัน `07-smoke.sql` ซ้ำด้วยรหัสจริงผ่าน (`SMOKE OK`)
+    · `gp_selfserve_migrate` = `db_ddladmin` · `Production:SelfServe:{ConnectionString,MigrationConnectionString}` = ค่า dev เปลี่ยนเฉพาะ `Database=GarageSelfServe`
+    · bootstrap รอบสอง: env file เพิ่ม `SelfServe__ConnectionString`/`SelfServe__MigrationConnectionString`/`LegacyShards__ConnectionStrings__sp1` (บรรทัดเดิมอยู่ครบ)
+  · **Deploy รอบสอง 2026-10-16 (ยังปิดรับสมัคร)**: migrate ลง `GarageSelfServe` ครบ: `svc_*` 46 ตาราง (23 migration ถึง `ScopeMasterDataByBranch`) · `sp_*` 10 ตาราง
+    (`InitSelfServe`) · ตรงกับ 24 migration ในโค้ด · Branch/User 0 แถว · API healthy ไม่มี `fail`/`crit` · `SelfServeDailyJob` รันแล้ว (maintenance ok 0 รายการ)
+    · **summary 08:30 ส่ง LINE ทุกวันแล้ว** (รอบแรกรันทันทีหลัง deploy) ไปกลุ่ม `LineMessaging:ContactGroupId` เพราะยังไม่ตั้ง `SalesLineGroupId` ·
+    ข้อความ "สรุปทดลองใช้ …: สมัครใหม่ 0 · …" ส่งแม้ยังปิดรับสมัคร (ไม่มีตัวปิดเฉพาะ summary · `SelfServe:Jobs:Enabled=false` ปิดทั้ง maintenance ด้วย)
+    · **ผู้ใช้ยืนยัน 2026-10-16 ให้ส่งเข้ากลุ่มฟอร์มติดต่อเดิมต่อ ไม่ต้องตั้ง `SalesLineGroupId`**
+  · **[2026-10-16] Turnstile พร้อมแล้ว**: widget `ServicePro signup` (hostname service + gpservice · Managed) · site key `0x4AAAAAAFYJg2mFt1ES4J4t` (ไม่ใช่ความลับ) ·
+    secret key ทดสอบกับ siteverify ด้วย token ปลอมได้ `invalid-input-response` (= secret ถูก) · bootstrap รอบสาม: env file มี `SelfServe__Turnstile__*` (บรรทัดเดิมครบ)
+    · zsh: `read -p` = coprocess ใช้ `printf "...: " && read -rs K` แทนในคำสั่งที่ให้ผู้ใช้รัน
+  · **ยังเหลือก่อนเปิดรับสมัคร**: `SELFSERVE_ENABLED=true` deploy (ผู้ใช้รัน) · privacy/terms ยังเป็น placeholder · ไม่มี Google (สมัครด้วยอีเมลอย่างเดียว)
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
   `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม
