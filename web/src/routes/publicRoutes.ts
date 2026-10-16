@@ -96,7 +96,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   {
     path: '/privacy',
     title: 'ความเป็นส่วนตัว ระบบอู่บริการ | ServicePro',
-    description: 'หน้าข้อมูลความเป็นส่วนตัวของระบบอู่บริการ ServicePro อยู่ระหว่างรอเจ้าของระบบระบุเนื้อหา',
+    description: 'นโยบายความเป็นส่วนตัวของ ServicePro: ข้อมูลที่ระบบเก็บ ใช้ทำอะไร ส่งให้ใคร เก็บนานเท่าไร และสิทธิ์ของเจ้าของข้อมูล',
     h1: 'นโยบายความเป็นส่วนตัวของระบบอู่บริการ ServicePro',
     prerender: true,
     changefreq: 'monthly',
@@ -105,7 +105,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   {
     path: '/terms',
     title: 'ข้อกำหนดการใช้ระบบอู่บริการ | ServicePro',
-    description: 'หน้าข้อกำหนดการใช้งานโปรแกรมสำหรับอู่บริการ ServicePro อยู่ระหว่างรอเจ้าของระบบระบุเนื้อหา',
+    description: 'ข้อกำหนดการใช้งาน ServicePro: การสมัคร ช่วงทดลองใช้ฟรี 30 วัน การเก็บและลบข้อมูลของอู่ ข้อห้าม และความรับผิด',
     h1: 'ข้อกำหนดการใช้งานระบบอู่บริการ ServicePro',
     prerender: true,
     changefreq: 'monthly',
