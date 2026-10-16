@@ -126,7 +126,7 @@ cd backend/AMD.AutoService.GaragePro.API && dotnet user-secrets set "Production:
 ./scripts/deploy-production.sh
 ```
 
-ตรวจหลัง deploy (ต้องเปิด `SELFSERVE_ENABLED=true` แล้ว):
+ตรวจหลัง deploy (ต้องเปิดรับสมัครแล้ว: `SelfServe__Enabled=true` ใน env file):
 
 1. `GET https://gpservice-api.garage-pro.net/api/v1/public/signup/config` ต้องได้ `"emailEnabled":true`
 2. สมัครด้วยอีเมลจริงหนึ่งกล่อง ต้องได้รหัส 6 หลักภายในหนึ่งนาที
@@ -195,7 +195,7 @@ dig +short MX garage-pro.net
 ต้องยังเป็น `mx.zoho.com` เหมือนเดิม ถ้าเปลี่ยน อีเมลบริษัทถูกกระทบ ต้องแก้ทันที แล้วลองส่งอีเมลจากกล่องภายนอกไปที่ `support@service.garage-pro.net`
 
 ไม่กระทบการส่งอีเมลของระบบ: MX ของการส่งอยู่ที่ `cf-bounce.service.garage-pro.net` คนละชื่อกัน
-รับได้แล้วให้ตั้งเป็นที่อยู่ตอบกลับของอีเมลระบบด้วย (`Production:SelfServe:Email:ReplyToAddress` ตามข้อ 4 แล้ว bootstrap + deploy พร้อม `SELFSERVE_ENABLED=true`)
+รับได้แล้วให้ตั้งเป็นที่อยู่ตอบกลับของอีเมลระบบด้วย (`Production:SelfServe:Email:ReplyToAddress` ตามข้อ 4 แล้ว bootstrap + deploy)
 
 ## อ้างอิง
 

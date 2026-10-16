@@ -60,6 +60,9 @@ jq -r '
       "LegacyShards__ConnectionStrings__sp1=" + .["Production:SelfServe:ConnectionString"]),
   (select(.["Production:SelfServe:MigrationConnectionString"] // "" | length > 0)
     | "SelfServe__MigrationConnectionString=" + .["Production:SelfServe:MigrationConnectionString"]),
+  # สวิตช์รับสมัครทดลองใช้ — ไม่ตั้ง = ไม่มีบรรทัด = ปิดรับสมัคร · deploy-production.sh อ่านค่านี้จาก env file
+  (select(.["Production:SelfServe:Enabled"] // "" | length > 0)
+    | "SelfServe__Enabled=" + (.["Production:SelfServe:Enabled"] | ascii_downcase)),
   # self-serve integrations (ไม่บังคับ) — Google/Turnstile/อีเมล/LINE ทีมขาย · ไม่ตั้ง = ปิดช่องทางนั้น
   # (Google ไม่ตั้ง = ซ่อนปุ่ม · Turnstile secret ไม่ตั้ง = Production ปฏิเสธบอทเช็คทุกคำขอ · Email provider log = ปิดสมัครด้วยอีเมล)
   (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:AccountId","Email:FromAddress","Email:FromName","Email:ReplyToAddress","SalesLineGroupId"][] as $k
@@ -70,6 +73,11 @@ jq -r '
 if grep -Eq '^(SelfServe__ConnectionString|LegacyShards__ConnectionStrings__sp1|SelfServe__MigrationConnectionString)=.*GarageSelfServe_Dev' "$temp_env"; then
   rm -f "$temp_env" "$input_json"
   echo "Production self-serve connection points at GarageSelfServe_Dev - fix Production:SelfServe:* in user-secrets" >&2
+  exit 1
+fi
+if grep -q '^SelfServe__Enabled=' "$temp_env" && ! grep -Eq '^SelfServe__Enabled=(true|false)$' "$temp_env"; then
+  rm -f "$temp_env" "$input_json"
+  echo "Production:SelfServe:Enabled must be true or false" >&2
   exit 1
 fi
 jq -r '

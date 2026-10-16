@@ -28,11 +28,12 @@
   กลุ่ม LINE ได้แจ้งเตือนสมัครใหม่และขอต่ออายุ · ลบอู่ทดสอบแล้วด้วย `spadmin purge` (อีเมลนั้นสมัครทดลองซ้ำไม่ได้อีก ตามที่ออกแบบ)
 - [ ] ทีมเจ้าของตั้งให้ `support@service.garage-pro.net` รับอีเมลได้ ([docs/16 §7](16-cloudflare-email-setup.md)) · **ตอนนี้ยังไม่มี MX อีเมลที่ส่งมาจะถูกตีกลับ** ทั้งที่หน้านโยบายบอกให้ติดต่อทางนี้
 - [ ] หลัง support@ รับอีเมลได้: ใส่ `Production:SelfServe:Email:ReplyToAddress` → `bootstrap-production-secrets.sh` → deploy
-- [ ] **deploy ทุกรอบต่อจากนี้ต้องใส่ `SELFSERVE_ENABLED=true`** ไม่งั้นปิดรับสมัครเองเงียบๆ (รันจาก checkout ที่ `deploy/production` เป็นรุ่นล่าสุดของ main):
-  `SELFSERVE_ENABLED=true REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` · agent ถูกบล็อกไม่ให้รัน deploy production เจ้าของรันเอง
+- [x] **สวิตช์รับสมัครย้ายไปอยู่ env file แล้ว** (2026-10-16): deploy ไม่ต้องใส่ `SELFSERVE_ENABLED` อีก สคริปต์พิมพ์ `Self-serve signup: OPEN/CLOSED` ทุกรอบ
+  · deploy ปกติ: `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` จาก checkout ที่ `deploy/production` เป็นรุ่นล่าสุดของ main ·
+  agent ถูกบล็อกไม่ให้รัน deploy production เจ้าของรันเอง
+  · ปิด/เปิดรับสมัคร: ตั้ง `Production:SelfServe:Enabled` (`true`/`false`) ใน user-secrets → `bootstrap-production-secrets.sh` → deploy
 
 **ยังต้องตัดสินใจ**
-- ค่า `SELFSERVE_ENABLED` ไม่ถูกจำไว้ ควรย้ายไปอยู่ใน env file ผ่าน bootstrap ไหม (กันลืมใส่ตอน deploy)
 - แอปมือถือที่ login อู่ทดลองได้ (`1.1.0+3`) ยังไม่ปล่อย อู่ที่สมัครแล้วโหลดแอปตามลิงก์ในอีเมลต้อนรับจะ login ไม่ได้ จนกว่าจะปล่อยรุ่นนี้
 - ข้อกำหนด/นโยบาย: ยังมี 26 ข้อที่ต้องตัดสินใจ และยังไม่ผ่านนักกฎหมาย รายการอยู่ใน Claude Doc
   "ร่างข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว ServicePro" (ลิงก์ใน CLAUDE.md)
@@ -110,7 +111,7 @@ backend + API + UI บนมือถือเสร็จและทดสอ�
 | Dart: ใช้ `List` เป็น family key ของ Riverpod | เทียบด้วย identity ⇒ ยิง API ไม่หยุด ใช้สตริงที่เรียงแล้วแทน |
 | Guid PK ต้อง `ValueGeneratedNever()` | ไม่งั้น EF ยิง UPDATE แทน INSERT |
 | ตัวเลขเวลา/เงินต้องใช้ฟอนต์ tabular | ไม่งั้นแถบนาฬิกาสั่นทั้งแถบทุกวินาที |
-| deploy โดยไม่ใส่ `SELFSERVE_ENABLED=true` | หลังเปิดรับสมัครแล้ว deploy รอบไหนลืมใส่ ระบบปิดรับสมัครเองเงียบๆ |
+| สวิตช์รับสมัคร (`SelfServe__Enabled`) | อยู่ใน env file ที่เดียวตั้งแต่ 2026-10-16 · ใส่ `SELFSERVE_ENABLED` ตอน deploy แล้วไม่ตรงกับ env file สคริปต์หยุดก่อน build · อย่าเพิ่ม `SelfServe__Enabled` ใน `environment` ของ compose (ชนะ env_file) |
 | รัน `deploy-production.sh` จาก checkout ที่ตามหลัง main | สคริปต์ rsync `deploy/production` จากเครื่องที่รันด้วย `--delete` จะเอาไฟล์รุ่นเก่าขึ้นไปทับ (checkout หลักบน Mac ตามหลังอยู่) |
 | `bootstrap-production-secrets.sh` เขียนทับ env file ทั้งไฟล์ | ค่าที่ไม่อยู่ใน user-secrets บน Mac หายจาก server (เคยลบค่า LINE ไปแล้วครั้งหนึ่ง) · สำรองไฟล์ก่อนรันทุกครั้ง |
 | `provision-selfserve-db.sh` | ต้องใช้ go-sqlcmd (`PATH="/opt/homebrew/opt/sqlcmd/bin:$PATH"`) · ช่องรหัส login ต้องพิมพ์รหัสจริง เพราะ smoke test ใช้ login ด้วยรหัสนั้น |

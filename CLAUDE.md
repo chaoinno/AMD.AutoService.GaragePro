@@ -1806,7 +1806,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     401 เก็บ `messageTh` ไว้แสดงหน้า login (`lib/loginNotice.ts`) · `PLAN_*`/`TRIAL_EXPIRED` ไม่ถูกนับเป็น forbidden · **privacy/terms ยังเป็น placeholder ต้องให้เจ้าของเติมก่อนเปิดใช้ Google OAuth**
   · **มือถือ**: แบนเนอร์ทดลองใช้ · error แพ็กเกจไม่ logout · login รับอีเมล/`SPnnnn.Xnn` · เวอร์ชัน `1.1.0+3` (ยังไม่ build/ปล่อย)
   · **deploy (ยังไม่ทำ)**: `deploy/selfserve/provision-selfserve-db.sh` (สร้างฐาน + login `gp_selfserve_app`/`gp_selfserve_migrate` + **GRANT SELECT 15 ตารางใน Garage**) ·
-    `deploy-production.sh` รัน migration 3 target เมื่อ env file มี `SelfServe__ConnectionString` · รับสมัครใหม่ปิดไว้จนกว่า `SELFSERVE_ENABLED=true` ·
+    `deploy-production.sh` รัน migration 3 target เมื่อ env file มี `SelfServe__ConnectionString` · รับสมัครใหม่ปิดไว้จนกว่า `SELFSERVE_ENABLED=true` (**[แก้ 2026-10-16] ย้ายไป env file** ดูหัวข้อ Cloudflare email ด้านล่าง) ·
     คีย์ไม่บังคับ `Production:SelfServe:{Google,Turnstile,Email,SalesLineGroupId}` ใน user-secrets → bootstrap · `make-service-canonical.sh` (301 gpservice→service ต้อง `certbot --expand` ก่อน)
   · ทดสอบแล้ว (2026-10-14 บน branch รวม): `dotnet build` 0 error · `dotnet test` **1109 ผ่าน / 16 ข้าม** · SQL integration กับ `GarageSelfServe_Dev` **32 ผ่าน**
     (ตั้ง `GARAGEPRO_SELFSERVE_SQL_CONNECTION`/`_RECEIPT_`/`_PURCHASING_` = connection ของ `gp_selfserve_app` — ห้ามชี้ Garage/GarageService) ·
@@ -1896,6 +1896,14 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
       exit 0 · ไฟล์แนบลบ 1 · หลังลบ Branch/User/Staff/Customer/Car/svc_Job = 0 · `sp_Workspace` = Purged ชื่อ/เบอร์ว่าง ·
       `sp_Account` เหลือแค่ `NormalizedEmail` (กันสมัครซ้ำ) · audit `purged` · **อู่จริงอู่ถัดไปจะได้เลข SP1002**
     · งานค้าง/การตัดสินใจทั้งหมดสรุปที่ [docs/10 หัวข้อ 0](docs/10-handover.md) · วิธีตั้งรับอีเมล support@ ที่ [docs/16 §7](docs/16-cloudflare-email-setup.md)
+  · **[2026-10-16] สวิตช์รับสมัครย้ายไปอยู่ env file** (คำขอผู้ใช้: "ทำให้ระบบจำค่า SELFSERVE_ENABLED ไว้"): `SelfServe__Enabled` มาจาก user-secrets
+    `Production:SelfServe:Enabled` ผ่าน `bootstrap-production-secrets.sh` (ต้องเป็น true/false ไม่งั้น bootstrap หยุด) · compose เลิกตั้ง `SelfServe__Enabled`
+    ใน `environment` (environment ชนะ env_file) · `deploy-production.sh` อ่านค่าจาก env file แล้วพิมพ์ `Self-serve signup: OPEN/CLOSED` · ส่ง `SELFSERVE_ENABLED`
+    มาแล้วไม่ตรง env file = หยุดก่อน build (กันคนสั่งเปิด/ปิดแบบเดิมแล้วเข้าใจผิดว่ามีผล) · ไม่มีบรรทัดใน env file = ปิด (ค่าเริ่มต้นของ `SelfServeOptions`)
+    · ตั้ง `Production:SelfServe:Enabled=true` + รัน bootstrap แล้ว **ก่อน** merge: env file มี `SelfServe__Enabled=true` (บรรทัดเดิมอยู่ครบ · สำรอง `.bak-20261016135044`)
+      ไม่งั้น deploy รอบแรกด้วยสคริปต์ใหม่จะปิดรับสมัคร · container ที่รันอยู่ยังเป็นค่าจาก deploy เดิม (เปิดอยู่)
+    · ทดสอบ: ส่วนตรวจสวิตช์ของสคริปต์จริง 8 กรณีกับ env file ตัวอย่าง (ตรงกัน/ไม่ใส่/ไม่ตรง/ค่าผิด/ตัวพิมพ์ใหญ่) · jq mapping 4 กรณี · `bash -n` ทั้งสองสคริปต์ ·
+      **ยังไม่ได้ deploy ด้วยสคริปต์ใหม่**
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
   `tools/spadmin/SpAdmin.csproj` อ้าง `appsettings.Development.json` ที่ `.dockerignore` ตัดออก → แก้ให้อ้างเฉพาะเมื่อมีไฟล์ (บทเรียน: ตรวจ build image ทุกครั้งที่เพิ่ม

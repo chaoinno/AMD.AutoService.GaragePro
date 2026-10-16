@@ -40,19 +40,38 @@ ssh "$REMOTE_HOST" "mkdir -p '$REMOTE_DEPLOY_DIR'"
 rsync -az --delete "$ROOT_DIR/deploy/production/" "$REMOTE_HOST:$REMOTE_DEPLOY_DIR/"
 
 echo "Building, migrating, and restarting GaragePro Service..."
-# SELFSERVE_ENABLED=true เปิดรับสมัครทดลองใช้ (ค่าเริ่มต้นปิด — อู่ทดลองที่มีอยู่ยังทำงาน/หมดอายุตามปกติ)
-ssh "$REMOTE_HOST" 'bash -s' -- "$REMOTE_SOURCE_DIR" "$REMOTE_DEPLOY_DIR" "$REMOTE_SECRETS_FILE" "${SELFSERVE_ENABLED:-false}" <<'REMOTE'
+# สวิตช์รับสมัครทดลองใช้อยู่ใน env file (SelfServe__Enabled ← user-secrets Production:SelfServe:Enabled → bootstrap)
+# ไม่ต้องใส่อะไรตอน deploy · SELFSERVE_ENABLED ที่ส่งมาใช้ตรวจอย่างเดียว: ไม่ตรงกับ env file = หยุดก่อน build
+ssh "$REMOTE_HOST" 'bash -s' -- "$REMOTE_SOURCE_DIR" "$REMOTE_DEPLOY_DIR" "$REMOTE_SECRETS_FILE" "${SELFSERVE_ENABLED:-}" <<'REMOTE'
 set -Eeuo pipefail
 source_dir="$1"
 deploy_dir="$2"
 secrets_file="$3"
-export SELFSERVE_ENABLED="${4:-false}"
+requested_signup="$(printf '%s' "${4:-}" | tr '[:upper:]' '[:lower:]')"
 
 test -s "$secrets_file" || {
   echo "Production secrets file is missing: $secrets_file" >&2
   echo "Run scripts/bootstrap-production-secrets.sh from the Mac first." >&2
   exit 1
 }
+
+signup="$(sed -n 's/^SelfServe__Enabled=//p' "$secrets_file" | tail -n 1 | tr '[:upper:]' '[:lower:]')"
+signup="${signup:-false}"
+case "$signup" in
+  true|false) ;;
+  *) echo "SelfServe__Enabled in $secrets_file must be true or false (got '$signup')." >&2; exit 1 ;;
+esac
+if [[ -n "$requested_signup" && "$requested_signup" != "$signup" ]]; then
+  echo "SELFSERVE_ENABLED=$requested_signup does not match the env file (SelfServe__Enabled=$signup)." >&2
+  echo "The signup switch now lives in the env file: set Production:SelfServe:Enabled in user-secrets," >&2
+  echo "run scripts/bootstrap-production-secrets.sh, then deploy again without SELFSERVE_ENABLED." >&2
+  exit 1
+fi
+if [[ "$signup" == true ]]; then
+  echo "Self-serve signup: OPEN (SelfServe__Enabled=true in env file)"
+else
+  echo "Self-serve signup: CLOSED (SelfServe__Enabled not true in env file)"
+fi
 
 export GARAGEPRO_SOURCE_DIR="$source_dir"
 export GARAGEPRO_DEPLOY_DIR="$deploy_dir"
