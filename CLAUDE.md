@@ -1883,6 +1883,26 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ทดสอบแล้ว: Web `tsc -b`/`vite build` ผ่าน · `SelfServeEmailsTests` 30 ผ่าน · เบราว์เซอร์ 1440/375px ไม่มี horizontal scroll ไม่มี console error · render `MobileAppInstall` ทั้งสองขนาด
   · **[RISK] ณ วันที่แก้ หน้า App Store ยังขึ้น "page not found" ทั้ง `/us/` และ `/th/`** และ iTunes lookup API คืน 0 รายการ — แอปน่าจะยังไม่เผยแพร่ (รอ Apple propagate หรือยังตั้ง manual release)
     ห้าม deploy จนกว่าลิงก์เปิดได้จริง (Apple ห้ามใช้ badge กับแอปที่ยังไม่อยู่บน store) และตรวจว่าเปิดขายใน storefront ไทย · ยังไม่ได้ build/deploy
+  · **[RISK 2026-10-16] commit นี้ขึ้น production ไปแล้ว** พร้อม deploy ค่าอีเมล Cloudflare (deploy ดึง `main` = `8af159b`) ทั้งที่ลิงก์
+    `https://apps.apple.com/th/app/servicepro/id6815111962` ยังตอบ 404 และ iTunes lookup คืน 0 รายการ (ตรวจ 2026-10-16) · ผู้ใช้รับทราบแล้ว
+    ไม่ revert เพราะแอปใกล้ขึ้น store แล้ว · ตรวจลิงก์อีกครั้งเมื่อ Apple เผยแพร่
+
+- ✅ **[เพิ่ม 2026-10-16 · branch `feat/legal-pages-draft` · ยังไม่ merge/deploy] หน้า `/terms` และ `/privacy` มีเนื้อหาจริงแทน placeholder** (คำขอผู้ใช้:
+  "เอาแบบหลวมๆ ไปก่อน ให้แสดงบนเว็บได้ แล้วให้เพื่อนมาอัพเดทเพิ่มเติม")
+  · ร่างจากสิ่งที่ระบบเก็บจริงในโค้ด (สำรวจ signup · `sp_*` · purge · อีเมล · LINE · storage · เว็บ) ต้นฉบับพร้อมรายการที่ต้องตัดสินใจ 29 ข้อ อยู่ใน Claude Doc
+    "ร่างข้อกำหนดการใช้งานและนโยบายความเป็นส่วนตัว ServicePro" https://claude.ai/code/artifact/530065ba-6c20-4881-b187-5c23077e6fcf
+  · **ถ้อยคำกว้างตามที่ผู้ใช้ขอ**: จุดที่ยังไม่ได้ข้อสรุปเขียนแบบทั่วไป ("ตามระยะเวลาที่จำเป็น" ฯลฯ) ไม่มีป้ายรอยืนยันบนหน้าเว็บ · **ยังไม่ผ่านนักกฎหมาย**
+  · ไฟล์: `web/src/features/landing/legal/LegalParts.tsx` (`COMPANY` · `LEGAL_UPDATED_AT` · `LegalPage` · `LegalTable` · `ContactLines`) ·
+    `pages/TermsPage.tsx` (14 ข้อ) · `pages/PrivacyPage.tsx` (10 หัวข้อ · ตาราง 4 ตาราง) · ลบ `LegalPlaceholder.tsx` · CSS `.landing-legal*` ใน `landing.css` ·
+    description ของสองหน้าใน `publicRoutes.ts`
+  · ข้อมูลบริษัทจากหน้าแรก garage-pro.net: บริษัท อาร์มาดิลโล่ เทค จำกัด · เลขทะเบียน 0135563009156 · ผู้ใช้ยืนยันที่อยู่นนทบุรี (88 หมู่ที่ 3 บางบัวทอง)
+    เบอร์ 090-996-6446 และอีเมลแยก `support@service.garage-pro.net` · นโยบายเดิมของ GaragePro (garage-pro.net/privacy-policy) ยังใช้ที่อยู่ปทุมธานีและเบอร์ 096-031-1773
+  · **[RISK] `support@service.garage-pro.net` ยังรับอีเมลไม่ได้** (ตรวจ 2026-10-16: `service.garage-pro.net` ไม่มี MX · โดเมนหลักใช้ Zoho) ต้องตั้ง Cloudflare Email Routing
+    หรือเพิ่มโดเมนใน Zoho ก่อน deploy หน้าเหล่านี้ · ตั้งได้แล้วค่อยใส่ `Production:SelfServe:Email:ReplyToAddress`
+  · **ข้อความต้องตรงกับระบบ**: ระยะเวลาทดลอง/อ่านอย่างเดียว/เตือน/อีเมลเชิญกลับมาจาก `SelfServeOptions` · เพิ่มการเก็บข้อมูลใหม่ (ฟิลด์ · analytics · ผู้ให้บริการภายนอก)
+    ต้องแก้ตารางในหน้า `/privacy` ด้วย · แก้เนื้อหาแล้วเปลี่ยน `LEGAL_UPDATED_AT`
+  · ทดสอบแล้ว: `tsc -b` · `vite build` · SSR build + prerender ผ่าน (HTML ของสองหน้ามีเนื้อหาครบ) · เบราว์เซอร์ 1024px และ 375px: หัวข้อครบ ลิงก์ถูก ไม่มี horizontal scroll
+    ตารางเลื่อนในกรอบบนมือถือ (แก้ `.landing-legal` เป็น `grid-template-columns: minmax(0, 1fr)` ไม่งั้นตารางดัน grid จนถูกตัดขอบ) · ไม่มี console error
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
