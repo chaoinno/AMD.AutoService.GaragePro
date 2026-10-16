@@ -1889,7 +1889,12 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     `signup/config` → `enabled:true` `emailEnabled:true` `googleEnabled:false` + `turnstileSiteKey` · หน้าสมัคร Turnstile ขึ้น "สำเร็จ!" (ผู้ใช้ตรวจ) ·
     /terms /privacy ตอบ 200 พร้อมเนื้อหาใหม่ · container API มี `SelfServe__Enabled=true`
     · log มี `fail` duplicate key `UX_sp_JobRun_JobName_RunDate` (maintenance/summary) ตอน container เริ่มใหม่ = **ปกติ** (claim รอบวันซ้ำ
-      `SelfServeLifecycleRepository` ดัก 2601/2627 แล้วคืน false แต่ EF log error ก่อน) · ยังไม่ได้ทดสอบสมัครจริงบน production
+      `SelfServeLifecycleRepository` ดัก 2601/2627 แล้วคืน false แต่ EF log error ก่อน)
+    · **ทดสอบสมัครจริงบน production ผ่าน** (ผู้ใช้ 2026-10-16): อู่แรก SP1001 · `sp_SignupAttempt` email.start/email.verify/workspace = ok ·
+      log `ส่งอีเมล otp/welcome ถึงโดเมน gmail.com แล้ว (queued)` · LINE สมัครใหม่ + ขอต่ออายุเข้ากลุ่มปกติ · ไม่มี error อื่นใน log
+    · ลบ SP1001 ด้วย `spadmin purge --by pongsathon-via-claude` (ผู้ใช้สั่ง · ผ่าน `docker compose run ... /app/spadmin/SpAdmin.dll`):
+      exit 0 · ไฟล์แนบลบ 1 · หลังลบ Branch/User/Staff/Customer/Car/svc_Job = 0 · `sp_Workspace` = Purged ชื่อ/เบอร์ว่าง ·
+      `sp_Account` เหลือแค่ `NormalizedEmail` (กันสมัครซ้ำ) · audit `purged` · **อู่จริงอู่ถัดไปจะได้เลข SP1002**
     · งานค้าง/การตัดสินใจทั้งหมดสรุปที่ [docs/10 หัวข้อ 0](docs/10-handover.md) · วิธีตั้งรับอีเมล support@ ที่ [docs/16 §7](docs/16-cloudflare-email-setup.md)
 
 - 🔧 **[ตรวจก่อน deploy 2026-10-15] build image จริงครั้งแรกหลังเพิ่ม self-serve**: `docker build` ของ `Dockerfile.api` **ล้ม** (MSB3030) เพราะ
