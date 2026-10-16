@@ -19,7 +19,7 @@ export function pageStructuredData(route: PublicRoute, siteUrl: string) {
       '@type': 'SoftwareApplication',
       name: 'ServicePro',
       applicationCategory: 'BusinessApplication',
-      operatingSystem: 'Web, Android',
+      operatingSystem: 'Web, Android, iOS',
       description: route.description,
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'THB', description: 'ทดลองใช้ฟรี 30 วัน' },
     },

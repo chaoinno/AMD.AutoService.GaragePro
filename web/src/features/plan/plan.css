@@ -335,7 +335,10 @@
 
 /* ---- QR แอปมือถือ ---- */
 .mobile-app-install { display: flex; align-items: center; gap: 14px; }
-.mobile-app-install__qr { flex: 0 0 auto; padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: white; }
+.mobile-app-install__qrs { display: flex; flex: 0 0 auto; gap: 8px; }
+.mobile-app-install__qrs figure { display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0; }
+.mobile-app-install__qrs figcaption { color: var(--muted); font-size: 12px; font-weight: 600; }
+.mobile-app-install__qr { padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: white; }
 .mobile-app-install__copy { display: grid; gap: 2px; font-size: 14px; }
 .mobile-app-install__copy strong { display: inline-flex; align-items: center; gap: 6px; }
 .mobile-app-install__copy strong svg { width: 16px; height: 16px; }

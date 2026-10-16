@@ -1,5 +1,5 @@
-import { ClipboardCheck, Clock, MessageSquare, PenLine, ShieldCheck, Smartphone, Timer, Wallet } from 'lucide-react'
-import { PLAY_STORE_URL } from '../appStore'
+import { ClipboardCheck, MessageSquare, PenLine, ShieldCheck, Timer, Wallet } from 'lucide-react'
+import { APP_STORE_URL, PLAY_STORE_URL } from '../appStore'
 import { PhoneMockup } from '../mockups/PhoneMockup'
 
 // [BIZ] ความสามารถของแอป Flutter ที่ทำแล้วจริง (mobile/) — ไม่ใส่ offline/สแกน QR/push ที่ยังไม่ได้ทำ
@@ -47,19 +47,25 @@ export function MobileAppSection() {
                 >
                   <img src="/store/google-play-badge-th.png" alt="ดาวน์โหลดบน Google Play (เปิดในแท็บใหม่)" width={646} height={250} />
                 </a>
-                {/* iOS ยังไม่อยู่บน App Store — แสดงเป็นป้ายที่กดไม่ได้ พร้อมบอกเหตุผลเป็นข้อความ */}
-                <span className="landing-download__soon" role="note">
-                  <Smartphone aria-hidden="true" />
-                  <span>
-                    <small>iOS (iPhone)</small>
-                    <strong><Clock aria-hidden="true" /> เร็วๆ นี้</strong>
-                  </span>
-                </span>
+                <a
+                  className="landing-download__apple"
+                  href={APP_STORE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img src="/store/app-store-badge-th.svg" alt="ดาวน์โหลดบน App Store (เปิดในแท็บใหม่)" width={120} height={40} />
+                </a>
               </div>
-              <figure className="landing-download__qr">
-                <img src="/store/google-play-qr.svg" alt="QR code สำหรับเปิดหน้าดาวน์โหลดแอปบน Google Play" width={132} height={132} />
-                <figcaption>สแกนด้วยมือถือ Android เพื่อดาวน์โหลด</figcaption>
-              </figure>
+              <div className="landing-download__qrs">
+                <figure className="landing-download__qr">
+                  <img src="/store/google-play-qr.svg" alt="QR code สำหรับเปิดหน้าดาวน์โหลดแอปบน Google Play" width={132} height={132} />
+                  <figcaption>Android</figcaption>
+                </figure>
+                <figure className="landing-download__qr">
+                  <img src="/store/app-store-qr.svg" alt="QR code สำหรับเปิดหน้าดาวน์โหลดแอปบน App Store" width={132} height={132} />
+                  <figcaption>iPhone</figcaption>
+                </figure>
+              </div>
             </div>
             <p className="landing-download__note">สำหรับพนักงานของอู่ที่ใช้ ServicePro · เข้าสู่ระบบด้วยรหัสพนักงานเดียวกับเว็บ</p>
           </div>

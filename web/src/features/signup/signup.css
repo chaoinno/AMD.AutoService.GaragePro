@@ -59,6 +59,10 @@
 .signup-done > p svg { vertical-align: middle; }
 .signup-play { width: fit-content; max-width: 100%; }
 .signup-play img { display: block; width: 210px; max-width: 100%; height: auto; }
+.signup-stores { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* badge ของ Apple ไม่มีขอบโปร่งเหมือนของ Google จึงตั้งสูงเท่าส่วนทึบของ badge Google (~84% ของ 81px) */
+.signup-apple { width: fit-content; line-height: 0; }
+.signup-apple img { display: block; width: auto; height: 68px; }
 .signup-credentials { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--page); }
 .signup-credentials h2 { font-size: 18px; margin-bottom: 6px; }
 .signup-credentials > p { font-size: 14px; color: var(--muted); }

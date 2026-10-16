@@ -80,6 +80,7 @@ public class SelfServeEmailsTests
             .And.Contain("SP1042.T01 รหัสผ่าน Kx7-pq2Mz9")
             .And.Contain("SP1042.T02 รหัสผ่าน Lm3-zz8Qa1")
             .And.Contain(SelfServeText.PlayStoreUrl)
+            .And.Contain(SelfServeText.AppStoreUrl)
             .And.Contain("จัดซื้อ");
     }
 

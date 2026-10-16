@@ -3,7 +3,7 @@ import { Link } from 'react-router'
 import { useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import type { SignupResult } from '../../api/signup'
-import { PLAY_STORE_URL } from '../landing/appStore'
+import { APP_STORE_URL, PLAY_STORE_URL } from '../landing/appStore'
 
 export function DoneStep({ result }: { result: SignupResult }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -21,9 +21,14 @@ export function DoneStep({ result }: { result: SignupResult }) {
       <CheckCircle2 className="signup-done__icon" aria-hidden="true" />
       <h1 ref={headingRef} tabIndex={-1}>เปิดอู่ {result.workspaceNo} สำเร็จ</h1>
       <p><Monitor size={20} aria-hidden="true" /> ระบบงานบนเว็บใช้บนคอมพิวเตอร์ (จอกว้าง 1024px ขึ้นไป)</p>
-      <a className="signup-play" href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
-        <img src="/store/google-play-badge-th.png" alt="ดาวน์โหลดแอปช่างบน Google Play (เปิดในแท็บใหม่)" width={646} height={250} />
-      </a>
+      <div className="signup-stores">
+        <a className="signup-play" href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">
+          <img src="/store/google-play-badge-th.png" alt="ดาวน์โหลดแอปช่างบน Google Play (เปิดในแท็บใหม่)" width={646} height={250} />
+        </a>
+        <a className="signup-apple" href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">
+          <img src="/store/app-store-badge-th.svg" alt="ดาวน์โหลดแอปช่างบน App Store (เปิดในแท็บใหม่)" width={120} height={40} />
+        </a>
+      </div>
       {result.sampleTechnicians?.length ? (
         <section className="signup-credentials" aria-labelledby="signup-credentials-title">
           <h2 id="signup-credentials-title">บัญชีช่างตัวอย่าง</h2>

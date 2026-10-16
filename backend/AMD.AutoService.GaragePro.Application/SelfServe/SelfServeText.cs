@@ -20,6 +20,9 @@ public static class SelfServeText
     /// <summary>แอปมือถือบน Google Play (ค่าเดียวกับ web/src/features/landing/appStore.ts)</summary>
     public const string PlayStoreUrl = "https://play.google.com/store/apps/details?id=net.garagepro.gpservice";
 
+    /// <summary>แอปมือถือบน App Store (ค่าเดียวกับ web/src/features/landing/appStore.ts)</summary>
+    public const string AppStoreUrl = "https://apps.apple.com/th/app/servicepro/id6815111962";
+
     /// <summary>รหัสอู่สำหรับแสดงผล เช่น 1042 → "SP1042" (prefix เดียวกับชื่อผู้ใช้ SP1042.M01)</summary>
     public static string WorkspaceCode(int workspaceNo) =>
         string.Create(CultureInfo.InvariantCulture, $"SP{workspaceNo:D4}");

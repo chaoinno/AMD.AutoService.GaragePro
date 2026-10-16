@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { BrandWordmark } from '../../components/Brand'
 import { useSession } from '../../lib/session'
-import { PLAY_STORE_URL } from './appStore'
+import { APP_STORE_URL, PLAY_STORE_URL } from './appStore'
 import './landing.css'
 
 const NAV_ITEMS = [
@@ -90,11 +90,12 @@ export function PublicLayout() {
             <Link to="/privacy">นโยบายความเป็นส่วนตัว</Link>
             <Link to="/terms">ข้อกำหนดการใช้งาน</Link>
             <a href={PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">แอป Android บน Google Play</a>
+            <a href={APP_STORE_URL} target="_blank" rel="noopener noreferrer">แอป iPhone บน App Store</a>
           </nav>
         </div>
         <div className="landing-container landing-footer__legal">
           <p>© ServicePro by Armadillo Tech Co., Ltd.</p>
-          <p>Google Play และโลโก้ Google Play เป็นเครื่องหมายการค้าของ Google LLC</p>
+          <p>Google Play และโลโก้ Google Play เป็นเครื่องหมายการค้าของ Google LLC · Apple, โลโก้ Apple และ App Store เป็นเครื่องหมายการค้าของ Apple Inc.</p>
         </div>
       </footer>
     </div>

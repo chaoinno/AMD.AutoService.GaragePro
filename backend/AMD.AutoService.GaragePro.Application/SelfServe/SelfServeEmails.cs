@@ -89,6 +89,7 @@ public static class SelfServeEmails
         }
 
         paragraphs.Add($"แอปมือถือสำหรับช่าง (Android): {SelfServeText.PlayStoreUrl}");
+        paragraphs.Add($"แอปมือถือสำหรับช่าง (iPhone): {SelfServeText.AppStoreUrl}");
         paragraphs.Add("ระหว่างทดลองใช้ ฟีเจอร์ขั้นสูงยังปิดอยู่: " + PlanFeatureNames.LabelTh(PlanFeature.All));
         paragraphs.Add($"สอบถามหรือสนใจแพ็กเกจ: {Contact()}");
 

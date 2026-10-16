@@ -37,7 +37,7 @@ export function HomePage() {
           <h2 id="mobile-teaser-title" className="landing-h2">งานหน้างาน เชื่อมกับระบบอู่บริการ</h2>
           <p className="landing-section__intro">
             รับรถพร้อมถ่ายรูป จับเวลางานซ่อม แชทในจ๊อบ และให้ลูกค้าเซ็นรับรถผ่านแอป ServicePro
-            ใช้บัญชีพนักงานเดียวกับเว็บ ดาวน์โหลดได้บน Android ส่วน iOS เร็วๆ นี้
+            ใช้บัญชีพนักงานเดียวกับเว็บ ดาวน์โหลดได้ทั้ง Android และ iPhone
           </p>
           <Link className="landing-text-link" to="/mobile-app">ดูแอปสำหรับช่าง →</Link>
         </div>

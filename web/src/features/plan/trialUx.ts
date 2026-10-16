@@ -151,7 +151,7 @@ export function deriveChecklist(
     {
       key: 'mobile',
       label: 'ให้ช่างเข้าแอปมือถือ',
-      hint: 'ติดตั้งแอป ServicePro จาก Google Play แล้วเข้าด้วยรหัสช่าง ลองกด "เริ่มงาน (จับเวลา)"',
+      hint: 'ติดตั้งแอป ServicePro จาก Google Play หรือ App Store แล้วเข้าด้วยรหัสช่าง ลองกด "เริ่มงาน (จับเวลา)"',
       done: c.mobileLoginSeen === true,
       action: { kind: 'mobileApp', label: 'ติดตั้งแอป' },
     },

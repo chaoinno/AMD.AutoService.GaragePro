@@ -1458,6 +1458,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     QR `web/public/store/google-play-qr.svg` (สร้างครั้งเดียวด้วย `qrcode@1.5.4` ใน scratchpad — ไม่ใช่ dependency) ซ่อนที่ < 1024px ·
     iOS = ป้าย "เร็วๆ นี้" กดไม่ได้ **ไม่ใช้ badge App Store ของ Apple** (guideline ห้ามใช้กับแอปที่ยังไม่อยู่บน store — เปลี่ยนเมื่อขึ้น store จริง) ·
     footer มีข้อความเครื่องหมายการค้า Google Play
+    · **[แก้ 2026-10-16] iOS ขึ้น App Store แล้ว** — ดูหัวข้อ "ลิงก์ App Store" ท้ายสถานะปัจจุบัน
   · `index.html`: description ใหม่ + `og:*` (og:image ชี้ `https://service.garage-pro.net/servicepro-logo.png`)
   · ทดสอบแล้ว: `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) 16 ผ่าน · เบราว์เซอร์ 1440/1024/375px: ไม่มี horizontal scroll ·
     เมนูเลื่อนถูก section + ไฮไลต์ · "เริ่มใช้งาน" → `/login` + modal + โฟกัสช่องรหัสพนักงาน · Escape/ปุ่ม X/back ปิดแล้วกลับ `/` ·
@@ -1871,6 +1872,17 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     สำรอง `.bak-20261015223238` · `nginx -t` ผ่าน · ยิง login 20 ครั้งได้ 429 จาก Nginx 14 ครั้ง · warning `protocol options redefined`/`conflicting server name
     reports.garage-pro.net` มาจาก vhost อื่นที่มีอยู่เดิม) · ยังไม่ได้ยืนยันจาก access log ว่า `$remote_addr` เป็น IP จริง (user deployment อ่าน log ไม่ได้) · `make-service-canonical.sh` ยังไม่ติดตั้ง (gpservice ยังตอบ 200) · `site.webmanifest` ได้ MIME
     `application/octet-stream` (nginx ไม่รู้จักนามสกุล · ไม่กระทบการใช้งาน) · ยังไม่ได้ทดสอบออกใบเสร็จจริงบน production หลัง deploy
+
+- ✅ **[เพิ่ม 2026-10-16] ลิงก์ App Store ของแอป iOS บนเว็บ** (คำขอผู้ใช้ · ลิงก์ที่ได้มา `apps.apple.com/us/app/servicepro/id6815111962`)
+  · `web/src/features/landing/appStore.ts` เพิ่ม `APP_STORE_URL` — **ใช้ storefront `/th/`** (ลูกค้าเป็นอู่ในไทย · iPhone เปิดแล้ว App Store พาไป storefront ของเครื่องเองอยู่ดี)
+  · badge ทางการภาษาไทยของ Apple `web/public/store/app-store-badge-th.svg` (ดาวน์โหลดจาก `toolbox.marketingtools.apple.com` — `tools.applemarketingtools.com` เดิม resolve ไม่ได้แล้ว)
+    สูง 54px ให้ส่วนทึบเท่า badge Google (72px ที่มีขอบโปร่ง) · QR `web/public/store/app-store-qr.svg` (`qrcode@1.5.4` ใน scratchpad — ถอดด้วย `BarcodeDetector` ได้ URL ตรงตัว)
+  · แทนป้าย "iOS เร็วๆ นี้" ใน `MobileAppSection` ด้วย badge + QR คู่ (Android/iPhone · ซ่อน < 1024px เหมือนเดิม) · footer ลิงก์ App Store + ข้อความเครื่องหมายการค้า Apple ·
+    FAQ / teaser หน้าแรก / description ของ `/mobile-app` / JSON-LD `operatingSystem: 'Web, Android, iOS'` · `MobileAppInstall` (เช็คลิสต์ต้อนรับ + หน้าต่างรหัสพนักงาน) QR+ลิงก์ทั้งสอง store ·
+    หน้าสมัครเสร็จ (`DoneStep`) badge ทั้งสอง · hint เช็คลิสต์ · อีเมลต้อนรับ self-serve (`SelfServeText.AppStoreUrl` · `SelfServeEmails`)
+  · ทดสอบแล้ว: Web `tsc -b`/`vite build` ผ่าน · `SelfServeEmailsTests` 30 ผ่าน · เบราว์เซอร์ 1440/375px ไม่มี horizontal scroll ไม่มี console error · render `MobileAppInstall` ทั้งสองขนาด
+  · **[RISK] ณ วันที่แก้ หน้า App Store ยังขึ้น "page not found" ทั้ง `/us/` และ `/th/`** และ iTunes lookup API คืน 0 รายการ — แอปน่าจะยังไม่เผยแพร่ (รอ Apple propagate หรือยังตั้ง manual release)
+    ห้าม deploy จนกว่าลิงก์เปิดได้จริง (Apple ห้ามใช้ badge กับแอปที่ยังไม่อยู่บน store) และตรวจว่าเปิดขายใน storefront ไทย · ยังไม่ได้ build/deploy
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

@@ -59,7 +59,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   {
     path: '/mobile-app',
     title: 'แอปช่างในระบบอู่บริการ | ServicePro',
-    description: 'แอปช่าง ServicePro เชื่อมกับระบบอู่บริการ รับรถ ถ่ายรูป จับเวลางานซ่อม แชท และเซ็นรับรถ ดาวน์โหลดบน Google Play ส่วน iOS เร็วๆ นี้',
+    description: 'แอปช่าง ServicePro เชื่อมกับระบบอู่บริการ รับรถ ถ่ายรูป จับเวลางานซ่อม แชท และเซ็นรับรถ ดาวน์โหลดได้ทั้ง Google Play และ App Store',
     h1: 'แอปสำหรับช่างในอู่',
     prerender: true,
     changefreq: 'monthly',
