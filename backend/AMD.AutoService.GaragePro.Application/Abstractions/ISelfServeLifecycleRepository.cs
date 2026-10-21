@@ -110,6 +110,11 @@ public interface ISelfServeSalesNotifier
 
     /// <returns>true เมื่อปลายทางรับแล้ว (รวมคำขอซ้ำด้วย retry key เดิม)</returns>
     Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct = default);
+
+    /// <summary>หลายข้อความใน push เดียว · ค่าเริ่มต้นรวมเป็นข้อความเดียว (fake เดิมในเทสต์ใช้ได้เลย) · ดู IContactNotifier</summary>
+    Task<bool> SendAsync(Guid retryKey, IReadOnlyList<Contact.LineOutboundMessage> messages,
+        CancellationToken ct = default) =>
+        SendAsync(retryKey, Contact.LineOutboundMessage.Join(messages), ct);
 }
 
 /// <summary>ดาวน์โหลดรายชื่อโดเมนอีเมลชั่วคราวจาก <c>SelfServe:Blocklist:Url</c> (หนึ่งบรรทัดต่อโดเมน)</summary>

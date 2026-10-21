@@ -43,17 +43,16 @@ public sealed class LineContactNotifier(
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_options.ChannelAccessToken) && !string.IsNullOrWhiteSpace(_options.ContactGroupId);
 
-    public async Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct)
+    public Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct) =>
+        SendAsync(retryKey, [LineOutboundMessage.FromText(text)], ct);
+
+    public async Task<bool> SendAsync(Guid retryKey, IReadOnlyList<LineOutboundMessage> messages, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/v2/bot/message/push")
         {
             // StringContent ไม่ใช่ JsonContent — JsonContent สตรีมแบบ chunked ไม่มี Content-Length
             // ซึ่ง endpoint ที่เข้มงวดจะตัดการเชื่อมต่อทิ้ง (เจอจริงตอนทดสอบกับ mock)
-            Content = new StringContent(JsonSerializer.Serialize(new
-            {
-                to = _options.ContactGroupId,
-                messages = new[] { new { type = "text", text } },
-            }), Encoding.UTF8, "application/json"),
+            Content = new StringContent(BuildPushBody(_options.ContactGroupId, messages), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ChannelAccessToken);
         request.Headers.Add("X-Line-Retry-Key", retryKey.ToString());
@@ -75,5 +74,27 @@ public sealed class LineContactNotifier(
             logger.LogWarning(ex, "เชื่อมต่อ LINE Messaging API ไม่ได้ (retryKey {RetryKey})", retryKey);
             return false;
         }
+    }
+
+    /// <summary>
+    /// body ของ push: ข้อความ = <c>{type:"text",text}</c> · รูป = <c>{type:"image",originalContentUrl,previewImageUrl}</c>
+    /// (url เดียวกันทั้งคู่ · สลิปถูกแปลงเป็น JPEG ≤ 1 MB แล้ว) · LINE รับ 1 ถึง 5 ข้อความ และรูปต้องเป็น https
+    /// ผิดเงื่อนไข = ArgumentException ก่อนยิง (ดีกว่าโดน 400 แล้วข้อความทั้งชุดหาย)
+    /// </summary>
+    internal static string BuildPushBody(string to, IReadOnlyList<LineOutboundMessage> messages)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        if (messages.Count is < 1 or > 5)
+            throw new ArgumentException("LINE push ต้องมี 1 ถึง 5 ข้อความ", nameof(messages));
+
+        var items = messages.Select(object (m) =>
+        {
+            if (!m.IsImage) return new { type = "text", text = m.Text ?? string.Empty };
+            if (!Uri.TryCreate(m.ImageUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                throw new ArgumentException("รูปใน LINE push ต้องเป็นลิงก์ https", nameof(messages));
+            return new { type = "image", originalContentUrl = m.ImageUrl, previewImageUrl = m.ImageUrl };
+        }).ToArray();
+
+        return JsonSerializer.Serialize(new { to, messages = items });
     }
 }

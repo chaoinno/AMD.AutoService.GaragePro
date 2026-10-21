@@ -94,4 +94,34 @@ public interface ISelfServeAdminRepository
     string? CheckWritableDatabase();
 
     Task ApplyPackageChangeAsync(WorkspacePackageChange change, CancellationToken ct = default);
+
+    /// <summary>
+    /// อนุมัติรายการแจ้งชำระ + ต่อวัน + audit ใน transaction เดียว (docs/17 กฎข้อ 7) ลำดับล็อก: รายการ → Branch → sp_Workspace
+    /// · รายการ: UPDATE แบบมีเงื่อนไข Pending → Approved (0 แถว = <see cref="ApprovePaymentOutcome.PaymentNotPending"/>)
+    /// · Branch: UPDATE เฉพาะเมื่อวันหมดยังเท่ากับ <see cref="PackagePaymentApproval.ExpectedBranchEndUtc"/> (ค่าดิบที่อ่านมา)
+    ///   ไม่ตรง = <see cref="ApprovePaymentOutcome.BranchEndChanged"/> และ rollback ทั้งหมด (กัน spadmin extend ที่รันพร้อมกัน)
+    /// </summary>
+    Task<ApprovePaymentOutcome> ApprovePaymentAsync(WorkspacePackageChange change, PackagePaymentApproval approval,
+        CancellationToken ct = default);
 }
+
+public enum ApprovePaymentOutcome
+{
+    Applied,
+    PaymentNotPending,
+    BranchEndChanged
+}
+
+/// <summary>
+/// ค่าที่เขียนลงรายการตอนอนุมัติ · <see cref="ExpectedBranchEndUtc"/> = Branch.EndPackageDate ดิบตามที่อ่านมา (null = ไม่มีวันหมด)
+/// ไม่ใช่วันหมดที่ใช้คำนวณ (ซึ่งอาจมาจากสำเนา sp_Workspace.TrialEndsAt)
+/// </summary>
+public sealed record PackagePaymentApproval(
+    Guid PaymentId,
+    DateTime? ExpectedBranchEndUtc,
+    string ReviewedBy,
+    DateTime ReviewedAt,
+    string? ReviewNote,
+    DateTime? PrevEndsAt,
+    DateTime PeriodStartsAt,
+    DateTime PeriodEndsAt);

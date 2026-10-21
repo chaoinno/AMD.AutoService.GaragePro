@@ -29,6 +29,13 @@ public interface IContactNotifier
 
     /// <returns>true เมื่อปลายทางรับข้อความแล้ว (รวมกรณีเป็นคำขอซ้ำที่เคยส่งสำเร็จแล้ว)</returns>
     Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct);
+
+    /// <summary>
+    /// หลายข้อความใน push เดียว (ข้อความ + รูปสลิป · docs/17 §5.3) · ค่าเริ่มต้นรวมเป็นข้อความเดียว (รูปเป็นลิงก์)
+    /// ให้ implementation เดิม/fake ในเทสต์ใช้ต่อได้โดยไม่ต้องแก้ · LineContactNotifier ส่งเป็นหลายข้อความจริง
+    /// </summary>
+    Task<bool> SendAsync(Guid retryKey, IReadOnlyList<LineOutboundMessage> messages, CancellationToken ct) =>
+        SendAsync(retryKey, LineOutboundMessage.Join(messages), ct);
 }
 
 public interface IContactRequestService
