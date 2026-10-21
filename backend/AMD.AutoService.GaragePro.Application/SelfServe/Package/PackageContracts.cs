@@ -18,7 +18,7 @@ public enum PackagePaymentInsertOutcome
 {
     Inserted,
 
-    /// <summary>requestId เดิมของอู่นี้ — <see cref="PackagePaymentInsertResult.Payment"/> คือแถวเดิม</summary>
+    /// <summary>requestId เดิมของอู่นี้ · <see cref="PackagePaymentInsertResult.Payment"/> คือแถวเดิม</summary>
     DuplicateRequest,
 
     /// <summary>มีรายการรอตรวจของอู่นี้อยู่แล้ว (ชน UX_sp_PackagePayment_OnePending)</summary>

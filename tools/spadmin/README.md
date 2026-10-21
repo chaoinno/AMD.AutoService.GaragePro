@@ -22,7 +22,8 @@
 | `LegacyShards:ConnectionStrings:sp1` | ค่าเดียวกับบรรทัดบน (Dapper อ่าน/เขียนแถว Branch/ลูกค้า/รถ/พนักงานของ sp1) |
 | `ConnectionStrings:ServiceDb` · `LegacyShards:ConnectionStrings:db2` | เฉพาะ `convert` (เขียนสาขาปลายทาง) และ guard ที่ตรวจว่าฐาน self-serve ไม่ใช่ฐานจริง |
 | `Ftp:*` | เฉพาะ `purge`/`run-jobs` ที่ลบไฟล์แนบ |
-| `SelfServe:Email:*` · `LineMessaging:*` · `SelfServe:SalesLineGroupId` | เฉพาะ `run-jobs` (ส่งอีเมล/LINE จริง ถ้าตั้งไว้) |
+| `SelfServe:Email:*` · `LineMessaging:*` · `SelfServe:SalesLineGroupId` | เฉพาะ `run-jobs` (ส่งอีเมล/LINE จริง ถ้าตั้งไว้) · `approve-payment`/`reject-payment` ส่งอีเมลถึงเจ้าของอู่ |
+| `SelfServe:Package:*` | `payment` (ลิงก์ดูสลิปต้องมี `SlipLinkKey` ≥ 32 ตัว) · ราคามาตรฐานที่ใช้เทียบยอด |
 
 ไม่ได้ตั้ง `SelfServe:ConnectionString` → ทุกคำสั่ง (ยกเว้น `--help`) จบด้วยข้อความบอกค่าที่ขาด และรหัสออก 3 โดยไม่ต่อฐานใดๆ
 
@@ -65,6 +66,10 @@ docker compose run --rm --no-deps --entrypoint dotnet api /app/spadmin/SpAdmin.d
 | `purge --workspace N --yes [--allow-paid]` | ลบข้อมูลอู่ทั้งหมดทันที (svc_* · ไฟล์แนบ · ลูกค้า/รถ/พนักงาน) คงไว้แค่อีเมลที่ normalize แล้วกันสมัครซ้ำ |
 | `run-jobs [--task maintenance\|summary] [--as-of ...]` | รันงานรายวันทันทีโดยไม่ claim (`sp_JobRun`) · `--as-of` = ISO `2026-12-31T03:30:00+07:00` · วันที่ `2026-12-31` (เวลางานรายวัน) · `+91d`/`-1d` · ไม่มี offset = เวลาไทย · `--date` = ชื่อเดิม |
 | `convert --workspace N --target-branch M --target-user U [--target-shard db2] [--dry-run] [--out report.json] [--allow-failures] [--yes]` | ย้ายข้อมูลหลักไปสาขา GaragePro จริง (ดูหัวข้อถัดไป) |
+| `payments [--status pending\|approved\|rejected\|cancelled\|all] [--workspace SP1042]` | รายการแจ้งชำระ (ค่าเริ่มต้นรอตรวจ) · id สั้น · ยอดโอน/ราคา · เวลาโอน · "ถ้าอนุมัติตอนนี้ใช้ได้ถึง" · สลิปซ้ำ |
+| `payment --id <id หรือ 8 ตัวแรก>` | รายละเอียด · หมายเหตุลูกค้า · สลิปซ้ำ · วันหมดใหม่ถ้าอนุมัติตอนนี้ · ลิงก์ดูสลิป (อายุ 7 วัน) · คำสั่งอนุมัติ/ปฏิเสธที่คัดลอกได้ |
+| `approve-payment --id <...> --by <ชื่อ> [--until yyyy-MM-dd] [--note ...]` | ต่อวันหมด + เปลี่ยนเป็น paid + ปิดรายการ + audit ใน transaction เดียว · ยอดไม่ตรงราคาต้องมี `--note` · `--until` ต้องไม่ก่อนวันเริ่มนับ · ส่งอีเมล/แจ้งเตือนเจ้าของอู่ |
+| `reject-payment --id <...> --by <ชื่อ> --reason slip_unreadable\|amount_mismatch\|not_received\|duplicate\|other [--note ...]` | ปฏิเสธพร้อมเหตุผล (`other` ต้องมี `--note`) · ลูกค้าเห็นเหตุผล+หมายเหตุ · ส่งอีเมล/แจ้งเตือนเจ้าของอู่ |
 
 ตัวอย่าง:
 
@@ -77,7 +82,19 @@ spadmin set-plan --workspace SP1042 --plan paid --until 2027-12-31
 spadmin set-plan --workspace SP1042 --plan suspended   # หรือ suspend --reason "..."
 spadmin run-jobs --task maintenance --as-of +91d      # จำลองวันลบ (แผน §6 #10)
 spadmin purge --workspace SP1042 --yes
+spadmin payments                                       # รายการแจ้งชำระที่รอตรวจ
+spadmin payment --id 3f2a9c1b                          # id สั้นจากข้อความ LINE
+spadmin approve-payment --id 3f2a9c1b --by noi
+spadmin approve-payment --id 3f2a9c1b --by noi --note "ส่วนลดเปิดตัว"   # ยอดไม่ตรงราคา
+spadmin reject-payment --id 3f2a9c1b --by noi --reason not_received
 ```
+
+### แจ้งชำระ/ต่ออายุ (docs/17)
+
+- สูตรวัน: เริ่มนับจากวันหมดเดิมที่ปัดขึ้นเป็นเที่ยงคืนไทย (หรือวันนี้ถ้าหมดแล้ว) แล้วบวกจำนวนเดือนตามปฏิทิน ไม่บวก 1 วัน
+- `--by` **บังคับ** สำหรับ approve/reject (อนุมัติเรื่องเงิน · ใน container `$USER` ไม่มีความหมาย) · `--id` สั้นกว่า 8 ตัวหรือตรงหลายรายการ = ปฏิเสธพร้อมรายการที่ตรง
+- อนุมัติพร้อมกันสองคนได้ผลครั้งเดียว · มีคน `extend` วันหมดระหว่างอนุมัติ = `PACKAGE_APPROVAL_CONFLICT` ไม่บันทึกอะไร ให้รันใหม่
+- อู่ที่ถูกระงับต้อง `set-plan` ยกเลิกการระงับก่อน · อู่ที่มีรายการรอตรวจไม่ถูก `purge` จนกว่าจะตรวจ (หรือใส่ `--allow-paid`)
 
 รหัสออก: `0` สำเร็จ · `1` ถูกปฏิเสธ/ล้ม · `2` คำสั่งผิดหรือขาด `--yes` · `3` ไม่มีค่าตั้งฐาน self-serve ·
 `4` ทำจบแต่มีบางรายการล้ม (convert/run-jobs) · `130` ยกเลิกด้วย Ctrl+C

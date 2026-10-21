@@ -507,6 +507,14 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 
 ลำดับ merge ที่แนะนำ: A → ฐานเอกสาร → 1 → 2, 3, 4 → 6 (ServicePro) · Admin 5 → 6 · deploy backend ก่อนแอปถึงมือผู้ใช้
 
+**บันทึกจาก PR 1 (backend + spadmin)** สัญญาหัวข้อ 5/8.6 ไม่เปลี่ยน · รายละเอียดที่สัญญาไม่ได้ระบุ:
+- `cannotSubmitCode` เลือกเหตุผลแรกตามลำดับ not_renewable → unavailable → not_manager → pending_exists
+- สลิปที่ประกาศ content-type ว่างหรือ `application/octet-stream` รับได้ (ตัดสินจากเนื้อไฟล์) · รูป JPEG ที่ยังเกิน 1 MB ที่ quality 70 ถูกย่อต่อ (1280/1024/800px)
+- ถัง `public-package-slip` นับต่อ IP · `field: "id"` ใช้กับ `--id` ของ spadmin ที่สั้นเกิน/ตรงหลายรายการ
+- อีเมลเตือนอู่ paid นับวันถึง "วันสุดท้ายที่ใช้ได้" (กติกาเดียวกับ `daysLeft`) · tag อีเมลเตือนคือ `paid-reminder-{รอบ}`
+- ชน unique ตอน INSERT ตัดสินด้วยการอ่านซ้ำ (requestId เดิม → แถวเดิม · ไม่งั้นรอตรวจซ้อน) ไม่ parse ชื่อ index
+- ผลอนุมัติ/ปฏิเสธฝั่ง Application คืน `PackagePaymentAdminItem` (รายการเต็ม + ข้อมูลอู่ + สลิปซ้ำ + พรีวิว) ให้ API ภายในระยะ B แปลงเป็น JSON ตาม 8.6
+
 ### การทดสอบที่ต้องมี
 - unit: สูตรวัน (ต่อก่อน/หลังหมด · ปัดเที่ยงคืน · 31 ม.ค. + 1 เดือน · `--until` ไม่หลัง base) · กฎ 1–13 · ราคาไม่ตั้ง · role ที่ไม่ใช่ Manager · truth table หัวข้อ 4.1
 - SQL integration (`GarageSelfServe_Dev`): รอตรวจซ้อนถูก index ปฏิเสธ · requestId ซ้ำได้แถวเดิม · อนุมัติพร้อมกัน 2 ครั้งได้ผลครั้งเดียว ·

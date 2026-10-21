@@ -237,7 +237,7 @@ public class WorkspacePurgerTests
     {
         var h = Create();
         h.Data.SlipPaths.Add($"sp1/{BranchId}/package-slip/aa/bb.jpg");
-        h.Data.SlipPaths.Add("sp1/999/package-slip/cc/dd.jpg");   // อ้างสาขาอื่น — ห้ามลบ
+        h.Data.SlipPaths.Add("sp1/999/package-slip/cc/dd.jpg");   // อ้างสาขาอื่น · ห้ามลบ
 
         var result = await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target!.WorkspaceId, "system:lifecycle"));
 

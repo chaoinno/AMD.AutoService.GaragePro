@@ -134,7 +134,7 @@ public sealed class SelfServeOptions
 
     /// <summary>
     /// แจ้งชำระเงิน/ต่ออายุแพ็กเกจ (docs/17 §5.5) · [ASSUME] ค่าเริ่มต้นทั้งหมดยังรอฝ่ายขายยืนยัน (docs/17 §11)
-    /// · array ทุกตัวเริ่มว่างโดยตั้งใจ (ConfigurationBinder ต่อท้าย array เดิม — ดู <see cref="TrialOptions.ReminderDays"/>) อ่านผ่าน Effective...
+    /// · array ทุกตัวเริ่มว่างโดยตั้งใจ (ConfigurationBinder ต่อท้าย array เดิม · ดู <see cref="TrialOptions.ReminderDays"/>) อ่านผ่าน Effective...
     /// · [SECURITY] <see cref="SlipLinkKey"/> อยู่ใน user-secrets / env file เท่านั้น
     /// </summary>
     public sealed class PackageOptions

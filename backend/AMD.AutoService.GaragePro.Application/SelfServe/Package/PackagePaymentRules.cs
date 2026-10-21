@@ -112,7 +112,7 @@ public static partial class PackagePaymentRules
             "monthCount"));
     }
 
-    /// <summary>ว่าง = null · ตัดขึ้นบรรทัดใหม่ (ข้อความไปลง LINE บรรทัดเดียว — กติกาเดียวกับ SelfServeText.SingleLine)</summary>
+    /// <summary>ว่าง = null · ตัดขึ้นบรรทัดใหม่ (ข้อความไปลง LINE บรรทัดเดียว · กติกาเดียวกับ SelfServeText.SingleLine)</summary>
     public static Parsed<string?> ParseNote(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return new Parsed<string?>(null, null);

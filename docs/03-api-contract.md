@@ -338,9 +338,26 @@ Events → client:
 | `POST /api/v1/selfserve/extension-request` `{requestId, note?}` | แจ้ง LINE ทีมขาย · ซ้ำภายใน 24 ชม. = 409 `SELFSERVE_EXTENSION_ALREADY_REQUESTED` |
 | `POST /api/v1/selfserve/sample-data` · `POST …/sample-data/clear` | ผู้จัดการเท่านั้น (`SELFSERVE_SAMPLE_FORBIDDEN`) · ล้างตาม ledger `sp_SampleEntity` กดซ้ำได้ |
 
+### 16.4.1 แพ็กเกจและการแจ้งชำระเงิน **[เพิ่ม 2026-10-21 · สัญญาเต็มที่ [docs/17 §5](17-package-renewal.md)]**
+เรียกได้แม้อู่อ่านอย่างเดียว (อยู่ใต้ `/selfserve`) · ตัวเงิน/หมายเหตุ/สลิปเห็นเฉพาะผู้จัดการ (role อื่นได้ null ที่ server)
+| Method · Path | หมายเหตุ |
+|---|---|
+| `GET /api/v1/selfserve/package` | `PackageOverview` `{workspaceNo, plan, status, endsAt?, lastUsableDate?, daysLeft?, readOnly, monthOptions[{months, price?, previewEndsAt, previewLastUsableDate}], paymentAccount?, pending?, canSubmit, cannotSubmitCode?, cannotSubmitReasonTh?, paidAtMaxPastDays}` · `cannotSubmitCode`: not_renewable → unavailable → not_manager → pending_exists (เหตุผลแรกที่เข้าเงื่อนไข) |
+| `GET /api/v1/selfserve/package/payments?take=20` | `PackagePayment[]` ใหม่สุดก่อน (take ≤ 50) |
+| `POST /api/v1/selfserve/package/payments` | multipart `requestId · paidAt · amount · monthCount · note? · slip` (ผู้จัดการ · 10 ครั้ง/ชม. ต่ออู่) → `PackagePayment` · requestId เดิม = แถวเดิม ไม่อัปโหลด/ไม่ส่ง LINE ซ้ำ · request ≤ 16 MB (สลิป ≤ 15 MB) · content-type ของสลิปไม่ระบุหรือ `application/octet-stream` ได้ (ตัดสินจากเนื้อไฟล์) |
+| `POST /api/v1/selfserve/package/payments/{id}/cancel` | ผู้จัดการยกเลิกรายการรอตรวจของอู่ตัวเอง |
+| `GET /api/v1/selfserve/package/payments/{id}/slip` | ไฟล์ `image/jpeg` หรือ `application/pdf` · ผู้จัดการ · ต้องมี Bearer |
+| `GET /api/v1/public/package-slips/{id}?exp=&sig=` | anonymous · ลิงก์มีลายเซ็น HMAC ที่ส่งเข้า LINE ทีมงาน (อายุ 7 วัน) · ผิดทุกกรณี 404 เปล่า · ถังจำกัดอัตรา 300/ชม. ต่อ IP แยกจากฟอร์มติดต่อ |
+
+Error: `PACKAGE_PAYMENT_FORBIDDEN` 403 · `PACKAGE_PAYMENT_UNAVAILABLE` 503 · `PACKAGE_PAYMENT_VALIDATION` 422 (+`field`: requestId · paidAt · amount · monthCount · note · slip · until · reason · id) ·
+`PACKAGE_PAYMENT_PENDING_EXISTS` 409 · `PACKAGE_NOT_RENEWABLE` 409 · `PACKAGE_PAYMENT_NOT_FOUND` 404 · `PACKAGE_PAYMENT_NOT_PENDING` 409 · `PACKAGE_APPROVAL_CONFLICT` 409 ·
+`PACKAGE_SLIP_UPLOAD_FAILED` 503 · `ATTACHMENT_EMPTY` 422 · `ATTACHMENT_TYPE_INVALID` 422 · `ATTACHMENT_TOO_LARGE` 413 · `RATE_LIMITED` 429
+· แจ้งเตือนในระบบหลังทีมงานตรวจ: kind `package.payment_approved` / `package.payment_rejected` · `entityType: "PackagePayment"` · `linkHint: "package"`
+
 ### 16.5 งานเบื้องหลังและเครื่องมือผู้ดูแล
 - งานรายวันใน API (`SelfServeDailyJob`, ปิดได้ด้วย `SelfServe:Jobs:Enabled=false`): 03:30 เตือนก่อนหมด 7/1 วัน · หมดอายุวันที่ 30 · อีเมลชวนกลับวันที่ 45 หลังหมด · ลบข้อมูลเมื่อพ้นช่วงอ่านอย่างเดียว (เก็บ `NormalizedEmail` ไว้กันสมัครซ้ำ) · อู่ที่ย้ายไป db2 แล้วลบเมื่อพ้น `PurgeAfter` · ล้างอู่ที่สร้างค้าง > 1 ชม. · 08:30 สรุปส่ง LINE ทีมขาย · กันรันซ้ำข้ามเครื่องด้วย `sp_JobRun`
-- `tools/spadmin` (CLI): `list · show · extend · set-plan · suspend · purge · run-jobs · convert` — รายละเอียดใน `tools/spadmin/README.md` · **`convert` ย้ายเฉพาะข้อมูลหลัก** (หมวดหมู่ · คลัง · สินค้า · เทมเพลต · พนักงาน · ลูกค้า · รถ) ไปสาขา GaragePro ที่สร้างด้วย GaragePro Admin แล้ว ผ่าน service เดิม · `--dry-run` ก่อนเสมอ
+- งานรายวัน (docs/17 กฎข้อ 13): อู่ที่มีรายการแจ้งชำระรอตรวจไม่ได้อีเมลเตือน/เชิญกลับและไม่ถูกลบ · อู่ paid ได้อีเมลเตือนก่อนหมด 14 และ 3 วัน (`SelfServe:Package:PaidReminderDays`) · สรุปรายวันต่อท้าย " · แจ้งชำระรอตรวจ N"
+- `tools/spadmin` (CLI): `list · show · extend · set-plan · suspend · purge · run-jobs · convert · payments · payment · approve-payment · reject-payment` · รายละเอียดใน `tools/spadmin/README.md` · **`convert` ย้ายเฉพาะข้อมูลหลัก** (หมวดหมู่ · คลัง · สินค้า · เทมเพลต · พนักงาน · ลูกค้า · รถ) ไปสาขา GaragePro ที่สร้างด้วย GaragePro Admin แล้ว ผ่าน service เดิม · `--dry-run` ก่อนเสมอ
 
 ### 16.6 Error code ใหม่ (ข้อความไทยอยู่ที่ `Application/SelfServe/*Errors.cs`, `Application/Common/PlanErrors.cs`, `Application/Auth/SelfServeAuthErrors.cs`)
 `SIGNUP_DISABLED` · `SIGNUP_VALIDATION` · `SIGNUP_BOT_CHECK_FAILED` · `SIGNUP_EMAIL_DISPOSABLE` · `SIGNUP_EMAIL_DOMAIN_INVALID` · `SIGNUP_EMAIL_SEND_FAILED` · `SIGNUP_LOOKUP_UNAVAILABLE` · `SIGNUP_OTP_THROTTLED` · `SIGNUP_OTP_INVALID` · `SIGNUP_OTP_EXPIRED` · `SIGNUP_OTP_LOCKED` · `SIGNUP_PASSWORD_MISMATCH` · `SIGNUP_TOKEN_INVALID` · `SIGNUP_GOOGLE_INVALID` · `SIGNUP_ACCOUNT_EXISTS` · `SIGNUP_PROVISION_FAILED` · `SIGNUP_RATE_LIMITED` · `AUTH_RATE_LIMITED` · `AUTH_GOOGLE_NOT_REGISTERED` · `AUTH_GOOGLE_DISABLED` · `TRIAL_EXPIRED` · `PLAN_FEATURE_LOCKED` · `PLAN_LIMIT_REACHED` · `STAFF_ROLE_REQUIRED` · `STAFF_ACCOUNT_CONFLICT` · `STAFF_PASSWORD_TOO_SHORT` · `STAFF_PASSWORD_TOO_LONG` · `STAFF_WORKSPACE_NOT_FOUND` · `SELFSERVE_NOT_APPLICABLE` · `SELFSERVE_VALIDATION` · `SELFSERVE_EXTENSION_ALREADY_REQUESTED` · `SELFSERVE_NOTIFY_FAILED` · `SELFSERVE_SAMPLE_FORBIDDEN` · `SELFSERVE_SAMPLE_UNAVAILABLE` · `SELFSERVE_SAMPLE_FAILED` · `SELFSERVE_SAMPLE_WORKSPACE_NOT_READY` · `SELFSERVE_SAMPLE_CLEAR_INCOMPLETE` · `SELFSERVE_WORKSPACE_NOT_FOUND` · `SELFSERVE_PURGE_REFUSED` · `POS_RECEIPT_CONFLICT` (409 — เลขใบเสร็จชน) · `AUTH_BRANCH_FORBIDDEN` (ขอกะของสาขาอื่น)

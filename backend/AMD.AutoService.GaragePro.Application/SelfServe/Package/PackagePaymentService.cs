@@ -23,7 +23,7 @@ public interface IPackagePaymentService
 /// <summary>
 /// แจ้งชำระเงินของอู่ที่สมัครเอง (docs/17 §2, §5.1)
 /// · shard/สาขา/ผู้แจ้งมาจาก JWT เสมอ ห้ามรับจาก body · shard ≠ sp1 หรือไม่มี workspace = <c>SELFSERVE_NOT_APPLICABLE</c>
-/// · [BIZ] แจ้งได้ทั้งตอนใช้งานปกติและตอนอ่านอย่างเดียว (TrialReadOnlyFilter ข้าม /api/v1/selfserve) — ไม่ตรวจ IsReadOnly ที่นี่โดยตั้งใจ
+/// · [BIZ] แจ้งได้ทั้งตอนใช้งานปกติและตอนอ่านอย่างเดียว (TrialReadOnlyFilter ข้าม /api/v1/selfserve) · ไม่ตรวจ IsReadOnly ที่นี่โดยตั้งใจ
 /// · ลำดับของการแจ้ง (กติกาที่เทสต์ล็อกไว้): workspace → Manager → บัญชีรับเงิน → requestId → requestId เดิม = แถวเดิม
 ///   (ไม่อัปโหลด/ไม่ส่ง LINE ซ้ำ) → ต่ออายุได้ไหม → ค่าในฟอร์ม → ไฟล์ → รอตรวจซ้อน → อัปโหลด → สลิปซ้ำ → INSERT → LINE
 ///   · อัปโหลดล้ม = ไม่มีแถวถูกบันทึก · INSERT ชน (requestId เดิม/รอตรวจซ้อนจากอีกแท็บ) = ลบไฟล์ที่เพิ่งอัปโหลด (best effort)
@@ -237,7 +237,7 @@ public sealed class PackagePaymentService(
     public async Task<PackageSlipFile?> OpenSignedSlipAsync(string? paymentId, string? exp, string? sig,
         CancellationToken ct = default)
     {
-        // [SECURITY] ตรวจลายเซ็นก่อนแตะฐาน/FTP — คำขอปลอมเสียแค่ HMAC หนึ่งครั้ง
+        // [SECURITY] ตรวจลายเซ็นก่อนแตะฐาน/FTP · คำขอปลอมเสียแค่ HMAC หนึ่งครั้ง
         if (!Guid.TryParse(paymentId, out var id)
             || !long.TryParse(exp, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture,
                 out var expires)

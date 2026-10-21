@@ -121,7 +121,7 @@ public sealed class WorkspacePurger(
         {
             await PurgeServiceRowsAndFilesAsync(target, shard, branchId, deleted, files, ct);
 
-            // ไฟล์สลิปไม่อยู่ใน svc_Attachment — path มีที่เดียวคือ sp_PackagePayment (แถวคงอยู่หลังลบ) · ผ่าน prefix guard เดียวกัน
+            // ไฟล์สลิปไม่อยู่ใน svc_Attachment · path มีที่เดียวคือ sp_PackagePayment (แถวคงอยู่หลังลบ) · ผ่าน prefix guard เดียวกัน
             var slips = await data.ReadPackageSlipPathsAsync(target.WorkspaceId, ct);
             await DeleteFilesAsync(target, shard, branchId, slips, files, ct);
 

@@ -39,7 +39,7 @@ public sealed class SelfServePackageController(IServiceProvider services) : Cont
             : NotApplicable();
 
     /// <summary>
-    /// แจ้งชำระ (multipart: requestId · paidAt · amount · monthCount · note · slip) — เฉพาะผู้จัดการ · 10 ครั้ง/ชม. ต่ออู่
+    /// แจ้งชำระ (multipart: requestId · paidAt · amount · monthCount · note · slip) · เฉพาะผู้จัดการ · 10 ครั้ง/ชม. ต่ออู่
     /// · requestId เดิมส่งซ้ำได้แถวเดิม (ไม่อัปโหลดซ้ำ ไม่ส่ง LINE ซ้ำ)
     /// </summary>
     [HttpPost("payments")]
@@ -65,7 +65,7 @@ public sealed class SelfServePackageController(IServiceProvider services) : Cont
         }
         catch (InvalidDataException)
         {
-            // ตัวอ่าน multipart โยนเมื่อเกิน MultipartBodyLengthLimit หรือรูปแบบ multipart เสีย — ทั้งสองกรณีไฟล์ใช้ไม่ได้
+            // ตัวอ่าน multipart โยนเมื่อเกิน MultipartBodyLengthLimit หรือรูปแบบ multipart เสีย · ทั้งสองกรณีไฟล์ใช้ไม่ได้
             return TooLarge();
         }
 

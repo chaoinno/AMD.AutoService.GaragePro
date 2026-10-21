@@ -27,7 +27,7 @@ public enum RateLimitedRoute
     PublicOther,
 
     /// <summary>
-    /// <c>/api/v1/public/package-slips/*</c> ลิงก์สลิปที่ LINE ดึง (docs/17 §5.3) — ถังต่อ IP ของตัวเอง ไม่นับรวม <c>public-global</c>
+    /// <c>/api/v1/public/package-slips/*</c> ลิงก์สลิปที่ LINE ดึง (docs/17 §5.3) · ถังต่อ IP ของตัวเอง ไม่นับรวม <c>public-global</c>
     /// (ไม่งั้นรูปสลิปไม่กี่สิบรูปก็กินโควตาฟอร์มติดต่อของทั้งระบบ)
     /// </summary>
     PublicPackageSlip,

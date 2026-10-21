@@ -247,7 +247,7 @@ public class SelfServeDbContext(DbContextOptions<SelfServeDbContext> options) : 
             e.Property(x => x.Amount).HasPrecision(18, 2);
             e.Property(x => x.ExpectedAmount).HasPrecision(18, 2);
             e.Property(x => x.SlipPath).HasMaxLength(400).IsRequired();
-            // hex ล้วน ความยาวคงที่ — char(64) ไม่ใช่ nvarchar (index เล็กลงครึ่งหนึ่ง)
+            // hex ล้วน ความยาวคงที่ · char(64) ไม่ใช่ nvarchar (index เล็กลงครึ่งหนึ่ง)
             e.Property(x => x.SlipSha256).HasMaxLength(64).IsFixedLength().IsUnicode(false).IsRequired();
             e.Property(x => x.SlipContentType).HasMaxLength(100).IsRequired();
             e.Property(x => x.Note).HasMaxLength(500);
@@ -257,7 +257,7 @@ public class SelfServeDbContext(DbContextOptions<SelfServeDbContext> options) : 
             e.Property(x => x.ReviewNote).HasMaxLength(1000);
             e.Property(x => x.CancelledBy).HasMaxLength(200);
 
-            // [BIZ] รอตรวจได้ครั้งละ 1 รายการต่ออู่ (กฎข้อ 2) — บังคับที่ฐาน ไม่ใช่แค่ใน service (บทเรียน WorkInterval)
+            // [BIZ] รอตรวจได้ครั้งละ 1 รายการต่ออู่ (กฎข้อ 2) · บังคับที่ฐาน ไม่ใช่แค่ใน service (บทเรียน WorkInterval)
             e.HasIndex(x => x.WorkspaceId).IsUnique()
              .HasFilter("[Status] = N'Pending'").HasDatabaseName(OnePendingIndex);
             e.HasIndex(x => new { x.WorkspaceId, x.RequestId }).IsUnique().HasDatabaseName(WorkspaceRequestIndex);

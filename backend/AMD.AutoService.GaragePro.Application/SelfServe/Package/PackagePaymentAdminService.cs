@@ -35,7 +35,7 @@ public sealed class PackagePaymentAdminService(
 
         var duplicates = await payments.FindBySlipHashesAsync(entries.Select(e => e.Payment.SlipSha256).ToList(), ct);
 
-        // วันหมดปัจจุบันต่ออู่ (อ่าน Branch ครั้งเดียว) — ใช้ทำพรีวิวเฉพาะรายการที่ยังรอตรวจ
+        // วันหมดปัจจุบันต่ออู่ (อ่าน Branch ครั้งเดียว) · ใช้ทำพรีวิวเฉพาะรายการที่ยังรอตรวจ
         var ends = entries.Any(e => e.Payment.Status == PackagePaymentStatus.Pending)
             ? (await admin.ListAsync(null, null, ct)).ToDictionary(r => r.Id, r => r.EndsAt)
             : new Dictionary<Guid, DateTime?>();

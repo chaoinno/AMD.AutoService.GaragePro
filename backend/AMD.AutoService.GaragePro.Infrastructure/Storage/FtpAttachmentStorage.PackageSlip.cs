@@ -114,7 +114,7 @@ public sealed partial class FtpAttachmentStorage : IPackageSlipStorage
                 jpeg = await EncodeAsync(image, SlipJpegFallbackQuality, ct);
             }
 
-            // สลิปที่มีลายละเอียดสูงมากอาจยังเกิน 1 MB ที่ quality 70 — ย่อต่อจนพอ (LINE ปฏิเสธรูปย่อที่ใหญ่กว่านี้)
+            // สลิปที่มีลายละเอียดสูงมากอาจยังเกิน 1 MB ที่ quality 70 · ย่อต่อจนพอ (LINE ปฏิเสธรูปย่อที่ใหญ่กว่านี้)
             foreach (var side in new[] { 1280, 1024, 800 })
             {
                 if (jpeg.Length <= MaxSlipJpegBytes) break;

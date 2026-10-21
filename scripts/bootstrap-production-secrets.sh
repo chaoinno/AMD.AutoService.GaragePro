@@ -68,8 +68,22 @@ jq -r '
   (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:AccountId","Email:FromAddress","Email:FromName","Email:ReplyToAddress","SalesLineGroupId"][] as $k
     | (.["Production:SelfServe:" + $k] // "") as $v
     | select($v | length > 0)
-    | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v)
+    | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v),
+  # แจ้งชำระ/ต่ออายุแพ็กเกจ (docs/17 §5.5): ทุกคีย์ใต้ Production:SelfServe:Package:* เช่น SlipLinkKey · PublicApiBaseUrl ·
+  # PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId} · Prices:{เดือน} · MonthOptions:{ลำดับ} · PaidReminderDays:{ลำดับ}
+  # (":" กลายเป็น "__" ตามรูปแบบ env ของ .NET) · ไม่ตั้ง PaymentAccount = แจ้งชำระไม่ได้ (PACKAGE_PAYMENT_UNAVAILABLE)
+  (to_entries[]
+    | select(.key | startswith("Production:SelfServe:Package:"))
+    | select((.value | tostring) | length > 0)
+    | "SelfServe__" + (.key | ltrimstr("Production:SelfServe:") | gsub(":"; "__")) + "=" + (.value | tostring))
 ' "$input_json" > "$temp_env"
+# [SECURITY] คีย์ลิงก์สลิปสั้นเกิน = แอปถือว่าไม่ได้ตั้ง (ไม่ส่งรูปเข้า LINE) · หยุดตรงนี้ดีกว่าค้นพบทีหลังว่ารูปไม่ขึ้น
+if grep -q '^SelfServe__Package__SlipLinkKey=' "$temp_env" \
+  && [ "$(grep '^SelfServe__Package__SlipLinkKey=' "$temp_env" | cut -d= -f2- | tr -d '\n' | wc -c)" -lt 32 ]; then
+  rm -f "$temp_env" "$input_json"
+  echo "Production:SelfServe:Package:SlipLinkKey must be at least 32 characters" >&2
+  exit 1
+fi
 if grep -Eq '^(SelfServe__ConnectionString|LegacyShards__ConnectionStrings__sp1|SelfServe__MigrationConnectionString)=.*GarageSelfServe_Dev' "$temp_env"; then
   rm -f "$temp_env" "$input_json"
   echo "Production self-serve connection points at GarageSelfServe_Dev - fix Production:SelfServe:* in user-secrets" >&2

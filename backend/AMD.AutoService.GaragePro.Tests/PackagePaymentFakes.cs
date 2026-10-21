@@ -29,7 +29,7 @@ public sealed class PackageTestUser(UserRole role = UserRole.Manager, string sha
 }
 
 /// <summary>
-/// sp_PackagePayment ในหน่วยความจำ — จำลอง filtered unique index (รอตรวจได้ครั้งละหนึ่ง) และ (workspace, requestId) ที่ฐานจริงบังคับ
+/// sp_PackagePayment ในหน่วยความจำ · จำลอง filtered unique index (รอตรวจได้ครั้งละหนึ่ง) และ (workspace, requestId) ที่ฐานจริงบังคับ
 /// · <see cref="RaceOnInsert"/> จำลองอีกแท็บ INSERT ตัดหน้าระหว่าง pre-check กับ INSERT
 /// </summary>
 public sealed class InMemoryPackagePayments : IPackagePaymentRepository
@@ -282,7 +282,7 @@ public sealed class PackageTestWorkspaces : ISelfServeLifecycleRepository
 }
 
 /// <summary>
-/// ISelfServeAdminRepository จำลอง — <see cref="ApprovePaymentAsync"/> ทำผลกับ <see cref="Payments"/> ตาม <see cref="NextOutcome"/>
+/// ISelfServeAdminRepository จำลอง · <see cref="ApprovePaymentAsync"/> ทำผลกับ <see cref="Payments"/> ตาม <see cref="NextOutcome"/>
 /// (Applied = เปลี่ยนรายการเป็น Approved + บันทึก change ไว้ตรวจ)
 /// </summary>
 public sealed class FakePackageAdminRepository(InMemoryPackagePayments payments) : ISelfServeAdminRepository

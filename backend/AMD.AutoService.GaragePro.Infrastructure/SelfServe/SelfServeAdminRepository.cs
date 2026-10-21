@@ -148,7 +148,7 @@ public sealed class SelfServeAdminRepository(
             db.ChangeTracker.Clear();
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            // (1) รายการก่อน: Pending → Approved แบบมีเงื่อนไข — คนที่สองที่กดพร้อมกันรอล็อกแถวนี้แล้วได้ 0 แถว
+            // (1) รายการก่อน: Pending → Approved แบบมีเงื่อนไข · คนที่สองที่กดพร้อมกันรอล็อกแถวนี้แล้วได้ 0 แถว
             var rows = await db.PackagePayments
                 .Where(p => p.Id == approval.PaymentId && p.WorkspaceId == change.WorkspaceId
                             && p.Status == PackagePaymentStatus.Pending)
@@ -171,7 +171,7 @@ public sealed class SelfServeAdminRepository(
                     : ApprovePaymentOutcome.PaymentNotPending;
             }
 
-            // (2) Branch: ต่อเมื่อวันหมดยังเป็นค่าที่อ่านมา — ไม่ตรง = มีคนเลื่อนวันพร้อมกัน rollback ทั้งหมด (รายการกลับเป็น Pending)
+            // (2) Branch: ต่อเมื่อวันหมดยังเป็นค่าที่อ่านมา · ไม่ตรง = มีคนเลื่อนวันพร้อมกัน rollback ทั้งหมด (รายการกลับเป็น Pending)
             var workspace = await LoadWorkspaceForChangeAsync(change, ct);
             if (await UpdateBranchEndAsync(change, new BranchEndGuard(approval.ExpectedBranchEndUtc), ct) != 1)
                 return ApprovePaymentOutcome.BranchEndChanged;
@@ -185,7 +185,7 @@ public sealed class SelfServeAdminRepository(
     }
 
     /// <summary>
-    /// เงื่อนไขกันชนของ UPDATE Branch — ส่งเป็น SqlDbType.DateTime เวลาไทย (ชนิดเดียวกับคอลัมน์) ให้เทียบเท่ากันได้ตรงทุก tick
+    /// เงื่อนไขกันชนของ UPDATE Branch · ส่งเป็น SqlDbType.DateTime เวลาไทย (ชนิดเดียวกับคอลัมน์) ให้เทียบเท่ากันได้ตรงทุก tick
     /// ของค่าที่ Dapper อ่านมา (datetime ละเอียด 1/300 วิ · แปลง ToUtc แล้ว ToBranchLocal กลับได้ค่าเดิม)
     /// </summary>
     private sealed record BranchEndGuard(DateTime? ExpectedEndUtc);

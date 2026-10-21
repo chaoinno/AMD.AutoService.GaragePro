@@ -102,7 +102,7 @@ public static class TrialLifecycleRules
             : null;
     }
 
-    /// <summary>ทางเดิมก่อนมีอีเมลเตือน paid (เทสต์เดิม) — เท่ากับไม่ตั้งรอบเตือน paid</summary>
+    /// <summary>ทางเดิมก่อนมีอีเมลเตือน paid (เทสต์เดิม) · เท่ากับไม่ตั้งรอบเตือน paid</summary>
     public static IReadOnlyList<LifecycleAction> Decide(
         LifecycleWorkspace w, DateTime nowUtc, SelfServeOptions.TrialOptions trial) =>
         Decide(w, nowUtc, trial, []);
@@ -166,7 +166,7 @@ public static class TrialLifecycleRules
     }
 
     /// <summary>
-    /// [BIZ] อู่ที่จ่ายเงินแล้วไม่เคยถูกลบ/เปลี่ยนสถานะอัตโนมัติ — ได้แค่อีเมลเตือนก่อนหมด (รอบที่ใกล้ที่สุดรอบเดียว)
+    /// [BIZ] อู่ที่จ่ายเงินแล้วไม่เคยถูกลบ/เปลี่ยนสถานะอัตโนมัติ · ได้แค่อีเมลเตือนก่อนหมด (รอบที่ใกล้ที่สุดรอบเดียว)
     /// · นับวันถึง<b>วันสุดท้ายที่ใช้ได้</b> (End − 1 tick เหมือน PlanAccess.DaysLeft) เพราะวันหมดของ paid เป็นเที่ยงคืนพอดี
     ///   ถ้านับถึง End ตรงๆ ฉบับ "พรุ่งนี้" จะไปถึงในวันสุดท้ายที่ใช้ได้
     /// · มีรายการรอตรวจ (จ่ายมาแล้ว) / ไม่มีวันหมด / หมดแล้ว = ไม่เตือน

@@ -201,7 +201,7 @@ public class PackagePaymentSqlTests
         {
             f = await CreateWorkspaceAsync(db, Guid.NewGuid().ToString("N")[..12]);
 
-            // ค่ามิลลิวินาทีที่ datetime ปัดเป็น 1/300 วิ — การอนุมัติต้องเทียบค่าที่อ่านมาได้ตรงทุก tick
+            // ค่ามิลลิวินาทีที่ datetime ปัดเป็น 1/300 วิ · การอนุมัติต้องเทียบค่าที่อ่านมาได้ตรงทุก tick
             await using (var sql = new SqlConnection(Connection))
                 await sql.ExecuteAsync("UPDATE Branch SET EndPackageDate = DATEADD(ms, 123, EndPackageDate) WHERE Id = @Id",
                     new { Id = f.BranchId });

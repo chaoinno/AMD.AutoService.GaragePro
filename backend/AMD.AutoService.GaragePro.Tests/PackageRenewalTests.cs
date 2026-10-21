@@ -5,7 +5,7 @@ namespace AMD.AutoService.GaragePro.Tests;
 
 /// <summary>
 /// สูตรวันของการต่ออายุ (docs/17 §4): base = max(ปัดขึ้นเป็นเที่ยงคืนไทย(วันหมด), เที่ยงคืนไทยของวันอนุมัติ) + N เดือน
-/// · ทุกค่าในเทสต์เป็น UTC — เที่ยงคืนไทย = 17:00 UTC ของวันก่อนหน้า
+/// · ทุกค่าในเทสต์เป็น UTC · เที่ยงคืนไทย = 17:00 UTC ของวันก่อนหน้า
 /// </summary>
 public class PackageRenewalTests
 {

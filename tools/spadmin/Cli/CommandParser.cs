@@ -53,7 +53,7 @@ public static class CommandParser
 
     private static readonly OptionSpec Yes = new("yes", "ยืนยันคำสั่งที่ลบ/ย้ายข้อมูล", IsFlag: true);
 
-    // docs/17 §7 — อนุมัติ/ปฏิเสธเรื่องเงิน: --by บังคับ (ใน container $USER ไม่มีความหมาย)
+    // docs/17 §7 · อนุมัติ/ปฏิเสธเรื่องเงิน: --by บังคับ (ใน container $USER ไม่มีความหมาย)
     private static readonly OptionSpec ReviewerBy =
         new("by", "ชื่อทีมงานผู้อนุมัติ/ปฏิเสธ (บังคับ · ลง sp_WorkspaceAudit)", Required: true, ValueHint: "ชื่อ");
 

@@ -19,7 +19,7 @@ public static partial class SelfServeInfrastructure
         services.AddSingleton<IPackageSlipStorage>(sp => ActivatorUtilities.CreateInstance<FtpAttachmentStorage>(sp));
         services.AddScoped<IPackagePaymentNotifier, PackagePaymentNotifier>();
 
-        // Application ไม่อ้าง Microsoft.Extensions.Options — ส่ง SelfServeOptions เข้า ctor ตรงๆ (แบบ S2/S4/S5)
+        // Application ไม่อ้าง Microsoft.Extensions.Options · ส่ง SelfServeOptions เข้า ctor ตรงๆ (แบบ S2/S4/S5)
         services.AddScoped<IPackagePaymentService>(sp => ActivatorUtilities.CreateInstance<PackagePaymentService>(
             sp, sp.GetRequiredService<IOptions<SelfServeOptions>>().Value));
         services.AddScoped(sp => ActivatorUtilities.CreateInstance<PackagePaymentAdminService>(

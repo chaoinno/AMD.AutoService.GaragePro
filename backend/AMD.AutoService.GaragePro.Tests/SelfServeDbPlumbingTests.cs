@@ -149,7 +149,7 @@ public class SelfServeDbPlumbingTests
         workspace.GetIndexes().Single(i => i.GetDatabaseName() == "UX_sp_Workspace_BranchId")
             .GetFilter().Should().Be("[BranchId] IS NOT NULL");
 
-        // docs/17 §3 — รอตรวจได้ครั้งละหนึ่งรายการต่ออู่ บังคับที่ฐาน
+        // docs/17 §3 · รอตรวจได้ครั้งละหนึ่งรายการต่ออู่ บังคับที่ฐาน
         var payment = model.FindEntityType(typeof(Domain.Entities.SelfServe.PackagePayment))!;
         var onePending = payment.GetIndexes().Single(i => i.GetDatabaseName() == SelfServeDbContext.OnePendingIndex);
         onePending.IsUnique.Should().BeTrue();
