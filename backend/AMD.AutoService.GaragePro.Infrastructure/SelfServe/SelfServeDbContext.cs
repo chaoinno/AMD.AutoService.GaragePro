@@ -38,6 +38,7 @@ public class SelfServeDbContext(DbContextOptions<SelfServeDbContext> options) : 
     public DbSet<SampleEntity> SampleEntities => Set<SampleEntity>();
     public DbSet<ConversionMap> ConversionMaps => Set<ConversionMap>();
     public DbSet<WorkspaceAudit> WorkspaceAudits => Set<WorkspaceAudit>();
+    public DbSet<PackagePayment> PackagePayments => Set<PackagePayment>();
 
     /// <summary>
     /// ทุกค่าเวลาในตาราง sp_* เป็น UTC — ระบุ Kind=Utc ตอนอ่าน แบบเดียวกับ ServiceDbContext.ConfigureConventions
@@ -229,5 +230,43 @@ public class SelfServeDbContext(DbContextOptions<SelfServeDbContext> options) : 
             e.HasIndex(x => new { x.WorkspaceId, x.CreatedAt }).HasDatabaseName("IX_sp_WorkspaceAudit_Workspace_CreatedAt");
             e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        // docs/17 §3 · ชน unique แล้ว PackagePaymentRepository ตัดสินด้วยการอ่านซ้ำ (requestId เดิม → แถวเดิม · ไม่งั้น = รอตรวจซ้อน)
+        // ไม่ parse ชื่อ index จากข้อความ SQL (บทเรียน WorkInterval ใน CLAUDE.md) · ชื่อ index ยังเป็นสัญญาที่เทสต์ SQL ตรวจ
+        b.Entity<PackagePayment>(e =>
+        {
+            e.ToTable("sp_PackagePayment", t =>
+            {
+                t.HasCheckConstraint("CK_sp_PackagePayment_Amount", "[Amount] > 0");
+                t.HasCheckConstraint("CK_sp_PackagePayment_MonthCount", "[MonthCount] > 0");
+            });
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.RequestId).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(EnumLength);
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.ExpectedAmount).HasPrecision(18, 2);
+            e.Property(x => x.SlipPath).HasMaxLength(400).IsRequired();
+            // hex ล้วน ความยาวคงที่ — char(64) ไม่ใช่ nvarchar (index เล็กลงครึ่งหนึ่ง)
+            e.Property(x => x.SlipSha256).HasMaxLength(64).IsFixedLength().IsUnicode(false).IsRequired();
+            e.Property(x => x.SlipContentType).HasMaxLength(100).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(500);
+            e.Property(x => x.SubmittedByUserName).HasMaxLength(100).IsRequired();
+            e.Property(x => x.ReviewedBy).HasMaxLength(200);
+            e.Property(x => x.RejectReason).HasConversion<string>().HasMaxLength(EnumLength);
+            e.Property(x => x.ReviewNote).HasMaxLength(1000);
+            e.Property(x => x.CancelledBy).HasMaxLength(200);
+
+            // [BIZ] รอตรวจได้ครั้งละ 1 รายการต่ออู่ (กฎข้อ 2) — บังคับที่ฐาน ไม่ใช่แค่ใน service (บทเรียน WorkInterval)
+            e.HasIndex(x => x.WorkspaceId).IsUnique()
+             .HasFilter("[Status] = N'Pending'").HasDatabaseName(OnePendingIndex);
+            e.HasIndex(x => new { x.WorkspaceId, x.RequestId }).IsUnique().HasDatabaseName(WorkspaceRequestIndex);
+            e.HasIndex(x => new { x.Status, x.SubmittedAt }).HasDatabaseName("IX_sp_PackagePayment_Status_SubmittedAt");
+            e.HasIndex(x => x.SlipSha256).HasDatabaseName("IX_sp_PackagePayment_SlipSha256");
+            e.HasOne<Workspace>().WithMany().HasForeignKey(x => x.WorkspaceId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
+
+    public const string OnePendingIndex = "UX_sp_PackagePayment_OnePending";
+    public const string WorkspaceRequestIndex = "UX_sp_PackagePayment_Workspace_Request";
 }

@@ -176,6 +176,129 @@ namespace AMD.AutoService.GaragePro.Infrastructure.SelfServe.Migrations
                     b.ToTable("sp_JobRun", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.PackagePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal?>("ExpectedAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("MonthCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("PaidAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PeriodEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PeriodStartsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("PrevEndsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("RequestId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReviewedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SlipContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SlipPath")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("SlipSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<long>("SlipSizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("SubmittedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SubmittedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SlipSha256")
+                        .HasDatabaseName("IX_sp_PackagePayment_SlipSha256");
+
+                    b.HasIndex("WorkspaceId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_sp_PackagePayment_OnePending")
+                        .HasFilter("[Status] = N'Pending'");
+
+                    b.HasIndex("Status", "SubmittedAt")
+                        .HasDatabaseName("IX_sp_PackagePayment_Status_SubmittedAt");
+
+                    b.HasIndex("WorkspaceId", "RequestId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_sp_PackagePayment_Workspace_Request");
+
+                    b.ToTable("sp_PackagePayment", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_sp_PackagePayment_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_sp_PackagePayment_MonthCount", "[MonthCount] > 0");
+                        });
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.SampleEntity", b =>
                 {
                     b.Property<long>("Id")
@@ -560,6 +683,15 @@ namespace AMD.AutoService.GaragePro.Infrastructure.SelfServe.Migrations
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.ConversionMap", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.Workspace", null)
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.PackagePayment", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.SelfServe.Workspace", null)
                         .WithMany()
