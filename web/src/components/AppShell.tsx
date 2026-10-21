@@ -23,6 +23,7 @@ import {
   Truck,
   UserCog,
   Users,
+  Wallet,
   Warehouse,
   Wrench,
 } from 'lucide-react'
@@ -36,7 +37,7 @@ import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
 import { TrialBanner } from '../features/plan/TrialBanner'
 import { TrialDialogProvider } from '../features/plan/TrialDialog'
-import { lockedNavLabel } from '../features/plan/trialUx'
+import { isSelfServePlan, lockedNavLabel } from '../features/plan/trialUx'
 import { usePlan } from '../features/plan/usePlan'
 import { isFeatureLocked, lockedFeatureForPath } from '../lib/plan'
 import { clearStoredSession, useSession } from '../lib/session'
@@ -266,6 +267,12 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   <small>{session?.branchName}</small>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {/* อู่ที่สมัครเองเท่านั้น (docs/17 §6.1) · ลูกค้าเดิมต่ออายุผ่านกระบวนการของ GaragePro */}
+                {isSelfServePlan(plan) ? (
+                  <DropdownMenuItem onClick={() => navigate('/package')}>
+                    <Wallet aria-hidden="true" /> แพ็กเกจและการชำระเงิน
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={logout}>
                   <LogOut aria-hidden="true" /> ออกจากระบบ
                 </DropdownMenuItem>

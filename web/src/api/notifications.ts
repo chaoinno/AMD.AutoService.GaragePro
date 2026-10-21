@@ -31,6 +31,8 @@ export function markAllNotificationsRead() {
 
 /// ปลายทางเมื่อคลิกการ์ด — ทุกชนิดต้องได้ที่หมาย (ห้ามมีการ์ดที่คลิกแล้วไม่ไปไหน)
 export function notificationHref(n: AppNotification): string {
+  // ผลการตรวจแจ้งชำระเงินค่าแพ็กเกจ (docs/17 §5.4): ไม่มี jobId จึงต้องจับก่อน fallback `/jobs`
+  if (n.entityType === 'PackagePayment' || n.linkHint === 'package') return '/package'
   if (n.entityType === 'PR' || n.entityType === 'PO') {
     const kind = n.entityType.toLowerCase()
     return n.entityId ? `/purchasing/${kind}?doc=${n.entityId}` : `/purchasing/${kind}`

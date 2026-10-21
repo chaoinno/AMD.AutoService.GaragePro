@@ -1,9 +1,17 @@
-import { CheckCircle2, Clock3, ExternalLink, Info, Lock, type LucideIcon } from 'lucide-react'
+import { CheckCircle2, Clock3, ExternalLink, Info, Lock, Wallet, type LucideIcon } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router'
 import { daysLeftOf, formatDaysLeft, trialTone, type TrialTone } from '../../lib/plan'
 import { Button } from '../../components/ui/button'
 import { useTrialDialog } from './TrialDialog'
 import { useExtensionRequest, useSessionPlan } from './usePlan'
-import { EXTENSION_REQUESTED_REASON, LINE_OA_ID, LINE_OA_URL, trialBannerCopy } from './trialUx'
+import {
+  EXTENSION_REQUESTED_REASON,
+  extensionButtonLabel,
+  LINE_OA_ID,
+  LINE_OA_URL,
+  trialBannerCopy,
+  trialBannerLabel,
+} from './trialUx'
 
 const TONE_ICONS: Record<Exclude<TrialTone, 'none'>, LucideIcon> = {
   neutral: Info,
@@ -11,28 +19,54 @@ const TONE_ICONS: Record<Exclude<TrialTone, 'none'>, LucideIcon> = {
   expired: Lock,
 }
 
+/** หน้าแพ็กเกจและการชำระเงิน (docs/17 §6.1) */
+export const PACKAGE_PATH = '/package'
+
 /**
- * แถบทดลองใช้บนสุดของทุกหน้า (ก่อน topbar · ไม่พิมพ์) — สี + ไอคอน + ข้อความตามกฎ UI
- * ลูกค้าเดิม/แพ็กเกจเต็ม: ไม่ render อะไรเลย
+ * แถบแพ็กเกจบนสุดของทุกหน้า (ก่อน topbar · ไม่พิมพ์): สี + ไอคอน + ข้อความตามกฎ UI
+ * · ทดลองใช้: แสดงตลอด · แพ็กเกจที่ชำระเงินแล้ว: เฉพาะเหลือ ≤ 14 วัน หรืออ่านอย่างเดียว (`trialTone`)
+ * · ลูกค้าเดิม: ไม่ render อะไรเลย
  */
 export function TrialBanner() {
   const { plan } = useSessionPlan()
   const tone = trialTone(plan)
   if (tone === 'none' || !plan) return null
-  return <TrialBannerContent tone={tone} suspended={plan.kind === 'suspended'} daysLabel={formatDaysLeft(daysLeftOf(plan))} />
+  return (
+    <TrialBannerContent
+      tone={tone}
+      suspended={plan.kind === 'suspended'}
+      paid={plan.kind === 'paid'}
+      daysLabel={formatDaysLeft(daysLeftOf(plan))}
+    />
+  )
 }
 
-function TrialBannerContent({ tone, suspended, daysLabel }: { tone: Exclude<TrialTone, 'none'>; suspended: boolean; daysLabel: string }) {
+function TrialBannerContent({
+  tone,
+  suspended,
+  paid,
+  daysLabel,
+}: {
+  tone: Exclude<TrialTone, 'none'>
+  suspended: boolean
+  paid: boolean
+  daysLabel: string
+}) {
   const openTrialDialog = useTrialDialog()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const { alreadyRequested } = useExtensionRequest()
-  const copy = trialBannerCopy(tone, daysLabel, suspended)
+  const copy = trialBannerCopy(tone, daysLabel, suspended, paid)
   if (!copy) return null
   const Icon = TONE_ICONS[tone]
+  // อู่ที่ถูกระงับแจ้งชำระไม่ได้ (server ตอบ PACKAGE_NOT_RENEWABLE) · อยู่หน้าแพ็กเกจแล้วไม่ต้องมีปุ่มพาไปซ้ำ
+  const showPayButton = !suspended && pathname !== PACKAGE_PATH
+  const urgent = tone !== 'neutral'
   return (
     <section
       className={`trial-banner trial-banner--${tone} print-hidden`}
       role={tone === 'neutral' ? 'status' : 'alert'}
-      aria-label="สถานะแพ็กเกจทดลองใช้"
+      aria-label={trialBannerLabel(paid)}
     >
       <span className="trial-banner__icon" aria-hidden="true"><Icon /></span>
       <div className="trial-banner__copy">
@@ -50,13 +84,18 @@ function TrialBannerContent({ tone, suspended, daysLabel }: { tone: Exclude<Tria
         ) : null}
         <Button
           size="sm"
-          variant={tone === 'neutral' ? 'outline' : 'default'}
+          variant={urgent && !showPayButton ? 'default' : 'outline'}
           disabled={alreadyRequested}
           title={alreadyRequested ? EXTENSION_REQUESTED_REASON : undefined}
           onClick={() => openTrialDialog()}
         >
-          ขอต่ออายุ / สมัครแพ็กเกจ
+          {extensionButtonLabel(paid)}
         </Button>
+        {showPayButton ? (
+          <Button size="sm" variant={urgent ? 'default' : 'outline'} onClick={() => navigate(PACKAGE_PATH)}>
+            <Wallet aria-hidden="true" /> แจ้งชำระเงิน
+          </Button>
+        ) : null}
       </div>
     </section>
   )

@@ -3,7 +3,7 @@ export const DEFAULT_SITE_URL = 'https://service.garage-pro.net'
 export const ROBOTS_DISALLOW_PATHS = [
   '/jobs', '/customers', '/vehicles', '/staffs', '/products', '/suppliers', '/warehouses',
   '/catalog-categories', '/quotation-templates', '/purchasing', '/inventory', '/sales',
-  '/promotions', '/reports', '/login',
+  '/promotions', '/reports', '/package', '/login',
 ]
 
 export function normalizeSiteUrl(siteUrl = DEFAULT_SITE_URL) {
