@@ -84,6 +84,20 @@ export VITE_GOOGLE_CLIENT_ID="$(public_value SelfServe__Google__ClientId)"
 export VITE_TURNSTILE_SITE_KEY="$(public_value SelfServe__Turnstile__SiteKey)"
 
 compose=(docker compose --project-directory "$deploy_dir" -f "$deploy_dir/docker-compose.yml")
+
+# docker network ร่วมกับ GaragePro Admin (API ภายใน /api/v1/internal · docs/17 §8.6) compose ประกาศเป็น external
+# จึงต้องมีก่อน run/up · สร้างครั้งเดียวต่อเครื่อง มีแล้วข้าม (Admin deploy สร้างพร้อมกันได้: create ชนแล้วตรวจซ้ำ)
+servicepro_network=garagepro-servicepro
+if ! docker network inspect "$servicepro_network" >/dev/null 2>&1; then
+  docker network create "$servicepro_network" >/dev/null 2>&1 || docker network inspect "$servicepro_network" >/dev/null
+  echo "Docker network $servicepro_network is ready (shared with GaragePro Admin)."
+fi
+if grep -Eq '^Internal__ApiKey=.{32,}' "$secrets_file"; then
+  echo "Internal API for GaragePro Admin: ENABLED (Internal__ApiKey in env file)"
+else
+  echo "Internal API for GaragePro Admin: DISABLED (no Internal__ApiKey of 32+ characters; /api/v1/internal returns 404)"
+fi
+
 "${compose[@]}" config --quiet
 "${compose[@]}" build --pull api web
 "${compose[@]}" run --rm --no-deps --entrypoint /app/efbundle api </dev/null
@@ -137,4 +151,24 @@ case "$code" in
   200) echo "Hint: install make-service-canonical.sh on the origin to redirect gpservice to service." ;;
   *) echo "Legacy web healthz returned $code; expected 200 or 301." >&2; exit 1 ;;
 esac
+
+# [SECURITY] API ภายในต้องเข้าได้ทาง docker network เท่านั้น · Nginx ตอบ 404 เองพร้อม X-GP-Internal-Deny (add-api-internal-deny.sh)
+# 404 ไม่มี header = API ตอบเอง (ยังไม่ได้ตั้งคีย์) แต่ Nginx ยังไม่กั้น · 401/200 = เปิดสู่อินเทอร์เน็ตแล้ว (ตั้งคีย์โดยยังไม่กั้น)
+internal_headers="$(mktemp)"
+code=$(curl --silent --show-error --retry 3 --retry-delay 2 --output /dev/null --dump-header "$internal_headers" \
+  --write-out '%{http_code}' https://gpservice-api.garage-pro.net/api/v1/internal/sites || true)
+if [[ "$code" == "404" ]] && grep -qi '^x-gp-internal-deny: *nginx' "$internal_headers"; then
+  echo "Internal API is blocked at Nginx for the public hostname."
+elif [[ "$code" == "404" ]]; then
+  echo "WARNING: /api/v1/internal is not blocked at Nginx yet (the API answered 404 because Internal__ApiKey is unset)." >&2
+  echo "Run on the server before setting the key: sudo $REMOTE_DEPLOY_DIR/add-api-internal-deny.sh" >&2
+elif [[ "$code" == "000" ]]; then
+  echo "WARNING: could not reach https://gpservice-api.garage-pro.net to check that /api/v1/internal is blocked." >&2
+else
+  rm -f "$internal_headers"
+  echo "SECURITY: https://gpservice-api.garage-pro.net/api/v1/internal/sites returned $code - the internal API is reachable" >&2
+  echo "from the internet. Run on the server now: sudo $REMOTE_DEPLOY_DIR/add-api-internal-deny.sh" >&2
+  exit 1
+fi
+rm -f "$internal_headers"
 echo "Production deployment and public health checks passed."

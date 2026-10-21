@@ -361,3 +361,14 @@ Error: `PACKAGE_PAYMENT_FORBIDDEN` 403 · `PACKAGE_PAYMENT_UNAVAILABLE` 503 · `
 
 ### 16.6 Error code ใหม่ (ข้อความไทยอยู่ที่ `Application/SelfServe/*Errors.cs`, `Application/Common/PlanErrors.cs`, `Application/Auth/SelfServeAuthErrors.cs`)
 `SIGNUP_DISABLED` · `SIGNUP_VALIDATION` · `SIGNUP_BOT_CHECK_FAILED` · `SIGNUP_EMAIL_DISPOSABLE` · `SIGNUP_EMAIL_DOMAIN_INVALID` · `SIGNUP_EMAIL_SEND_FAILED` · `SIGNUP_LOOKUP_UNAVAILABLE` · `SIGNUP_OTP_THROTTLED` · `SIGNUP_OTP_INVALID` · `SIGNUP_OTP_EXPIRED` · `SIGNUP_OTP_LOCKED` · `SIGNUP_PASSWORD_MISMATCH` · `SIGNUP_TOKEN_INVALID` · `SIGNUP_GOOGLE_INVALID` · `SIGNUP_ACCOUNT_EXISTS` · `SIGNUP_PROVISION_FAILED` · `SIGNUP_RATE_LIMITED` · `AUTH_RATE_LIMITED` · `AUTH_GOOGLE_NOT_REGISTERED` · `AUTH_GOOGLE_DISABLED` · `TRIAL_EXPIRED` · `PLAN_FEATURE_LOCKED` · `PLAN_LIMIT_REACHED` · `STAFF_ROLE_REQUIRED` · `STAFF_ACCOUNT_CONFLICT` · `STAFF_PASSWORD_TOO_SHORT` · `STAFF_PASSWORD_TOO_LONG` · `STAFF_WORKSPACE_NOT_FOUND` · `SELFSERVE_NOT_APPLICABLE` · `SELFSERVE_VALIDATION` · `SELFSERVE_EXTENSION_ALREADY_REQUESTED` · `SELFSERVE_NOTIFY_FAILED` · `SELFSERVE_SAMPLE_FORBIDDEN` · `SELFSERVE_SAMPLE_UNAVAILABLE` · `SELFSERVE_SAMPLE_FAILED` · `SELFSERVE_SAMPLE_WORKSPACE_NOT_READY` · `SELFSERVE_SAMPLE_CLEAR_INCOMPLETE` · `SELFSERVE_WORKSPACE_NOT_FOUND` · `SELFSERVE_PURGE_REFUSED` · `POS_RECEIPT_CONFLICT` (409 — เลขใบเสร็จชน) · `AUTH_BRANCH_FORBIDDEN` (ขอกะของสาขาอื่น)
+
+## 17 · API ภายในสำหรับ GaragePro Admin **[เพิ่ม 2026-10-22 · สัญญาเต็มที่ [docs/17 §8.6](17-package-renewal.md)]**
+- ทางเข้า: docker network `garagepro-servicepro` → `http://garagepro_service_api:8080` เท่านั้น · Nginx ของโดเมน API ตอบ 404 ให้ `/api/v1/internal` จากภายนอกเสมอ
+  (header `X-GP-Internal-Deny: nginx` · ติดตั้งด้วย `deploy/production/add-api-internal-deny.sh`)
+- auth: header `X-Internal-Key` เทียบแบบ constant-time กับ `Internal:ApiKey` (≥ 32 ตัว · user-secrets/env file) · ไม่ใช้ JWT ·
+  server ไม่ตั้งคีย์ = 404 เปล่าทุก route · ไม่มี/ผิดคีย์ = 401 `INTERNAL_AUTH_REQUIRED` · คำตอบทุกแบบ `Cache-Control: no-store`
+- ไม่ผ่าน `SessionRevocationMiddleware` และ `TrialReadOnlyFilter` (token ที่ติดมาด้วยไม่มีผล)
+
+| Method · Path | หมายเหตุ |
+|---|---|
+| `GET /api/v1/internal/sites` | envelope ปกติ · `data: { generatedAt, sites: [{ source, shardKey, branchId, code, name, phone?, plan, workspaceStatus?, branchActive?, startsAt?, endsAt?, lastUsableDate?, daysLeft?, usage, pendingPayments?, latestPaymentAt?, extensionRequestedAt?, jobsLast30Days, lastJobAt?, createdAt? }] }` · อ่านฐานไม่สำเร็จ = 503 `INTERNAL_SOURCE_UNAVAILABLE` |

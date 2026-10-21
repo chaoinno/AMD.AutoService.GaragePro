@@ -452,6 +452,12 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 - selfserve: ข้อมูลจาก `SelfServeAdminService.ListAsync` + `PlanPolicy` (ไม่รวม purged ที่ไม่มี Branch แล้ว ให้ส่งได้แต่ `usage: "purged"`)
 - garagepro: Branch กลุ่ม 7 ใน db2 อ่านแบบเลือกคอลัมน์ + `WITH (READUNCOMMITTED)` · `plan: "legacy"` · `usage: "not_enforced"`
 - จ๊อบ: `svc_Job` ของ shard/สาขานั้น (GarageService สำหรับ db2 · GarageSelfServe สำหรับ sp1)
+- `daysLeft` = วันสุดท้ายที่ใช้ได้ (`EndPackageDate` − 1 tick ตามปฏิทินไทย) − วันนี้ตามปฏิทินไทย (`PlanAccess.DaysLeft` ค่าเดียวกับ `/auth/me`) · 0 = วันนี้วันสุดท้าย · ติดลบ = เลยมาแล้ว · ไม่มีวันหมด = ไม่อยู่ใน JSON
+- **สถานะ (PR 4 · `feat/package-renewal-internal` 2026-10-22)**: ทำแล้ว ยังไม่ deploy · รายละเอียดที่สัญญาไม่ได้ระบุ:
+  อู่ที่ยังไม่มี `BranchId` (ค้างกลาง signup) ไม่ส่ง เพราะไม่มีคีย์ของแถว · อู่ purged ส่งพร้อม `BranchId` เดิมและไม่มี `branchActive` ·
+  `pendingPayments`/`latestPaymentAt`/`extensionRequestedAt`/`workspaceStatus` มีเฉพาะ selfserve (`latestPaymentAt` = เวลาแจ้งล่าสุดทุกสถานะ) ·
+  `jobsLast30Days` นับย้อน 30×24 ชม. จากเวลาที่เรียก · `lastJobAt` = จ๊อบล่าสุดตลอดกาล · `phone` ของ selfserve แปลง +66 เป็น 0 ·
+  อ่านฐานไม่สำเร็จ = 503 `INTERNAL_SOURCE_UNAVAILABLE` · Nginx ตอบ 404 พร้อม `X-GP-Internal-Deny: nginx` (ใช้แยกจาก 404 ของ API)
 
 ระยะ B
 | Method | Path | body | ผล |
