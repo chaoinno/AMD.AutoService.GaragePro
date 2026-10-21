@@ -372,3 +372,11 @@ Error: `PACKAGE_PAYMENT_FORBIDDEN` 403 · `PACKAGE_PAYMENT_UNAVAILABLE` 503 · `
 | Method · Path | หมายเหตุ |
 |---|---|
 | `GET /api/v1/internal/sites` | envelope ปกติ · `data: { generatedAt, sites: [{ source, shardKey, branchId, code, name, phone?, plan, workspaceStatus?, branchActive?, startsAt?, endsAt?, lastUsableDate?, daysLeft?, usage, pendingPayments?, latestPaymentAt?, extensionRequestedAt?, jobsLast30Days, lastJobAt?, createdAt? }] }` · อ่านฐานไม่สำเร็จ = 503 `INTERNAL_SOURCE_UNAVAILABLE` |
+| `GET /api/v1/internal/package-payments?status=pending&take=50` | **[ระยะ B]** `data` = array ใหม่สุดก่อน · status `pending` (ค่าเริ่มต้น) · `approved` · `rejected` · `cancelled` · `all` · take 1–500 · แต่ละรายการ = ฟิลด์ `PackagePayment` ครบ (ไม่ซ่อน) + `reviewedBy?` · `reviewNote?` · `cancelledBy?` · `workspaceNo` · `workspaceName` · `branchId?` · `plan` · `workspaceStatus` · `currentEndsAt?` · `duplicates[{paymentId, workspaceNo, status, submittedAt}]` · `preview?{baseAt, endsAt, lastUsableDate}` |
+| `GET /api/v1/internal/package-payments/{id}/slip` | **[ระยะ B]** ไฟล์ `image/jpeg` / `application/pdf` · อู่ที่ลบแล้ว/ไม่พบไฟล์ = 404 `PACKAGE_PAYMENT_NOT_FOUND` |
+| `POST /api/v1/internal/package-payments/{id}/approve` | **[ระยะ B]** body `{actorName, actorId, until?: "yyyy-MM-dd", note?}` → `{payment, endsFrom?, endsTo, emailSent, inAppSaved}` · ใช้ `PackagePaymentAdminService` ตัวเดียวกับ spadmin |
+| `POST /api/v1/internal/package-payments/{id}/reject` | **[ระยะ B]** body `{actorName, actorId, reason, note?}` → `{payment, emailSent, inAppSaved}` |
+
+ระยะ B: `{id}` ต้องเป็น GUID เต็ม (ไม่ใช่ prefix แบบ spadmin · ผิดรูป = 404) · ผู้กระทำบันทึกเป็น `admin:{actorName}#{actorId}` (ชื่อ 1–100 ตัวไม่มีอักขระควบคุม · id > 0 รับ number หรือข้อความ) ·
+body อ่านเองเป็น JSON (ผิดรูป/ผิดชนิด = 422 ไม่ใช่ 400 ProblemDetails) · Error ชุดเดียวกับ §16.4.1 และ `PACKAGE_PAYMENT_VALIDATION` field เพิ่ม `actorName` · `actorId` · `status` · `take` · `body` ·
+`SPADMIN_REFUSED` 409 (อู่ purged/provisioning/ไม่มี Branch) · `SELFSERVE_WORKSPACE_NOT_FOUND` 404 · ไม่ได้ตั้ง self-serve = 404 `SELFSERVE_NOT_APPLICABLE`

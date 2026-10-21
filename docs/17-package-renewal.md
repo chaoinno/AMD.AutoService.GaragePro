@@ -468,6 +468,11 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 | POST | `/api/v1/internal/package-payments/{id}/reject` | `{ actorName, actorId, reason, note? }` | `{ payment, emailSent, inAppSaved }` |
 
 - ผู้กระทำบันทึกเป็น `admin:{actorName}#{actorId}` · เรียก `PackagePaymentAdminService` ตัวเดียวกับ spadmin · error code ชุดเดียวกับ 5.1
+- **สถานะ (PR 6 ฝั่ง ServicePro · `feat/package-renewal-internal-review` 2026-10-22)**: ทำแล้ว ยังไม่ deploy · รายละเอียดที่สัญญาไม่ได้ระบุ:
+  ฟิลด์ของ PackagePayment อยู่ระดับบนของรายการ (ไม่ซ้อน) และเพิ่ม `reviewedBy` · `reviewNote` (หมายเหตุทีมงานทุกสถานะ) · `cancelledBy` ·
+  `plan` · `workspaceStatus` · `currentEndsAt` · `{id}` ต้องเป็น GUID เต็ม · `until` = วันสุดท้ายที่ใช้ได้ (ค่าเดียวกับ `--until`) ·
+  `actorId` รับ number หรือข้อความ · field ของ 422 เพิ่ม `actorName` · `actorId` · `status` · `take` · `body` · `SPADMIN_REFUSED` = 409 ·
+  ข้อความ 422 บางข้อมาจาก service ของ spadmin จึงมีชื่อแฟล็ก `--until`/`--note`
 
 **Admin `/api/v1/servicepro/*`** (`[Authorize(Roles="Admin")]` · ไม่ขึ้นกับ `X-Database-Id`)
 | Method | Path | ผล |

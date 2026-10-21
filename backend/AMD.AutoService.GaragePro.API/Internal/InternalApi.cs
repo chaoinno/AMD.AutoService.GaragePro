@@ -66,6 +66,11 @@ public static class InternalApi
                 selfServe);
         });
 
+        // ระยะ B: ตรวจสลิป/อนุมัติ/ปฏิเสธ · ทุกตัวที่ใช้ลงทะเบียนเฉพาะเมื่อตั้งฐาน self-serve · ไม่ตั้ง = controller ตอบ 404
+        // SELFSERVE_NOT_APPLICABLE (resolve แบบ optional)
+        if (AMD.AutoService.GaragePro.Infrastructure.SelfServe.SelfServeInfrastructure.IsConfigured(configuration))
+            services.AddScoped(sp => ActivatorUtilities.CreateInstance<InternalPackagePaymentsService>(sp));
+
         return services;
     }
 

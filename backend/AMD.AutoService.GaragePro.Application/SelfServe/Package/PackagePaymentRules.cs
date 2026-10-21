@@ -121,6 +121,14 @@ public static partial class PackagePaymentRules
         return new Parsed<string?>(SelfServeText.SingleLine(value, MaxNoteLength), null);
     }
 
+    /// <summary>ชื่อไฟล์สลิปตอนดาวน์โหลด (ลูกค้า · API ภายใน) · เก็บเป็น JPEG หรือ PDF เท่านั้น (docs/17 §5.2)</summary>
+    public static string SlipFileName(PackagePayment payment)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+        var extension = payment.SlipContentType == "application/pdf" ? "pdf" : "jpg";
+        return $"slip-{ShortId(payment.Id)}.{extension}";
+    }
+
     // ---------- รหัสใน API ----------
 
     public static string StatusCode(PackagePaymentStatus status) => status switch

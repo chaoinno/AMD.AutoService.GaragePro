@@ -240,7 +240,10 @@ public sealed class PackagePaymentAdminService(
             entry.Workspace.Status.ToString().ToLowerInvariant(),
             currentEndsAt,
             duplicates,
-            preview);
+            preview,
+            p.ReviewedBy,
+            p.ReviewNote,
+            p.CancelledBy);
     }
 
     private static PackagePaymentNoticeContext NoticeContext(PackagePaymentEntry entry, AdminWorkspaceSnapshot? snapshot) =>

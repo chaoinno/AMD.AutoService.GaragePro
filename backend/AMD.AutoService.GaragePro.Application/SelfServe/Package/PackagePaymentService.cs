@@ -278,10 +278,9 @@ public sealed class PackagePaymentService(
     private async Task<PackageSlipFile?> OpenFileAsync(PackagePayment payment, CancellationToken ct)
     {
         var stream = await slips.OpenReadAsync(payment.SlipPath, ct);
-        if (stream is null) return null;
-        var extension = payment.SlipContentType == "application/pdf" ? "pdf" : "jpg";
-        return new PackageSlipFile(stream, payment.SlipContentType,
-            $"slip-{PackagePaymentRules.ShortId(payment.Id)}.{extension}");
+        return stream is null
+            ? null
+            : new PackageSlipFile(stream, payment.SlipContentType, PackagePaymentRules.SlipFileName(payment));
     }
 
     private async Task TryDeleteSlipAsync(string relativePath)

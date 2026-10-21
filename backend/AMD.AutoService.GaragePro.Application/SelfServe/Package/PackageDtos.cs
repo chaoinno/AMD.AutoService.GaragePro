@@ -83,6 +83,8 @@ public sealed record PackageRenewalPreviewDto(DateTime BaseAt, DateTime EndsAt, 
 /// <summary>
 /// หนึ่งรายการของทีมงาน (ฟิลด์ครบ ไม่ซ่อน) · <see cref="Preview"/> null = ต่ออายุไม่ได้ (เช่น ไม่ได้รอตรวจแล้ว · อู่ถูกลบ)
 /// · <see cref="CurrentEndsAt"/> = วันหมดปัจจุบัน (Branch เป็นตัวจริง)
+/// · <see cref="ReviewedBy"/>/<see cref="ReviewNote"/>/<see cref="CancelledBy"/> = ข้อมูลของทีมงานที่ <see cref="PackagePaymentDto"/>
+///   ของลูกค้าไม่ส่ง (ReviewNote ตอนอนุมัติเป็นหมายเหตุภายใน) · API ภายในส่งให้ GaragePro Admin ครบ (docs/17 §8.6)
 /// </summary>
 public sealed record PackagePaymentAdminItem(
     PackagePaymentDto Payment,
@@ -93,7 +95,10 @@ public sealed record PackagePaymentAdminItem(
     string WorkspaceStatus,
     DateTime? CurrentEndsAt,
     IReadOnlyList<PackagePaymentDuplicateDto> Duplicates,
-    PackageRenewalPreviewDto? Preview);
+    PackageRenewalPreviewDto? Preview,
+    string? ReviewedBy = null,
+    string? ReviewNote = null,
+    string? CancelledBy = null);
 
 /// <summary>รายละเอียด (spadmin payment) = รายการ + ลิงก์สลิปที่เพิ่งออก (null = ไม่ได้ตั้งคีย์) + หมายเหตุทีมงาน</summary>
 public sealed record PackagePaymentAdminDetail(
