@@ -34,6 +34,8 @@ public static class RateLimitingSetup
                 });
             });
 
+            o.AddPolicy(RateLimitPolicies.PackagePaymentSubmit, PackagePaymentSubmitPartition);
+
             o.AddPolicy(RateLimitPolicies.PublicContact, context =>
                 RateLimitPartition.GetFixedWindowLimiter(Ip(context),
                     _ => Fixed(RateLimitRules.ContactPerTenMinutes, TimeSpan.FromMinutes(10))));
@@ -76,6 +78,17 @@ public static class RateLimitingSetup
             };
         });
 
+    /// <summary>
+    /// policy <c>package-payment-submit</c>: ต่ออู่ (shard:สาขาจาก JWT) 10 ครั้ง/ชม. · ผู้ใช้หลายคนของอู่เดียวกันใช้ถังเดียว
+    /// (แจ้งชำระเป็นเรื่องของอู่ ไม่ใช่ของคน) · endpoint ต้องล็อกอินแล้ว (rate limiter อยู่หลัง UseAuthorization)
+    /// </summary>
+    public static RateLimitPartition<string> PackagePaymentSubmitPartition(HttpContext context)
+    {
+        var user = context.RequestServices.GetRequiredService<ICurrentUser>();
+        return RateLimitPartition.GetFixedWindowLimiter($"package-submit:{user.ShardKey}:{user.BranchId}",
+            _ => Fixed(RateLimitRules.PackagePaymentSubmitPerHour, TimeSpan.FromHours(1)));
+    }
+
     /// <summary>policy <c>auth-login</c>: sliding ต่อ IP 10 ครั้ง/นาที (6 ช่อง ช่องละ 10 วิ) ไม่ต่อคิว</summary>
     public static RateLimitPartition<string> LoginPartition(HttpContext context) =>
         RateLimitPartition.GetSlidingWindowLimiter($"auth-login:{Ip(context)}", _ => new SlidingWindowRateLimiterOptions
@@ -95,6 +108,8 @@ public static class RateLimitingSetup
     public static PartitionedRateLimiter<HttpContext> BuildGlobalLimiter() => PartitionedRateLimiter.CreateChained(
         Layer(RateLimitedRoute.PublicOther, _ => "public-global",
             RateLimitRules.PublicGlobalPerHour, TimeSpan.FromHours(1)),
+        Layer(RateLimitedRoute.PublicPackageSlip, ip => $"public-package-slip:{ip}",
+            RateLimitRules.PackageSlipPerHour, TimeSpan.FromHours(1)),
         Layer(RateLimitedRoute.SignupEntry, ip => $"public-signup:{ip}",
             RateLimitRules.SignupEntryPerHour, TimeSpan.FromHours(1)),
         Layer(RateLimitedRoute.SignupEntry, ip => $"public-signup-day:{ip}",
