@@ -56,6 +56,7 @@ public static partial class SelfServeInfrastructure
             RegisterStarterData(services, configuration);   // S3
             RegisterLifecycle(services, configuration);     // S4
             RegisterAdmin(services, configuration);         // S5
+            RegisterPackage(services, configuration);       // docs/17 แจ้งชำระ/ต่ออายุ
         }
         else
         {
@@ -91,6 +92,7 @@ public static partial class SelfServeInfrastructure
     static partial void RegisterStarterData(IServiceCollection services, IConfiguration configuration);
     static partial void RegisterLifecycle(IServiceCollection services, IConfiguration configuration);
     static partial void RegisterAdmin(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterPackage(IServiceCollection services, IConfiguration configuration);
 
     public const string ConnectionStringKey = SelfServeOptions.SectionName + ":ConnectionString";
 

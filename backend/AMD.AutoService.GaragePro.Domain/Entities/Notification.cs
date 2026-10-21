@@ -66,6 +66,10 @@ public static class NotificationKinds
     public const string PurchasePending = "purchase.pending";
     public const string PurchaseApproved = "purchase.approved";
     public const string PurchaseReturned = "purchase.returned";
+
+    /// <summary>อู่ self-serve: ทีมงานอนุมัติ/ปฏิเสธการแจ้งชำระ (docs/17 §5.4) · entityType "PackagePayment" · linkHint "package"</summary>
+    public const string PackagePaymentApproved = "package.payment_approved";
+    public const string PackagePaymentRejected = "package.payment_rejected";
 }
 
 public static class NotificationAudience

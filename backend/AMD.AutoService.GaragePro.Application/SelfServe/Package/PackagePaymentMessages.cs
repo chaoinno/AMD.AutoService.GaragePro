@@ -11,7 +11,8 @@ namespace AMD.AutoService.GaragePro.Application.SelfServe.Package;
 /// </summary>
 public static class PackagePaymentMessages
 {
-    public static string Submitted(PackagePaymentSubmittedNotice notice, string? pdfLink)
+    /// <param name="slipLinkInText">ลิงก์สลิปที่ต้องพิมพ์ในข้อความ (PDF หรือรูปที่ส่งเป็นรูปไม่ได้) · null = ไม่พิมพ์</param>
+    public static string Submitted(PackagePaymentSubmittedNotice notice, string? slipLinkInText)
     {
         ArgumentNullException.ThrowIfNull(notice);
         var c = notice.Context;
@@ -46,7 +47,8 @@ public static class PackagePaymentMessages
             sb.Append("⚠ สลิปซ้ำกับรายการ ").Append(PackagePaymentRules.ShortId(d.PaymentId)).Append(" (")
               .Append(d.WorkspaceNo).Append(" · ").Append(d.Status).Append(')').Append('\n');
 
-        if (pdfLink is not null) sb.Append("สลิป PDF: ").Append(pdfLink).Append('\n');
+        if (slipLinkInText is not null)
+            sb.Append(p.SlipContentType == "application/pdf" ? "สลิป PDF: " : "สลิป: ").Append(slipLinkInText).Append('\n');
 
         sb.Append("อนุมัติ: spadmin approve-payment --id ").Append(shortId).Append(" --by <ชื่อ>\n");
         sb.Append("ปฏิเสธ: spadmin reject-payment --id ").Append(shortId)
