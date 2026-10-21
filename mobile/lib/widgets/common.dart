@@ -266,12 +266,16 @@ class InfoBanner extends StatelessWidget {
     required this.title,
     this.body,
     required this.tone,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String? body;
   final StateTone tone;
+
+  /// ท้ายแถบ เช่นลูกศรบอกว่าแตะได้ (ผู้เรียกเป็นคนจัดการการแตะเอง)
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +312,10 @@ class InfoBanner extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: T.s8),
+            IconTheme.merge(data: IconThemeData(color: fg), child: trailing!),
+          ],
         ],
       ),
     );

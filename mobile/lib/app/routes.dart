@@ -10,6 +10,9 @@ abstract final class Routes {
   static const profile = '/profile';
   static const notifications = '/notifications';
 
+  /// แพ็กเกจและการชำระเงิน (อู่ที่สมัครเอง) · เปิดจากโปรไฟล์ แถบทดลองใช้ และแจ้งเตือน `PackagePayment`
+  static const package = '/package';
+
   static String job(String jobId) => '/jobs/$jobId';
   static String jobChat(String jobId) => '/jobs/$jobId/chat';
   static String jobIntake(String jobId) => '/jobs/$jobId/intake';

@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
+import '../../app/routes.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
 import '../../models/auth.dart';
 import '../../widgets/common.dart';
 import '../notifications/widgets/notification_bell.dart';
+import '../package/package_rules.dart' show packageEntrySummary;
 
 /// แถวข้อมูล: ไอคอน · ป้ายกำกับคอลัมน์เดียวกันทุกแถว · ค่าชิดซ้าย
 ///
@@ -50,6 +53,54 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+/// แถวที่แตะแล้วไปหน้าอื่น: การ์ดเต็มความกว้าง สูงอย่างน้อย 48px มีลูกศรบอกว่าแตะได้
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.icon, required this.title, required this.subtitle, required this.onTap});
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: T.cardBg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(T.rCard),
+          side: const BorderSide(color: T.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: T.touchMin),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: T.s16, vertical: T.s12),
+              child: Row(
+                children: [
+                  Icon(icon, size: 22, color: T.blue600),
+                  const SizedBox(width: T.s12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w700, color: T.text, height: 1.5)),
+                        Text(subtitle,
+                            style: const TextStyle(fontSize: 13, color: T.muted, height: 1.6)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: T.faint),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
 /// โปรไฟล์ · สาขาปัจจุบัน · ออกจากระบบ
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -91,6 +142,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               _row(Icons.work_outline, 'ตำแหน่ง', user.positionName!),
           ]),
           const SizedBox(height: T.s24),
+
+          // อู่ที่สมัครเอง (มีแพ็กเกจ) เท่านั้น · ลูกค้า GaragePro เดิมต่ออายุผ่านทีมงานตามเดิม (docs/17 D1)
+          if (user.plan != null || user.workspace != null) ...[
+            _sectionLabel('แพ็กเกจ'),
+            const SizedBox(height: T.s8),
+            _NavRow(
+              icon: Icons.workspace_premium_outlined,
+              title: 'แพ็กเกจและการชำระเงิน',
+              subtitle: packageEntrySummary(user.plan, user.workspace),
+              onTap: () => context.push(Routes.package),
+            ),
+            const SizedBox(height: T.s24),
+          ],
 
           // เดิมเป็น TextButton สีเทาลอยๆ ที่ดูไม่ออกว่ากดได้ และคำว่า "ออกจากระบบอย่างเดียว" กำกวม
           // — ทำให้เป็นปุ่มเต็มความกว้างที่บอกชัดว่าต่างจากปุ่มปิดกะตรงไหน

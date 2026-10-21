@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:garage_pro_service_ops/api/client.dart';
+import 'package:garage_pro_service_ops/app/routes.dart';
 import 'package:garage_pro_service_ops/core/roles.dart';
 import 'package:garage_pro_service_ops/features/shell/app_shell.dart';
 import 'package:garage_pro_service_ops/models/auth.dart';
@@ -25,6 +26,10 @@ void main() {
                 ),
               ]),
           ],
+        ),
+        GoRoute(
+          path: Routes.package,
+          builder: (_, _) => const Scaffold(body: Text('หน้าแพ็กเกจ')),
         ),
       ],
     );
@@ -75,6 +80,38 @@ void main() {
 
     expect(find.text('แท็บ 4'), findsOneWidget);
     expect(find.text('ช่วงทดลองใช้ครบแล้ว ดูข้อมูลได้ แต่แก้ไขไม่ได้'), findsOneWidget);
+  });
+
+  testWidgets('แตะแถบทดลองใช้แล้วไปหน้าแพ็กเกจ', (tester) async {
+    await tester.pumpWidget(app(const PlanInfo(kindName: 'trial', daysLeft: 5)));
+    await tester.pump();
+
+    await tester.tap(find.text('ทดลองใช้ · เหลือ 5 วัน'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('หน้าแพ็กเกจ'), findsOneWidget);
+  });
+
+  testWidgets('อู่ที่ชำระเงินแล้วและใกล้หมดเห็นแถบเตือน', (tester) async {
+    await tester.pumpWidget(app(const PlanInfo(kindName: 'paid', daysLeft: 10)));
+    await tester.pump();
+    expect(find.text('แพ็กเกจ · เหลือ 10 วัน'), findsOneWidget);
+  });
+
+  testWidgets('อู่ที่ชำระเงินแล้วและยังเหลือนานไม่เห็นแถบ', (tester) async {
+    await tester.pumpWidget(app(const PlanInfo(kindName: 'paid', daysLeft: 40)));
+    await tester.pump();
+    expect(find.byType(TrialBanner), findsNothing);
+  });
+
+  testWidgets('อู่ที่ถูกระงับแตะแถบไม่ได้ (แจ้งชำระเองไม่ได้)', (tester) async {
+    await tester.pumpWidget(app(const PlanInfo(kindName: 'suspended')));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.chevron_right), findsNothing);
+    await tester.tap(find.textContaining('ถูกระงับ'));
+    await tester.pumpAndSettle();
+    expect(find.text('หน้าแพ็กเกจ'), findsNothing);
   });
 
   /// [BIZ] แท็บรายงานยังอยู่สำหรับเจ้าของอู่ทดลองใช้ — "วันนี้" ไม่ใช่รายงานขั้นสูง

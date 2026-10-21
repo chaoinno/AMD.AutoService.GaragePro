@@ -13,7 +13,14 @@ abstract final class NotificationKind {
   static const purchasePending = 'purchase.pending';
   static const purchaseApproved = 'purchase.approved';
   static const purchaseReturned = 'purchase.returned';
+
+  /// ผลตรวจการแจ้งชำระแพ็กเกจ (docs/17 §5.4) · `entityType: "PackagePayment"` ไม่มีจ๊อบ
+  static const packagePaymentApproved = 'package.payment_approved';
+  static const packagePaymentRejected = 'package.payment_rejected';
 }
+
+/// entityType ของแจ้งเตือนการแจ้งชำระแพ็กเกจ
+const packagePaymentEntityType = 'PackagePayment';
 
 class AppNotification {
   const AppNotification({
@@ -39,11 +46,11 @@ class AppNotification {
   final String? bodyTh;
   final String? jobId;
 
-  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO'
+  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO' | 'PackagePayment'
   final String entityType;
   final String? entityId;
 
-  /// 'chat' | 'quote' — บอกว่าควรเปิดส่วนไหนของจ๊อบ
+  /// 'chat' | 'quote' บอกว่าควรเปิดส่วนไหนของจ๊อบ · 'package' = หน้าแพ็กเกจ
   final String? linkHint;
   final String actorName;
   final DateTime createdAt;
