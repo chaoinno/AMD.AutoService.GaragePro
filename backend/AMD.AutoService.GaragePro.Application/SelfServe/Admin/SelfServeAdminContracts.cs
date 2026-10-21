@@ -5,6 +5,8 @@ namespace AMD.AutoService.GaragePro.Application.SelfServe.Admin;
 /// <summary>
 /// หนึ่งแถวของ <c>spadmin list</c> — <see cref="EndsAt"/> = Branch.EndPackageDate (ตัวจริง แปลงเป็น UTC แล้ว)
 /// ไม่มีก็ใช้สำเนา sp_Workspace.TrialEndsAt · null = ไม่มีกำหนด (paid แบบไม่มีวันหมด)
+/// · <see cref="Branch"/> = แถว Branch ของ shard sp1 ทั้งแถว (null = ไม่มี เช่น purge แล้ว) ให้ API ภายใน (docs/17 §8.6)
+///   ประเมิน <see cref="PlanPolicy"/> ได้โดยไม่ต้องอ่านซ้ำทีละอู่ · <see cref="TrialStartsAt"/>/<see cref="TrialEndsAt"/> = สำเนาใน sp_Workspace
 /// </summary>
 public sealed record AdminWorkspaceRow(
     Guid Id,
@@ -18,7 +20,11 @@ public sealed record AdminWorkspaceRow(
     DateTime CreatedAt,
     string? OwnerEmail,
     DateTime? PurgeAfter,
-    int? ConvertedToBranchId);
+    int? ConvertedToBranchId,
+    BranchPackage? Branch = null,
+    DateTime? TrialStartsAt = null,
+    DateTime? TrialEndsAt = null,
+    DateTime? ExtensionRequestedAt = null);
 
 /// <summary>บัญชีเจ้าของอู่ (sp_Account) สำหรับแสดงผล — [SECURITY] ไม่มี PasswordHash/SetupTokenHash/GoogleSubject</summary>
 public sealed record AdminAccountInfo(

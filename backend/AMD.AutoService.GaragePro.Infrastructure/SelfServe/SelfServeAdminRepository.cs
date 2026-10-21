@@ -58,14 +58,16 @@ public sealed class SelfServeAdminRepository(
             .ToListAsync(ct);
         if (rows.Count == 0) return [];
 
-        var ends = await ReadBranchEndsAsync(ct);
+        var branches = await ReadBranchPackagesAsync(ct);
         return rows.Select(r =>
         {
             var w = r.Workspace;
-            var branchEnd = w.BranchId is { } b && ends.TryGetValue(b, out var e) ? e : null;
-            var endsAt = branchEnd ?? (w.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended ? w.TrialEndsAt : null);
+            var branch = w.BranchId is { } b ? branches.GetValueOrDefault(b) : null;
+            var endsAt = branch?.EndsAtUtc
+                         ?? (w.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended ? w.TrialEndsAt : null);
             return new AdminWorkspaceRow(w.Id, w.WorkspaceNo, w.BranchId, w.Name, w.Phone, w.Plan, w.Status, endsAt,
-                w.CreatedAt, r.Email, w.PurgeAfter, w.ConvertedToBranchId);
+                w.CreatedAt, r.Email, w.PurgeAfter, w.ConvertedToBranchId, branch, w.TrialStartsAt, w.TrialEndsAt,
+                w.ExtensionRequestedAt);
         }).ToList();
     }
 
@@ -245,16 +247,26 @@ public sealed class SelfServeAdminRepository(
         });
     }
 
-    private async Task<Dictionary<int, DateTime?>> ReadBranchEndsAsync(CancellationToken ct)
+    /// <summary>
+    /// แพ็กเกจของทุกสาขาใน shard sp1 ครั้งเดียว (ไม่ยิงทีละอู่) · ชุดคอลัมน์เดียวกับ <see cref="WorkspacePlanReader.BranchPackageSql"/>
+    /// ให้ <see cref="PlanPolicy"/> ประเมินได้ครบ (สถานะ Branch · วันเริ่ม · วันหมด) · เวลาไทย → UTC ที่นี่
+    /// </summary>
+    internal const string BranchPackagesSql = """
+        SELECT b.Id, ISNULL(b.Status, 0) AS Status, b.StartPackageDate, b.PackageDaysAmout, b.EndPackageDate
+        FROM Branch b WITH (READUNCOMMITTED)
+        """;
+
+    private async Task<Dictionary<int, BranchPackage>> ReadBranchPackagesAsync(CancellationToken ct)
     {
         if (!_legacy.ConnectionStrings.TryGetValue(_options.ShardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
                 $"ไม่รู้จัก shard '{_options.ShardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
 
         await using var connection = new SqlConnection(cs);
-        var rows = await connection.QueryAsync<(int Id, DateTime? EndPackageDate)>(
-            new CommandDefinition(SelfServeLifecycleRepository.BranchEndDatesSql, cancellationToken: ct));
-        return rows.ToDictionary(r => r.Id, r => BranchPackageDates.ToUtc(r.EndPackageDate));
+        var rows = await connection.QueryAsync<(int Id, int Status, DateTime? StartPackageDate, int? PackageDaysAmout,
+            DateTime? EndPackageDate)>(new CommandDefinition(BranchPackagesSql, cancellationToken: ct));
+        return rows.ToDictionary(r => r.Id, r => new BranchPackage(r.Id, r.Status,
+            BranchPackageDates.ToUtc(r.StartPackageDate), r.PackageDaysAmout, BranchPackageDates.ToUtc(r.EndPackageDate)));
     }
 
     private static string? Limit(string? value, int max) =>

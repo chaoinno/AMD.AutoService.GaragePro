@@ -167,6 +167,12 @@ public sealed class InMemoryPackagePayments : IPackagePaymentRepository
         CancellationToken ct = default) =>
         Task.FromResult<IReadOnlyList<PackagePaymentEntry>>(Rows.Where(p => sha256s.Contains(p.SlipSha256))
             .Select(Entry).ToList());
+
+    public Task<IReadOnlyDictionary<Guid, PackagePaymentSummary>> SummarizeByWorkspaceAsync(
+        CancellationToken ct = default) =>
+        Task.FromResult<IReadOnlyDictionary<Guid, PackagePaymentSummary>>(Rows.GroupBy(p => p.WorkspaceId)
+            .ToDictionary(g => g.Key, g => new PackagePaymentSummary(g.Key,
+                g.Count(p => p.Status == PackagePaymentStatus.Pending), g.Max(p => p.SubmittedAt))));
 }
 
 public sealed class FakeSlipStorage : IPackageSlipStorage

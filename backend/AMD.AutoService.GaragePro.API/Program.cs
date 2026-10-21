@@ -122,6 +122,8 @@ builder.Services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
 builder.Services.AddMemoryCache();
 builder.Services.AddGarageProInfrastructure(builder.Configuration);
 builder.Services.AddSelfServeApi();
+// API ภายในของ GaragePro Admin (docs/17 §8.6) · ไม่ตั้ง Internal:ApiKey = ทุก route ใต้ /api/v1/internal ตอบ 404
+AMD.AutoService.GaragePro.API.Internal.InternalApi.AddInternalApi(builder.Services, builder.Configuration);
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
@@ -147,6 +149,7 @@ builder.Services.AddGarageProRateLimiting();
 
 var app = builder.Build();
 
+AMD.AutoService.GaragePro.API.Internal.InternalApi.WarnIfMisconfigured(app);
 app.UseForwardedHeaders();
 
 // สร้าง schema + seed แคตตาล็อกตัวอย่างในโหมด Development เท่านั้น

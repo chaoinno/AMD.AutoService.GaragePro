@@ -27,6 +27,12 @@ public enum PackagePaymentInsertOutcome
 
 public sealed record PackagePaymentInsertResult(PackagePaymentInsertOutcome Outcome, PackagePayment? Payment);
 
+/// <summary>
+/// สรุปรายการแจ้งชำระของหนึ่งอู่ (API ภายใน docs/17 §8.6) · <see cref="PendingCount"/> = รายการรอตรวจ (0 หรือ 1 ตามกฎข้อ 2)
+/// · <see cref="LatestSubmittedAt"/> = เวลาแจ้งล่าสุดทุกสถานะ (UTC)
+/// </summary>
+public sealed record PackagePaymentSummary(Guid WorkspaceId, int PendingCount, DateTime LatestSubmittedAt);
+
 /// <summary>ผู้กระทำ + รายละเอียดที่ลง sp_WorkspaceAudit คู่กับการเปลี่ยนสถานะรายการ (ใน SaveChanges เดียวกัน)</summary>
 public sealed record PackagePaymentAuditInfo(string Actor, string? Note, string PayloadJson);
 
@@ -73,6 +79,9 @@ public interface IPackagePaymentRepository
     /// <summary>รายการที่สลิปมี SHA-256 ตรงกับค่าใดค่าหนึ่งใน <paramref name="sha256s"/> (ทุกอู่ ทุกสถานะ)</summary>
     Task<IReadOnlyList<PackagePaymentEntry>> FindBySlipHashesAsync(IReadOnlyCollection<string> sha256s,
         CancellationToken ct = default);
+
+    /// <summary>สรุปต่ออู่ทุกอู่ใน query เดียว (GROUP BY) · อู่ที่ไม่เคยแจ้งชำระไม่อยู่ใน dictionary</summary>
+    Task<IReadOnlyDictionary<Guid, PackagePaymentSummary>> SummarizeByWorkspaceAsync(CancellationToken ct = default);
 }
 
 /// <summary>ไฟล์สลิปที่เก็บแล้ว · <see cref="OriginalSha256"/> = hash ของไฟล์ต้นฉบับที่อัปโหลด (ก่อนแปลงเป็น JPEG)</summary>

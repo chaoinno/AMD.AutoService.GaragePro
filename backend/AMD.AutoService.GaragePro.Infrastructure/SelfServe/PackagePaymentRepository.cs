@@ -142,6 +142,22 @@ public sealed class PackagePaymentRepository(SelfServeDbContext db) : IPackagePa
             .Select(ToEntry).ToList();
     }
 
+    public async Task<IReadOnlyDictionary<Guid, PackagePaymentSummary>> SummarizeByWorkspaceAsync(
+        CancellationToken ct = default) =>
+        // ผลของ MAX อาจไม่ผ่าน converter ของคอลัมน์ · ระบุ Utc เองให้ JSON ลงท้าย Z เสมอ
+        (await SummaryQuery(db).ToListAsync(ct))
+        .Select(s => s with { LatestSubmittedAt = DateTime.SpecifyKind(s.LatestSubmittedAt, DateTimeKind.Utc) })
+        .ToDictionary(s => s.WorkspaceId);
+
+    /// <summary>GROUP BY WorkspaceId ครั้งเดียวทั้งตาราง (ตารางเล็ก: หนึ่งอู่ไม่กี่รายการ) · แยกเป็น query ให้เทสต์ตรวจ SQL ที่แปลได้</summary>
+    internal static IQueryable<PackagePaymentSummary> SummaryQuery(SelfServeDbContext db) =>
+        db.PackagePayments.AsNoTracking()
+            .GroupBy(p => p.WorkspaceId)
+            .Select(g => new PackagePaymentSummary(
+                g.Key,
+                g.Count(p => p.Status == PackagePaymentStatus.Pending),
+                g.Max(p => p.SubmittedAt)));
+
     private async Task<bool> TransitionAsync(Guid id, Guid workspaceId, string action, PackagePaymentAuditInfo audit,
         DateTime now, Func<IQueryable<PackagePayment>, Task<int>> update,
         Func<PackagePayment, bool> alreadyAppliedByThisRequest, CancellationToken ct)
