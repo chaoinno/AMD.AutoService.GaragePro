@@ -1986,8 +1986,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **ก่อน deploy (เจ้าของ)**: บัญชีรับเงิน `SelfServe:Package:PaymentAccount:*` (ไม่ตั้ง = แจ้งชำระไม่ได้) + ราคา `Prices:{เดือน}` ·
     `Production:SelfServe:Package:SlipLinkKey` · `sudo add-api-internal-deny.sh` **ก่อน**ตั้ง `Production:Internal:ApiKey` · ค่าเดียวกันเป็น `SERVICEPRO_INTERNAL_KEY` ของ Admin ·
     network `garagepro-servicepro` (deploy script สร้างให้) · ปล่อยแอป `1.2.0+4` หลัง backend · `docker-compose.yml` ของ Admin ชนกับ diff ช่องว่างที่ค้างใน checkout ของเจ้าของ
-  · **[RISK]** `backend/AMD.AutoService.GaragePro.API/appsettings.Development.json` ที่อยู่ใน git มีรหัสผ่านฐานข้อมูลจริง และ **repo นี้เป็น public** (เคยบันทึกเป็น RISK 2026-09-09
-    ตอนนั้นยังไม่รู้ว่า repo เป็น public) ต้องเปลี่ยนรหัสและย้ายไป user-secrets · ImageSharp มีช่องโหว่ high และตอนนี้ถอดรหัสรูปจากลูกค้า ·
+  · **[RISK]** ยังค้างเรื่อง secret ใน `appsettings.Development.json` ตาม RISK 2026-09-09 (แจ้งเจ้าของแล้ว 2026-10-22) · ImageSharp มีช่องโหว่ high และตอนนี้ถอดรหัสรูปจากลูกค้า ·
     ลิงก์สลิปลงลายเซ็นอยู่ใน access log 7 วัน · แอปย่อรูปก่อนส่งจึงเตือนสลิปซ้ำจากแอปไม่ได้ · แอปแสดงปี ค.ศ. กับเดือนไทยทั้งแอป (ค่าเริ่มต้นของ intl) ต่างจากเว็บที่เป็น พ.ศ. ·
     `StarterDataRepositoryTests` ล้ม 1 ข้อเมื่อตั้ง SQL env (ล้มบน main อยู่แล้ว)
 
