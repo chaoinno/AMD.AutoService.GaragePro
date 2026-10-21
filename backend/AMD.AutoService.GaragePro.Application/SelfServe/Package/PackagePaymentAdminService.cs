@@ -96,12 +96,12 @@ public sealed class PackagePaymentAdminService(
             endsAt = SelfServeAdminService.UntilToEndsAtUtc(untilDate);
             if (endsAt <= period.Starts)
                 return Fail(PackageErrors.Validation(
-                    $"--until ต้องไม่ก่อนวันเริ่มนับ {Iso(SelfServeText.ThaiDate(period.Starts))} " +
-                    $"(วันหมดเดิมหรือวันนี้ ถ้าหมดอายุแล้ว) · ไม่ใส่ --until = ต่อ {payment.MonthCount} เดือนถึง " +
+                    $"วันใช้ได้ถึงต้องหลังวันเริ่มนับ {Iso(SelfServeText.ThaiDate(period.Starts))} " +
+                    $"(วันหมดเดิมหรือวันนี้ ถ้าหมดอายุแล้ว) · ไม่กำหนดเอง = ต่อ {payment.MonthCount} เดือนถึง " +
                     $"{Iso(period.LastUsableDate)}", "until"));
             if ((endsAt - now).TotalDays > SelfServeAdminService.MaxExtendDays)
                 return Fail(PackageErrors.Validation(
-                    $"--until ต้องไม่เกิน {SelfServeAdminService.MaxExtendDays} วันจากวันนี้", "until"));
+                    $"วันใช้ได้ถึงต้องไม่เกิน {SelfServeAdminService.MaxExtendDays} วันจากวันนี้", "until"));
         }
 
         var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
@@ -110,7 +110,7 @@ public sealed class PackagePaymentAdminService(
         if (payment.ExpectedAmount is { } expected && payment.Amount != expected && trimmedNote is null)
             return Fail(PackageErrors.Validation(
                 $"ยอดที่โอน {PackagePaymentMessages.Baht(payment.Amount)} ไม่ตรงราคามาตรฐาน {PackagePaymentMessages.Baht(expected)} " +
-                "ต้องใส่หมายเหตุ (--note) เช่น ส่วนลด/โปรโมชัน", "note"));
+                "ต้องใส่หมายเหตุการอนุมัติ เช่น ส่วนลด/โปรโมชัน", "note"));
 
         var statusTo = SelfServeAdminService.Reactivated(ws.Status, endsAt, now);
         var payload = JsonSerializer.Serialize(new
@@ -161,7 +161,7 @@ public sealed class PackagePaymentAdminService(
                 $"เหตุผลต้องเป็น {string.Join(" | ", PackagePaymentRules.RejectReasonCodes)}", "reason"));
         var trimmedNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         if (rejectReason == PackagePaymentRejectReason.Other && trimmedNote is null)
-            return Fail(PackageErrors.Validation("เหตุผล \"อื่นๆ\" ต้องมีหมายเหตุ (--note) ให้ลูกค้าอ่าน", "note"));
+            return Fail(PackageErrors.Validation("เหตุผล \"อื่นๆ\" ต้องมีหมายเหตุให้ลูกค้าอ่าน", "note"));
         if (trimmedNote is { Length: > PackagePaymentRules.MaxReviewNoteLength })
             return Fail(PackageErrors.Validation($"หมายเหตุยาวเกิน {PackagePaymentRules.MaxReviewNoteLength} ตัวอักษร", "note"));
 
