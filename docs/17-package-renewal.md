@@ -1,6 +1,6 @@
 # 17 · แจ้งชำระเงินและต่ออายุแพ็กเกจ (Package Renewal)
 
-> สถานะ: **กำลังพัฒนา** (แผนอนุมัติ 2026-10-21 · แบ่ง PR ตามหัวข้อ 10) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
+> สถานะ: **พัฒนาเสร็จบน branch · รอรีวิว · ยังไม่ merge/deploy** (2026-10-22 · แบ่ง PR ตามหัวข้อ 10 · ผลตรวจหัวข้อ 12) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
 > ที่มา: เอกสารสรุป flow ต่ออายุของ GaragePro Enterprise (`Package-Renewal-Flow*.md` ที่เพื่อนในทีมส่งมา ไม่ได้ commit เข้า repo)
 > อ่านคู่กับ [docs/12](12-self-serve-trial-proposal.md) (self-serve) และ [docs/03 §16](03-api-contract.md)
 
@@ -528,3 +528,13 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 | ใบเสร็จ/ใบกำกับภาษีค่าบริการให้ลูกค้า | หลังอนุมัติ | นอกขอบเขต ทีมบัญชีออกเองนอกระบบ |
 | คนในทีมที่อนุมัติได้ | `--by` / สิทธิ์ใน Admin | ใครที่รัน spadmin ได้ |
 | แจ้งเตือนอู่ paid ล่วงหน้ากี่วัน | แถบเตือน + อีเมล | 14 และ 3 วัน `[ASSUME]` |
+
+---
+
+## 12. สถานะ (2026-10-22)
+
+- โค้ดครบทุก PR ในหัวข้อ 10 · รวมทดสอบใน branch `integration/package-renewal` (ไม่ push) ผ่านทั้ง backend เว็บ แอป และ Admin
+- migration `AddPackagePayment` รันกับ `GarageSelfServe_Dev` แล้ว · production รันตอน deploy (`efbundle-selfserve`)
+- E2E กับ API local + ฐาน dev + Admin local ผ่านครบเส้นทางหลัก (แจ้ง · อนุมัติ · ปฏิเสธ · ยกเลิก · อ่านอย่างเดียวแล้วต่ออายุ · ไม่ถูก logout · API ภายใน · Admin) รายละเอียดใน CLAUDE.md
+- ยังไม่ได้ทดสอบ: LINE จริง · ปุ่มแจ้งชำระบนเว็บกับไฟล์จริง · แจ้งชำระจากแอปด้วยบัญชีผู้จัดการบน simulator · Android · หน้าเว็บ Admin กับ ServicePro จริง · Nginx/docker network บน production
+- ก่อนเปิดใช้: ต้องได้บัญชีรับเงินจากฝ่ายขาย (หัวข้อ 11) และตั้ง secrets ตามหัวข้อ 5.5 / 8.6
