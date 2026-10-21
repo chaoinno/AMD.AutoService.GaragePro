@@ -46,6 +46,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
+| [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[กำลังพัฒนา 2026-10-21 · แผนอนุมัติแล้ว · สัญญา API หัวข้อ 5 และ 8.6]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` ที่ได้มาจากทีม Enterprise ห้าม commit (repo นี้เป็น public และไฟล์มีรายละเอียดช่องโหว่ของระบบเดิม)** |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -62,10 +63,14 @@ cd backend/AMD.AutoService.GaragePro.API && dotnet run   # พอร์ต 5080 
 
 # Migration (ห้ามใช้ EnsureCreated — มันไม่เพิ่มตารางให้ฐานที่มีอยู่แล้ว)
 export PATH="$PATH:$HOME/.dotnet/tools"
-dotnet ef migrations add <ชื่อ> --project backend/AMD.AutoService.GaragePro.Infrastructure \
+dotnet ef migrations add <ชื่อ> --context ServiceDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
   --startup-project backend/AMD.AutoService.GaragePro.API --output-dir Persistence/Migrations
-dotnet ef database update --project backend/AMD.AutoService.GaragePro.Infrastructure \
+dotnet ef database update --context ServiceDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
   --startup-project backend/AMD.AutoService.GaragePro.API
+# ฐาน self-serve (sp_*): Infrastructure มี 2 DbContext ต้องใส่ --context เสมอ
+# database update ของ sp1 ใช้ login migrate (ตั้ง env SelfServe__ConnectionString เป็น connection ของ gp_selfserve_migrate)
+dotnet ef migrations add <ชื่อ> --context SelfServeDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
+  --startup-project backend/AMD.AutoService.GaragePro.API --output-dir SelfServe/Migrations
 
 # ข้อมูลทดสอบ (ต้องรัน API ก่อน) — สร้างใบเสนอราคาครบทุกสถานะผ่าน API จริง
 cd tools/devseed && dotnet run
