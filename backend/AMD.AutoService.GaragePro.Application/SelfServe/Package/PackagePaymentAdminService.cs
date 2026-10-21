@@ -143,8 +143,9 @@ public sealed class PackagePaymentAdminService(
         }
 
         var approved = await payments.GetEntryAsync(payment.Id, ct) ?? entry;
+        // commit แล้ว: แจ้งเจ้าของอู่ต่อแม้ผู้เรียกยกเลิก (best effort · อีเมล/LINE มี timeout ของตัวเอง)
         var notify = await notifier.ReviewedAsync(new PackagePaymentReviewedNotice(
-            NoticeContext(approved, snapshot), endsAt), ct);
+            NoticeContext(approved, snapshot), endsAt), CancellationToken.None);
 
         return Result<PackagePaymentReviewResult>.Ok(new PackagePaymentReviewResult(
             Item(approved, [], null, now), current, endsAt, notify.EmailSent, notify.InAppSaved));
@@ -181,7 +182,7 @@ public sealed class PackagePaymentAdminService(
         var updated = await payments.GetEntryAsync(payment.Id, ct) ?? entry;
         var snapshot = await admin.GetAsync(updated.Workspace.WorkspaceNo, 0, ct);
         var notify = await notifier.ReviewedAsync(new PackagePaymentReviewedNotice(
-            NoticeContext(updated, snapshot), null), ct);
+            NoticeContext(updated, snapshot), null), CancellationToken.None);
 
         return Result<PackagePaymentReviewResult>.Ok(new PackagePaymentReviewResult(
             Item(updated, [], null, now), null, null, notify.EmailSent, notify.InAppSaved));

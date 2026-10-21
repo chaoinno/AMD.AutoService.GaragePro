@@ -43,7 +43,7 @@ public sealed class SelfServePackageController(IServiceProvider services) : Cont
     /// · requestId เดิมส่งซ้ำได้แถวเดิม (ไม่อัปโหลดซ้ำ ไม่ส่ง LINE ซ้ำ)
     /// </summary>
     [HttpPost("payments")]
-    [Consumes("multipart/form-data")]
+    // ไม่ใส่ [Consumes] โดยตั้งใจ: content-type ผิดจะได้ 415 ของ framework (ไม่ใช่ envelope) · ตรวจเองด้านล่างแทน
     [RequestSizeLimit(MaxRequestBytes)]
     [RequestFormLimits(MultipartBodyLengthLimit = MaxRequestBytes)]
     [EnableRateLimiting(RateLimitPolicies.PackagePaymentSubmit)]
@@ -100,8 +100,13 @@ public sealed class SelfServePackageController(IServiceProvider services) : Cont
 
     private IPackagePaymentService? Service => services.GetService<IPackagePaymentService>();
 
-    private static string? Field(IFormCollection form, string name) =>
-        form.TryGetValue(name, out var value) ? value.ToString() : null;
+    /// <summary>ชื่อฟิลด์ไม่สนตัวพิมพ์ตามสัญญา (ตัวอ่านฟอร์มของ ASP.NET ไม่สนอยู่แล้ว แต่ไม่พึ่ง comparer ของ collection)</summary>
+    private static string? Field(IFormCollection form, string name)
+    {
+        if (form.TryGetValue(name, out var exact)) return exact.ToString();
+        var key = form.Keys.FirstOrDefault(k => string.Equals(k, name, StringComparison.OrdinalIgnoreCase));
+        return key is null ? null : form[key].ToString();
+    }
 
     private IActionResult TooLarge() => Render(Result<PackagePaymentDto>.Fail(PackageErrors.AttachmentTooLarge(
         services.GetService<IPackageSlipStorage>()?.MaxSizeBytes ?? 15 * 1024 * 1024)));

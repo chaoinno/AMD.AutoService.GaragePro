@@ -188,10 +188,12 @@ public sealed class PackagePaymentService(
                 : Fail(PackageErrors.PendingExists());
         }
 
+        // บันทึกแล้ว: แจ้งทีมงานต่อแม้ผู้ใช้ปิดหน้า/เน็ตหลุดระหว่างรอ (ไม่ส่ง ct ของคำขอ · LINE มี timeout ของตัวเอง)
         var context = Context(workspace, payment);
         await notifier.SubmittedAsync(new PackagePaymentSubmittedNotice(context, plan.ExpiresAt,
             PackageRenewal.Compute(plan.ExpiresAt, now, payment.MonthCount),
-            duplicates.Where(d => d.Payment.Id != payment.Id).Select(PackagePaymentAdminService.Duplicate).ToList()), ct);
+            duplicates.Where(d => d.Payment.Id != payment.Id).Select(PackagePaymentAdminService.Duplicate).ToList()),
+            CancellationToken.None);
 
         return Ok(payment);
     }
@@ -213,7 +215,7 @@ public sealed class PackagePaymentService(
         if (!cancelled) return Fail(PackageErrors.NotPending());
 
         var updated = await payments.GetAsync(id, ct) ?? current;
-        await notifier.CancelledAsync(Context(workspace, updated), ct);
+        await notifier.CancelledAsync(Context(workspace, updated), CancellationToken.None);
         return Ok(updated);
     }
 
