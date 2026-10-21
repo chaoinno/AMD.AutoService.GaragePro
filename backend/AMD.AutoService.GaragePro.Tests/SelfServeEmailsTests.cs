@@ -23,8 +23,37 @@ public class SelfServeEmailsTests
         SelfServeEmails.Reminder(7, "อู่ช่างเอก", 1042, EndsAt, 90, BaseUrl),
         SelfServeEmails.Reminder(1, "อู่ช่างเอก", 1042, EndsAt, 90, BaseUrl),
         SelfServeEmails.Expired("อู่ช่างเอก", 1042, EndsAt, 90, EndsAt.AddDays(90), BaseUrl),
-        SelfServeEmails.Comeback("อู่ช่างเอก", 1042, EndsAt, EndsAt.AddDays(90), BaseUrl)
+        SelfServeEmails.Comeback("อู่ช่างเอก", 1042, EndsAt, EndsAt.AddDays(90), BaseUrl),
+        SelfServeEmails.PaymentApproved("อู่ช่างเอก", 1042, 3, PaidEnd, BaseUrl),
+        SelfServeEmails.PaymentRejected("อู่ช่างเอก", 1042, 3, "ไม่พบยอดเงินเข้าบัญชี", "ยังไม่เห็นยอด", BaseUrl),
+        SelfServeEmails.PaidReminder(14, "อู่ช่างเอก", 1042, PaidEnd, 90, BaseUrl)
     ];
+
+    // เที่ยงคืนไทย 14/2/2027 → ใช้ได้ถึงสิ้นวัน 13/02/2570
+    private static readonly DateTime PaidEnd = new(2027, 2, 13, 17, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public void Package_emails_show_the_last_usable_day_and_never_say_trial()
+    {
+        var approved = SelfServeEmails.PaymentApproved("อู่ช่างเอก", 1042, 3, PaidEnd, BaseUrl);
+        approved.Tag.Should().Be("package-approved");
+        approved.Subject.Should().Contain("13/02/2570");
+        approved.TextBody.Should().Contain("SP1042").And.Contain("3 เดือน").And.Contain("https://service.garage-pro.net/package");
+
+        var rejected = SelfServeEmails.PaymentRejected("อู่ <b>เอก</b>", 1042, 1, "สลิปซ้ำกับที่เคยแจ้ง", null, BaseUrl);
+        rejected.Tag.Should().Be("package-rejected");
+        rejected.TextBody.Should().Contain("เหตุผล: สลิปซ้ำกับที่เคยแจ้ง").And.NotContain("หมายเหตุจากทีมงาน");
+        rejected.HtmlBody.Should().NotContain("<b>เอก</b>");
+
+        SelfServeEmails.PaidReminder(0, "อู่ช่างเอก", 1042, PaidEnd, 90, BaseUrl).Subject.Should().Contain("วันสุดท้าย");
+        SelfServeEmails.PaidReminder(1, "อู่ช่างเอก", 1042, PaidEnd, 90, BaseUrl).Subject.Should().Contain("พรุ่งนี้");
+        var reminder = SelfServeEmails.PaidReminder(14, "อู่ช่างเอก", 1042, PaidEnd, 90, BaseUrl);
+        reminder.Subject.Should().Contain("เหลืออีก 14 วัน");
+        reminder.TextBody.Should().Contain("13/02/2570").And.Contain("90 วัน");
+
+        foreach (var email in new[] { approved, rejected, reminder })
+            (email.Subject + email.TextBody).Should().NotContain("ทดลองใช้", $"{email.Tag}: อู่ที่จ่ายเงินแล้ว");
+    }
 
     [Fact]
     public void Every_template_is_complete_and_signed()
