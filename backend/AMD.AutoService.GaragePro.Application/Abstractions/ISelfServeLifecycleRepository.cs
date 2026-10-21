@@ -27,11 +27,13 @@ public sealed record SelfServeWorkspaceInfo(
 /// <summary>
 /// หนึ่ง workspace ที่งานรายวันพิจารณา — <see cref="BranchEndsAt"/> = Branch.EndPackageDate แปลงเป็น UTC แล้ว
 /// (ตัวจริงของวันหมดอายุ — sp_Workspace.TrialEndsAt เป็นแค่สำเนา) · <see cref="NoticesSent"/> = Kind ใน sp_WorkspaceNotice
+/// · <see cref="HasPendingPayment"/> = มีรายการแจ้งชำระรอตรวจ (docs/17 กฎข้อ 12–13: ไม่ลบ ไม่เตือน ไม่เชิญกลับ)
 /// </summary>
 public sealed record LifecycleWorkspace(
     SelfServeWorkspaceInfo Workspace,
     DateTime? BranchEndsAt,
-    IReadOnlySet<string> NoticesSent);
+    IReadOnlySet<string> NoticesSent,
+    bool HasPendingPayment = false);
 
 /// <summary>หนึ่งแถวใน sp_SampleEntity — <see cref="EntityId"/> เป็นข้อความ (Guid ของ svc_* หรือ id ตัวเลขของตาราง shadow)</summary>
 public sealed record SampleLedgerItem(string EntityType, string EntityId);

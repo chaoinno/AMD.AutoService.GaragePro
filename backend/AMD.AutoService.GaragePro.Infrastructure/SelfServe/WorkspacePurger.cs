@@ -10,14 +10,15 @@ using Microsoft.Extensions.Options;
 
 namespace AMD.AutoService.GaragePro.Infrastructure.SelfServe;
 
-/// <summary>แถว sp_Workspace ที่ต้องรู้ก่อนลบ</summary>
+/// <summary>แถว sp_Workspace ที่ต้องรู้ก่อนลบ · <see cref="HasPendingPayment"/> = มีรายการแจ้งชำระรอตรวจ (docs/17 กฎข้อ 12)</summary>
 public sealed record PurgeTarget(
     Guid WorkspaceId,
     int WorkspaceNo,
     int? BranchId,
     WorkspacePlanKind Plan,
     WorkspaceStatus Status,
-    Guid? OwnerAccountId);
+    Guid? OwnerAccountId,
+    bool HasPendingPayment = false);
 
 public sealed record ServicePurgeResult(IReadOnlyList<string> AttachmentPaths, IReadOnlyDictionary<string, int> DeletedRows);
 
@@ -43,6 +44,9 @@ public interface IWorkspacePurgeData
     Task<IReadOnlyList<string>> ReadAttachmentPathsAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
         CancellationToken ct = default);
 
+    /// <summary>path ไฟล์สลิปค่าแพ็กเกจของอู่ (sp_PackagePayment.SlipPath) · ลบไฟล์ก่อน tombstone (แถวรายการไม่ถูกลบ)</summary>
+    Task<IReadOnlyList<string>> ReadPackageSlipPathsAsync(Guid workspaceId, CancellationToken ct = default);
+
     /// <summary>ใน scope ของ ScopedCurrentUser(sp1, สาขา) — เก็บ path ไฟล์แนบก่อน แล้วลบ svc_* ตาม <see cref="ServicePurgePlan"/></summary>
     Task<ServicePurgeResult> PurgeServiceDataAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
         CancellationToken ct = default);
@@ -50,7 +54,10 @@ public interface IWorkspacePurgeData
     /// <summary>แถวรูปร่าง Garage ของสาขา (ลูกค้า/รถ/พนักงาน/[User]/ChangeLog/Branch) — transaction เดียว (Dapper)</summary>
     Task<ShadowPurgeResult> PurgeShadowDataAsync(string shardKey, int branchId, CancellationToken ct = default);
 
-    /// <summary>sp_Workspace = Purged · sp_Account = Purged (คง NormalizedEmail) · ลบ OTP/ledger ตัวอย่าง · sp_WorkspaceAudit "purged"</summary>
+    /// <summary>
+    /// sp_Workspace = Purged · sp_Account = Purged (คง NormalizedEmail) · ลบ OTP/ledger ตัวอย่าง · รายการแจ้งชำระรอตรวจ → Cancelled
+    /// และล้างหมายเหตุของลูกค้าทุกรายการ (คอลัมน์การเงินคงไว้) · sp_WorkspaceAudit "purged"
+    /// </summary>
     Task MarkPurgedAsync(PurgeTarget target, string actor, DateTime now, string payloadJson, CancellationToken ct = default);
 
     /// <summary>บันทึก sp_WorkspaceAudit อย่างเดียว (ใช้กับการลบ svc_* ของอู่ที่ถูกทิ้งระหว่างเปิด)</summary>
@@ -103,6 +110,9 @@ public sealed class WorkspacePurger(
         // S5: อู่ที่ย้ายข้อมูลไปสาขาจริงแล้วเป็นลูกค้าที่จ่ายเงิน — ลบได้เมื่อยืนยันเท่านั้น (spadmin --allow-paid · job รายวันหลัง PurgeAfter)
         if (target.Plan == WorkspacePlanKind.Converted && !request.AllowPaid)
             return Refused("อู่นี้ย้ายข้อมูลไปสาขา GaragePro แล้ว (converted) ต้องยืนยันการลบโดยตรง");
+        // docs/17 กฎข้อ 12: ลูกค้าที่แจ้งชำระใกล้วันลบต้องไม่ถูกลบก่อนทีมงานตรวจ (งานรายวันไม่สั่งลบอยู่แล้ว · ชั้นนี้กัน spadmin purge)
+        if (target.HasPendingPayment && !request.AllowPaid)
+            return Refused("อู่นี้มีรายการแจ้งชำระรอตรวจ อนุมัติ/ปฏิเสธก่อน (spadmin payments) หรือยืนยันการลบโดยตรง");
 
         var deleted = new Dictionary<string, int>(StringComparer.Ordinal);
         var files = new FileTally();
@@ -110,6 +120,10 @@ public sealed class WorkspacePurger(
         if (target.BranchId is { } branchId)
         {
             await PurgeServiceRowsAndFilesAsync(target, shard, branchId, deleted, files, ct);
+
+            // ไฟล์สลิปไม่อยู่ใน svc_Attachment — path มีที่เดียวคือ sp_PackagePayment (แถวคงอยู่หลังลบ) · ผ่าน prefix guard เดียวกัน
+            var slips = await data.ReadPackageSlipPathsAsync(target.WorkspaceId, ct);
+            await DeleteFilesAsync(target, shard, branchId, slips, files, ct);
 
             var shadow = await data.PurgeShadowDataAsync(shard, branchId, ct);
             Merge(deleted, shadow.DeletedRows);

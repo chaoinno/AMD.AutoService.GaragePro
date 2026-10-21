@@ -81,11 +81,39 @@ public static class TrialLifecycleRules
         return w.Workspace.PurgeAfter is { } after && after > byReadOnlyWindow ? after : byReadOnlyWindow;
     }
 
+    /// <summary>
+    /// อีเมลเตือนอู่ paid ก่อนหมด (docs/17 กฎข้อ 13) · kind มีวันหมดต่อท้าย เพราะ sp_WorkspaceNotice unique ต่อ (อู่, kind) ตลอดกาล:
+    /// ต่ออายุแล้วรอบใหม่ต้องเตือนได้อีก · ยาวสุด "paid-reminder-NN:yyyyMMdd" = 25 ตัว (คอลัมน์รับ 50)
+    /// </summary>
+    public static string PaidReminderNotice(int days, DateTime endsAtUtc) =>
+        string.Create(CultureInfo.InvariantCulture, $"paid-reminder-{days}:") +
+        SelfServeText.ThaiDate(endsAtUtc).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+
+    public const string PaidReminderPrefix = "paid-reminder-";
+
+    /// <summary>รอบเตือนจาก kind ("paid-reminder-14:20261113" → 14) · ไม่ใช่ kind ของ paid = null</summary>
+    public static int? PaidReminderRound(string kind)
+    {
+        if (!kind.StartsWith(PaidReminderPrefix, StringComparison.Ordinal)) return null;
+        var rest = kind[PaidReminderPrefix.Length..];
+        var colon = rest.IndexOf(':');
+        return int.TryParse(colon < 0 ? rest : rest[..colon], NumberStyles.None, CultureInfo.InvariantCulture, out var d)
+            ? d
+            : null;
+    }
+
+    /// <summary>ทางเดิมก่อนมีอีเมลเตือน paid (เทสต์เดิม) — เท่ากับไม่ตั้งรอบเตือน paid</summary>
     public static IReadOnlyList<LifecycleAction> Decide(
-        LifecycleWorkspace w, DateTime nowUtc, SelfServeOptions.TrialOptions trial)
+        LifecycleWorkspace w, DateTime nowUtc, SelfServeOptions.TrialOptions trial) =>
+        Decide(w, nowUtc, trial, []);
+
+    /// <param name="paidReminderDays">รอบเตือนของอู่ paid (SelfServe:Package:PaidReminderDays) · ว่าง = ไม่เตือน paid</param>
+    public static IReadOnlyList<LifecycleAction> Decide(
+        LifecycleWorkspace w, DateTime nowUtc, SelfServeOptions.TrialOptions trial, IReadOnlyList<int> paidReminderDays)
     {
         ArgumentNullException.ThrowIfNull(w);
         ArgumentNullException.ThrowIfNull(trial);
+        ArgumentNullException.ThrowIfNull(paidReminderDays);
 
         var ws = w.Workspace;
         if (ws.BranchId is null || ws.Status is WorkspaceStatus.Purged or WorkspaceStatus.Provisioning) return [];
@@ -93,11 +121,15 @@ public static class TrialLifecycleRules
         // ข้อมูลอยู่ที่สาขาปลายทางแล้ว — สำเนาใน sp1 เก็บไว้ตรวจเทียบจนถึง PurgeAfter (ไม่ส่งอีเมล/ไม่เปลี่ยนสถานะ)
         if (ws.Plan == WorkspacePlanKind.Converted)
             return ws.PurgeAfter is { } purgeAfter && nowUtc >= purgeAfter ? [new LifecycleAction(LifecycleActionKind.Purge)] : [];
-        if (ws.Plan == WorkspacePlanKind.Paid) return [];
+        if (ws.Plan == WorkspacePlanKind.Paid) return DecidePaid(w, nowUtc, paidReminderDays);
         if (ExpiresAt(w) is not { } expiresAt) return [];
 
+        // [BIZ] มีรายการแจ้งชำระรอตรวจ = ไม่ลบ ไม่เตือน ไม่เชิญกลับ (docs/17 กฎข้อ 12–13) · วันล็อกกับวันลบเป็นวันเดียวกัน
+        // ลูกค้าที่แจ้งชำระวันที่ 89 ต้องไม่ถูกลบก่อนทีมงานตรวจ · ยังเปลี่ยนสถานะ/แจ้งหมดอายุตามปกติ (เป็นข้อเท็จจริง ไม่ใช่การขาย)
+        var pending = w.HasPendingPayment;
+
         // ครบกำหนดลบแล้ว — ไม่ต้องส่งอะไรอีก (ลบทั้งอู่รวมแถว notice ไม่ได้ เพราะ notice อยู่คนละฐาน — ไม่เป็นไร)
-        if (nowUtc >= PurgeAt(w, trial)!.Value) return [new LifecycleAction(LifecycleActionKind.Purge)];
+        if (!pending && nowUtc >= PurgeAt(w, trial)!.Value) return [new LifecycleAction(LifecycleActionKind.Purge)];
         if (ws.Plan == WorkspacePlanKind.Suspended) return [];
 
         var actions = new List<LifecycleAction>();
@@ -107,7 +139,7 @@ public static class TrialLifecycleRules
 
             var comebackAt = expiresAt.AddDays(trial.ComebackDay);
             var comebackKind = ComebackNotice(trial.ComebackDay);
-            if (trial.ComebackDay > 0 && nowUtc >= comebackAt)
+            if (!pending && trial.ComebackDay > 0 && nowUtc >= comebackAt)
             {
                 // งานหยุดไปหลายสัปดาห์จนเลยวันชวนกลับ: ส่งแค่ฉบับชวนกลับ ไม่ส่งฉบับ "หมดอายุ" ย้อนหลังซ้อนกันสองฉบับ
                 if (!w.NoticesSent.Contains(comebackKind))
@@ -122,6 +154,7 @@ public static class TrialLifecycleRules
         }
 
         if (ws.Status == WorkspaceStatus.Expired) actions.Add(new LifecycleAction(LifecycleActionKind.MarkActive));
+        if (pending) return actions;
 
         // เตือนเฉพาะรอบที่ใกล้ที่สุด — งานพลาดไปวันหนึ่งแล้วกลับมาวันที่เหลือ 1 วัน ต้องได้ฉบับ "พรุ่งนี้" ฉบับเดียว
         var daysLeft = SelfServeText.CalendarDaysLeft(expiresAt, nowUtc);
@@ -130,6 +163,28 @@ public static class TrialLifecycleRules
             actions.Add(new LifecycleAction(LifecycleActionKind.Notify, ReminderNotice(due), Math.Max(daysLeft, 0)));
 
         return actions;
+    }
+
+    /// <summary>
+    /// [BIZ] อู่ที่จ่ายเงินแล้วไม่เคยถูกลบ/เปลี่ยนสถานะอัตโนมัติ — ได้แค่อีเมลเตือนก่อนหมด (รอบที่ใกล้ที่สุดรอบเดียว)
+    /// · นับวันถึง<b>วันสุดท้ายที่ใช้ได้</b> (End − 1 tick เหมือน PlanAccess.DaysLeft) เพราะวันหมดของ paid เป็นเที่ยงคืนพอดี
+    ///   ถ้านับถึง End ตรงๆ ฉบับ "พรุ่งนี้" จะไปถึงในวันสุดท้ายที่ใช้ได้
+    /// · มีรายการรอตรวจ (จ่ายมาแล้ว) / ไม่มีวันหมด / หมดแล้ว = ไม่เตือน
+    /// </summary>
+    private static IReadOnlyList<LifecycleAction> DecidePaid(LifecycleWorkspace w, DateTime nowUtc,
+        IReadOnlyList<int> paidReminderDays)
+    {
+        if (paidReminderDays.Count == 0 || w.HasPendingPayment) return [];
+        if (ExpiresAt(w) is not { } end || nowUtc >= end) return [];
+
+        var daysLeft = Package.PackageRenewal.LastUsableDay(end).DayNumber - SelfServeText.ThaiDate(nowUtc).DayNumber;
+        var due = paidReminderDays.Where(d => d > 0 && daysLeft <= d).DefaultIfEmpty(0).Min();
+        if (due <= 0) return [];
+
+        var kind = PaidReminderNotice(due, end);
+        return w.NoticesSent.Contains(kind)
+            ? []
+            : [new LifecycleAction(LifecycleActionKind.Notify, kind, Math.Max(daysLeft, 0))];
     }
 }
 
@@ -226,7 +281,7 @@ public sealed class TrialLifecycleService(
         foreach (var w in await repository.ListForLifecycleAsync(ct))
         {
             var code = SelfServeText.WorkspaceCode(w.Workspace.WorkspaceNo);
-            foreach (var action in TrialLifecycleRules.Decide(w, now, options.Trial))
+            foreach (var action in TrialLifecycleRules.Decide(w, now, options.Trial, options.Package.EffectivePaidReminderDays))
             {
                 try
                 {
@@ -363,6 +418,9 @@ public sealed class TrialLifecycleService(
         var expiresAt = TrialLifecycleRules.ExpiresAt(w)!.Value;
         var purgeAt = TrialLifecycleRules.PurgeAt(w, options.Trial)!.Value;
 
+        if (TrialLifecycleRules.PaidReminderRound(kind) is { } round)
+            return SelfServeEmails.PaidReminder(action.DaysLeft, ws.Name, ws.WorkspaceNo, expiresAt,
+                options.Trial.ReadOnlyDays, options.PublicBaseUrl) with { Tag = SelfServeEmails.PaidReminderTag(round) };
         if (kind == TrialLifecycleRules.ExpiredNotice)
             return SelfServeEmails.Expired(ws.Name, ws.WorkspaceNo, expiresAt, options.Trial.ReadOnlyDays, purgeAt,
                 options.PublicBaseUrl);
@@ -418,13 +476,14 @@ public sealed class TrialLifecycleService(
         var expiringToday = trials.Count(e => SelfServeText.ThaiDate(e) == runDate);
         var withinWeek = trials.Count(e => e > now && e <= now.AddDays(7));
         var extensions = all.Count(w => w.Workspace.ExtensionRequestedAt is { } at && at > since && at <= now);
+        var pendingPayments = all.Count(w => w.HasPendingPayment);
 
         var counts = new Dictionary<string, int>
         {
             ["signups"] = signups, ["expiringToday"] = expiringToday, ["withinWeek"] = withinWeek,
-            ["extensionRequests"] = extensions
+            ["extensionRequests"] = extensions, ["pendingPayments"] = pendingPayments
         };
-        var text = SummaryMessage(runDate, signups, expiringToday, withinWeek, extensions);
+        var text = SummaryMessage(runDate, signups, expiringToday, withinWeek, extensions, pendingPayments);
 
         if (!sales.IsConfigured)
             return new LifecycleRunReport(TrialLifecycleTasks.Summary, runDate, true, "skipped: LINE not configured",
@@ -437,11 +496,12 @@ public sealed class TrialLifecycleService(
             sent ? [] : ["LINE push failed"]);
     }
 
-    /// <summary>"สรุปทดลองใช้ dd/MM/yyyy: สมัครใหม่ N · หมดอายุวันนี้ M · เหลือ ≤7 วัน K · ขอต่ออายุ J"</summary>
-    public static string SummaryMessage(DateOnly date, int signups, int expiringToday, int withinWeek, int extensions) =>
+    /// <summary>"สรุปทดลองใช้ dd/MM/yyyy: สมัครใหม่ N · หมดอายุวันนี้ M · เหลือ ≤7 วัน K · ขอต่ออายุ J · แจ้งชำระรอตรวจ P"</summary>
+    public static string SummaryMessage(DateOnly date, int signups, int expiringToday, int withinWeek, int extensions,
+        int pendingPayments) =>
         string.Create(CultureInfo.InvariantCulture,
             $"สรุปทดลองใช้ {SelfServeText.FormatThaiDate(date)}: สมัครใหม่ {signups} · หมดอายุวันนี้ {expiringToday} · " +
-            $"เหลือ ≤7 วัน {withinWeek} · ขอต่ออายุ {extensions}");
+            $"เหลือ ≤7 วัน {withinWeek} · ขอต่ออายุ {extensions} · แจ้งชำระรอตรวจ {pendingPayments}");
 
     /// <summary>"⏰ หมดทดลองใช้: อู่ X (SP1042) · โทร … · หมดอายุ dd/MM/yyyy"</summary>
     public static string ExpiredSalesMessage(SelfServeWorkspaceInfo ws, DateTime expiresAt) =>

@@ -58,12 +58,18 @@ public sealed class SelfServeLifecycleRepository(
 
         var endDates = await ReadBranchEndDatesAsync(ct);
         var none = (IReadOnlySet<string>)new HashSet<string>();
+        var pending = (await db.PackagePayments.AsNoTracking()
+                .Where(p => p.Status == PackagePaymentStatus.Pending)
+                .Select(p => p.WorkspaceId)
+                .ToListAsync(ct))
+            .ToHashSet();
 
         return workspaces
             .Select(w => new LifecycleWorkspace(
                 w,
                 endDates.TryGetValue(w.BranchId!.Value, out var end) ? end : null,
-                noticesByWorkspace.GetValueOrDefault(w.Id, none)))
+                noticesByWorkspace.GetValueOrDefault(w.Id, none),
+                pending.Contains(w.Id)))
             .ToList();
     }
 
