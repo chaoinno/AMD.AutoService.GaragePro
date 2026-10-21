@@ -68,6 +68,17 @@ public class SelfServeLifecycleRegistrationTests
         sp.GetRequiredService<ISelfServeSalesNotifier>().Should().BeOfType<SelfServeSalesNotifier>();
         sp.GetRequiredService<IWorkspacePurgeData>().CheckTargetDatabase("sp1").Should().BeNull(
             "ค่าตั้งชุดนี้ชี้ GarageSelfServe_Dev ทั้งสองที่ และไม่ซ้ำกับ GarageService/Garage");
+
+        // docs/17: แจ้งชำระ/ต่ออายุ
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentService>()
+            .Should().BeOfType<Application.SelfServe.Package.PackagePaymentService>();
+        sp.GetRequiredService<Application.SelfServe.Package.PackagePaymentAdminService>().Should().NotBeNull();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentRepository>()
+            .Should().BeOfType<PackagePaymentRepository>();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackageSlipStorage>()
+            .Should().BeOfType<Infrastructure.Storage.FtpAttachmentStorage>();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentNotifier>()
+            .Should().BeOfType<PackagePaymentNotifier>();
     }
 
     [Fact]
@@ -79,6 +90,8 @@ public class SelfServeLifecycleRegistrationTests
         scope.ServiceProvider.GetService<ITrialLifecycleService>().Should().BeNull();
         scope.ServiceProvider.GetService<ISelfServeStatusService>().Should().BeNull(
             "controller จึงตอบ 404 SELFSERVE_NOT_APPLICABLE แทน 500");
+        scope.ServiceProvider.GetService<Application.SelfServe.Package.IPackagePaymentService>().Should().BeNull(
+            "endpoint แพ็กเกจและลิงก์สลิปตอบ 404 เช่นกัน");
     }
 
     [Theory]
