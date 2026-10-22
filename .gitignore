@@ -29,3 +29,6 @@ appsettings.*.local.json
 
 # macOS
 .DS_Store
+
+# เอกสาร flow ต่ออายุของ GaragePro Enterprise ที่ทีมส่งมา: มีรายละเอียดช่องโหว่ของระบบเดิม ห้าม commit (repo นี้เป็น public)
+docs/Package-Renewal-Flow*.md

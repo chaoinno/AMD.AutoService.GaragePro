@@ -201,9 +201,9 @@ public class PackagePaymentRulesTests
         options.Prices["1"] = 590;
         options.Prices["3"] = 0;
 
-        options.PriceFor(1).Should().Be(590m);
-        options.PriceFor(3).Should().BeNull("≤ 0 ถือว่าไม่ได้ตั้ง");
-        options.PriceFor(6).Should().BeNull();
+        PackagePricing.For(options, 1)!.Total.Should().Be(590m);
+        PackagePricing.For(options, 3).Should().BeNull("≤ 0 ถือว่าไม่ได้ตั้ง");
+        PackagePricing.For(options, 6).Should().BeNull();
     }
 
     [Theory]

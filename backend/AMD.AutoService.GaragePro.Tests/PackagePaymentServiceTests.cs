@@ -4,6 +4,8 @@ using AMD.AutoService.GaragePro.Application.SelfServe;
 using AMD.AutoService.GaragePro.Application.SelfServe.Package;
 using AMD.AutoService.GaragePro.Domain.Entities.SelfServe;
 using AMD.AutoService.GaragePro.Domain.Enums;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentAssertions;
 
 namespace AMD.AutoService.GaragePro.Tests;
@@ -40,8 +42,9 @@ public class PackagePaymentServiceTests
                 plan, status);
             Options.Package.PaymentAccount.AccountName = "บจก. อาร์มาดิลโล่ เทค";
             Options.Package.PaymentAccount.AccountNo = "123-4-56789-0";
-            Options.Package.Prices["1"] = 590;
-            Options.Package.Prices["3"] = 1770;
+            // ค่าเดียวกับ production (appsettings.json): 3,999/เดือน ก่อน VAT + VAT 7%
+            Options.Package.MonthlyPrice = 3999;
+            Options.Package.VatRate = 0.07m;
             Options.Package.SlipLinkKey = Key;
         }
 
@@ -55,7 +58,7 @@ public class PackagePaymentServiceTests
     }
 
     private static PackagePaymentSubmission Form(string? requestId = "req-1", string? paidAt = "2026-10-21T14:30:00+07:00",
-        string? amount = "1,770.00", string? months = "3", string? note = "โอนจากบัญชีบริษัท", bool slip = true,
+        string? amount = "12,836.79", string? months = "3", string? note = "โอนจากบัญชีบริษัท", bool slip = true,
         string? contentType = "image/png", long size = 1000) =>
         new(requestId, paidAt, amount, months, note,
             slip ? new PackageSlipUpload(new MemoryStream([1, 2, 3]), contentType, size, "slip.png") : null);
@@ -77,17 +80,76 @@ public class PackagePaymentServiceTests
         o.DaysLeft.Should().Be(PlanAccess.DaysLeft(TrialEnd, Now), "ค่าเดียวกับ /auth/me");
         o.ReadOnly.Should().BeFalse();
         o.MonthOptions.Select(m => m.Months).Should().Equal(1, 2, 3, 6, 12);
+        o.VatRate.Should().Be(0.07m);
         var one = o.MonthOptions[0];
-        one.Price.Should().Be(590.00m);
+        one.Subtotal.Should().Be(3999.00m);
+        one.Vat.Should().Be(279.93m);
+        one.Price.Should().Be(4278.93m, "ยอดที่ต้องโอนรวม VAT");
         one.PreviewEndsAt.Should().Be(new DateTime(2026, 12, 13, 17, 0, 0, DateTimeKind.Utc), "ตัวอย่างใน docs/17 §5.1");
         one.PreviewLastUsableDate.Should().Be(new DateOnly(2026, 12, 13));
-        o.MonthOptions[1].Price.Should().BeNull("ยังไม่ตั้งราคา 2 เดือน");
+        o.MonthOptions.Select(m => m.Price).Should().Equal(4278.93m, 8557.86m, 12836.79m, 25673.58m, 51347.16m);
         o.PaymentAccount!.AccountName.Should().Be("บจก. อาร์มาดิลโล่ เทค");
         o.PaymentAccount.PromptPayId.Should().BeNull();
         o.Pending.Should().BeNull();
         o.CanSubmit.Should().BeTrue();
         o.CannotSubmitCode.Should().BeNull();
         o.PaidAtMaxPastDays.Should().Be(60);
+    }
+
+    /// <summary>ตัวเลือก JSON เดียวกับ Program.cs (camelCase · ฟิลด์ null ไม่อยู่ใน JSON)</summary>
+    private static readonly JsonSerializerOptions ApiJson = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    [Fact]
+    public async Task Overview_json_has_vat_rate_and_subtotal_vat_price_per_month_option()
+    {
+        var h = new Harness();
+
+        var json = JsonSerializer.Serialize((await h.Service.GetOverviewAsync()).Data!, ApiJson);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.GetProperty("vatRate").GetRawText().Should().Be("0.07");
+        const string expected =
+            """{"months":1,"subtotal":3999.00,"vat":279.93,"price":4278.93,"previewEndsAt":"2026-12-13T17:00:00Z","previewLastUsableDate":"2026-12-13"}""";
+        root.GetProperty("monthOptions")[0].GetRawText().Should().Be(expected);
+        root.GetProperty("monthOptions")[4].GetProperty("price").GetRawText().Should().Be("51347.16");
+        root.GetProperty("paymentAccount").GetProperty("accountNo").GetString().Should().Be("123-4-56789-0");
+    }
+
+    [Fact]
+    public async Task Overview_json_without_pricing_has_no_price_fields_and_no_vat_rate()
+    {
+        var h = new Harness();
+        h.Options.Package.MonthlyPrice = null;
+        h.Options.Package.VatRate = null;
+
+        var json = JsonSerializer.Serialize((await h.Service.GetOverviewAsync()).Data!, ApiJson);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        root.TryGetProperty("vatRate", out _).Should().BeFalse();
+        var option = root.GetProperty("monthOptions")[0];
+        option.TryGetProperty("subtotal", out _).Should().BeFalse();
+        option.TryGetProperty("vat", out _).Should().BeFalse();
+        option.TryGetProperty("price", out _).Should().BeFalse("ไม่อยู่ทั้งสามช่อง = ยังไม่ตั้งราคา");
+        option.GetProperty("previewLastUsableDate").GetString().Should().Be("2026-12-13");
+    }
+
+    [Fact]
+    public async Task Overview_without_vat_sends_vat_zero_and_price_equal_to_subtotal()
+    {
+        var h = new Harness();
+        h.Options.Package.VatRate = null;
+
+        var json = JsonSerializer.Serialize((await h.Service.GetOverviewAsync()).Data!, ApiJson);
+        using var doc = JsonDocument.Parse(json);
+
+        doc.RootElement.TryGetProperty("vatRate", out _).Should().BeFalse("ไม่อยู่ = ราคาไม่คิด VAT แยก");
+        doc.RootElement.GetProperty("monthOptions")[0].GetRawText().Should().StartWith(
+            """{"months":1,"subtotal":3999.00,"vat":0.00,"price":3999.00,""");
     }
 
     [Fact]
@@ -142,8 +204,8 @@ public class PackagePaymentServiceTests
         var dto = result.Data!;
         dto.Status.Should().Be("pending");
         dto.MonthCount.Should().Be(3);
-        dto.Amount.Should().Be(1770.00m);
-        dto.ExpectedAmount.Should().Be(1770.00m);
+        dto.Amount.Should().Be(12836.79m);
+        dto.ExpectedAmount.Should().Be(12836.79m, "ราคามาตรฐานตอนแจ้ง = ยอดรวม VAT (11,997.00 + 839.79)");
         dto.PaidAt.Should().Be(new DateTime(2026, 10, 21, 7, 30, 0, DateTimeKind.Utc));
         dto.SubmittedAt.Should().Be(Now);
         dto.SubmittedBy.Should().Be("SP1042.M01", "จาก JWT ไม่ใช่จากฟอร์ม");
@@ -154,6 +216,7 @@ public class PackagePaymentServiceTests
         var row = h.Payments.Rows.Single();
         row.SlipSha256.Should().Be("bb");
         row.SubmittedByUserId.Should().Be(501);
+        row.ExpectedAmount.Should().Be(12836.79m, "สำเนาราคารวม VAT ณ ตอนแจ้ง");
         h.Payments.Audits.Should().ContainSingle(a => a.Action == PackagePaymentAuditActions.Submit && a.Audit.Actor == "SP1042.M01");
 
         var notice = h.Notifier.Submitted.Should().ContainSingle().Subject;
@@ -161,6 +224,23 @@ public class PackagePaymentServiceTests
         notice.CurrentEndsAt.Should().Be(TrialEnd);
         notice.PreviewIfApprovedNow.LastUsableDate.Should().Be(new DateOnly(2027, 2, 13));
         notice.Duplicates.Should().BeEmpty();
+        notice.Price.Should().Be(new PackagePrice(3, 11997.00m, 839.79m, 12836.79m, 0.07m));
+    }
+
+    [Fact]
+    public async Task Price_changes_after_submitting_do_not_touch_the_snapshot_and_no_price_means_no_expected_amount()
+    {
+        var h = new Harness();
+        var first = (await h.Service.SubmitAsync(Form())).Data!;
+        h.Options.Package.MonthlyPrice = 4500;
+
+        h.Payments.Rows.Single(r => r.Id == first.Id).ExpectedAmount.Should().Be(12836.79m);
+
+        var unpriced = new Harness();
+        unpriced.Options.Package.MonthlyPrice = null;
+        var dto = (await unpriced.Service.SubmitAsync(Form(amount: "1500"))).Data!;
+        dto.ExpectedAmount.Should().BeNull("ยังไม่ตั้งราคา = ไม่มีราคาให้เทียบ");
+        unpriced.Notifier.Submitted.Single().Price.Should().BeNull();
     }
 
     [Fact]
@@ -172,7 +252,7 @@ public class PackagePaymentServiceTests
         var second = await h.Service.SubmitAsync(Form(amount: "1"));
 
         second.Data!.Id.Should().Be(first.Id);
-        second.Data.Amount.Should().Be(1770m, "แถวเดิม ไม่ใช่ค่าที่ส่งมาใหม่");
+        second.Data.Amount.Should().Be(12836.79m, "แถวเดิม ไม่ใช่ค่าที่ส่งมาใหม่");
         h.Slips.Saved.Should().HaveCount(1);
         h.Notifier.Submitted.Should().HaveCount(1);
     }

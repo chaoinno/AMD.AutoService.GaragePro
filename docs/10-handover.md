@@ -32,6 +32,9 @@
   · deploy ปกติ: `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` จาก checkout ที่ `deploy/production` เป็นรุ่นล่าสุดของ main ·
   agent ถูกบล็อกไม่ให้รัน deploy production เจ้าของรันเอง
   · ปิด/เปิดรับสมัคร: ตั้ง `Production:SelfServe:Enabled` (`true`/`false`) ใน user-secrets → `bootstrap-production-secrets.sh` → deploy
+- [ ] **รีวิว PR แจ้งชำระเงิน/ต่ออายุแพ็กเกจ (2026-10-22)**: 8 PR ใน ServicePro + 2 PR ใน Admin ตาม [docs/17 หัวข้อ 10](17-package-renewal.md) ·
+  ก่อน deploy ต้องได้บัญชีรับเงิน และตั้ง `SlipLinkKey` / `Internal:ApiKey` · รัน `add-api-internal-deny.sh` ก่อนตั้งคีย์ภายใน
+  · D8 เปลี่ยนพฤติกรรม session ของอู่ sp1: อนุมัติ/ต่ออายุแล้วไม่ถูก logout
 
 **ยังต้องตัดสินใจ**
 - แอปมือถือที่ login อู่ทดลองได้ (`1.1.0+3`) ยังไม่ปล่อย อู่ที่สมัครแล้วโหลดแอปตามลิงก์ในอีเมลต้อนรับจะ login ไม่ได้ จนกว่าจะปล่อยรุ่นนี้
