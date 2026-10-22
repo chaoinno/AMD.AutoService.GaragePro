@@ -1983,7 +1983,13 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     Admin proxy ↔ ServicePro จริง: sites · รายการรอตรวจ · สลิป · อนุมัติ · API key ถูกปฏิเสธ · หน้าเว็บ `/package` กับ API จริง · หน้าแพ็กเกจในแอปบน simulator (มุมมองช่าง)
   · **ยังไม่ได้ทดสอบ**: push LINE จริง/รูปใน LINE · ปุ่มแจ้งชำระบนเว็บกับไฟล์จริง (ทดสอบผ่าน API และ mock) · แจ้งชำระจากแอปในบัญชีผู้จัดการบน simulator · Android ·
     หน้าเว็บ Admin กับ ServicePro จริง (ทดสอบ API แล้ว หน้าเว็บทดสอบกับ mock) · Nginx และ docker network บน production
-  · **ก่อน deploy (เจ้าของ)**: บัญชีรับเงิน `SelfServe:Package:PaymentAccount:*` (ไม่ตั้ง = แจ้งชำระไม่ได้) + ราคา `Prices:{เดือน}` ·
+  · **[อัปเดต 2026-10-22 รอบสอง] ราคาและบัญชีจริง + ดีไซน์ใหม่** (ผู้ใช้ให้ข้อมูลและขอ "สวยๆ เท่ๆ"): **3,999 บาท/เดือนก่อน VAT + VAT 7%**
+    (1 เดือน 4,278.93 · 3 เดือน 12,836.79 · 12 เดือน 51,347.16 · ไม่มีส่วนลด) · บัญชี **ธนาคารกสิกรไทย 068-8-63750-3 บจก. อาร์มาดิลโล เทค จำกัด** ·
+    ค่าอยู่ใน `appsettings.json` ของ API และ spadmin (`SelfServe:Package:MonthlyPrice`/`VatRate`/`PaymentAccount`) ไม่ต้องตั้ง secret · สูตรราคาอยู่ที่ `PackagePricing` ที่เดียว ·
+    `monthOptions[]` มี `subtotal`/`vat`/`price` (price = ยอดโอนรวม VAT = `expectedAmount`) · VatRate ผิดช่วง = ไม่แสดงราคาเลย (กันลูกค้าโอนขาด) ·
+    หน้าเว็บ `/package` และหน้าแอปออกแบบใหม่ตาม docs/17 §6.3 (การ์ดหัวกรมท่า · ต่ออายุ 3 ขั้น · การ์ดกสิกรคัดลอกเลขบัญชี/ยอด · สรุปยอด · timeline) ·
+    ตรวจ: branch รวม backend 1472/23 · เว็บ 82/82 · แอป 189 · เว็บกับ API จริงบนเครื่องแสดงราคา VAT และบัญชีถูกต้อง · ยอดโอนรวม VAT ตรง `expectedAmount`
+  · **ก่อน deploy (เจ้าของ)**: ~~บัญชีรับเงิน/ราคา~~ ตั้งใน appsettings.json แล้ว ·
     `Production:SelfServe:Package:SlipLinkKey` · `sudo add-api-internal-deny.sh` **ก่อน**ตั้ง `Production:Internal:ApiKey` · ค่าเดียวกันเป็น `SERVICEPRO_INTERNAL_KEY` ของ Admin ·
     network `garagepro-servicepro` (deploy script สร้างให้) · ปล่อยแอป `1.2.0+4` หลัง backend · `docker-compose.yml` ของ Admin ชนกับ diff ช่องว่างที่ค้างใน checkout ของเจ้าของ
   · **[RISK]** ยังค้างเรื่อง secret ใน `appsettings.Development.json` ตาม RISK 2026-09-09 (แจ้งเจ้าของแล้ว 2026-10-22) · ImageSharp มีช่องโหว่ high และตอนนี้ถอดรหัสรูปจากลูกค้า ·
