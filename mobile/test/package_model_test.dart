@@ -36,10 +36,13 @@ Map<String, dynamic> overviewJson({Map<String, dynamic> extra = const {}}) => {
       'lastUsableDate': '2026-11-13',
       'daysLeft': 23,
       'readOnly': false,
+      'vatRate': 0.07,
       'monthOptions': [
         {
           'months': 1,
-          'price': 590.00,
+          'subtotal': 3999.00,
+          'vat': 279.93,
+          'price': 4278.93,
           'previewEndsAt': '2026-12-13T17:00:00Z',
           'previewLastUsableDate': '2026-12-13',
         },
@@ -69,7 +72,12 @@ void main() {
       expect(o.daysLeft, 23);
       expect(o.canSubmit, isTrue);
       expect(o.monthOptions.map((m) => m.months), [1, 3]);
-      expect(o.monthOptions.first.price, 590.0);
+      expect(o.vatRate, 0.07);
+      expect(o.monthOptions.first.subtotal, 3999.0);
+      expect(o.monthOptions.first.vat, 279.93);
+      expect(o.monthOptions.first.price, 4278.93);
+      expect(o.monthOptions.first.hasVatBreakdown, isTrue);
+      expect(o.monthOptions.last.hasVatBreakdown, isFalse);
       expect(o.monthOptions.last.price, isNull);
       expect(o.optionFor(3)!.previewLastUsableDate, DateTime(2027, 2, 13));
       expect(o.optionFor(6), isNull);
@@ -95,6 +103,8 @@ void main() {
       expect(o.paymentAccount, isNull);
       expect(o.canSubmit, isFalse);
       expect(o.paidAtMaxPastDays, PackageOverview.defaultPaidAtMaxPastDays);
+      // ไม่มี vatRate = ราคาไม่คิด VAT แยก
+      expect(o.vatRate, isNull);
 
       expect(PackageOverview.fromJson(null).plan, '');
       expect(PackageOverview.fromJson('oops').canSubmit, isFalse);
@@ -113,6 +123,25 @@ void main() {
       expect(o.monthOptions.single.months, 6);
       expect(o.monthOptions.single.price, 3300.0);
       expect(o.paymentAccount, isNull);
+    });
+
+    test('vatRate ที่ไม่ใช่สัดส่วน (เช่นส่งมาเป็น 7) ถือว่าไม่รู้ ไม่แสดง "VAT 700%"', () {
+      expect(PackageOverview.fromJson(overviewJson(extra: {'vatRate': 7})).vatRate, isNull);
+      expect(PackageOverview.fromJson(overviewJson(extra: {'vatRate': 0})).vatRate, isNull);
+      expect(PackageOverview.fromJson(overviewJson(extra: {'vatRate': '0.07'})).vatRate, 0.07);
+    });
+
+    test('ราคาไม่แยก VAT: มีแต่ price · subtotal/vat เป็น null', () {
+      final o = PackageOverview.fromJson(overviewJson(extra: {
+        'monthOptions': [
+          {'months': 1, 'price': 3999.00},
+        ],
+      })
+        ..remove('vatRate'));
+      expect(o.vatRate, isNull);
+      expect(o.monthOptions.single.price, 3999.0);
+      expect(o.monthOptions.single.subtotal, isNull);
+      expect(o.monthOptions.single.vat, isNull);
     });
 
     test('มีรายการรอตรวจและเหตุผลที่แจ้งไม่ได้', () {

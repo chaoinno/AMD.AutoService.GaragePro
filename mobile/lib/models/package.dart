@@ -142,9 +142,14 @@ class PackagePayment {
 }
 
 /// ตัวเลือกจำนวนเดือน พร้อมราคาและพรีวิว "ถ้าอนุมัติวันนี้ จะใช้งานได้ถึง …" ที่ server คำนวณ
+///
+/// [BIZ] ราคาทั้งสามช่องมาจาก server (ปัด VAT ที่นั่นที่เดียว) แอปไม่คำนวณ VAT เอง ไม่งั้นทศนิยมอาจไม่ตรงกับ
+/// `expectedAmount` ที่ทีมงานใช้เทียบยอดโอน
 class PackageMonthOption {
   const PackageMonthOption({
     required this.months,
+    this.subtotal,
+    this.vat,
     this.price,
     this.previewEndsAt,
     this.previewLastUsableDate,
@@ -152,10 +157,19 @@ class PackageMonthOption {
 
   final int months;
 
-  /// null = ยังไม่ตั้งราคา
+  /// ราคาก่อน VAT · null = ยังไม่ตั้งราคา หรือราคาไม่แยก VAT
+  final double? subtotal;
+
+  /// VAT ที่ server ปัดทศนิยมแล้ว · null = ไม่แยก VAT
+  final double? vat;
+
+  /// ยอดที่ต้องโอน (รวม VAT) = `expectedAmount` ของรายการที่แจ้ง · null = ยังไม่ตั้งราคา
   final double? price;
   final DateTime? previewEndsAt;
   final DateTime? previewLastUsableDate;
+
+  /// มีราคาก่อน VAT และ VAT แยกให้แสดงได้
+  bool get hasVatBreakdown => subtotal != null && vat != null;
 
   static PackageMonthOption? tryParse(Object? raw) {
     if (raw is! Map) return null;
@@ -163,6 +177,8 @@ class PackageMonthOption {
     if (months == null || months <= 0) return null;
     return PackageMonthOption(
       months: months,
+      subtotal: _double(raw['subtotal']),
+      vat: _double(raw['vat']),
       price: _double(raw['price']),
       previewEndsAt: _instant(raw['previewEndsAt']),
       previewLastUsableDate: parseDateOnly(_string(raw['previewLastUsableDate'])),
@@ -205,6 +221,7 @@ class PackageOverview {
     this.lastUsableDate,
     this.daysLeft,
     this.readOnly = false,
+    this.vatRate,
     this.monthOptions = const [],
     this.paymentAccount,
     this.pending,
@@ -234,6 +251,9 @@ class PackageOverview {
   /// ค่าเดียวกับ /auth/me ติดลบได้ (หมดอายุไปแล้วกี่วัน)
   final int? daysLeft;
   final bool readOnly;
+
+  /// อัตรา VAT เป็นสัดส่วน (0.07 = 7%) · null = ราคาไม่คิด VAT แยก
+  final double? vatRate;
   final List<PackageMonthOption> monthOptions;
   final PackagePaymentAccount? paymentAccount;
 
@@ -267,6 +287,7 @@ class PackageOverview {
       lastUsableDate: parseDateOnly(_string(raw['lastUsableDate'])),
       daysLeft: _int(raw['daysLeft']),
       readOnly: raw['readOnly'] == true,
+      vatRate: _vatRate(raw['vatRate']),
       monthOptions: options is List
           ? options.map(PackageMonthOption.tryParse).whereType<PackageMonthOption>().toList()
           : const [],
@@ -340,6 +361,12 @@ class PackagePaymentDraft {
         'monthCount': '$monthCount',
         if (note.trim().isNotEmpty) 'note': note.trim(),
       };
+}
+
+/// อัตรา VAT ที่ใช้ได้ต้องอยู่ระหว่าง 0 (ไม่รวม) ถึง 1 · ค่าแปลก (เช่นส่งมาเป็น 7 แทน 0.07) ถือว่าไม่รู้ ดีกว่าแสดง "VAT 700%"
+double? _vatRate(Object? v) {
+  final rate = _double(v);
+  return rate != null && rate > 0 && rate < 1 ? rate : null;
 }
 
 String? _string(Object? v) {

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../models/attachment.dart';
 import '../../models/auth.dart';
 import '../../models/package.dart';
+import '../../widgets/trial_banner.dart' show paidWarnDays, trialWarnDays;
 
 /// ช่องทางติดต่อทีมขาย ตรงกับ `PlanErrors.ContactLine` ฝั่ง backend
 const packageContactLine = 'LINE @garagepro';
@@ -96,23 +97,107 @@ String paymentOutcomeText(PackagePayment p) => switch (p.status) {
       _ => 'สถานะ ${p.status}',
     };
 
-/// ราคามาตรฐานของจำนวนเดือนที่เลือก หรือคำอธิบายเมื่อยังไม่ตั้งราคา (docs/17 §11)
+/// "7%" จากสัดส่วน 0.07 · ตัดศูนย์ท้ายทศนิยม (0.075 = "7.5%")
+String vatPercentLabel(double rate) {
+  final percent = (rate * 100 * 100).round() / 100;
+  final text = percent == percent.roundToDouble()
+      ? percent.toStringAsFixed(0)
+      : percent.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
+  return '$text%';
+}
+
+/// "ก่อน VAT 3,999.00 + VAT 7% 279.93" · null = server ไม่ได้แยก VAT มาให้ (ไม่คำนวณเอง ดู [PackageMonthOption])
+String? priceBreakdownText(PackageMonthOption option, double? vatRate) {
+  final subtotal = option.subtotal;
+  final vat = option.vat;
+  if (subtotal == null || vat == null) return null;
+  final vatLabel = vatRate == null ? 'VAT' : 'VAT ${vatPercentLabel(vatRate)}';
+  return 'ก่อน VAT ${_moneyText(subtotal)} + $vatLabel ${_moneyText(vat)}';
+}
+
+/// ป้ายใต้ยอดเงิน: "รวม VAT" เมื่อราคาแยก VAT · ไม่แยก = ไม่ต้องบอก
+String priceUnitText(PackageMonthOption option) => option.vat != null ? 'บาท รวม VAT' : 'บาท';
+
+/// ยอดที่ต้องโอนของจำนวนเดือนที่เลือก หรือคำอธิบายเมื่อยังไม่ตั้งราคา (docs/17 §11)
 String expectedAmountHint(PackageMonthOption? option) {
-  if (option == null) return 'เลือกจำนวนเดือนก่อน';
+  if (option == null) return 'เลือกระยะเวลาก่อน';
   final price = option.price;
   if (price == null) {
     return 'ยังไม่ได้ตั้งราคามาตรฐาน กรอกยอดที่โอนจริง สอบถามยอดได้ที่ $packageContactLine';
   }
-  return 'ราคามาตรฐาน ${monthOptionLabel(option.months)} ${_moneyText(price)} บาท';
+  final vat = option.vat != null ? ' (รวม VAT)' : '';
+  return 'ยอดที่ต้องโอน ${monthOptionLabel(option.months)}$vat ${_moneyText(price)} บาท';
 }
 
-/// ยอดที่กรอกไม่ตรงราคามาตรฐาน: แจ้งได้ (ส่วนลด/โปรโมชัน) แต่บอกให้รู้ก่อนส่ง · null = ไม่ต้องเตือน
+/// ข้อความใต้ช่องยอดเงิน · ยอดตรงแพ็กเกจ = ยืนยันสั้นๆ (ตัวเลขแสดงในช่องแล้ว) · ไม่ตรง = null ([amountMismatchWarning] บอกเอง)
+String? amountHelperText(String amountText, PackageMonthOption? option) {
+  final price = option?.price;
+  if (option == null || price == null) return expectedAmountHint(option);
+  final amount = parseAmount(amountText);
+  if (amount != null && (amount - price).abs() < 0.005) {
+    return option.vat != null ? 'ตรงกับยอดที่ต้องโอน (รวม VAT)' : 'ตรงกับยอดที่ต้องโอน';
+  }
+  return amountText.trim().isEmpty ? 'กรอกยอดตามสลิป' : null;
+}
+
+/// ยอดที่กรอกไม่ตรงราคาแพ็กเกจ: แจ้งได้ (โอนขาด/เกิน ทีมงานคุยต่อ) แต่บอกให้รู้ก่อนส่ง · null = ไม่ต้องเตือน
 String? amountMismatchWarning(String amountText, PackageMonthOption? option) {
   final price = option?.price;
   final amount = parseAmount(amountText);
   if (price == null || amount == null) return null;
   if ((amount - price).abs() < 0.005) return null;
-  return 'ยอดไม่ตรงกับราคามาตรฐาน (${_moneyText(price)} บาท) แจ้งได้ ทีมงานจะตรวจสอบก่อนอนุมัติ';
+  final vat = option!.vat != null ? ' รวม VAT' : '';
+  return 'ยอดไม่ตรงกับราคาแพ็กเกจ (${_moneyText(price)} บาท$vat) แจ้งได้ ทีมงานจะตรวจสอบก่อนอนุมัติ';
+}
+
+/// ยอดในช่อง "ยอดเงินที่โอน" หลังเปลี่ยนระยะเวลา
+///
+/// [UI] กรอกยอดรวม VAT ให้ล่วงหน้า (docs/17 §6.3) แต่ห้ามทับยอดที่ผู้ใช้พิมพ์เอง: แทนที่เฉพาะเมื่อช่องว่าง
+/// หรือยังเป็นยอดที่ระบบเติมให้ครั้งก่อน ([previousPrice]) · ระยะเวลาใหม่ไม่มีราคา = ล้างยอดเดิมที่ระบบเติม
+/// เพราะไม่ใช่ยอดของแพ็กเกจที่เลือกแล้ว
+String amountAfterOptionChange({
+  required String current,
+  double? previousPrice,
+  double? newPrice,
+}) {
+  final typed = parseAmount(current);
+  final untouched = current.trim().isEmpty ||
+      (previousPrice != null && typed != null && (typed - previousPrice).abs() < 0.005);
+  if (!untouched) return current;
+  return newPrice == null ? '' : _moneyText(newPrice);
+}
+
+/// ข้อความที่คัดลอกเลขบัญชี/พร้อมเพย์: ตัวเลขล้วน เพราะช่องเลขบัญชีของแอปธนาคารบางแอปไม่รับขีด
+/// · ไม่มีตัวเลขเลย = คืนค่าเดิม
+String digitsForCopy(String value) {
+  final digits = value.replaceAll(RegExp(r'\D'), '');
+  return digits.isEmpty ? value.trim() : digits;
+}
+
+// ---------------------------------------------------------------- แถบเวลาคงเหลือ
+
+/// ความยาวของแถบเวลาคงเหลือ (วัน) เท่ากับช่วงทดลองใช้ 30 วัน: อู่ทดลองใช้เห็นสัดส่วนจริง
+/// อู่ที่เหลือมากกว่านี้เห็นแถบเต็ม (แถบบอกแค่ "ใกล้หมดแค่ไหน" ไม่ได้อ้างความยาวแพ็กเกจ)
+const packageGaugeWindowDays = 30;
+
+/// ระดับความเร่งด่วนของแพ็กเกจ ใช้เลือกสี/ไอคอนของแถบเวลาคงเหลือ (คู่กับข้อความเสมอ)
+enum PackageUrgency { none, ok, warn, danger }
+
+/// สัดส่วนของแถบเวลาคงเหลือ 0..1 · null = ไม่มีวันหมดอายุ (ไม่แสดงแถบ)
+double? daysLeftFraction(int? daysLeft, {int windowDays = packageGaugeWindowDays}) {
+  if (daysLeft == null) return null;
+  if (daysLeft <= 0) return 0;
+  return (daysLeft / windowDays).clamp(0.0, 1.0);
+}
+
+/// อ่านอย่างเดียว/ถูกระงับ/หมดอายุ = danger · ใกล้หมดตามเกณฑ์เดียวกับแถบบนสุด (ทดลองใช้ 7 วัน · ชำระเงิน 14 วัน) = warn
+PackageUrgency packageUrgency(PackageOverview o) {
+  if (o.readOnly || o.plan == 'suspended') return PackageUrgency.danger;
+  final days = o.daysLeft;
+  if (days == null) return PackageUrgency.none;
+  if (days < 0) return PackageUrgency.danger;
+  final warnAt = o.plan == 'paid' ? paidWarnDays : trialWarnDays;
+  return days <= warnAt ? PackageUrgency.warn : PackageUrgency.ok;
 }
 
 // ---------------------------------------------------------------- ตรวจก่อนส่ง
@@ -197,7 +282,8 @@ class PackageFormInput {
   final String note;
 }
 
-/// เหตุผลที่ปุ่ม "แจ้งชำระเงิน" ยังกดไม่ได้ เรียงตามสิ่งที่ผู้ใช้ต้องทำก่อน · null = ส่งได้
+/// เหตุผลที่ปุ่ม "ส่งแจ้งชำระเงิน" ยังกดไม่ได้ = ขั้นถัดไปที่ยังขาด เรียงตามลำดับบนหน้าจอ
+/// (เลือกระยะเวลา → แนบสลิป → วันเวลาที่โอน → ยอดเงิน → หมายเหตุ) · null = ส่งได้
 ///
 /// [UI] เหตุผลจาก server (`cannotSubmitReasonTh`) มาก่อนเสมอ และใช้ข้อความนั้นตรงๆ ไม่แต่งใหม่
 String? submitDisabledReason({
@@ -215,18 +301,18 @@ String? submitDisabledReason({
   if (overview.monthOptions.isEmpty) {
     return 'ยังไม่มีตัวเลือกจำนวนเดือน ติดต่อ $packageContactLine';
   }
-  if (overview.optionFor(input.monthCount) == null) return 'เลือกจำนวนเดือนที่ต้องการต่ออายุ';
-  if (input.amountText.trim().isEmpty) return 'กรอกยอดเงินที่โอน';
-  final amount = amountError(input.amountText);
-  if (amount != null) return amount;
+  if (overview.optionFor(input.monthCount) == null) return 'เลือกระยะเวลาที่ต้องการต่ออายุ (ขั้นที่ 1)';
+  final size = input.slipSizeBytes;
+  if (size == null) return 'แนบรูปสลิปการโอน (ขั้นที่ 3)';
+  final slip = slipError(sizeBytes: size, contentType: input.slipContentType);
+  if (slip != null) return slip;
   final paidAt = input.paidAt;
   if (paidAt == null) return 'เลือกวันเวลาที่โอนตามสลิป';
   final paidAtProblem = paidAtError(paidAt, maxPastDays: overview.paidAtMaxPastDays, now: now);
   if (paidAtProblem != null) return paidAtProblem;
-  final size = input.slipSizeBytes;
-  if (size == null) return 'แนบรูปสลิปการโอน';
-  final slip = slipError(sizeBytes: size, contentType: input.slipContentType);
-  if (slip != null) return slip;
+  if (input.amountText.trim().isEmpty) return 'กรอกยอดเงินที่โอน';
+  final amount = amountError(input.amountText);
+  if (amount != null) return amount;
   if (input.note.trim().length > packageNoteMaxLength) {
     return 'หมายเหตุยาวได้ไม่เกิน $packageNoteMaxLength ตัวอักษร';
   }
