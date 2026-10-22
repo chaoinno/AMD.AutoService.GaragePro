@@ -399,3 +399,163 @@ export function previewUsableText(
 ): string | null {
   return option?.previewLastUsableDate ? `ถ้าทีมงานอนุมัติวันนี้ ใช้งานได้ถึง ${formatDate(option.previewLastUsableDate)}` : null
 }
+
+// ---- ราคาและ VAT (docs/17 §5.1 · §5.5) ----------------------------------------------------------------
+
+export type PriceBreakdown = {
+  /** ยอดที่ต้องโอน (รวม VAT) = ค่าที่เติมให้ในช่องยอดเงินและที่ใช้เทียบ */
+  total: number
+  /** ราคาก่อน VAT · มีเฉพาะเมื่อ server แยก VAT */
+  subtotal?: number
+  /** VAT ที่ server ปัดแล้ว · มีเฉพาะเมื่อ server แยก VAT */
+  vat?: number
+}
+
+function finite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+/**
+ * ยอดของตัวเลือกจำนวนเดือน: `price` คือยอดโอนรวม VAT เสมอ · แยกก่อน VAT/VAT เฉพาะเมื่อ server ส่งครบทั้งคู่
+ * (ไม่คำนวณ VAT เองฝั่ง client: server ปัดครึ่งขึ้นต่อรายการ ถ้าคิดเองอาจคลาด 1 สตางค์จากยอดที่ต้องโอน)
+ * null = ยังไม่ตั้งราคา
+ */
+export function priceBreakdown(
+  option: Pick<PackageMonthOption, 'price' | 'subtotal' | 'vat'> | undefined,
+): PriceBreakdown | null {
+  if (!option) return null
+  const split = finite(option.subtotal) && finite(option.vat)
+  let total: number | null = finite(option.price) ? option.price : null
+  // server รุ่นที่ส่งแค่ก่อน VAT/VAT (ไม่ควรเกิดตามสัญญา) รวมเป็นสตางค์ กันทศนิยมลอยตัว
+  if (total === null && split) total = (Math.round(option.subtotal! * 100) + Math.round(option.vat! * 100)) / 100
+  if (total === null || total <= 0) return null
+  return split ? { total, subtotal: option.subtotal, vat: option.vat } : { total }
+}
+
+/** 0.07 → "7%" · 0.075 → "7.5%" · null = server ไม่ส่งอัตรา */
+export function vatPercentText(vatRate: number | undefined): string | null {
+  if (!finite(vatRate) || vatRate < 0) return null
+  const percent = Math.round(vatRate * 10000) / 100
+  return `${percent}%`
+}
+
+/** ป้ายแถว VAT: "VAT 7%" · ไม่รู้อัตรา = "VAT" */
+export function vatLabel(vatRate: number | undefined): string {
+  const percent = vatPercentText(vatRate)
+  return percent ? `VAT ${percent}` : 'VAT'
+}
+
+/** "ก่อน VAT 3,999.00 + VAT 7% 279.93" · null = ไม่แยก VAT */
+export function vatBreakdownText(
+  breakdown: PriceBreakdown | null,
+  vatRate: number | undefined,
+  formatMoney: (value: number) => string,
+): string | null {
+  if (!breakdown || !finite(breakdown.subtotal) || !finite(breakdown.vat)) return null
+  return `ก่อน VAT ${formatMoney(breakdown.subtotal)} + ${vatLabel(vatRate)} ${formatMoney(breakdown.vat)}`
+}
+
+/** ยอดสำหรับวางในแอปธนาคาร: ไม่มีจุลภาค ทศนิยม 2 ตำแหน่ง เช่น "4278.93" */
+export function amountForCopy(total: number): string {
+  return total.toFixed(2)
+}
+
+/** เลขบัญชีสำหรับวางในแอปธนาคาร: ตัวเลขล้วน ("068-8-63750-3" → "0688637503") · ไม่มีตัวเลขเลย = ค่าเดิม */
+export function accountNoForCopy(accountNo: string): string {
+  const digits = accountNo.replace(/\D/g, '')
+  return digits || accountNo.trim()
+}
+
+// ---- เวลาคงเหลือของรอบปัจจุบัน (การ์ดหัวหน้าแพ็กเกจ) ----------------------------------------------------
+
+/** [ASSUME] ช่วงทดลองใช้ 30 วัน (ค่าเริ่มต้นของ `SelfServe:Trial:Days` · docs/12) ใช้เป็นฐานของแถบเวลาคงเหลือ */
+export const TRIAL_PERIOD_DAYS = 30
+
+function parseInstantMs(value: string | undefined): number | null {
+  if (!value) return null
+  const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/.test(value)
+  const ms = Date.parse(hasZone ? value : `${value}Z`)
+  return Number.isNaN(ms) ? null : ms
+}
+
+/**
+ * ความยาวรอบปัจจุบัน (วัน) สำหรับแถบเวลาคงเหลือ · null = ไม่รู้ (ไม่แสดงแถบ ดีกว่าแสดงสัดส่วนที่เดาเอง)
+ * · trial = 30 วัน
+ * · paid = ช่วงของรายการที่อนุมัติล่าสุดซึ่งวันสิ้นสุดตรงกับวันหมดอายุปัจจุบัน (ทีมงานแก้วันเองด้วย spadmin = ไม่ตรง = null)
+ */
+export function currentPeriodDays(
+  overview: Pick<PackageOverview, 'plan' | 'endsAt'>,
+  payments: readonly Pick<PackagePayment, 'status' | 'periodStartsAt' | 'periodEndsAt'>[] | undefined,
+): number | null {
+  const plan = (overview.plan ?? '').toLowerCase()
+  if (plan === 'trial') return TRIAL_PERIOD_DAYS
+  if (plan !== 'paid') return null
+  const endsAt = parseInstantMs(overview.endsAt)
+  if (endsAt === null) return null
+  for (const payment of payments ?? []) {
+    if ((payment.status ?? '').toLowerCase() !== 'approved') continue
+    const start = parseInstantMs(payment.periodStartsAt)
+    const end = parseInstantMs(payment.periodEndsAt)
+    if (start === null || end === null || end !== endsAt || end <= start) continue
+    return Math.round((end - start) / DAY_MS)
+  }
+  return null
+}
+
+/** สัดส่วนเวลาที่เหลือ 0..1 · null = ไม่รู้ความยาวรอบหรือไม่มีวันหมดอายุ */
+export function remainingFraction(daysLeft: number | undefined, periodDays: number | null): number | null {
+  if (!finite(daysLeft) || !finite(periodDays) || periodDays <= 0) return null
+  return Math.min(1, Math.max(0, daysLeft / periodDays))
+}
+
+/** ข้อความสถานะบนการ์ดหัวหน้าแพ็กเกจ (ใช้คู่กับสี + ไอคอนตาม `packageUrgency`) */
+export function packageStatusLabel(overview: Pick<PackageOverview, 'plan' | 'readOnly' | 'daysLeft'>): string {
+  if ((overview.plan ?? '').toLowerCase() === 'suspended') return 'ถูกระงับการใช้งาน'
+  const days = packageDaysText(overview.daysLeft)
+  if (overview.readOnly) return days ? `อ่านอย่างเดียว · ${days}` : 'อ่านอย่างเดียว'
+  return days ?? 'ใช้งานได้ตามปกติ'
+}
+
+// ---- ขั้นตอนต่ออายุ 3 ขั้น ------------------------------------------------------------------------------
+
+export type RenewStepState = 'done' | 'current' | 'todo'
+
+/**
+ * สถานะของ 3 ขั้น (เลือกระยะเวลา · โอนเงิน · แนบสลิป): ขั้นที่ยังไม่เสร็จขั้นแรก = current
+ * ขั้นโอนเงินตรวจจากระบบไม่ได้ ถือว่าเสร็จเมื่อแนบสลิปแล้ว (มีสลิป = โอนแล้ว)
+ */
+export function renewStepStates(input: {
+  monthChosen: boolean
+  slipAttached: boolean
+  detailsReady: boolean
+}): [RenewStepState, RenewStepState, RenewStepState] {
+  const done = [input.monthChosen, input.slipAttached, input.slipAttached && input.detailsReady]
+  const current = done.indexOf(false)
+  return done.map((isDone, index) => (isDone ? 'done' : index === current ? 'current' : 'todo')) as [
+    RenewStepState,
+    RenewStepState,
+    RenewStepState,
+  ]
+}
+
+/** ไฟล์ที่ลากมาวาง: ใช้ไฟล์แรก · `ignored` = จำนวนไฟล์ที่ไม่ได้ใช้ (บอกผู้ใช้) */
+export function pickDroppedFile<T>(files: readonly T[]): { file: T | null; ignored: number } {
+  if (files.length === 0) return { file: null, ignored: 0 }
+  return { file: files[0] ?? null, ignored: files.length - 1 }
+}
+
+/** ลำดับช่องตามที่เห็นบนหน้า (ขั้น 1 → ขั้น 3) ใช้ทั้งโฟกัสช่องแรกที่ผิดและรายการ "ยังขาด" ใต้ปุ่มส่ง */
+export const PAYMENT_FIELD_ORDER: readonly PaymentFormField[] = ['monthCount', 'slip', 'paidAt', 'amount', 'note']
+
+const FIELD_SHORT_LABELS: Record<PaymentFormField, string> = {
+  monthCount: 'ระยะเวลา',
+  slip: 'สลิปการโอน',
+  paidAt: 'วันเวลาที่โอน',
+  amount: 'ยอดเงินที่โอน',
+  note: 'หมายเหตุ',
+}
+
+/** ชื่อช่องที่ยังกรอกไม่ครบ/ไม่ถูกต้อง ตามลำดับบนหน้า · ว่าง = พร้อมส่ง */
+export function missingFieldLabels(errors: PaymentFormErrors): string[] {
+  return PAYMENT_FIELD_ORDER.filter((field) => errors[field]).map((field) => FIELD_SHORT_LABELS[field])
+}

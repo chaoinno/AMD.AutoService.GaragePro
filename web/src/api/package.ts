@@ -16,7 +16,11 @@ export type PackageRejectReason = 'slip_unreadable' | 'amount_mismatch' | 'not_r
 
 export type PackageMonthOption = {
   months: number
-  /** ไม่อยู่ = ยังไม่ตั้งราคามาตรฐาน */
+  /** ราคาก่อน VAT · ไม่อยู่ = ยังไม่ตั้งราคา หรือ server รุ่นก่อนแยก VAT */
+  subtotal?: number
+  /** VAT ที่ปัดทศนิยม 2 ตำแหน่งแล้ว (server คำนวณ) · ไม่อยู่ = ไม่แยก VAT */
+  vat?: number
+  /** ยอดที่ต้องโอน (รวม VAT แล้ว) = expectedAmount ของรายการ · ไม่อยู่ = ยังไม่ตั้งราคามาตรฐาน */
   price?: number
   /** ถ้าทีมงานอนุมัติวันนี้ (server คำนวณ) */
   previewEndsAt?: string
@@ -73,6 +77,8 @@ export type PackageOverview = {
   /** ค่าเดียวกับ /auth/me · ติดลบ = หมดอายุไปแล้วกี่วัน */
   daysLeft?: number
   readOnly: boolean
+  /** สัดส่วน VAT เช่น 0.07 (ไม่ใช่เปอร์เซ็นต์) · ไม่อยู่ = ราคาไม่แยก VAT */
+  vatRate?: number
   monthOptions?: PackageMonthOption[]
   /** ไม่อยู่ = ยังไม่ตั้งบัญชีรับเงิน */
   paymentAccount?: PackagePaymentAccount

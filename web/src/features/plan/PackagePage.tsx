@@ -1,19 +1,24 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  BadgeCheck,
+  Ban,
+  CalendarCheck,
   CalendarClock,
+  Check,
   CircleAlert,
   CircleCheck,
-  Copy,
   ExternalLink,
   Eye,
+  FlaskConical,
   Hourglass,
-  Landmark,
   Lock,
   ReceiptText,
-  Wallet,
+  RefreshCw,
+  ShieldCheck,
+  Undo2,
   type LucideIcon,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { toast } from 'sonner'
 import { isApiError, isForbiddenError } from '../../api/client'
@@ -29,29 +34,27 @@ import { ConfirmModal } from '../../components/ConfirmModal'
 import { Money } from '../../components/Money'
 import { SkeletonRows, StateBlock } from '../../components/StateBlock'
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert'
-import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
-import { Card } from '../../components/ui/card'
 import { formatDateOnly, formatDateTime } from '../../lib/format'
 import { PAID_WARN_DAYS, TRIAL_WARN_DAYS } from '../../lib/plan'
 import { useSession } from '../../lib/session'
-import { copyText } from './copyText'
-import { PackagePaymentForm } from './PackagePaymentForm'
-import { PackagePaymentStatusChip, PackageSlipDialog } from './PackageParts'
+import { PackageRenewForm } from './PackageRenewForm'
+import { PAYMENT_STATUS_ICONS, PackagePaymentStatusChip, PackageSlipDialog, PackageSlipThumb } from './PackageParts'
 import {
   cannotSubmitReason,
-  formatFileSize,
+  currentPeriodDays,
   monthOptionLabel,
-  packageDaysText,
   packagePlanLabel,
+  packageStatusLabel,
   packageUrgency,
-  paymentStatusDetail,
   paymentStatusMeta,
+  rejectReasonText,
+  remainingFraction,
   type PackageUrgency,
 } from './packageUx'
 import { isSelfServePlan, LINE_OA_ID, LINE_OA_URL } from './trialUx'
 import { ME_QUERY_KEY, SELFSERVE_STATUS_QUERY_KEY, useSessionPlan } from './usePlan'
-import './plan.css'
+import './package.css'
 
 export const PACKAGE_OVERVIEW_QUERY_KEY = ['package-overview'] as const
 export const PACKAGE_PAYMENTS_QUERY_KEY = ['package-payments'] as const
@@ -63,9 +66,12 @@ function isNotApplicable(error: unknown): boolean {
 }
 
 /**
- * หน้า "แพ็กเกจและการชำระเงิน" (docs/17 §6.1): อู่ที่สมัครเอง (sp1) ดูวันหมดอายุ แจ้งชำระพร้อมสลิป และติดตามผล
+ * หน้า "แพ็กเกจและการชำระเงิน" (docs/17 §6.1 · §6.3): อู่ที่สมัครเอง (sp1) ดูวันหมดอายุ แจ้งชำระพร้อมสลิป และติดตามผล
  * เปิดได้ทุกบทบาท · แจ้งชำระ/ยกเลิก/ดูสลิปเป็นของผู้จัดการ (server ตัดยอดเงิน หมายเหตุ และสลิปให้บทบาทอื่น)
  * เปิดได้แม้อ่านอย่างเดียว (route ใต้ /api/v1/selfserve ที่ TrialReadOnlyFilter ยกเว้น)
+ *
+ * [UI] โครงหน้า: การ์ดหัวสีกรมท่า (แพ็กเกจปัจจุบัน) → รายการรอตรวจ → ต่ออายุ 3 ขั้น + สรุปยอด → ประวัติแบบ timeline
+ * ใช้สี/ฟอนต์/token เดิมของระบบเท่านั้น (สีบนพื้นเข้มชุดเดียวกับหน้า landing)
  */
 export function PackagePage() {
   const navigate = useNavigate()
@@ -138,22 +144,18 @@ export function PackagePage() {
     )
   } else {
     const data = overview.data
+    const renewable = data.cannotSubmitCode !== 'not_renewable'
     body = (
       <div className="package-page">
-        <CurrentPackageCard overview={data} refreshing={overview.isFetching} onRefresh={refreshAll} />
+        <PackageHero
+          overview={data}
+          periodDays={currentPeriodDays(data, payments.data)}
+          refreshing={overview.isFetching}
+          onRefresh={refreshAll}
+        />
         {data.pending ? <PendingPaymentCard payment={data.pending} isManager={isManager} onChanged={refreshAll} /> : null}
-        <div className="package-grid">
-          <Card className="package-card package-card--form">
-            <header className="package-card__header">
-              <h2><Wallet aria-hidden="true" /> แจ้งชำระเงิน</h2>
-            </header>
-            {data.canSubmit
-              ? <PackagePaymentForm overview={data} onChanged={refreshAll} />
-              : <CannotSubmitNotice overview={data} />}
-          </Card>
-          <PaymentInfoCard overview={data} />
-        </div>
-        <PaymentHistoryCard query={payments} isManager={isManager} />
+        {renewable ? <PackageRenewForm overview={data} onChanged={refreshAll} /> : <NotRenewableCard overview={data} />}
+        <PaymentHistory query={payments} isManager={isManager} />
       </div>
     )
   }
@@ -161,75 +163,164 @@ export function PackagePage() {
   return <AppShell title="แพ็กเกจและการชำระเงิน">{body}</AppShell>
 }
 
-// ---- แพ็กเกจปัจจุบัน -----------------------------------------------------------------------------------
+// ---- การ์ดหัว: แพ็กเกจปัจจุบัน ----------------------------------------------------------------------------
 
-const URGENCY_META: Record<Exclude<PackageUrgency, 'none'>, { icon: LucideIcon; className: string }> = {
-  ok: { icon: CircleCheck, className: 'package-days--ok' },
-  warn: { icon: Hourglass, className: 'package-days--warn' },
-  expired: { icon: Lock, className: 'package-days--expired' },
+const URGENCY_ICON: Record<PackageUrgency, LucideIcon> = {
+  none: CircleCheck,
+  ok: CircleCheck,
+  warn: Hourglass,
+  expired: Lock,
 }
 
-function CurrentPackageCard({
+function planBadge(plan: string): { icon: LucideIcon; tone: string; label: string } {
+  switch (plan.toLowerCase()) {
+    case 'trial':
+      return { icon: FlaskConical, tone: 'trial', label: 'ทดลองใช้' }
+    case 'paid':
+      return { icon: BadgeCheck, tone: 'paid', label: 'ชำระเงินแล้ว' }
+    case 'suspended':
+      return { icon: Ban, tone: 'suspended', label: 'ถูกระงับ' }
+    default:
+      return { icon: ShieldCheck, tone: 'other', label: packagePlanLabel(plan) }
+  }
+}
+
+function PackageHero({
   overview,
+  periodDays,
   refreshing,
   onRefresh,
 }: {
   overview: PackageOverview
+  periodDays: number | null
   refreshing: boolean
   onRefresh: () => void
 }) {
-  const urgency = packageUrgency(overview, overview.plan === 'paid' ? PAID_WARN_DAYS : TRIAL_WARN_DAYS)
-  const daysText = packageDaysText(overview.daysLeft)
-  const urgencyMeta = urgency === 'none' ? null : URGENCY_META[urgency]
-  const UrgencyIcon = urgencyMeta?.icon
+  const plan = String(overview.plan ?? '')
+  const urgency = packageUrgency(overview, plan === 'paid' ? PAID_WARN_DAYS : TRIAL_WARN_DAYS)
+  const StatusIcon = URGENCY_ICON[urgency]
+  const badge = planBadge(plan)
+  const BadgeIcon = badge.icon
+  const daysLeft = typeof overview.daysLeft === 'number' ? overview.daysLeft : undefined
+  const fraction = remainingFraction(daysLeft, periodDays)
+
   return (
-    <Card className="package-card">
-      <header className="package-card__header">
-        <h2><CalendarClock aria-hidden="true" /> แพ็กเกจปัจจุบัน</h2>
-        <span className="package-card__header-side">
-          {refreshing ? <span className="package-refreshing" role="status">กำลังปรับข้อมูลล่าสุด…</span> : null}
-          <Button variant="ghost" size="sm" onClick={onRefresh}>โหลดใหม่</Button>
+    <section className={`package-hero package-hero--${urgency}`} aria-labelledby="package-hero-date">
+      <div className="package-hero__top">
+        <span className="package-hero__eyebrow"><CalendarClock aria-hidden="true" /> แพ็กเกจปัจจุบัน</span>
+        <span className="package-hero__code" title="รหัสอู่">
+          <span className="sr-only">รหัสอู่ </span>{overview.workspaceNo}
         </span>
-      </header>
-      <dl className="package-facts">
-        <div>
-          <dt>รหัสอู่</dt>
-          <dd className="package-mono">{overview.workspaceNo}</dd>
+        <span className={`package-plan-badge package-plan-badge--${badge.tone}`}>
+          <BadgeIcon aria-hidden="true" /> {badge.label}
+        </span>
+        <span className="package-hero__refresh">
+          {refreshing ? <span className="package-hero__refreshing" role="status">กำลังปรับข้อมูลล่าสุด…</span> : null}
+          <Button variant="ghost" size="sm" className="package-hero__refresh-button" onClick={onRefresh} disabled={refreshing}>
+            <RefreshCw className={refreshing ? 'spin' : undefined} aria-hidden="true" /> โหลดใหม่
+          </Button>
+        </span>
+      </div>
+
+      <div className="package-hero__main">
+        <div className="package-hero__copy">
+          <p className="package-hero__label">{overview.lastUsableDate ? 'ใช้งานได้ถึง' : 'วันหมดอายุ'}</p>
+          <h2 id="package-hero-date" className="package-hero__date">
+            {overview.lastUsableDate ? formatDateOnly(overview.lastUsableDate) : 'ไม่มีกำหนดหมดอายุ'}
+          </h2>
+          <p className={`package-hero__status package-hero__status--${urgency}`}>
+            <StatusIcon aria-hidden="true" /> {packageStatusLabel(overview)}
+          </p>
+          {!overview.readOnly && urgency !== 'expired' && overview.lastUsableDate ? (
+            <p className="package-hero__note">
+              <ShieldCheck aria-hidden="true" /> ต่ออายุก่อนหมดได้ วันที่เหลือไม่หาย ระบบนับต่อจากวันหมดเดิม
+            </p>
+          ) : null}
         </div>
-        <div>
-          <dt>แพ็กเกจ</dt>
-          <dd>{packagePlanLabel(overview.plan)}</dd>
-        </div>
-        <div>
-          <dt>ใช้งานได้ถึง</dt>
-          <dd>{overview.lastUsableDate ? formatDateOnly(overview.lastUsableDate) : 'ไม่มีกำหนดหมดอายุ'}</dd>
-        </div>
-        <div>
-          <dt>สถานะ</dt>
-          <dd>
-            {urgencyMeta && UrgencyIcon ? (
-              <span className={`package-days ${urgencyMeta.className}`}>
-                <UrgencyIcon aria-hidden="true" />
-                {overview.readOnly ? `อ่านอย่างเดียว${daysText ? ` · ${daysText}` : ''}` : daysText ?? 'ใช้งานได้ตามปกติ'}
-              </span>
-            ) : (
-              <span className="package-days package-days--ok"><CircleCheck aria-hidden="true" /> ใช้งานได้ตามปกติ</span>
-            )}
-          </dd>
-        </div>
-      </dl>
+        {daysLeft !== undefined ? <DaysMeter daysLeft={daysLeft} periodDays={periodDays} fraction={fraction} urgency={urgency} /> : null}
+      </div>
+
       {overview.readOnly ? (
-        <Alert variant="destructive" className="package-card__alert">
+        <div className="package-hero__alert" role="note">
           <Lock aria-hidden="true" />
           <div>
-            <AlertTitle>ตอนนี้ระบบเป็นอ่านอย่างเดียว ดูและพิมพ์ข้อมูลได้ แต่บันทึกงานไม่ได้</AlertTitle>
-            <AlertDescription>
-              ข้อมูลของอู่ยังอยู่ครบ แจ้งชำระเงินได้ตามปกติ หลังทีมงานอนุมัติ ระบบกลับมาบันทึกได้ภายในไม่กี่นาที โดยไม่ต้องเข้าสู่ระบบใหม่
-            </AlertDescription>
+            <strong>ตอนนี้ระบบเป็นอ่านอย่างเดียว ดูและพิมพ์ข้อมูลได้ แต่บันทึกงานไม่ได้</strong>
+            <p>ข้อมูลของอู่ยังอยู่ครบ แจ้งชำระเงินได้ตามปกติ หลังทีมงานอนุมัติ ระบบกลับมาบันทึกได้ภายในไม่กี่นาที โดยไม่ต้องเข้าสู่ระบบใหม่</p>
           </div>
-        </Alert>
+        </div>
       ) : null}
-    </Card>
+    </section>
+  )
+}
+
+const RING_RADIUS = 52
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS
+
+/** วงแหวนวันที่เหลือ: วาดเฉพาะเมื่อรู้ความยาวรอบจริง (ไม่รู้ = แสดงตัวเลขอย่างเดียว ไม่เดาสัดส่วน) */
+function DaysMeter({
+  daysLeft,
+  periodDays,
+  fraction,
+  urgency,
+}: {
+  daysLeft: number
+  periodDays: number | null
+  fraction: number | null
+  urgency: PackageUrgency
+}) {
+  // เริ่มจากวงว่างแล้วค่อยเติมหลัง mount (CSS ปิด transition เมื่อผู้ใช้ตั้งลดการเคลื่อนไหว)
+  const [drawn, setDrawn] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setDrawn(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
+  const remaining = Math.max(0, daysLeft)
+  // หมดอายุแล้ว: แสดงจำนวนวันที่เลยมา (0 เฉยๆ ไม่บอกอะไร)
+  const shown = daysLeft < 0 ? -daysLeft : daysLeft
+  const label = daysLeft < 0 ? 'วันหลังหมดอายุ' : 'วันที่เหลือ'
+  const valueText = daysLeft < 0
+    ? `หมดอายุแล้ว ${shown} วัน`
+    : periodDays ? `เหลือ ${remaining} วัน จากรอบ ${periodDays} วัน` : `เหลือ ${remaining} วัน`
+  const content = (
+    <span className="package-meter__value">
+      <strong>{shown}</strong>
+      <small>{label}</small>
+    </span>
+  )
+  if (fraction === null || !periodDays) {
+    return (
+      <div className={`package-meter package-meter--plain package-meter--${urgency}`} role="img" aria-label={valueText}>
+        {content}
+      </div>
+    )
+  }
+  const offset = RING_CIRCUMFERENCE * (1 - (drawn ? fraction : 0))
+  return (
+    <figure className={`package-meter package-meter--${urgency}`}>
+      <div
+        className="package-meter__ring"
+        role="meter"
+        aria-label="เวลาใช้งานที่เหลือ"
+        aria-valuemin={0}
+        aria-valuemax={periodDays}
+        aria-valuenow={Math.min(remaining, periodDays)}
+        aria-valuetext={valueText}
+      >
+        <svg viewBox="0 0 128 128" aria-hidden="true">
+          <circle className="package-meter__track" cx="64" cy="64" r={RING_RADIUS} />
+          <circle
+            className="package-meter__arc"
+            cx="64"
+            cy="64"
+            r={RING_RADIUS}
+            strokeDasharray={RING_CIRCUMFERENCE}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        {content}
+      </div>
+      <figcaption>จากรอบ {periodDays} วัน</figcaption>
+    </figure>
   )
 }
 
@@ -246,72 +337,89 @@ function PendingPaymentCard({
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [slipOpen, setSlipOpen] = useState(false)
+  const showSlip = isManager && Boolean(payment.slip)
   return (
-    <Card className="package-card package-card--pending">
-      <header className="package-card__header">
-        <h2><ReceiptText aria-hidden="true" /> รายการแจ้งชำระที่รอตรวจ</h2>
-        <PackagePaymentStatusChip status={payment.status} />
-      </header>
-      <dl className="package-facts package-facts--pending">
-        <div>
-          <dt>เลขที่รายการ</dt>
-          <dd className="package-mono">{payment.shortId}</dd>
-        </div>
-        <div>
-          <dt>จำนวนเดือน</dt>
-          <dd>{monthOptionLabel(payment.monthCount)}</dd>
-        </div>
-        {typeof payment.amount === 'number' ? (
+    <section id="package-pending" className="package-pending" aria-labelledby="package-pending-title" tabIndex={-1}>
+      {showSlip ? (
+        <PackageSlipThumb payment={payment} onOpen={() => setSlipOpen(true)} />
+      ) : (
+        <span className="package-pending__icon" aria-hidden="true"><Hourglass /></span>
+      )}
+      <div className="package-pending__body">
+        <header className="package-pending__head">
+          <h2 id="package-pending-title">รายการแจ้งชำระที่รอตรวจ</h2>
+          <PackagePaymentStatusChip status={payment.status} />
+        </header>
+        <p className="package-pending__meta">
+          เลขที่ <span className="package-mono">{payment.shortId}</span> · แจ้งเมื่อ {formatDateTime(payment.submittedAt)}
+          {payment.submittedBy ? ` โดย ${payment.submittedBy}` : ''}
+        </p>
+
+        <dl className="package-pending__facts">
           <div>
-            <dt>ยอดที่โอน</dt>
-            <dd>
-              <Money value={payment.amount} suffix=" บาท" />
-              {typeof payment.expectedAmount === 'number' ? (
-                <small className="package-sub">ราคามาตรฐาน <Money value={payment.expectedAmount} /> บาท</small>
-              ) : null}
-            </dd>
+            <dt>ระยะเวลา</dt>
+            <dd>{monthOptionLabel(payment.monthCount)}</dd>
           </div>
-        ) : null}
-        <div>
-          <dt>วันเวลาที่โอน</dt>
-          <dd>{formatDateTime(payment.paidAt)}</dd>
-        </div>
-        <div>
-          <dt>แจ้งเมื่อ</dt>
-          <dd>
-            {formatDateTime(payment.submittedAt)}
-            {payment.submittedBy ? <small className="package-sub">โดย {payment.submittedBy}</small> : null}
-          </dd>
-        </div>
-        {payment.note ? (
-          <div className="package-facts__wide">
-            <dt>หมายเหตุ</dt>
-            <dd>{payment.note}</dd>
+          {typeof payment.amount === 'number' ? (
+            <div>
+              <dt>ยอดที่โอน</dt>
+              <dd>
+                <span className="package-pending__amount"><Money value={payment.amount} /> <small>บาท</small></span>
+                {typeof payment.expectedAmount === 'number' && Math.round(payment.expectedAmount * 100) !== Math.round(payment.amount * 100) ? (
+                  <small className="package-pending__diff">
+                    ยอดที่ต้องโอน <Money value={payment.expectedAmount} /> บาท
+                  </small>
+                ) : null}
+              </dd>
+            </div>
+          ) : null}
+          <div>
+            <dt>วันเวลาที่โอน</dt>
+            <dd>{formatDateTime(payment.paidAt)}</dd>
           </div>
-        ) : null}
-      </dl>
-      <p className="package-card__note">
-        <Hourglass aria-hidden="true" /> ทีมงานกำลังตรวจสลิป ผลการตรวจแจ้งในกระดิ่งแจ้งเตือนและอีเมลเจ้าของอู่ ระหว่างนี้แจ้งชำระรายการใหม่ไม่ได้
-      </p>
-      <div className="package-card__actions">
-        {payment.slip ? (
-          <Button variant="outline" size="sm" onClick={() => setSlipOpen(true)}>
-            <Eye aria-hidden="true" /> ดูสลิป ({formatFileSize(payment.slip.sizeBytes)})
-          </Button>
-        ) : null}
-        {isManager ? (
-          <Button variant="destructive-outline" size="sm" onClick={() => setConfirmOpen(true)}>
-            ยกเลิกรายการนี้
-          </Button>
-        ) : (
-          <span className="package-muted">ผู้จัดการอู่ยกเลิกรายการนี้ได้ เช่น แนบสลิปผิดไฟล์</span>
-        )}
+          {payment.note ? (
+            <div className="package-pending__wide">
+              <dt>หมายเหตุ</dt>
+              <dd>{payment.note}</dd>
+            </div>
+          ) : null}
+        </dl>
+
+        <ol className="package-progress" aria-label="ขั้นตอนหลังแจ้งชำระ">
+          <li className="package-progress__item package-progress__item--done">
+            <span aria-hidden="true"><Check /></span> แจ้งชำระแล้ว<span className="sr-only"> (เสร็จแล้ว)</span>
+          </li>
+          <li className="package-progress__item package-progress__item--current" aria-current="step">
+            <span aria-hidden="true"><Hourglass /></span> ทีมงานตรวจสลิป
+          </li>
+          <li className="package-progress__item">
+            <span aria-hidden="true"><CalendarCheck /></span> ต่ออายุทันทีที่อนุมัติ<span className="sr-only"> (ยังไม่ถึง)</span>
+          </li>
+        </ol>
+
+        <p className="package-pending__note">
+          ผลการตรวจแจ้งในกระดิ่งแจ้งเตือนและอีเมลเจ้าของอู่ ระหว่างนี้แจ้งชำระรายการใหม่ไม่ได้
+        </p>
+        <div className="package-pending__actions">
+          {showSlip ? (
+            <Button variant="outline" size="sm" onClick={() => setSlipOpen(true)}>
+              <Eye aria-hidden="true" /> ดูสลิป
+            </Button>
+          ) : null}
+          {isManager ? (
+            <Button variant="destructive-outline" size="sm" onClick={() => setConfirmOpen(true)}>
+              <Undo2 aria-hidden="true" /> ยกเลิกรายการนี้
+            </Button>
+          ) : (
+            <span className="package-muted">ผู้จัดการอู่ยกเลิกรายการนี้ได้ เช่น แนบสลิปผิดไฟล์ · ยอดเงินและสลิปแสดงเฉพาะผู้จัดการ</span>
+          )}
+        </div>
       </div>
       {confirmOpen ? (
         <CancelPaymentDialog payment={payment} onClose={() => setConfirmOpen(false)} onChanged={onChanged} />
       ) : null}
       {slipOpen ? <PackageSlipDialog payment={payment} onClose={() => setSlipOpen(false)} /> : null}
-    </Card>
+    </section>
   )
 }
 
@@ -350,7 +458,7 @@ function CancelPaymentDialog({
       }}
       footer={
         <div className="package-dialog-footer">
-          {mutation.isPending ? <span className="package-form__status" role="status">กำลังยกเลิก…</span> : null}
+          {mutation.isPending ? <span className="package-dialog-footer__status" role="status">กำลังยกเลิก…</span> : null}
           <Button variant="ghost" disabled={mutation.isPending} onClick={onClose}>ไม่ยกเลิก</Button>
           <Button variant="destructive" disabled={mutation.isPending} onClick={() => mutation.mutate()}>
             {mutation.isPending ? 'กำลังยกเลิก…' : 'ยืนยันยกเลิก'}
@@ -373,125 +481,27 @@ function CancelPaymentDialog({
   )
 }
 
-// ---- แจ้งชำระไม่ได้ ------------------------------------------------------------------------------------
+// ---- ต่ออายุไม่ได้ (converted · paid ไม่มีวันหมด) -----------------------------------------------------------
 
-function CannotSubmitNotice({ overview }: { overview: PackageOverview }) {
-  const reason = cannotSubmitReason(overview) ?? ''
-  const pending = overview.cannotSubmitCode === 'pending_exists'
+function NotRenewableCard({ overview }: { overview: PackageOverview }) {
   return (
-    <div className="package-cannot">
-      <span className="package-cannot__icon" aria-hidden="true">{pending ? <Hourglass /> : <Lock />}</span>
+    <section className="package-blocked package-blocked--card" aria-label="การต่ออายุแพ็กเกจ">
+      <span className="package-blocked__icon" aria-hidden="true"><ShieldCheck /></span>
       <div>
         {/* [UI] เหตุผลจาก server ตรงตัว (docs/17 §6.1 ห้ามแต่งเอง) */}
-        <strong role="status">{reason}</strong>
-        {overview.cannotSubmitCode === 'unavailable' || overview.cannotSubmitCode === 'not_renewable' ? (
-          <p>
-            สอบถามทีมงานได้ทาง{' '}
-            <a href={LINE_OA_URL} target="_blank" rel="noopener noreferrer">LINE {LINE_OA_ID} <ExternalLink aria-hidden="true" /></a>
-          </p>
-        ) : pending ? (
-          <p>ดูรายละเอียดรายการที่รอตรวจด้านบน</p>
-        ) : null}
+        <strong role="status">{cannotSubmitReason(overview)}</strong>
+        <p>
+          สอบถามทีมงานได้ทาง{' '}
+          <a href={LINE_OA_URL} target="_blank" rel="noopener noreferrer">LINE {LINE_OA_ID} <ExternalLink aria-hidden="true" /></a>
+        </p>
       </div>
-    </div>
+    </section>
   )
 }
 
-// ---- บัญชีรับเงิน + ราคา --------------------------------------------------------------------------------
+// ---- ประวัติ (timeline) ------------------------------------------------------------------------------------
 
-function PaymentInfoCard({ overview }: { overview: PackageOverview }) {
-  const account = overview.paymentAccount
-  const options = overview.monthOptions ?? []
-  const hasAccount = Boolean(account && account.accountName && (account.accountNo || account.promptPayId))
-  const anyPrice = options.some((option) => typeof option.price === 'number')
-  return (
-    <Card className="package-card">
-      <header className="package-card__header">
-        <h2><Landmark aria-hidden="true" /> โอนเงินเข้าบัญชี</h2>
-      </header>
-      {hasAccount && account ? (
-        <dl className="package-account">
-          {account.bankName ? (
-            <div>
-              <dt>ธนาคาร</dt>
-              <dd>{account.bankName}</dd>
-            </div>
-          ) : null}
-          {account.accountNo ? (
-            <div>
-              <dt>เลขที่บัญชี</dt>
-              <dd>
-                <span className="package-mono package-account__number">{account.accountNo}</span>
-                <Button variant="ghost" size="sm" onClick={() => void copyText(account.accountNo ?? '', 'เลขที่บัญชี')}>
-                  <Copy aria-hidden="true" /> คัดลอก
-                </Button>
-              </dd>
-            </div>
-          ) : null}
-          <div>
-            <dt>ชื่อบัญชี</dt>
-            <dd>{account.accountName}</dd>
-          </div>
-          {account.promptPayId ? (
-            <div>
-              <dt>พร้อมเพย์</dt>
-              <dd>
-                <span className="package-mono package-account__number">{account.promptPayId}</span>
-                <Button variant="ghost" size="sm" onClick={() => void copyText(account.promptPayId ?? '', 'เลขพร้อมเพย์')}>
-                  <Copy aria-hidden="true" /> คัดลอก
-                </Button>
-              </dd>
-            </div>
-          ) : null}
-        </dl>
-      ) : (
-        <Alert variant="warning" className="package-card__alert">
-          <CircleAlert aria-hidden="true" />
-          <div>
-            <AlertTitle>ยังไม่ได้ตั้งบัญชีรับเงิน</AlertTitle>
-            <AlertDescription>
-              ติดต่อทีมงานทาง <a href={LINE_OA_URL} target="_blank" rel="noopener noreferrer">LINE {LINE_OA_ID}</a> เพื่อสอบถามช่องทางชำระค่าแพ็กเกจ
-            </AlertDescription>
-          </div>
-        </Alert>
-      )}
-
-      <h3 className="package-subheading">ราคาแพ็กเกจ</h3>
-      {options.length ? (
-        <table className="package-price-table">
-          <thead>
-            <tr>
-              <th scope="col">จำนวนเดือน</th>
-              <th scope="col" className="package-num">ราคา (บาท)</th>
-              <th scope="col">ถ้าอนุมัติวันนี้ ใช้ได้ถึง</th>
-            </tr>
-          </thead>
-          <tbody>
-            {options.map((option) => (
-              <tr key={option.months}>
-                <td>{monthOptionLabel(option.months)}</td>
-                <td className="package-num">
-                  {typeof option.price === 'number' ? <Money value={option.price} /> : <span className="package-muted">ยังไม่ตั้งราคา</span>}
-                </td>
-                <td>{option.previewLastUsableDate ? formatDateOnly(option.previewLastUsableDate) : <span className="package-muted">ไม่ทราบ</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="package-muted">ยังไม่มีตัวเลือกจำนวนเดือน ติดต่อทีมงานทาง LINE {LINE_OA_ID}</p>
-      )}
-      {options.length && !anyPrice ? (
-        <p className="package-muted">ยังไม่ได้ตั้งราคามาตรฐาน สอบถามยอดได้ที่ LINE {LINE_OA_ID}</p>
-      ) : null}
-      <p className="package-muted">วันหมดอายุใหม่คำนวณตอนทีมงานอนุมัติ ต่อจากวันหมดเดิม ไม่เสียวันที่เหลือ ถ้าหมดอายุไปแล้วนับจากวันที่อนุมัติ</p>
-    </Card>
-  )
-}
-
-// ---- ประวัติ --------------------------------------------------------------------------------------------
-
-function PaymentHistoryCard({
+function PaymentHistory({
   query,
   isManager,
 }: {
@@ -501,15 +511,18 @@ function PaymentHistoryCard({
   const [slipFor, setSlipFor] = useState<PackagePayment | null>(null)
   const items = query.data ?? []
   return (
-    <Card className="package-card">
-      <header className="package-card__header">
-        <h2><ReceiptText aria-hidden="true" /> ประวัติการแจ้งชำระ</h2>
+    <section className="package-history" aria-labelledby="package-history-title">
+      <header className="package-section-head package-section-head--inline">
+        <div>
+          <h2 id="package-history-title"><ReceiptText aria-hidden="true" /> ประวัติการแจ้งชำระ</h2>
+          <p>ใหม่สุดอยู่บน · แสดง {HISTORY_TAKE} รายการล่าสุด</p>
+        </div>
         {!isManager ? <span className="package-muted">ยอดเงินและสลิปแสดงเฉพาะผู้จัดการอู่</span> : null}
       </header>
       {query.isPending ? (
         <SkeletonRows count={3} />
       ) : query.isError ? (
-        <Alert variant="destructive" className="package-card__alert">
+        <Alert variant="destructive">
           <CircleAlert aria-hidden="true" />
           <div>
             <AlertTitle>{isApiError(query.error) ? query.error.messageTh : 'โหลดประวัติไม่สำเร็จ'}</AlertTitle>
@@ -520,69 +533,72 @@ function PaymentHistoryCard({
           </div>
         </Alert>
       ) : items.length === 0 ? (
-        <p className="package-muted package-empty">ยังไม่มีประวัติการแจ้งชำระเงิน รายการที่แจ้งแล้วจะแสดงที่นี่พร้อมผลการตรวจ</p>
-      ) : (
-        <div className="package-table-wrap">
-          <table className="package-history">
-            <thead>
-              <tr>
-                <th scope="col">แจ้งเมื่อ</th>
-                <th scope="col">จำนวนเดือน</th>
-                {isManager ? <th scope="col" className="package-num">ยอดที่โอน (บาท)</th> : null}
-                <th scope="col">วันเวลาที่โอน</th>
-                <th scope="col">สถานะ</th>
-                {isManager ? <th scope="col">สลิป</th> : null}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <HistoryRow key={item.id} item={item} isManager={isManager} onViewSlip={() => setSlipFor(item)} />
-              ))}
-            </tbody>
-          </table>
+        <div className="package-history__empty">
+          <ReceiptText aria-hidden="true" />
+          <p>ยังไม่มีประวัติการแจ้งชำระเงิน รายการที่แจ้งแล้วจะแสดงที่นี่พร้อมผลการตรวจ</p>
         </div>
+      ) : (
+        <ol className="package-timeline">
+          {items.map((item) => (
+            <TimelineItem key={item.id} item={item} isManager={isManager} onViewSlip={() => setSlipFor(item)} />
+          ))}
+        </ol>
       )}
       {slipFor ? <PackageSlipDialog payment={slipFor} onClose={() => setSlipFor(null)} /> : null}
-    </Card>
+    </section>
   )
 }
 
-function HistoryRow({ item, isManager, onViewSlip }: { item: PackagePayment; isManager: boolean; onViewSlip: () => void }) {
-  const detail = paymentStatusDetail(item, formatDateOnly)
+function TimelineItem({ item, isManager, onViewSlip }: { item: PackagePayment; isManager: boolean; onViewSlip: () => void }) {
   const status = paymentStatusMeta(item.status).status
+  const Icon = PAYMENT_STATUS_ICONS[status]
   return (
-    <tr>
-      <td>
-        {formatDateTime(item.submittedAt)}
-        <small className="package-sub package-mono">{item.shortId}</small>
-      </td>
-      <td>{monthOptionLabel(item.monthCount)}</td>
-      {isManager ? (
-        <td className="package-num">
-          {typeof item.amount === 'number' ? <Money value={item.amount} /> : <span className="package-muted">ไม่แสดง</span>}
-        </td>
-      ) : null}
-      <td>{formatDateTime(item.paidAt)}</td>
-      <td>
-        <PackagePaymentStatusChip status={item.status} />
-        {detail ? <small className={`package-sub package-sub--${status}`}>{detail}</small> : null}
-        {status === 'rejected' && item.rejectNote ? <small className="package-sub">หมายเหตุทีมงาน: {item.rejectNote}</small> : null}
-        {status === 'cancelled' && item.cancelledAt ? <small className="package-sub">ยกเลิกเมื่อ {formatDateTime(item.cancelledAt)}</small> : null}
-        {(status === 'approved' || status === 'rejected') && item.reviewedAt ? (
-          <small className="package-sub">ตรวจเมื่อ {formatDateTime(item.reviewedAt)}</small>
-        ) : null}
-      </td>
-      {isManager ? (
-        <td>
-          {item.slip ? (
-            <Button variant="outline" size="sm" onClick={onViewSlip}>
+    <li className={`package-timeline__item package-timeline__item--${status}`}>
+      <span className="package-timeline__dot" aria-hidden="true"><Icon /></span>
+      <article className="package-timeline__card">
+        <div className="package-timeline__head">
+          <PackagePaymentStatusChip status={item.status} />
+          <strong className="package-timeline__months">{monthOptionLabel(item.monthCount)}</strong>
+          <span className="package-timeline__id package-mono">#{item.shortId}</span>
+          {isManager && typeof item.amount === 'number' ? (
+            <span className="package-timeline__amount"><Money value={item.amount} /> <small>บาท</small></span>
+          ) : null}
+        </div>
+        <div className="package-timeline__meta-row">
+          <p className="package-timeline__meta">
+            แจ้งเมื่อ {formatDateTime(item.submittedAt)} · โอนเมื่อ {formatDateTime(item.paidAt)}
+            {item.submittedBy ? ` · โดย ${item.submittedBy}` : ''}
+          </p>
+          {isManager && item.slip ? (
+            <Button variant="ghost" size="sm" className="package-timeline__slip" onClick={onViewSlip}>
               <Eye aria-hidden="true" /> ดูสลิป
             </Button>
-          ) : (
-            <Badge variant="outline">ไม่มีไฟล์</Badge>
-          )}
-        </td>
-      ) : null}
-    </tr>
+          ) : null}
+        </div>
+
+        {status === 'approved' ? (
+          <p className="package-timeline__result package-timeline__result--approved">
+            <CalendarCheck aria-hidden="true" />
+            {item.periodLastUsableDate ? `ต่ออายุแล้ว ใช้งานได้ถึง ${formatDateOnly(item.periodLastUsableDate)}` : 'ต่ออายุแล้ว'}
+            {item.reviewedAt ? <small>ตรวจเมื่อ {formatDateTime(item.reviewedAt)}</small> : null}
+          </p>
+        ) : status === 'rejected' ? (
+          <div className="package-timeline__result package-timeline__result--rejected">
+            <strong>เหตุผล: {rejectReasonText(item)}</strong>
+            {item.rejectNote ? <p>หมายเหตุทีมงาน: {item.rejectNote}</p> : null}
+            {item.reviewedAt ? <small>ตรวจเมื่อ {formatDateTime(item.reviewedAt)}</small> : null}
+          </div>
+        ) : status === 'cancelled' ? (
+          <p className="package-timeline__result">
+            {item.cancelledAt ? `ยกเลิกเมื่อ ${formatDateTime(item.cancelledAt)}` : 'ยกเลิกแล้ว'}
+          </p>
+        ) : status === 'pending' ? (
+          <p className="package-timeline__result package-timeline__result--pending">
+            <Hourglass aria-hidden="true" /> ทีมงานกำลังตรวจสลิป
+          </p>
+        ) : null}
+
+      </article>
+    </li>
   )
 }

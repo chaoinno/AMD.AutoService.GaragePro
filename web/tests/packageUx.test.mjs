@@ -1,30 +1,42 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
+  accountNoForCopy,
   addDaysToDateInput,
+  amountForCopy,
   cannotSubmitReason,
   compareAmount,
   composePaidAt,
+  currentPeriodDays,
   formatFileSize,
   formFieldForError,
   hasErrors,
   isStateChangedError,
   isUnknownOutcomeError,
+  missingFieldLabels,
   monthOptionLabel,
   packageDaysText,
   packagePlanLabel,
+  packageStatusLabel,
   packageUrgency,
   parseAmountInput,
   paymentStatusDetail,
   paymentStatusMeta,
+  pickDroppedFile,
   previewUsableText,
   priceAsAmountInput,
+  priceBreakdown,
   rejectReasonText,
+  remainingFraction,
+  renewStepStates,
   retryAfterText,
   slipContentType,
   slipFileError,
   thaiNowInputs,
   validatePaymentForm,
+  vatBreakdownText,
+  vatLabel,
+  vatPercentText,
 } from '../src/features/plan/packageUx.ts'
 
 // 2026-10-21 14:30 เวลาไทย
@@ -218,4 +230,114 @@ test('month labels and the "if approved today" preview use the server date-only 
   assert.equal(previewUsableText({ previewLastUsableDate: '2026-12-13' }, fmt), 'ถ้าทีมงานอนุมัติวันนี้ ใช้งานได้ถึง [2026-12-13]')
   assert.equal(previewUsableText({}, fmt), null)
   assert.equal(previewUsableText(undefined, fmt), null)
+})
+
+// ราคาจริง (docs/17 §5.5): 3,999 ต่อเดือนก่อน VAT + VAT 7% (server ปัดครึ่งขึ้นต่อรายการ)
+const realOptions = [
+  { months: 1, subtotal: 3999, vat: 279.93, price: 4278.93 },
+  { months: 2, subtotal: 7998, vat: 559.86, price: 8557.86 },
+  { months: 3, subtotal: 11997, vat: 839.79, price: 12836.79 },
+  { months: 6, subtotal: 23994, vat: 1679.58, price: 25673.58 },
+  { months: 12, subtotal: 47988, vat: 3359.16, price: 51347.16 },
+]
+const money = (value) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+test('price breakdown: total incl. VAT is what to transfer, VAT split only when the server sends both parts', () => {
+  for (const option of realOptions) {
+    const breakdown = priceBreakdown(option)
+    assert.deepEqual(breakdown, { total: option.price, subtotal: option.subtotal, vat: option.vat })
+    // ยอดที่เติมให้ในช่องยอดเงิน = ยอดรวม VAT และเทียบแล้วตรง
+    assert.equal(priceAsAmountInput(breakdown.total), option.price.toFixed(2))
+    assert.deepEqual(compareAmount(breakdown.total, option.price), { kind: 'match', price: option.price })
+  }
+  assert.equal(
+    vatBreakdownText(priceBreakdown(realOptions[0]), 0.07, money),
+    'ก่อน VAT 3,999.00 + VAT 7% 279.93',
+  )
+  assert.equal(vatBreakdownText(priceBreakdown(realOptions[4]), 0.07, money), 'ก่อน VAT 47,988.00 + VAT 7% 3,359.16')
+
+  // server ไม่แยก VAT (VatRate ว่าง) → มีแต่ยอดรวม ไม่มีบรรทัดแยก
+  assert.deepEqual(priceBreakdown({ months: 1, price: 3999 }), { total: 3999 })
+  assert.equal(vatBreakdownText(priceBreakdown({ months: 1, price: 3999 }), undefined, money), null)
+  // ส่งมาไม่ครบคู่ = ไม่แยก
+  assert.deepEqual(priceBreakdown({ months: 1, price: 4278.93, subtotal: 3999 }), { total: 4278.93 })
+  // ยังไม่ตั้งราคา
+  assert.equal(priceBreakdown({ months: 1 }), null)
+  assert.equal(priceBreakdown(undefined), null)
+  assert.equal(priceBreakdown({ months: 1, price: 0 }), null)
+  // ไม่มี price แต่มีสองส่วน (นอกสัญญา) รวมเป็นสตางค์
+  assert.deepEqual(priceBreakdown({ months: 1, subtotal: 590.1, vat: 0.2 }), { total: 590.3, subtotal: 590.1, vat: 0.2 })
+})
+
+test('VAT labels: rate is a fraction, not a percentage', () => {
+  assert.equal(vatPercentText(0.07), '7%')
+  assert.equal(vatPercentText(0.075), '7.5%')
+  assert.equal(vatPercentText(0), '0%')
+  assert.equal(vatPercentText(undefined), null)
+  assert.equal(vatPercentText(-1), null)
+  assert.equal(vatLabel(0.07), 'VAT 7%')
+  assert.equal(vatLabel(undefined), 'VAT')
+})
+
+test('copy helpers give bank-app friendly values', () => {
+  assert.equal(accountNoForCopy('068-8-63750-3'), '0688637503')
+  assert.equal(accountNoForCopy(' 0812345678 '), '0812345678')
+  assert.equal(accountNoForCopy('ABC'), 'ABC')
+  assert.equal(amountForCopy(51347.16), '51347.16')
+  assert.equal(amountForCopy(4278.9), '4278.90')
+})
+
+test('time-left meter: trial uses 30 days, paid uses the approved period that ends at the current end, otherwise unknown', () => {
+  assert.equal(currentPeriodDays({ plan: 'trial', endsAt: '2026-11-13T03:00:00Z' }, []), 30)
+  const approved = {
+    status: 'approved',
+    periodStartsAt: '2026-11-13T17:00:00Z',
+    periodEndsAt: '2027-02-13T17:00:00Z',
+  }
+  assert.equal(currentPeriodDays({ plan: 'paid', endsAt: '2027-02-13T17:00:00Z' }, [approved]), 92)
+  // ทีมงานแก้วันเองภายหลัง → วันหมดไม่ตรงกับรายการใด → ไม่รู้ความยาวรอบ
+  assert.equal(currentPeriodDays({ plan: 'paid', endsAt: '2027-03-01T17:00:00Z' }, [approved]), null)
+  assert.equal(currentPeriodDays({ plan: 'paid', endsAt: '2027-02-13T17:00:00Z' }, [{ ...approved, status: 'rejected' }]), null)
+  assert.equal(currentPeriodDays({ plan: 'paid', endsAt: '2027-02-13T17:00:00Z' }, undefined), null)
+  assert.equal(currentPeriodDays({ plan: 'paid' }, [approved]), null, 'paid without an end date')
+  assert.equal(currentPeriodDays({ plan: 'converted', endsAt: '2027-02-13T17:00:00Z' }, [approved]), null)
+
+  assert.equal(remainingFraction(22, 30), 22 / 30)
+  assert.equal(remainingFraction(45, 30), 1, 'extended trial is clamped')
+  assert.equal(remainingFraction(-3, 30), 0)
+  assert.equal(remainingFraction(undefined, 30), null)
+  assert.equal(remainingFraction(10, null), null)
+})
+
+test('status label on the hero card covers suspended, read-only, days and no expiry', () => {
+  assert.equal(packageStatusLabel({ plan: 'trial', readOnly: false, daysLeft: 22 }), 'เหลือ 22 วัน')
+  assert.equal(packageStatusLabel({ plan: 'paid', readOnly: true, daysLeft: -5 }), 'อ่านอย่างเดียว · หมดอายุแล้ว 5 วัน')
+  assert.equal(packageStatusLabel({ plan: 'paid', readOnly: true }), 'อ่านอย่างเดียว')
+  assert.equal(packageStatusLabel({ plan: 'suspended', readOnly: false, daysLeft: 3 }), 'ถูกระงับการใช้งาน')
+  assert.equal(packageStatusLabel({ plan: 'paid', readOnly: false }), 'ใช้งานได้ตามปกติ')
+})
+
+test('renew steps: the first unfinished step is current; transfer counts as done once a slip is attached', () => {
+  assert.deepEqual(renewStepStates({ monthChosen: false, slipAttached: false, detailsReady: false }), ['current', 'todo', 'todo'])
+  assert.deepEqual(renewStepStates({ monthChosen: true, slipAttached: false, detailsReady: true }), ['done', 'current', 'todo'])
+  assert.deepEqual(renewStepStates({ monthChosen: true, slipAttached: true, detailsReady: false }), ['done', 'done', 'current'])
+  assert.deepEqual(renewStepStates({ monthChosen: true, slipAttached: true, detailsReady: true }), ['done', 'done', 'done'])
+  // แนบสลิปก่อนเลือกเดือนได้ (ลากวางก่อน) ขั้นที่ 1 ยังเป็นขั้นปัจจุบัน
+  assert.deepEqual(renewStepStates({ monthChosen: false, slipAttached: true, detailsReady: true }), ['current', 'done', 'done'])
+})
+
+test('dropped files: the first file is used and the rest are reported', () => {
+  assert.deepEqual(pickDroppedFile([]), { file: null, ignored: 0 })
+  assert.deepEqual(pickDroppedFile(['a']), { file: 'a', ignored: 0 })
+  assert.deepEqual(pickDroppedFile(['a', 'b', 'c']), { file: 'a', ignored: 2 })
+})
+
+test('missing field labels follow the on-page order (step 1 then step 3)', () => {
+  assert.deepEqual(missingFieldLabels({}), [])
+  const empty = validatePaymentForm(
+    { monthCount: null, amountText: '', paidDate: '', paidTime: '', slip: null, note: '' },
+    context,
+  )
+  assert.deepEqual(missingFieldLabels(empty), ['ระยะเวลา', 'สลิปการโอน', 'วันเวลาที่โอน', 'ยอดเงินที่โอน'])
+  assert.deepEqual(missingFieldLabels({ amount: 'x', monthCount: 'y' }), ['ระยะเวลา', 'ยอดเงินที่โอน'])
 })
