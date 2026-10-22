@@ -23,7 +23,7 @@
 | `ConnectionStrings:ServiceDb` · `LegacyShards:ConnectionStrings:db2` | เฉพาะ `convert` (เขียนสาขาปลายทาง) และ guard ที่ตรวจว่าฐาน self-serve ไม่ใช่ฐานจริง |
 | `Ftp:*` | เฉพาะ `purge`/`run-jobs` ที่ลบไฟล์แนบ |
 | `SelfServe:Email:*` · `LineMessaging:*` · `SelfServe:SalesLineGroupId` | เฉพาะ `run-jobs` (ส่งอีเมล/LINE จริง ถ้าตั้งไว้) · `approve-payment`/`reject-payment` ส่งอีเมลถึงเจ้าของอู่ |
-| `SelfServe:Package:*` | `payment` (ลิงก์ดูสลิปต้องมี `SlipLinkKey` ≥ 32 ตัว) · ราคามาตรฐานที่ใช้เทียบยอด |
+| `SelfServe:Package:*` | `payment` (ลิงก์ดูสลิปต้องมี `SlipLinkKey` ≥ 32 ตัว) · ราคามาตรฐานที่ใช้เทียบยอด (`MonthlyPrice` 3,999 + `VatRate` 0.07 และบัญชีรับเงินอยู่ใน `appsettings.json` ของ spadmin แล้ว ค่าเดียวกับ API) |
 
 ไม่ได้ตั้ง `SelfServe:ConnectionString` → ทุกคำสั่ง (ยกเว้น `--help`) จบด้วยข้อความบอกค่าที่ขาด และรหัสออก 3 โดยไม่ต่อฐานใดๆ
 
@@ -67,7 +67,7 @@ docker compose run --rm --no-deps --entrypoint dotnet api /app/spadmin/SpAdmin.d
 | `run-jobs [--task maintenance\|summary] [--as-of ...]` | รันงานรายวันทันทีโดยไม่ claim (`sp_JobRun`) · `--as-of` = ISO `2026-12-31T03:30:00+07:00` · วันที่ `2026-12-31` (เวลางานรายวัน) · `+91d`/`-1d` · ไม่มี offset = เวลาไทย · `--date` = ชื่อเดิม |
 | `convert --workspace N --target-branch M --target-user U [--target-shard db2] [--dry-run] [--out report.json] [--allow-failures] [--yes]` | ย้ายข้อมูลหลักไปสาขา GaragePro จริง (ดูหัวข้อถัดไป) |
 | `payments [--status pending\|approved\|rejected\|cancelled\|all] [--workspace SP1042]` | รายการแจ้งชำระ (ค่าเริ่มต้นรอตรวจ) · id สั้น · ยอดโอน/ราคา · เวลาโอน · "ถ้าอนุมัติตอนนี้ใช้ได้ถึง" · สลิปซ้ำ |
-| `payment --id <id หรือ 8 ตัวแรก>` | รายละเอียด · หมายเหตุลูกค้า · สลิปซ้ำ · วันหมดใหม่ถ้าอนุมัติตอนนี้ · ลิงก์ดูสลิป (อายุ 7 วัน) · คำสั่งอนุมัติ/ปฏิเสธที่คัดลอกได้ |
+| `payment --id <id หรือ 8 ตัวแรก>` | รายละเอียด · หมายเหตุลูกค้า · สลิปซ้ำ · วันหมดใหม่ถ้าอนุมัติตอนนี้ · ราคาตามค่าตั้งตอนนี้ (ก่อน VAT + VAT = รวม) ของรายการรอตรวจ · ลิงก์ดูสลิป (อายุ 7 วัน) · คำสั่งอนุมัติ/ปฏิเสธที่คัดลอกได้ |
 | `approve-payment --id <...> --by <ชื่อ> [--until yyyy-MM-dd] [--note ...]` | ต่อวันหมด + เปลี่ยนเป็น paid + ปิดรายการ + audit ใน transaction เดียว · ยอดไม่ตรงราคาต้องมี `--note` · `--until` ต้องไม่ก่อนวันเริ่มนับ · ส่งอีเมล/แจ้งเตือนเจ้าของอู่ |
 | `reject-payment --id <...> --by <ชื่อ> --reason slip_unreadable\|amount_mismatch\|not_received\|duplicate\|other [--note ...]` | ปฏิเสธพร้อมเหตุผล (`other` ต้องมี `--note`) · ลูกค้าเห็นเหตุผล+หมายเหตุ · ส่งอีเมล/แจ้งเตือนเจ้าของอู่ |
 

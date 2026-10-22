@@ -1957,6 +1957,39 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     ต้องแก้ตารางในหน้า `/privacy` ด้วย · แก้เนื้อหาแล้วเปลี่ยน `LEGAL_UPDATED_AT`
   · ทดสอบแล้ว: `tsc -b` · `vite build` · SSR build + prerender ผ่าน (HTML ของสองหน้ามีเนื้อหาครบ) · เบราว์เซอร์ 1024px และ 375px: หัวข้อครบ ลิงก์ถูก ไม่มี horizontal scroll
     ตารางเลื่อนในกรอบบนมือถือ (แก้ `.landing-legal` เป็น `grid-template-columns: minmax(0, 1fr)` ไม่งั้นตารางดัน grid จนถูกตัดขอบ) · ไม่มี console error
+- ✅ **[เพิ่ม 2026-10-22 · 10 PR (ServicePro 8 · Admin 2) · ยังไม่ merge/deploy] แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 และสถานะ site ใน GaragePro Admin**
+  (คำขอผู้ใช้ · ต้นทางคือเอกสาร flow ต่ออายุของ GaragePro Enterprise ที่ทีมส่งมา · การตัดสินใจ D1-D8 และสัญญา API อยู่ที่ [docs/17](docs/17-package-renewal.md))
+  · **branch**: `feat/package-renewal` (เอกสาร + .gitignore) → `feat/package-renewal-api` (PR 1 backend + spadmin) → `feat/package-renewal-internal` (API ภายใน) →
+    `feat/package-renewal-internal-review` (อนุมัติจาก Admin) · `feat/package-renewal-web` · `feat/package-renewal-app` (แอป `1.2.0+4`) ·
+    `fix/plan-no-relogin-on-upgrade` (D8) · `fix/structured-data-ios-test` (เทสต์ที่ล้มบน main อยู่แล้ว) · Admin: `feat/branches-package-status` → `feat/servicepro-payment-review`
+  · **กฎใหม่ที่ต้องรู้**:
+    - [BIZ] D8 **ไม่บังคับ login ใหม่เมื่อสิทธิ์เพิ่ม** (`PlanAccess.RevocationReason` เตะเฉพาะเมื่อนโยบายเข้มกว่า claim) เดิมอนุมัติ trial→paid เตะทุกคน และต่อก่อนหมดเตะซ้ำตอนถึงวันหมดเดิม
+      (token มือถืออายุ 10 ปี claim จึงค้าง) · claim `plan`/`plan_exp` ค้างค่าเก่าได้โดยตั้งใจ ห้ามใช้ตัดสินสิทธิ์
+    - ตาราง `sp_PackagePayment` (migration `AddPackagePayment` ชุด SelfServe · **รันกับ `GarageSelfServe_Dev` แล้ว · production จะรันตอน deploy**) ·
+      รอตรวจได้ครั้งละ 1 รายการต่ออู่ (filtered unique index) · requestId ซ้ำได้แถวเดิม
+    - สูตรวันที่ `PackageRenewal` ที่เดียว: ปัดวันหมดขึ้นเป็นเที่ยงคืนไทยแล้วบวกเดือนตามปฏิทินไทย · หมดแล้วนับจากวันอนุมัติ · ไม่บวก 1 วันแบบหน้าจอระบบเดิม
+    - อนุมัติ = `SelfServeAdminRepository.ApprovePaymentAsync` ปิดรายการ + ต่อวัน Branch แบบเทียบวันหมดเดิม + `sp_Workspace` + audit ใน transaction เดียว ·
+      วันหมดเปลี่ยนระหว่างอนุมัติ = `PACKAGE_APPROVAL_CONFLICT` ไม่บันทึกอะไร · ยอดไม่ตรงราคาต้องมีหมายเหตุ · ปฏิเสธต้องเลือก 1 ใน 5 เหตุผล
+    - สลิปผ่าน `IPackageSlipStorage` (FTP root เดียวกับไฟล์แนบ · path `{shard}/{branch}/package-slip/...`) · รูปทุกไฟล์แปลงเป็น JPEG ไม่มี EXIF · hash ของไฟล์ต้นฉบับใช้เตือนสลิปซ้ำ
+    - งานรายวัน: อู่ที่มีรายการรอตรวจไม่ถูกลบ/ไม่เตือน · อู่ paid ได้อีเมลเตือน 14/3 วัน (notice `paid-reminder-{d}:{yyyyMMdd}`) · purge ลบสลิปก่อน tombstone
+    - API ภายใน `/api/v1/internal/*` ใช้ header `X-Internal-Key` (`Internal:ApiKey` ≥ 32 ตัว) ไม่ใช้ JWT · ไม่ตั้งคีย์ = 404 ทุก route · controller ใหม่ใต้ `/internal` ต้องติด `[InternalApi]` (มีเทสต์บังคับ)
+    - Admin เติมผู้อนุมัติจาก claim `name`/`sub` + ฐานที่ล็อกอิน → audit `admin:สมชาย ใจดี (db2)#42` · X-Api-Key ถูกปฏิเสธ 403 · 401 ของเราถูกแปลงเป็น 502 ที่ Admin
+  · **ผลตรวจจริง (2026-10-22)**: branch รวม `integration/package-renewal` (ไม่ push) `dotnet test` **1449 ผ่าน / 23 ข้าม** · SQL test ใหม่ 7/7 กับ `_Dev` ·
+    เว็บ `tsc -b`/`vite build` ผ่าน `node --test` 74/74 · แอป `dart analyze` สะอาด `flutter test` 175 · Admin `dotnet test` 135 · lint/type-check/build ผ่าน
+  · **E2E กับ API local + `GarageSelfServe_Dev` + Admin local (LINE ปิด · อีเมลแบบ log)** ด้วยอู่ทดสอบ SP1038 (purge แล้ว ไฟล์สลิป 6 ไฟล์ถูกลบ):
+    แจ้งชำระ + requestId ซ้ำ + รอตรวจซ้อนถูกปฏิเสธ · spadmin approve (ยอดไม่ตรงต้องมี note) → **token เดิมไม่ถูก logout หลัง 96 วิ** และกลายเป็น paid ·
+    `extend --days -125` ยังเตะ session ตามเดิม · อ่านอย่างเดียวแล้วเขียนได้ `TRIAL_EXPIRED` แต่แจ้งชำระได้ → อนุมัติ → token เดิมเขียนได้อีกโดยไม่ login ใหม่ ·
+    ปฏิเสธ/ยกเลิก · เตือนสลิปซ้ำ · ลิงก์สลิปลงลายเซ็นใช้ได้ (แก้ sig = 404) · API ภายใน: ไม่มี/ผิดคีย์ 401 · sites 19 แถวจากข้อมูลจริง (สาขากลุ่ม 7 ของ db2 14 + sp1 5) ·
+    Admin proxy ↔ ServicePro จริง: sites · รายการรอตรวจ · สลิป · อนุมัติ · API key ถูกปฏิเสธ · หน้าเว็บ `/package` กับ API จริง · หน้าแพ็กเกจในแอปบน simulator (มุมมองช่าง)
+  · **ยังไม่ได้ทดสอบ**: push LINE จริง/รูปใน LINE · ปุ่มแจ้งชำระบนเว็บกับไฟล์จริง (ทดสอบผ่าน API และ mock) · แจ้งชำระจากแอปในบัญชีผู้จัดการบน simulator · Android ·
+    หน้าเว็บ Admin กับ ServicePro จริง (ทดสอบ API แล้ว หน้าเว็บทดสอบกับ mock) · Nginx และ docker network บน production
+  · **ก่อน deploy (เจ้าของ)**: บัญชีรับเงิน `SelfServe:Package:PaymentAccount:*` (ไม่ตั้ง = แจ้งชำระไม่ได้) + ราคา `Prices:{เดือน}` ·
+    `Production:SelfServe:Package:SlipLinkKey` · `sudo add-api-internal-deny.sh` **ก่อน**ตั้ง `Production:Internal:ApiKey` · ค่าเดียวกันเป็น `SERVICEPRO_INTERNAL_KEY` ของ Admin ·
+    network `garagepro-servicepro` (deploy script สร้างให้) · ปล่อยแอป `1.2.0+4` หลัง backend · `docker-compose.yml` ของ Admin ชนกับ diff ช่องว่างที่ค้างใน checkout ของเจ้าของ
+  · **[RISK]** ยังค้างเรื่อง secret ใน `appsettings.Development.json` ตาม RISK 2026-09-09 (แจ้งเจ้าของแล้ว 2026-10-22) · ImageSharp มีช่องโหว่ high และตอนนี้ถอดรหัสรูปจากลูกค้า ·
+    ลิงก์สลิปลงลายเซ็นอยู่ใน access log 7 วัน · แอปย่อรูปก่อนส่งจึงเตือนสลิปซ้ำจากแอปไม่ได้ · แอปแสดงปี ค.ศ. กับเดือนไทยทั้งแอป (ค่าเริ่มต้นของ intl) ต่างจากเว็บที่เป็น พ.ศ. ·
+    `StarterDataRepositoryTests` ล้ม 1 ข้อเมื่อตั้ง SQL env (ล้มบน main อยู่แล้ว)
+
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

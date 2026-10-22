@@ -1,4 +1,3 @@
-using System.Globalization;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 
 namespace AMD.AutoService.GaragePro.Application.SelfServe;
@@ -133,7 +132,8 @@ public sealed class SelfServeOptions
     }
 
     /// <summary>
-    /// แจ้งชำระเงิน/ต่ออายุแพ็กเกจ (docs/17 §5.5) · [ASSUME] ค่าเริ่มต้นทั้งหมดยังรอฝ่ายขายยืนยัน (docs/17 §11)
+    /// แจ้งชำระเงิน/ต่ออายุแพ็กเกจ (docs/17 §5.5) · ค่าเริ่มต้นในโค้ดว่าง (ไม่มีราคา/บัญชี) · ค่าจริงของ production
+    /// (ราคา 3,999/เดือน + VAT 7% · บัญชีกสิกรไทย · เจ้าของยืนยัน 2026-10-22) อยู่ใน appsettings.json ของ API และ spadmin
     /// · array ทุกตัวเริ่มว่างโดยตั้งใจ (ConfigurationBinder ต่อท้าย array เดิม · ดู <see cref="TrialOptions.ReminderDays"/>) อ่านผ่าน Effective...
     /// · [SECURITY] <see cref="SlipLinkKey"/> อยู่ใน user-secrets / env file เท่านั้น
     /// </summary>
@@ -167,14 +167,23 @@ public sealed class SelfServeOptions
             }
         }
 
-        /// <summary>ราคามาตรฐานต่อจำนวนเดือน key = จำนวนเดือนเป็นข้อความ (<c>SelfServe:Package:Prices:1 = 590</c>) · ไม่มี = ยังไม่ตั้งราคา</summary>
-        public Dictionary<string, decimal> Prices { get; set; } = new(StringComparer.Ordinal);
+        /// <summary>
+        /// ราคาต่อเดือน**ก่อน VAT** (production 3,999 ใน appsettings.json) · ราคาของ N เดือน = N × ค่านี้ เว้นแต่ตั้ง <see cref="Prices"/>
+        /// · ≤ 0 หรือไม่ตั้ง = ไม่มีราคามาตรฐาน · คำนวณที่ <c>Package.PackagePricing</c> ที่เดียว
+        /// </summary>
+        public decimal? MonthlyPrice { get; set; }
 
-        /// <summary>null = ยังไม่ตั้งราคา (หรือตั้งเป็น ≤ 0 ซึ่งถือว่าผิด) · ปัดเป็นทศนิยม 2 ตำแหน่ง</summary>
-        public decimal? PriceFor(int months) =>
-            Prices.TryGetValue(months.ToString(CultureInfo.InvariantCulture), out var price) && price > 0
-                ? decimal.Round(price, 2, MidpointRounding.AwayFromZero)
-                : null;
+        /// <summary>
+        /// อัตรา VAT เป็นสัดส่วน (0.07 = 7%) บวกเพิ่มจากราคาก่อน VAT · ไม่ตั้ง/0 = ไม่แยก VAT (ยอดโอน = ราคาก่อน VAT)
+        /// · ต้องอยู่ช่วง 0 ถึงน้อยกว่า 1 · ผิดช่วง = ไม่แสดงราคาเลย (ดู <c>Package.PackagePricing</c>)
+        /// </summary>
+        public decimal? VatRate { get; set; }
+
+        /// <summary>
+        /// ราคาก่อน VAT ของจำนวนเดือนนั้นแทน N × <see cref="MonthlyPrice"/> (ไว้ทำส่วนลด) key = จำนวนเดือนเป็นข้อความ
+        /// (<c>SelfServe:Package:Prices:12 = 43990</c>) · ≤ 0 = ไม่ได้ตั้ง (กลับไปใช้ MonthlyPrice)
+        /// </summary>
+        public Dictionary<string, decimal> Prices { get; set; } = new(StringComparer.Ordinal);
 
         public PaymentAccountOptions PaymentAccount { get; set; } = new();
 
@@ -200,7 +209,7 @@ public sealed class SelfServeOptions
         public int PaidAtMaxPastDays { get; set; } = 60;
     }
 
-    /// <summary>บัญชีรับเงินที่แสดงบนหน้าแจ้งชำระ (ไม่ใช่ความลับ แต่ยังไม่มีค่าจริง ต้องได้จากฝ่ายขาย)</summary>
+    /// <summary>บัญชีรับเงินที่แสดงบนหน้าแจ้งชำระ (ไม่ใช่ความลับ แสดงให้ลูกค้าทุกคน · ค่า production อยู่ใน appsettings.json)</summary>
     public sealed class PaymentAccountOptions
     {
         public string BankName { get; set; } = "";

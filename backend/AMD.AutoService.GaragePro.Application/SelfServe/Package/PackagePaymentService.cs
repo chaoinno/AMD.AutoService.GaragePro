@@ -58,8 +58,9 @@ public sealed class PackagePaymentService(
         var monthOptions = Package.EffectiveMonthOptions.Select(months =>
         {
             var preview = PackageRenewal.Compute(endsAt, now, months);
-            return new PackageMonthOptionDto(months, Package.PriceFor(months) is { } price ? PackagePaymentRules.Money(price) : null,
-                preview.Ends, preview.LastUsableDate);
+            var price = PackagePricing.For(Package, months);
+            return new PackageMonthOptionDto(months, price?.Subtotal, price?.Vat, price?.Total, preview.Ends,
+                preview.LastUsableDate);
         }).ToList();
 
         var account = Package.PaymentAccount;
@@ -73,6 +74,7 @@ public sealed class PackagePaymentService(
             endsAt is { } end ? PackageRenewal.LastUsableDay(end) : null,
             PlanAccess.DaysLeft(endsAt, now),
             plan.IsReadOnly,
+            PackagePricing.EffectiveVatRate(Package),
             monthOptions,
             account.IsConfigured
                 ? new PackagePaymentAccountDto(Blank(account.BankName), Blank(account.AccountNo), Blank(account.AccountName),
@@ -147,6 +149,8 @@ public sealed class PackagePaymentService(
             return Fail(PackageErrors.SlipUploadFailed());
         }
 
+        // ราคา ณ ตอนแจ้ง (รวม VAT) เก็บเป็นสำเนา · เปลี่ยนราคาทีหลังไม่กระทบรายการที่แจ้งไปแล้ว
+        var price = PackagePricing.For(Package, months.Value);
         var payment = new PackagePayment
         {
             Id = paymentId,
@@ -155,7 +159,7 @@ public sealed class PackagePaymentService(
             Status = PackagePaymentStatus.Pending,
             MonthCount = months.Value,
             Amount = amount.Value,
-            ExpectedAmount = Package.PriceFor(months.Value),
+            ExpectedAmount = price?.Total,
             PaidAt = paidAt.Value,
             SlipPath = stored.RelativePath,
             SlipSha256 = stored.OriginalSha256,
@@ -176,6 +180,9 @@ public sealed class PackagePaymentService(
                 months = payment.MonthCount,
                 amount = payment.Amount,
                 expectedAmount = payment.ExpectedAmount,
+                expectedSubtotal = price?.Subtotal,
+                expectedVat = price?.Vat,
+                vatRate = price?.VatRate,
                 paidAt = payment.PaidAt,
                 duplicateSlips = duplicates.Count
             })), ct);
@@ -192,7 +199,8 @@ public sealed class PackagePaymentService(
         var context = Context(workspace, payment);
         await notifier.SubmittedAsync(new PackagePaymentSubmittedNotice(context, plan.ExpiresAt,
             PackageRenewal.Compute(plan.ExpiresAt, now, payment.MonthCount),
-            duplicates.Where(d => d.Payment.Id != payment.Id).Select(PackagePaymentAdminService.Duplicate).ToList()),
+            duplicates.Where(d => d.Payment.Id != payment.Id).Select(PackagePaymentAdminService.Duplicate).ToList(),
+            price),
             CancellationToken.None);
 
         return Ok(payment);
