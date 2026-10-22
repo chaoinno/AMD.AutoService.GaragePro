@@ -1,6 +1,6 @@
 # 17 · แจ้งชำระเงินและต่ออายุแพ็กเกจ (Package Renewal)
 
-> สถานะ: **กำลังพัฒนา** (แผนอนุมัติ 2026-10-21 · แบ่ง PR ตามหัวข้อ 10) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
+> สถานะ: **พัฒนาเสร็จบน branch · รอรีวิว · ยังไม่ merge/deploy** (2026-10-22 · แบ่ง PR ตามหัวข้อ 10 · ผลตรวจหัวข้อ 12) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
 > ที่มา: เอกสารสรุป flow ต่ออายุของ GaragePro Enterprise (`Package-Renewal-Flow*.md` ที่เพื่อนในทีมส่งมา ไม่ได้ commit เข้า repo)
 > อ่านคู่กับ [docs/12](12-self-serve-trial-proposal.md) (self-serve) และ [docs/03 §16](03-api-contract.md)
 
@@ -189,8 +189,12 @@ shard อื่นได้ 404 `SELFSERVE_NOT_APPLICABLE` · route อยู่
   "lastUsableDate": "2026-11-13",     // วันสุดท้ายที่ใช้ได้
   "daysLeft": 23,                     // ค่าเดียวกับ /auth/me
   "readOnly": false,
+  "vatRate": 0.07,                    // ไม่อยู่ = ราคาไม่คิด VAT แยก
   "monthOptions": [                   // ตาม SelfServe:Package:MonthOptions (ค่าเริ่มต้น 1,2,3,6,12)
-    { "months": 1, "price": 590.00,   // price ไม่อยู่ = ยังไม่ตั้งราคา
+    { "months": 1,
+      "subtotal": 3999.00,            // ราคาก่อน VAT
+      "vat": 279.93,                  // VAT ปัดทศนิยม 2 ตำแหน่ง (ปัดครึ่งขึ้น)
+      "price": 4278.93,               // ยอดที่ต้องโอน (รวม VAT) = expectedAmount · ไม่อยู่ทั้งสามช่อง = ยังไม่ตั้งราคา
       "previewEndsAt": "2026-12-13T17:00:00Z", "previewLastUsableDate": "2026-12-13" }  // ถ้าอนุมัติวันนี้
   ],
   "paymentAccount": { "bankName": "…", "accountNo": "…", "accountName": "…", "promptPayId": "…" }, // ไม่อยู่ = ยังไม่ตั้ง
@@ -208,7 +212,7 @@ shard อื่นได้ 404 `SELFSERVE_NOT_APPLICABLE` · route อยู่
   "id": "3f2a9c1b-…", "shortId": "3f2a9c1b",
   "status": "pending",                // pending | approved | rejected | cancelled
   "monthCount": 3,
-  "amount": 1500.00, "expectedAmount": 1770.00,  // ไม่ใช่ Manager = ไม่อยู่ใน JSON · expectedAmount ไม่อยู่ = ยังไม่ตั้งราคา
+  "amount": 12836.79, "expectedAmount": 12836.79,  // ไม่ใช่ Manager = ไม่อยู่ใน JSON · expectedAmount ไม่อยู่ = ยังไม่ตั้งราคา
   "paidAt": "2026-10-21T07:30:00Z",
   "submittedAt": "2026-10-21T07:41:12Z", "submittedBy": "SP1042.M01",
   "note": "โอนจากบัญชีบริษัท",          // ไม่ใช่ Manager = ไม่อยู่
@@ -291,8 +295,10 @@ Error
 | คีย์ | ค่าเริ่มต้น | หมายเหตุ |
 |---|---|---|
 | `MonthOptions` | ว่าง → 1, 2, 3, 6, 12 | array ต้องเริ่มว่าง (binder ต่อท้าย array) |
-| `Prices:{เดือน}` | ว่าง | เช่น `Prices:1=590` |
-| `PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId}` | ว่าง | ต้องมี AccountName + (AccountNo หรือ PromptPayId) ไม่งั้นแจ้งชำระไม่ได้ |
+| `MonthlyPrice` | ว่าง (production ตั้งใน `appsettings.json` = 3999) | ราคาต่อเดือน**ก่อน VAT** · ราคาของ N เดือน = N × MonthlyPrice |
+| `VatRate` | ว่าง (production = 0.07) | VAT บวกเพิ่มจากราคาก่อน VAT · ว่าง = ไม่แยก VAT (price = subtotal) |
+| `Prices:{เดือน}` | ว่าง | ราคาก่อน VAT ของจำนวนเดือนนั้น ใช้แทน N × MonthlyPrice (ไว้ทำส่วนลด) เช่น `Prices:12=43990` |
+| `PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId}` | ว่าง (production ตั้งใน `appsettings.json`: ธนาคารกสิกรไทย · 068-8-63750-3 · บจก. อาร์มาดิลโล เทค จำกัด) | ต้องมี AccountName + (AccountNo หรือ PromptPayId) ไม่งั้นแจ้งชำระไม่ได้ · ไม่ใช่ความลับ (แสดงให้ลูกค้าทุกคน) |
 | `SlipLinkKey` | ว่าง | `[SECURITY]` user-secrets/env file เท่านั้น ≥ 32 ตัว |
 | `SlipLinkDays` | 7 | |
 | `PublicApiBaseUrl` | `https://gpservice-api.garage-pro.net` | |
@@ -314,6 +320,14 @@ Error
 - ปุ่มที่กดไม่ได้บอกเหตุผลเป็นข้อความ (ใช้ `cannotSubmitReasonTh` ของ server ไม่แต่งข้อความเอง)
 - เมนูผู้ใช้มี "แพ็กเกจและการชำระเงิน" เฉพาะอู่ self-serve · แจ้งเตือน `entityType: "PackagePayment"` คลิกแล้วไปหน้า `/package`
 - รูปสลิปดาวน์โหลดผ่าน `apiDownload` (ต้องมี Bearer token ห้ามใช้ `<img src>` ตรง)
+
+### 6.3 แนวทางออกแบบ (ผู้ใช้ขอ "สวยๆ เท่ๆ" 2026-10-22)
+
+- ใช้สี ฟอนต์ และ token เดิมของระบบเท่านั้น (ห้ามแก้ token ข้างเดียว) · ความ "เท่" มาจากลำดับชั้นของข้อมูล ขนาด ระยะห่าง และการ์ด ไม่ใช่สีใหม่
+- โครงหน้า: การ์ดหัวสีกรมท่า (แพ็กเกจปัจจุบัน + วันใช้งานได้ถึง + แถบเวลาคงเหลือ) → ต่ออายุ 3 ขั้น (เลือกระยะเวลา · โอนเงิน · แนบสลิป) → ประวัติแบบ timeline
+- การ์ดเลือกระยะเวลาแสดงยอดรวม VAT ตัวใหญ่ + ราคาก่อน VAT/VAT ตัวเล็ก + "ใช้ได้ถึง …" · การ์ดบัญชีธนาคาร (ข้อความ "ธนาคารกสิกรไทย" ไม่ใช้โลโก้ธนาคาร) เลขบัญชีและยอดโอนตัวใหญ่ mono พร้อมปุ่มคัดลอก
+- สรุปยอด (ก่อน VAT · VAT 7% · รวม · ใช้ได้ถึง) อยู่ข้างฟอร์มบนเว็บ และอยู่ใน sticky bar บนแอป · ยอดที่โอนกรอกให้ล่วงหน้าเป็นยอดรวม VAT แก้ได้
+- ไม่แต่งป้าย "คุ้มสุด/ยอดนิยม" ที่ไม่มีข้อมูลรองรับ (ราคาตอนนี้คิดตามจำนวนเดือนตรงๆ ไม่มีส่วนลด)
 
 ### 6.2 แอปมือถือ
 - หน้าใหม่ "แพ็กเกจและการชำระเงิน" เข้าจากโปรไฟล์ และจากการแตะแบนเนอร์ทดลองใช้ (`widgets/trial_banner.dart`)
@@ -523,8 +537,18 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 
 | เรื่อง | ใช้ที่ไหน | ถ้ายังไม่มี |
 |---|---|---|
-| ราคาต่อจำนวนเดือน (1/2/3/6/12) | ยอดที่ควรโอน · เทียบตอนตรวจ | ฟอร์มให้กรอกยอดเอง ข้อความ "สอบถามยอดได้ที่ LINE @garagepro" |
-| บัญชีรับเงิน / PromptPay | หน้าแจ้งชำระ | **เปิดฟีเจอร์ไม่ได้** (ลูกค้าไม่รู้จะโอนไปไหน) |
+| ~~ราคาต่อจำนวนเดือน~~ **ได้แล้ว 2026-10-22**: 3,999 บาท/เดือน ก่อน VAT + VAT 7% | ยอดที่ควรโอน · เทียบตอนตรวจ | |
+| ~~บัญชีรับเงิน~~ **ได้แล้ว 2026-10-22**: กสิกรไทย 068-8-63750-3 บจก. อาร์มาดิลโล เทค จำกัด | หน้าแจ้งชำระ | |
 | ใบเสร็จ/ใบกำกับภาษีค่าบริการให้ลูกค้า | หลังอนุมัติ | นอกขอบเขต ทีมบัญชีออกเองนอกระบบ |
 | คนในทีมที่อนุมัติได้ | `--by` / สิทธิ์ใน Admin | ใครที่รัน spadmin ได้ |
 | แจ้งเตือนอู่ paid ล่วงหน้ากี่วัน | แถบเตือน + อีเมล | 14 และ 3 วัน `[ASSUME]` |
+
+---
+
+## 12. สถานะ (2026-10-22)
+
+- โค้ดครบทุก PR ในหัวข้อ 10 · รวมทดสอบใน branch `integration/package-renewal` (ไม่ push) ผ่านทั้ง backend เว็บ แอป และ Admin
+- migration `AddPackagePayment` รันกับ `GarageSelfServe_Dev` แล้ว · production รันตอน deploy (`efbundle-selfserve`)
+- E2E กับ API local + ฐาน dev + Admin local ผ่านครบเส้นทางหลัก (แจ้ง · อนุมัติ · ปฏิเสธ · ยกเลิก · อ่านอย่างเดียวแล้วต่ออายุ · ไม่ถูก logout · API ภายใน · Admin) รายละเอียดใน CLAUDE.md
+- ยังไม่ได้ทดสอบ: LINE จริง · ปุ่มแจ้งชำระบนเว็บกับไฟล์จริง · แจ้งชำระจากแอปด้วยบัญชีผู้จัดการบน simulator · Android · หน้าเว็บ Admin กับ ServicePro จริง · Nginx/docker network บน production
+- ก่อนเปิดใช้: ต้องได้บัญชีรับเงินจากฝ่ายขาย (หัวข้อ 11) และตั้ง secrets ตามหัวข้อ 5.5 / 8.6
