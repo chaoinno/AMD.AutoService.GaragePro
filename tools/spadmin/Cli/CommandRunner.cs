@@ -392,6 +392,9 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
         Line("จำนวนเดือน", N(p.MonthCount));
         Line("ยอดโอน / ราคามาตรฐาน", $"{Money(p.Amount)} / {Money(p.ExpectedAmount)}" +
                                      (p.ExpectedAmount is { } e && p.Amount != e ? "  ⚠ ไม่ตรงราคา (อนุมัติต้องใส่ --note)" : ""));
+        if (p.Status == PackagePaymentRules.StatusCode(PackagePaymentStatus.Pending))
+            Line("ราคาตามค่าตั้งตอนนี้",
+                CurrentPrice(sp.GetRequiredService<IOptions<SelfServeOptions>>().Value.Package, p.MonthCount));
         Line("โอนเมื่อ", SelfServeText.FormatThaiDateTime(p.PaidAt));
         Line("แจ้งเมื่อ / โดย", $"{SelfServeText.FormatThaiDateTime(p.SubmittedAt)} / {p.SubmittedBy}");
         Line("หมายเหตุลูกค้า", string.IsNullOrWhiteSpace(p.Note) ? "-" : SelfServeText.SingleLine(p.Note, 200));
@@ -463,6 +466,15 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
 
     private static string Money(decimal? amount) =>
         amount is { } a ? a.ToString("N2", CultureInfo.InvariantCulture) : "-";
+
+    /// <summary>ราคามาตรฐาน (ก่อน VAT + VAT = รวม) จากค่าตั้งของเครื่องที่รัน spadmin · สูตรเดียวกับ API (PackagePricing)</summary>
+    private static string CurrentPrice(SelfServeOptions.PackageOptions package, int months) =>
+        PackagePricing.ConfigProblem(package)
+        ?? (PackagePricing.For(package, months) is not { } price
+            ? "ยังไม่ตั้งราคา (SelfServe:Package:MonthlyPrice หรือ Prices)"
+            : price.VatRate is { } rate
+                ? $"{Money(price.Subtotal)} + VAT {PackagePricing.Percent(rate)} {Money(price.Vat)} = {Money(price.Total)}"
+                : $"{Money(price.Total)} (ไม่แยก VAT)");
 
     private static string FmtLastUsable(DateTime? end) =>
         end is { } e ? SelfServeText.FormatThaiDate(PackageRenewal.LastUsableDay(e)) : "ไม่มีกำหนด";

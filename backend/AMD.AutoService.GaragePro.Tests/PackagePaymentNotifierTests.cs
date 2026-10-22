@@ -155,6 +155,51 @@ public class PackagePaymentNotifierTests
     }
 
     [Fact]
+    public async Task Line_text_shows_the_vat_inclusive_standard_price_and_its_breakdown()
+    {
+        var h = new Harness();
+        var context = Context();
+        context.Payment.Amount = 12836.79m;
+        context.Payment.ExpectedAmount = 12836.79m;
+        var price = new PackagePrice(3, 11997.00m, 839.79m, 12836.79m, 0.07m);
+
+        await h.Notifier.SubmittedAsync(Submitted(context) with { Price = price });
+
+        var text = h.Sales.Sent.Single().Messages[0].Text!;
+        text.Should().Contain("ยอดโอน 12,836.79 บาท (ตรงราคา)")
+            .And.Contain("ราคามาตรฐานรวม VAT 7%: 11,997.00 + VAT 839.79 = 12,836.79 บาท");
+
+        var underpaid = new Harness();
+        var paidSubtotalOnly = Context();
+        paidSubtotalOnly.Payment.Amount = 11997m;
+        paidSubtotalOnly.Payment.ExpectedAmount = 12836.79m;
+        await underpaid.Notifier.SubmittedAsync(Submitted(paidSubtotalOnly) with { Price = price });
+        underpaid.Sales.Sent.Single().Messages[0].Text.Should()
+            .Contain("ยอดโอน 11,997.00 บาท (ราคามาตรฐาน 12,836.79 บาท · ⚠ ไม่ตรงราคา)")
+            .And.Contain("11,997.00 + VAT 839.79", "ทีมงานเห็นว่าลูกค้าโอนเฉพาะราคาก่อน VAT");
+    }
+
+    [Fact]
+    public async Task Line_text_without_vat_or_price_has_no_breakdown_line()
+    {
+        var noVat = new Harness();
+        var context = Context();
+        context.Payment.ExpectedAmount = 1500m;
+        context.Payment.Amount = 1500m;
+        await noVat.Notifier.SubmittedAsync(Submitted(context) with
+        {
+            Price = new PackagePrice(3, 1500m, 0m, 1500m, null)
+        });
+        noVat.Sales.Sent.Single().Messages[0].Text.Should().Contain("(ตรงราคา)").And.NotContain("VAT");
+
+        var unpriced = new Harness();
+        var none = Context();
+        none.Payment.ExpectedAmount = null;
+        await unpriced.Notifier.SubmittedAsync(Submitted(none));
+        unpriced.Sales.Sent.Single().Messages[0].Text.Should().Contain("(ยังไม่ตั้งราคามาตรฐาน)").And.NotContain("VAT");
+    }
+
+    [Fact]
     public async Task Pdf_slip_or_missing_key_sends_text_only()
     {
         var pdf = new Harness();

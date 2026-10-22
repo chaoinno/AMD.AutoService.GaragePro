@@ -32,6 +32,12 @@ public static class PackagePaymentMessages
             sb.Append(" (ยังไม่ตั้งราคามาตรฐาน)");
         sb.Append('\n');
 
+        // ราคามาตรฐาน = ยอดรวม VAT · แยกให้ทีมงานเห็นที่มาของตัวเลข (ลูกค้าบางรายโอนเฉพาะราคาก่อน VAT)
+        if (notice.Price is { VatRate: { } rate } price && p.ExpectedAmount == price.Total)
+            sb.Append("ราคามาตรฐานรวม VAT ").Append(PackagePricing.Percent(rate)).Append(": ")
+              .Append(Number(price.Subtotal)).Append(" + VAT ").Append(Number(price.Vat)).Append(" = ")
+              .Append(Baht(price.Total)).Append('\n');
+
         sb.Append("เวลาโอน ").Append(SelfServeText.FormatThaiDateTime(p.PaidAt)).Append('\n');
         sb.Append("ตอนนี้ใช้ได้ถึง ")
           .Append(notice.CurrentEndsAt is { } end
@@ -66,6 +72,8 @@ public static class PackagePaymentMessages
     }
 
     /// <summary>1500 → "1,500.00 บาท" (ไม่พึ่ง culture ของเครื่อง)</summary>
-    public static string Baht(decimal amount) =>
-        amount.ToString("N2", CultureInfo.InvariantCulture) + " บาท";
+    public static string Baht(decimal amount) => Number(amount) + " บาท";
+
+    /// <summary>1500 → "1,500.00"</summary>
+    public static string Number(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture);
 }

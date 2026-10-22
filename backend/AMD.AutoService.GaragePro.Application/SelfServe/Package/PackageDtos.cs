@@ -32,14 +32,20 @@ public sealed record PackagePaymentDto(
     string? RejectNote,
     DateTime? CancelledAt);
 
-/// <summary>ตัวเลือกจำนวนเดือน + พรีวิว "ถ้าอนุมัติวันนี้" (server คำนวณ) · <see cref="Price"/> null = ยังไม่ตั้งราคา</summary>
-public sealed record PackageMonthOptionDto(int Months, decimal? Price, DateTime PreviewEndsAt, DateOnly PreviewLastUsableDate);
+/// <summary>
+/// ตัวเลือกจำนวนเดือน + พรีวิว "ถ้าอนุมัติวันนี้" (server คำนวณ) · ราคาจาก <see cref="PackagePricing"/>
+/// · <see cref="Subtotal"/> ก่อน VAT · <see cref="Vat"/> (0 เมื่อไม่คิด VAT แยก) · <see cref="Price"/> = ยอดที่ต้องโอน (รวม VAT) = expectedAmount
+/// · ทั้งสามช่องเป็น null พร้อมกัน = ยังไม่ตั้งราคา
+/// </summary>
+public sealed record PackageMonthOptionDto(int Months, decimal? Subtotal, decimal? Vat, decimal? Price, DateTime PreviewEndsAt,
+    DateOnly PreviewLastUsableDate);
 
 public sealed record PackagePaymentAccountDto(string? BankName, string? AccountNo, string? AccountName, string? PromptPayId);
 
 /// <summary>
 /// <c>GET /api/v1/selfserve/package</c> · <see cref="CannotSubmitCode"/>: not_manager | pending_exists | not_renewable | unavailable
 /// · <see cref="DaysLeft"/> ค่าเดียวกับ /auth/me (PlanAccess.DaysLeft) · <see cref="PaymentAccount"/> null = ยังไม่ตั้งบัญชีรับเงิน
+/// · <see cref="VatRate"/> (0.07) null = ราคาไม่คิด VAT แยก
 /// </summary>
 public sealed record PackageOverviewDto(
     string WorkspaceNo,
@@ -49,6 +55,7 @@ public sealed record PackageOverviewDto(
     DateOnly? LastUsableDate,
     int? DaysLeft,
     bool ReadOnly,
+    decimal? VatRate,
     IReadOnlyList<PackageMonthOptionDto> MonthOptions,
     PackagePaymentAccountDto? PaymentAccount,
     PackagePaymentDto? Pending,

@@ -70,11 +70,12 @@ jq -r '
     | select($v | length > 0)
     | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v),
   # แจ้งชำระ/ต่ออายุแพ็กเกจ (docs/17 §5.5): ทุกคีย์ใต้ Production:SelfServe:Package:* เช่น SlipLinkKey · PublicApiBaseUrl ·
-  # PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId} · Prices:{เดือน} · MonthOptions:{ลำดับ} · PaidReminderDays:{ลำดับ}
-  # (":" กลายเป็น "__" ตามรูปแบบ env ของ .NET) · ไม่ตั้ง PaymentAccount = แจ้งชำระไม่ได้ (PACKAGE_PAYMENT_UNAVAILABLE)
+  # PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId} · MonthlyPrice · VatRate · Prices:{เดือน} · MonthOptions:{ลำดับ} ·
+  # PaidReminderDays:{ลำดับ} (":" กลายเป็น "__" ตามรูปแบบ env ของ .NET) · ราคา/บัญชีจริงอยู่ใน appsettings.json แล้ว
+  # ตั้งที่นี่เฉพาะเมื่อจะทับ · ค่าว่างไม่ออกเป็นบรรทัด (บรรทัด KEY= ว่างจะทับค่าใน appsettings.json เป็นค่าว่าง)
   (to_entries[]
     | select(.key | startswith("Production:SelfServe:Package:"))
-    | select((.value | tostring) | length > 0)
+    | select((.value | tostring | gsub("^\\s+|\\s+$"; "")) | length > 0)
     | "SelfServe__" + (.key | ltrimstr("Production:SelfServe:") | gsub(":"; "__")) + "=" + (.value | tostring))
 ' "$input_json" > "$temp_env"
 # [SECURITY] คีย์ลิงก์สลิปสั้นเกิน = แอปถือว่าไม่ได้ตั้ง (ไม่ส่งรูปเข้า LINE) · หยุดตรงนี้ดีกว่าค้นพบทีหลังว่ารูปไม่ขึ้น

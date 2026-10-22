@@ -108,11 +108,13 @@ public sealed record PackagePaymentNoticeContext(
     int BranchId,
     string? OwnerEmail);
 
+/// <param name="Price">ราคา ณ ตอนแจ้ง (ก่อน VAT · VAT · รวม) ไว้แสดงรายละเอียดในข้อความ · null = ยังไม่ตั้งราคา</param>
 public sealed record PackagePaymentSubmittedNotice(
     PackagePaymentNoticeContext Context,
     DateTime? CurrentEndsAt,
     RenewalPeriod PreviewIfApprovedNow,
-    IReadOnlyList<PackagePaymentDuplicateDto> Duplicates);
+    IReadOnlyList<PackagePaymentDuplicateDto> Duplicates,
+    PackagePrice? Price = null);
 
 public sealed record PackagePaymentReviewedNotice(
     PackagePaymentNoticeContext Context,
