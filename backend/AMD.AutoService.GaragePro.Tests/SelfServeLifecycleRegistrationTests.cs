@@ -68,6 +68,20 @@ public class SelfServeLifecycleRegistrationTests
         sp.GetRequiredService<ISelfServeSalesNotifier>().Should().BeOfType<SelfServeSalesNotifier>();
         sp.GetRequiredService<IWorkspacePurgeData>().CheckTargetDatabase("sp1").Should().BeNull(
             "ค่าตั้งชุดนี้ชี้ GarageSelfServe_Dev ทั้งสองที่ และไม่ซ้ำกับ GarageService/Garage");
+
+        // docs/17: แจ้งชำระ/ต่ออายุ
+        // ทางเข้าของ controller คือ router · shard sp1 ของ StubUser → service ของอู่ที่สมัครเอง
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentService>()
+            .Should().BeOfType<Application.SelfServe.Package.PackagePaymentRouter>()
+            .Which.Target.Should().BeOfType<Application.SelfServe.Package.PackagePaymentService>();
+        sp.GetRequiredService<Application.SelfServe.Package.PackageLineCommandService>().Should().NotBeNull();
+        sp.GetRequiredService<Application.SelfServe.Package.PackagePaymentAdminService>().Should().NotBeNull();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentRepository>()
+            .Should().BeOfType<PackagePaymentRepository>();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackageSlipStorage>()
+            .Should().BeOfType<Infrastructure.Storage.FtpAttachmentStorage>();
+        sp.GetRequiredService<Application.SelfServe.Package.IPackagePaymentNotifier>()
+            .Should().BeOfType<PackagePaymentNotifier>();
     }
 
     [Fact]
@@ -79,6 +93,12 @@ public class SelfServeLifecycleRegistrationTests
         scope.ServiceProvider.GetService<ITrialLifecycleService>().Should().BeNull();
         scope.ServiceProvider.GetService<ISelfServeStatusService>().Should().BeNull(
             "controller จึงตอบ 404 SELFSERVE_NOT_APPLICABLE แทน 500");
+        // router ยังอยู่ (สาขา db2 ใช้ flow garagepro ได้โดยไม่มีฐาน self-serve) · ฝั่ง sp1 ไม่มี service → 404 SELFSERVE_NOT_APPLICABLE
+        scope.ServiceProvider.GetRequiredService<Application.SelfServe.Package.IPackagePaymentService>()
+            .Should().BeOfType<Application.SelfServe.Package.PackagePaymentRouter>()
+            .Which.Target.Should().BeNull("endpoint แพ็กเกจและลิงก์สลิปของ sp1 ตอบ 404");
+        scope.ServiceProvider.GetService<Application.SelfServe.Package.PackagePaymentService>().Should().BeNull();
+        scope.ServiceProvider.GetService<Application.SelfServe.Package.GarageProPackageService>().Should().NotBeNull();
     }
 
     [Theory]

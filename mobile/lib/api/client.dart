@@ -17,6 +17,7 @@ import 'handover_api.dart';
 import 'intake_api.dart';
 import 'jobs_api.dart';
 import 'notifications_api.dart';
+import 'package_api.dart';
 import 'pos_api.dart';
 import 'qc_api.dart';
 import 'quotations_api.dart';
@@ -137,3 +138,4 @@ final customersApiProvider = Provider((ref) => CustomersApi(ref.watch(apiClientP
 final workApiProvider = Provider((ref) => WorkApi(ref.watch(apiClientProvider)));
 final notificationsApiProvider =
     Provider((ref) => NotificationsApi(ref.watch(apiClientProvider)));
+final packageApiProvider = Provider((ref) => PackageApi(ref.watch(apiClientProvider)));

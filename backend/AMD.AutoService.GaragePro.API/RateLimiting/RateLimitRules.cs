@@ -25,6 +25,18 @@ public enum RateLimitedRoute
 
     /// <summary>path อื่นใต้ <c>/api/v1/public</c> (ฟอร์มติดต่อ) — ถังรวม <c>public-global</c> เดิม</summary>
     PublicOther,
+
+    /// <summary>
+    /// <c>/api/v1/public/package-slips/*</c> ลิงก์สลิปที่ LINE ดึง (docs/17 §5.3) · ถังต่อ IP ของตัวเอง ไม่นับรวม <c>public-global</c>
+    /// (ไม่งั้นรูปสลิปไม่กี่สิบรูปก็กินโควตาฟอร์มติดต่อของทั้งระบบ)
+    /// </summary>
+    PublicPackageSlip,
+
+    /// <summary>
+    /// <c>/api/v1/public/line-commands</c> คำสั่ง /SP_ ที่ webhook ของระบบเดิมส่งต่อมา (docs/17 §8.7.2) · ถังต่อ IP ของตัวเอง
+    /// (คำขอทั้งหมดมาจากเครื่องตัวส่งต่อเครื่องเดียว ถ้าใช้ถัง public-global ทีมงานกดไม่กี่ครั้งก็กินโควตาฟอร์มติดต่อ)
+    /// </summary>
+    PublicLineCommand,
 }
 
 /// <summary>ผลการปฏิเสธที่จะเขียนลง envelope + header <c>Retry-After</c></summary>
@@ -42,6 +54,8 @@ public static class RateLimitRules
     public static readonly PathString GoogleLoginPath = "/api/v1/auth/google";
     public static readonly PathString PublicPath = "/api/v1/public";
     public static readonly PathString SignupPath = "/api/v1/public/signup";
+    public static readonly PathString PackageSlipPath = "/api/v1/public/package-slips";
+    public static readonly PathString LineCommandPath = "/api/v1/public/line-commands";
 
     private static readonly PathString[] SignupEntryPaths =
         ["/api/v1/public/signup/email/start", "/api/v1/public/signup/google"];
@@ -66,6 +80,9 @@ public static class RateLimitRules
     public const int PublicGlobalPerHour = 60;     // ถังรวมเดิมของฟอร์มติดต่อ (ไม่แยก IP)
     public const int ContactPerTenMinutes = 5;     // policy public-contact เดิม
     public const int PurchasingPinPerMinute = 10;  // policy purchasing-pin เดิม
+    public const int PackageSlipPerHour = 300;     // fixed ต่อ IP (global · ถัง public-package-slip)
+    public const int PackagePaymentSubmitPerHour = 10;  // fixed ต่อ shard:สาขา (policy package-payment-submit)
+    public const int LineCommandPerHour = 600;     // fixed ต่อ IP (global · ถัง public-line-command)
 
     public static RateLimitedRoute Classify(string method, PathString path)
     {
@@ -80,6 +97,9 @@ public static class RateLimitRules
             if (isPost && SignupOtpPaths.Any(p => path.StartsWithSegments(p))) return RateLimitedRoute.SignupOtp;
             return RateLimitedRoute.SignupOther;
         }
+
+        if (path.StartsWithSegments(PackageSlipPath)) return RateLimitedRoute.PublicPackageSlip;
+        if (path.StartsWithSegments(LineCommandPath)) return RateLimitedRoute.PublicLineCommand;
 
         return path.StartsWithSegments(PublicPath) ? RateLimitedRoute.PublicOther : RateLimitedRoute.None;
     }
@@ -130,6 +150,13 @@ public static class RateLimitRules
             var seconds = Seconds(retryAfter, TimeSpan.FromHours(1));
             var error = SelfServeErrors.SignupRateLimited(seconds);
             return new(error.Code, error.MessageTh, seconds);
+        }
+
+        if (policyName == RateLimitPolicies.PackagePaymentSubmit)
+        {
+            var seconds = Seconds(retryAfter, TimeSpan.FromHours(1));
+            return new("RATE_LIMITED",
+                "แจ้งชำระถี่เกินไป กรุณารอสักครู่แล้วลองใหม่ หรือติดต่อทาง LINE @garagepro / โทร 090-996-6446", seconds);
         }
 
         return new("RATE_LIMITED",

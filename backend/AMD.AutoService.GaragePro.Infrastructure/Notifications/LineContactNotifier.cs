@@ -1,7 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using AMD.AutoService.GaragePro.Application.Contact;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -43,17 +43,16 @@ public sealed class LineContactNotifier(
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(_options.ChannelAccessToken) && !string.IsNullOrWhiteSpace(_options.ContactGroupId);
 
-    public async Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct)
+    public Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct) =>
+        SendAsync(retryKey, [LineOutboundMessage.FromText(text)], ct);
+
+    public async Task<bool> SendAsync(Guid retryKey, IReadOnlyList<LineOutboundMessage> messages, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl.TrimEnd('/')}/v2/bot/message/push")
         {
             // StringContent ไม่ใช่ JsonContent — JsonContent สตรีมแบบ chunked ไม่มี Content-Length
             // ซึ่ง endpoint ที่เข้มงวดจะตัดการเชื่อมต่อทิ้ง (เจอจริงตอนทดสอบกับ mock)
-            Content = new StringContent(JsonSerializer.Serialize(new
-            {
-                to = _options.ContactGroupId,
-                messages = new[] { new { type = "text", text } },
-            }), Encoding.UTF8, "application/json"),
+            Content = new StringContent(BuildPushBody(_options.ContactGroupId, messages), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ChannelAccessToken);
         request.Headers.Add("X-Line-Retry-Key", retryKey.ToString());
@@ -75,5 +74,20 @@ public sealed class LineContactNotifier(
             logger.LogWarning(ex, "เชื่อมต่อ LINE Messaging API ไม่ได้ (retryKey {RetryKey})", retryKey);
             return false;
         }
+    }
+
+    /// <summary>
+    /// body ของ push: ข้อความ = <c>{type:"text",text}</c> · รูป = <c>{type:"image",originalContentUrl,previewImageUrl}</c>
+    /// (url เดียวกันทั้งคู่ · สลิปถูกแปลงเป็น JPEG ≤ 1 MB แล้ว) · Flex = <c>{type:"flex",altText,contents}</c> (การ์ดแจ้งชำระ docs/17 §8.7.2)
+    /// · LINE รับ 1 ถึง 5 ข้อความ · รูปต้องเป็น https · ผิดเงื่อนไข = ArgumentException ก่อนยิง (<see cref="LineOutboundMessage.ToLineJson"/>)
+    /// </summary>
+    internal static string BuildPushBody(string to, IReadOnlyList<LineOutboundMessage> messages)
+    {
+        ArgumentNullException.ThrowIfNull(messages);
+        if (messages.Count is < 1 or > 5)
+            throw new ArgumentException("LINE push ต้องมี 1 ถึง 5 ข้อความ", nameof(messages));
+
+        var items = new JsonArray(messages.Select(m => (JsonNode)m.ToLineJson()).ToArray());
+        return new JsonObject { ["to"] = to, ["messages"] = items }.ToJsonString();
     }
 }

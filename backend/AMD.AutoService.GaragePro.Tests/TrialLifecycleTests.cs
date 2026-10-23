@@ -33,6 +33,7 @@ public class TrialLifecycleTests
         public List<string> BlockedDomains { get; } = [];
         public DateTime? LastBlocklistRun { get; set; }
         public List<Guid> Abandoned { get; } = [];
+        public HashSet<Guid> PendingPayments { get; } = [];
 
         public SelfServeWorkspaceInfo Add(WorkspacePlanKind plan = WorkspacePlanKind.Trial,
             WorkspaceStatus status = WorkspaceStatus.Active, DateTime? endsAt = null, string? email = "owner@example.com")
@@ -52,7 +53,8 @@ public class TrialLifecycleTests
             Task.FromResult<IReadOnlyList<LifecycleWorkspace>>(Workspaces
                 .Where(w => w.Status != WorkspaceStatus.Purged && w.BranchId != null)
                 .Select(w => new LifecycleWorkspace(w, BranchEnds.GetValueOrDefault(w.Id),
-                    Notices.Where(n => n.Item1 == w.Id).Select(n => n.Item2).ToHashSet()))
+                    Notices.Where(n => n.Item1 == w.Id).Select(n => n.Item2).ToHashSet(),
+                    PendingPayments.Contains(w.Id)))
                 .ToList());
 
         public Task<bool> TryRecordExtensionRequestAsync(Guid workspaceId, DateTime requestedAt, DateTime notBefore,
@@ -497,7 +499,7 @@ public class TrialLifecycleTests
 
         report.Outcome.Should().Be("ok");
         h.Sales.Sent.Should().ContainSingle().Which.Text.Should()
-            .Be("สรุปทดลองใช้ 31/10/2569: สมัครใหม่ 1 · หมดอายุวันนี้ 1 · เหลือ ≤7 วัน 2 · ขอต่ออายุ 1");
+            .Be("สรุปทดลองใช้ 31/10/2569: สมัครใหม่ 1 · หมดอายุวันนี้ 1 · เหลือ ≤7 วัน 2 · ขอต่ออายุ 1 · แจ้งชำระรอตรวจ 0");
         h.Sales.Sent[0].Key.Should().Be(SelfServeText.DeterministicGuid("summary:2026-10-31"));
     }
 
@@ -537,4 +539,109 @@ public class TrialLifecycleTests
         TrialLifecycleRules.Decide(new LifecycleWorkspace(ws, null, new HashSet<string>()), Day0.AddDays(500),
             new SelfServeOptions.TrialOptions()).Should().BeEmpty();
     }
+
+    // ---------- docs/17: อู่ paid · รายการแจ้งชำระรอตรวจ ----------
+
+    // วันหมดของอู่ที่จ่ายเงิน = เที่ยงคืนไทย 1/11/2026 → ใช้ได้ถึงสิ้นวัน 31/10/2026
+    private static readonly DateTime PaidEnd = new(2026, 10, 31, 17, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task Paid_workspace_gets_the_14_and_3_day_reminders_once_each_counted_to_the_last_usable_day()
+    {
+        var h = new Harness();
+        var ws = h.Repository.Add(WorkspacePlanKind.Paid, endsAt: PaidEnd);
+
+        var tags = new List<string>();
+        foreach (var day in new[] { 0, 16, 17, 18, 27, 28, 29, 30, 31, 40 })
+        {
+            var before = h.Email.Sent.Count;
+            (await h.MaintenanceOnDay(day)).Errors.Should().BeEmpty();
+            tags.AddRange(h.Email.Sent.Skip(before).Select(m => $"{day}:{m.Tag}"));
+        }
+
+        // วัน 16 = 17/10 เหลือ 14 วันถึง 31/10 · วัน 27 = 28/10 เหลือ 3 วัน · วันอื่นส่งไปแล้วหรือยังไม่ถึงรอบ
+        tags.Should().Equal("16:paid-reminder-14", "27:paid-reminder-3");
+        h.Email.Sent[0].Subject.Should().Contain("เหลืออีก 14 วัน").And.NotContain("ทดลองใช้");
+        h.Email.Sent[0].TextBody.Should().Contain("31/10/2569");
+        h.Repository.Notices.Should().BeEquivalentTo(new[]
+        {
+            (ws.Id, "paid-reminder-14:20261101"), (ws.Id, "paid-reminder-3:20261101")
+        });
+        h.Repository.StatusChanges.Should().BeEmpty("อู่ที่จ่ายเงินไม่ถูกเปลี่ยนสถานะ/ลบอัตโนมัติ");
+        h.Purger.Purged.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Renewed_paid_workspace_is_reminded_again_for_the_new_end_date()
+    {
+        var h = new Harness();
+        var ws = h.Repository.Add(WorkspacePlanKind.Paid, endsAt: PaidEnd);
+        await h.MaintenanceOnDay(28);
+
+        h.Repository.BranchEnds[ws.Id] = PaidEnd.AddDays(30);   // ต่ออายุแล้ว: ใช้ได้ถึง 30/11
+        await h.MaintenanceOnDay(58);
+
+        h.Email.Sent.Select(m => m.Tag).Should().Equal("paid-reminder-3", "paid-reminder-3");
+        h.Repository.Notices.Select(n => n.Item2).Should().BeEquivalentTo(
+            "paid-reminder-3:20261101", "paid-reminder-3:20261201");
+    }
+
+    [Fact]
+    public void Paid_reminders_are_off_through_the_old_overload_and_while_a_payment_is_pending()
+    {
+        var ws = new SelfServeWorkspaceInfo(Guid.NewGuid(), 1001, 5, "x", null, WorkspacePlanKind.Paid,
+            WorkspaceStatus.Active, null, PaidEnd, null, null, null, null, Day0, null, "a@b.c");
+        var now = PaidEnd.AddDays(-2);
+
+        TrialLifecycleRules.Decide(new LifecycleWorkspace(ws, PaidEnd, new HashSet<string>()), now,
+            new SelfServeOptions.TrialOptions()).Should().BeEmpty("ทางเดิมไม่รู้จักการเตือน paid");
+        TrialLifecycleRules.Decide(new LifecycleWorkspace(ws, PaidEnd, new HashSet<string>(), HasPendingPayment: true),
+            now, new SelfServeOptions.TrialOptions(), [14, 3]).Should().BeEmpty("จ่ายมาแล้ว รอทีมงานตรวจ");
+        TrialLifecycleRules.Decide(new LifecycleWorkspace(ws, PaidEnd, new HashSet<string>()), now,
+                new SelfServeOptions.TrialOptions(), [14, 3]).Should().ContainSingle()
+            .Which.Should().Be(new LifecycleAction(LifecycleActionKind.Notify, "paid-reminder-3:20261101", 1));
+    }
+
+    [Fact]
+    public async Task Trial_with_a_pending_payment_is_not_reminded_invited_back_or_purged_but_still_expires()
+    {
+        var h = new Harness();
+        var ws = h.Repository.Add();
+        h.Repository.PendingPayments.Add(ws.Id);
+
+        foreach (var day in new[] { 23, 29, 30, 75, 119, 120, 150 })
+            (await h.MaintenanceOnDay(day)).Errors.Should().BeEmpty();
+
+        h.Email.Sent.Select(m => m.Tag).Should().Equal("expired");
+        h.Repository.StatusChanges.Should().ContainSingle(c => c.Status == WorkspaceStatus.Expired);
+        h.Purger.Purged.Should().BeEmpty("ลูกค้าที่แจ้งชำระใกล้วันลบต้องไม่ถูกลบก่อนทีมงานตรวจ");
+
+        h.Repository.PendingPayments.Clear();   // ทีมงานปฏิเสธแล้ว → กลับไปตามกำหนดเดิม
+        await h.MaintenanceOnDay(151);
+        h.Purger.Purged.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Summary_counts_pending_payments()
+    {
+        var h = new Harness();
+        var a = h.Repository.Add();
+        h.Repository.Add(WorkspacePlanKind.Paid, endsAt: PaidEnd);
+        var c = h.Repository.Add(WorkspacePlanKind.Paid, endsAt: PaidEnd);
+        h.Repository.PendingPayments.Add(a.Id);
+        h.Repository.PendingPayments.Add(c.Id);
+
+        var report = await h.Service.RunAsync(TrialLifecycleTasks.Summary, Day0);
+
+        report.Counts["pendingPayments"].Should().Be(2);
+        h.Sales.Sent.Single().Text.Should().EndWith(" · แจ้งชำระรอตรวจ 2");
+    }
+
+    [Theory]
+    [InlineData("paid-reminder-14:20261101", 14)]
+    [InlineData("paid-reminder-3:20261101", 3)]
+    [InlineData("reminder-7", null)]
+    [InlineData("expired", null)]
+    public void Paid_reminder_round_is_parsed_from_the_notice_kind(string kind, int? round) =>
+        TrialLifecycleRules.PaidReminderRound(kind).Should().Be(round);
 }

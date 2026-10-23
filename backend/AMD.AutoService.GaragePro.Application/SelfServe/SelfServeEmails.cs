@@ -144,6 +144,81 @@ public static class SelfServeEmails
             $"เข้าสู่ระบบเพื่อดูข้อมูล: {LoginUrl(publicBaseUrl)}");
     }
 
+    // ---------- แพ็กเกจที่ชำระเงิน (docs/17 §5.4) · ไม่มีคำว่า "ทดลองใช้" ในฉบับเหล่านี้ ----------
+
+    public const string PaymentApprovedTag = "package-approved";
+    public const string PaymentRejectedTag = "package-rejected";
+
+    public static string PaidReminderTag(int days) =>
+        string.Create(CultureInfo.InvariantCulture, $"paid-reminder-{days}");
+
+    /// <summary>
+    /// ทีมงานอนุมัติการชำระแล้ว · <paramref name="endsAtUtc"/> = EndPackageDate ใหม่ (เที่ยงคืนไทยของวันแรกที่หมดสิทธิ์)
+    /// แสดงเป็น "วันสุดท้ายที่ใช้ได้" (End − 1 tick) ให้ตรงกับหน้าเว็บ/แอป
+    /// </summary>
+    public static EmailContent PaymentApproved(
+        string garageName, int workspaceNo, int months, DateTime endsAtUtc, string publicBaseUrl)
+    {
+        var name = Garage(garageName);
+        var code = SelfServeText.WorkspaceCode(workspaceNo);
+        var until = SelfServeText.FormatThaiDate(Package.PackageRenewal.LastUsableDay(endsAtUtc));
+        return Build(PaymentApprovedTag, $"ServicePro: อนุมัติการชำระเงินของอู่ {name} แล้ว ใช้งานได้ถึง {until}",
+            $"ทีมงานตรวจการชำระค่าแพ็กเกจ {months.ToString(CultureInfo.InvariantCulture)} เดือนของอู่ {name} ({code}) เรียบร้อยแล้ว",
+            $"ใช้งานได้ถึงสิ้นวันที่ {until}",
+            "ถ้าก่อนหน้านี้ระบบเป็นแบบอ่านอย่างเดียว จะเพิ่มและแก้ไขข้อมูลได้ตามปกติภายในประมาณ 1 นาที",
+            $"ดูประวัติการชำระได้ที่ {PackageUrl(publicBaseUrl)}",
+            $"สอบถาม: {Contact()}");
+    }
+
+    /// <summary>ทีมงานปฏิเสธ · <paramref name="reasonTh"/> = ข้อความตายตัวของเหตุผล · <paramref name="note"/> = หมายเหตุทีมงาน (ไม่บังคับ)</summary>
+    public static EmailContent PaymentRejected(
+        string garageName, int workspaceNo, int months, string reasonTh, string? note, string publicBaseUrl)
+    {
+        var name = Garage(garageName);
+        var code = SelfServeText.WorkspaceCode(workspaceNo);
+        var paragraphs = new List<string>
+        {
+            $"ทีมงานตรวจการแจ้งชำระค่าแพ็กเกจ {months.ToString(CultureInfo.InvariantCulture)} เดือนของอู่ {name} ({code}) แล้ว แต่ยังอนุมัติไม่ได้",
+            $"เหตุผล: {SelfServeText.SingleLine(reasonTh, 200)}"
+        };
+        if (!string.IsNullOrWhiteSpace(note))
+            paragraphs.Add($"หมายเหตุจากทีมงาน: {SelfServeText.SingleLine(note, 1000)}");
+        paragraphs.Add($"แจ้งชำระใหม่ได้ที่ {PackageUrl(publicBaseUrl)} หรือสอบถาม {Contact()}");
+
+        return Build(PaymentRejectedTag, $"ServicePro: การแจ้งชำระของอู่ {name} ยังไม่ผ่านการตรวจ", [.. paragraphs]);
+    }
+
+    /// <summary>
+    /// เตือนอู่ที่ชำระเงินแล้วก่อนหมดอายุ · <paramref name="daysLeft"/> = จำนวนวันปฏิทินไทยจากวันนี้ถึง<b>วันสุดท้ายที่ใช้ได้</b>
+    /// (0 = วันนี้เป็นวันสุดท้าย · กติกาเดียวกับ PlanAccess.DaysLeft) · tag = paid-reminder-{รอบเตือนตาม config}
+    /// </summary>
+    public static EmailContent PaidReminder(
+        int daysLeft, string garageName, int workspaceNo, DateTime endsAtUtc, int readOnlyDays, string publicBaseUrl)
+    {
+        var name = Garage(garageName);
+        var code = SelfServeText.WorkspaceCode(workspaceNo);
+        var until = SelfServeText.FormatThaiDate(Package.PackageRenewal.LastUsableDay(endsAtUtc));
+        var subject = daysLeft switch
+        {
+            <= 0 => $"ServicePro: วันนี้เป็นวันสุดท้ายของแพ็กเกจอู่ {name}",
+            1 => $"ServicePro: แพ็กเกจของอู่ {name} ใช้ได้ถึงพรุ่งนี้",
+            _ => $"ServicePro: แพ็กเกจของอู่ {name} เหลืออีก {daysLeft} วัน"
+        };
+
+        return Build(PaidReminderTag(Math.Max(daysLeft, 0)), subject,
+            $"แพ็กเกจ ServicePro ของอู่ {name} ({code}) ใช้งานได้ถึงสิ้นวันที่ {until}",
+            $"หลังหมดอายุ ข้อมูลยังอยู่ครบ เข้าสู่ระบบ ดู และพิมพ์เอกสารได้อีก {readOnlyDays} วัน แต่เพิ่มหรือแก้ไขข้อมูลไม่ได้",
+            $"ต่ออายุ: แจ้งชำระเงินได้ที่หน้า \"แพ็กเกจและการชำระเงิน\" ในระบบ ({PackageUrl(publicBaseUrl)}) หรือติดต่อ {Contact()}");
+    }
+
+    private static string PackageUrl(string? publicBaseUrl)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(publicBaseUrl)
+            ? new SelfServeOptions().PublicBaseUrl
+            : publicBaseUrl.Trim();
+        return baseUrl.TrimEnd('/') + "/package";
+    }
+
     private static string Contact() => $"{SelfServeText.ContactLine} หรือโทร {SelfServeText.ContactPhone}";
 
     private static string Garage(string? garageName)

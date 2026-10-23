@@ -46,6 +46,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
+| [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[merge เข้า main 2026-10-23 · ยังไม่ deploy · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -62,10 +63,14 @@ cd backend/AMD.AutoService.GaragePro.API && dotnet run   # พอร์ต 5080 
 
 # Migration (ห้ามใช้ EnsureCreated — มันไม่เพิ่มตารางให้ฐานที่มีอยู่แล้ว)
 export PATH="$PATH:$HOME/.dotnet/tools"
-dotnet ef migrations add <ชื่อ> --project backend/AMD.AutoService.GaragePro.Infrastructure \
+dotnet ef migrations add <ชื่อ> --context ServiceDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
   --startup-project backend/AMD.AutoService.GaragePro.API --output-dir Persistence/Migrations
-dotnet ef database update --project backend/AMD.AutoService.GaragePro.Infrastructure \
+dotnet ef database update --context ServiceDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
   --startup-project backend/AMD.AutoService.GaragePro.API
+# ฐาน self-serve (sp_*): Infrastructure มี 2 DbContext ต้องใส่ --context เสมอ
+# database update ของ sp1 ใช้ login migrate (ตั้ง env SelfServe__ConnectionString เป็น connection ของ gp_selfserve_migrate)
+dotnet ef migrations add <ชื่อ> --context SelfServeDbContext --project backend/AMD.AutoService.GaragePro.Infrastructure \
+  --startup-project backend/AMD.AutoService.GaragePro.API --output-dir SelfServe/Migrations
 
 # ข้อมูลทดสอบ (ต้องรัน API ก่อน) — สร้างใบเสนอราคาครบทุกสถานะผ่าน API จริง
 cd tools/devseed && dotnet run
@@ -1952,6 +1957,56 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     ต้องแก้ตารางในหน้า `/privacy` ด้วย · แก้เนื้อหาแล้วเปลี่ยน `LEGAL_UPDATED_AT`
   · ทดสอบแล้ว: `tsc -b` · `vite build` · SSR build + prerender ผ่าน (HTML ของสองหน้ามีเนื้อหาครบ) · เบราว์เซอร์ 1024px และ 375px: หัวข้อครบ ลิงก์ถูก ไม่มี horizontal scroll
     ตารางเลื่อนในกรอบบนมือถือ (แก้ `.landing-legal` เป็น `grid-template-columns: minmax(0, 1fr)` ไม่งั้นตารางดัน grid จนถูกตัดขอบ) · ไม่มี console error
+- ✅ **[เพิ่ม 2026-10-22 · ServicePro merge เข้า main 2026-10-23 (รวม PR #10-#17 + D9 เป็นชุดเดียว) · Admin 2 PR ยังไม่ merge · ยังไม่ deploy] แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 และสถานะ site ใน GaragePro Admin**
+  (คำขอผู้ใช้ · ต้นทางคือขั้นตอนต่ออายุของระบบ GaragePro เดิม · การตัดสินใจ D1-D8 และสัญญา API อยู่ที่ [docs/17](docs/17-package-renewal.md))
+  · **branch**: `feat/package-renewal` (เอกสาร + .gitignore) → `feat/package-renewal-api` (PR 1 backend + spadmin) → `feat/package-renewal-internal` (API ภายใน) →
+    `feat/package-renewal-internal-review` (อนุมัติจาก Admin) · `feat/package-renewal-web` · `feat/package-renewal-app` (แอป `1.2.0+4`) ·
+    `fix/plan-no-relogin-on-upgrade` (D8) · `fix/structured-data-ios-test` (เทสต์ที่ล้มบน main อยู่แล้ว) · Admin: `feat/branches-package-status` → `feat/servicepro-payment-review`
+  · **กฎใหม่ที่ต้องรู้**:
+    - [BIZ] D8 **ไม่บังคับ login ใหม่เมื่อสิทธิ์เพิ่ม** (`PlanAccess.RevocationReason` เตะเฉพาะเมื่อนโยบายเข้มกว่า claim) เดิมอนุมัติ trial→paid เตะทุกคน และต่อก่อนหมดเตะซ้ำตอนถึงวันหมดเดิม
+      (token มือถืออายุ 10 ปี claim จึงค้าง) · claim `plan`/`plan_exp` ค้างค่าเก่าได้โดยตั้งใจ ห้ามใช้ตัดสินสิทธิ์
+    - ตาราง `sp_PackagePayment` (migration `AddPackagePayment` ชุด SelfServe · **รันกับ `GarageSelfServe_Dev` แล้ว · production จะรันตอน deploy**) ·
+      รอตรวจได้ครั้งละ 1 รายการต่ออู่ (filtered unique index) · requestId ซ้ำได้แถวเดิม
+    - สูตรวันที่ `PackageRenewal` ที่เดียว: ปัดวันหมดขึ้นเป็นเที่ยงคืนไทยแล้วบวกเดือนตามปฏิทินไทย · หมดแล้วนับจากวันอนุมัติ · ไม่บวก 1 วันแบบหน้าจอระบบเดิม
+    - อนุมัติ = `SelfServeAdminRepository.ApprovePaymentAsync` ปิดรายการ + ต่อวัน Branch แบบเทียบวันหมดเดิม + `sp_Workspace` + audit ใน transaction เดียว ·
+      วันหมดเปลี่ยนระหว่างอนุมัติ = `PACKAGE_APPROVAL_CONFLICT` ไม่บันทึกอะไร · ยอดไม่ตรงราคาต้องมีหมายเหตุ · ปฏิเสธต้องเลือก 1 ใน 5 เหตุผล
+    - สลิปผ่าน `IPackageSlipStorage` (FTP root เดียวกับไฟล์แนบ · path `{shard}/{branch}/package-slip/...`) · รูปทุกไฟล์แปลงเป็น JPEG ไม่มี EXIF · hash ของไฟล์ต้นฉบับใช้เตือนสลิปซ้ำ
+    - งานรายวัน: อู่ที่มีรายการรอตรวจไม่ถูกลบ/ไม่เตือน · อู่ paid ได้อีเมลเตือน 14/3 วัน (notice `paid-reminder-{d}:{yyyyMMdd}`) · purge ลบสลิปก่อน tombstone
+    - API ภายใน `/api/v1/internal/*` ใช้ header `X-Internal-Key` (`Internal:ApiKey` ≥ 32 ตัว) ไม่ใช้ JWT · ไม่ตั้งคีย์ = 404 ทุก route · controller ใหม่ใต้ `/internal` ต้องติด `[InternalApi]` (มีเทสต์บังคับ)
+    - Admin เติมผู้อนุมัติจาก claim `name`/`sub` + ฐานที่ล็อกอิน → audit `admin:สมชาย ใจดี (db2)#42` · X-Api-Key ถูกปฏิเสธ 403 · 401 ของเราถูกแปลงเป็น 502 ที่ Admin
+  · **ผลตรวจจริง (2026-10-22)**: branch รวม `integration/package-renewal` (ไม่ push) `dotnet test` **1449 ผ่าน / 23 ข้าม** · SQL test ใหม่ 7/7 กับ `_Dev` ·
+    เว็บ `tsc -b`/`vite build` ผ่าน `node --test` 74/74 · แอป `dart analyze` สะอาด `flutter test` 175 · Admin `dotnet test` 135 · lint/type-check/build ผ่าน
+  · **E2E กับ API local + `GarageSelfServe_Dev` + Admin local (LINE ปิด · อีเมลแบบ log)** ด้วยอู่ทดสอบ SP1038 (purge แล้ว ไฟล์สลิป 6 ไฟล์ถูกลบ):
+    แจ้งชำระ + requestId ซ้ำ + รอตรวจซ้อนถูกปฏิเสธ · spadmin approve (ยอดไม่ตรงต้องมี note) → **token เดิมไม่ถูก logout หลัง 96 วิ** และกลายเป็น paid ·
+    `extend --days -125` ยังเตะ session ตามเดิม · อ่านอย่างเดียวแล้วเขียนได้ `TRIAL_EXPIRED` แต่แจ้งชำระได้ → อนุมัติ → token เดิมเขียนได้อีกโดยไม่ login ใหม่ ·
+    ปฏิเสธ/ยกเลิก · เตือนสลิปซ้ำ · ลิงก์สลิปลงลายเซ็นใช้ได้ (แก้ sig = 404) · API ภายใน: ไม่มี/ผิดคีย์ 401 · sites 19 แถวจากข้อมูลจริง (สาขากลุ่ม 7 ของ db2 14 + sp1 5) ·
+    Admin proxy ↔ ServicePro จริง: sites · รายการรอตรวจ · สลิป · อนุมัติ · API key ถูกปฏิเสธ · หน้าเว็บ `/package` กับ API จริง · หน้าแพ็กเกจในแอปบน simulator (มุมมองช่าง)
+  · **ยังไม่ได้ทดสอบ**: push LINE จริง/รูปใน LINE · ปุ่มแจ้งชำระบนเว็บกับไฟล์จริง (ทดสอบผ่าน API และ mock) · แจ้งชำระจากแอปในบัญชีผู้จัดการบน simulator · Android ·
+    หน้าเว็บ Admin กับ ServicePro จริง (ทดสอบ API แล้ว หน้าเว็บทดสอบกับ mock) · Nginx และ docker network บน production
+  · **[อัปเดต 2026-10-22 รอบสอง] ราคาและบัญชีจริง + ดีไซน์ใหม่** (ผู้ใช้ให้ข้อมูลและขอ "สวยๆ เท่ๆ"): **3,999 บาท/เดือนก่อน VAT + VAT 7%**
+    (1 เดือน 4,278.93 · 3 เดือน 12,836.79 · 12 เดือน 51,347.16 · ไม่มีส่วนลด) · บัญชี **ธนาคารกสิกรไทย 068-8-63750-3 บจก. อาร์มาดิลโล เทค จำกัด** ·
+    ค่าอยู่ใน `appsettings.json` ของ API และ spadmin (`SelfServe:Package:MonthlyPrice`/`VatRate`/`PaymentAccount`) ไม่ต้องตั้ง secret · สูตรราคาอยู่ที่ `PackagePricing` ที่เดียว ·
+    `monthOptions[]` มี `subtotal`/`vat`/`price` (price = ยอดโอนรวม VAT = `expectedAmount`) · VatRate ผิดช่วง = ไม่แสดงราคาเลย (กันลูกค้าโอนขาด) ·
+    หน้าเว็บ `/package` และหน้าแอปออกแบบใหม่ตาม docs/17 §6.3 (การ์ดหัวกรมท่า · ต่ออายุ 3 ขั้น · การ์ดกสิกรคัดลอกเลขบัญชี/ยอด · สรุปยอด · timeline) ·
+    ตรวจ: branch รวม backend 1472/23 · เว็บ 82/82 · แอป 189 · เว็บกับ API จริงบนเครื่องแสดงราคา VAT และบัญชีถูกต้อง · ยอดโอนรวม VAT ตรง `expectedAmount`
+  · **ก่อน deploy (เจ้าของ)**: ~~บัญชีรับเงิน/ราคา~~ ตั้งใน appsettings.json แล้ว ·
+    `Production:SelfServe:Package:SlipLinkKey` · `sudo add-api-internal-deny.sh` **ก่อน**ตั้ง `Production:Internal:ApiKey` · ค่าเดียวกันเป็น `SERVICEPRO_INTERNAL_KEY` ของ Admin ·
+    network `garagepro-servicepro` (deploy script สร้างให้) · ปล่อยแอป `1.2.0+4` หลัง backend · `docker-compose.yml` ของ Admin ชนกับ diff ช่องว่างที่ค้างใน checkout ของเจ้าของ
+  · **[RISK]** ยังค้างเรื่อง secret ใน `appsettings.Development.json` ตาม RISK 2026-09-09 (แจ้งเจ้าของแล้ว 2026-10-22) · ImageSharp มีช่องโหว่ high และตอนนี้ถอดรหัสรูปจากลูกค้า ·
+    ลิงก์สลิปลงลายเซ็นอยู่ใน access log 7 วัน · แอปย่อรูปก่อนส่งจึงเตือนสลิปซ้ำจากแอปไม่ได้ · แอปแสดงปี ค.ศ. กับเดือนไทยทั้งแอป (ค่าเริ่มต้นของ intl) ต่างจากเว็บที่เป็น พ.ศ. ·
+    `StarterDataRepositoryTests` ล้ม 1 ข้อเมื่อตั้ง SQL env (ล้มบน main อยู่แล้ว)
+  · **[อัปเดต 2026-10-22 รอบสาม] ใช้ระบบแจ้งชำระเดิม (D9 · docs/17 §8.7)** หัวหน้าทีมให้ใช้ของที่มีอยู่:
+    สาขา db2 กลุ่ม Service (`flow: "garagepro"`) แจ้งชำระผ่าน API แจ้งชำระเดิมของ GaragePro (การ์ดและปุ่มยืนยันในกลุ่มเป็นของเดิม · ServicePro อ่านประวัติอย่างเดียว ไม่เขียน Garage เอง) ·
+    อู่ sp1 (`flow: "selfserve"`) ได้การ์ด Flex ผ่านบอทเดิม ปุ่มส่ง `/SP_{token}` (HMAC `LineCommandKey` อายุ 14 วัน) ที่ webhook ของระบบเดิมต้องส่งต่อมา
+    `POST /api/v1/public/line-commands` (header `X-Line-Relay-Key` = `LineRelayKey` · ไม่ตั้งคีย์ = 404) · สเปกสำหรับทีมระบบเดิมไม่เก็บใน repo ·
+    ค่าที่ต้องตั้งก่อนใช้: `SelfServe:Package:GarageProApi:{BaseUrl,SlipBaseUrl}` (ไม่ตั้ง = สาขา db2 เห็นหน้าแต่แจ้งไม่ได้พร้อมเหตุผล) · `LineCommandKey`/`LineRelayKey` ≥ 32 ตัว ·
+    ไม่บังคับ `LineApproverUserIds`/`AdminReviewUrl` · ตรวจ: branch รวม backend **1540 ผ่าน / 23 ข้าม** · เว็บ 88 · แอป 209 · API บนเครื่องตอบ relay ถูกตามสัญญา (คีย์ผิด 401 · ไม่ใช่คำสั่ง · คำสั่งปลอม) ·
+    **ยังไม่ได้ทดสอบ**: เรียก API แจ้งชำระเดิมจริง · กดปุ่มบนการ์ดผ่าน webhook จริง (รอทีมระบบเดิม) · กันกดซ้ำของสาขา db2 อยู่ในหน่วยความจำ (ใช้ได้เมื่อ API มี instance เดียว)
+    · **การ์ด LINE (ผู้ใช้ตรวจบน LINE จริงแล้ว 2026-10-23)**: วางตามการ์ดแจ้งชำระเดิม (จำนวนเดือนตัวใหญ่ · รูปสลิปใต้ "หลักฐานการโอน") · ไม่ใช้ emoji
+      ใช้ไอคอน Material Design Icons (Apache-2.0) ที่ `web/public/line-icons/` · **deploy เว็บก่อนหรือพร้อม API** ไม่งั้นการ์ดไม่มีไอคอน ·
+      อนุมัติ/ไม่อนุมัติผ่าน LINE ตอบเป็นการ์ด · บทเรียน: ข้อความที่ตัดบรรทัดได้ใน box `flex: 0` ขยายกินทั้งแถว (หัวการ์ดเคยสูงผิดปกติ) ป้าย/ปุ่มต้อง `wrap: false` ·
+      ตรวจโครงสร้างการ์ดได้โดยไม่ส่งจริงที่ `POST https://api.line.me/v2/bot/message/validate/push` · รูปสลิปบนการ์ดดูได้เฉพาะเมื่อ API อยู่บนโดเมน https (localhost ไม่มีรูป)
+
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

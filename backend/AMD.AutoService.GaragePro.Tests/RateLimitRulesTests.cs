@@ -31,6 +31,9 @@ public sealed class RateLimitRulesTests
     [InlineData("GET", "/api/v1/public/signup/provinces", RateLimitedRoute.SignupOther)]
     [InlineData("POST", "/api/v1/public/signup/workspace", RateLimitedRoute.SignupOther)]
     [InlineData("POST", "/api/v1/public/contact-requests", RateLimitedRoute.PublicOther)]
+    [InlineData("GET", "/api/v1/public/package-slips/3f2a9c1b", RateLimitedRoute.PublicPackageSlip)]
+    [InlineData("GET", "/API/V1/PUBLIC/PACKAGE-SLIPS/x", RateLimitedRoute.PublicPackageSlip)]
+    [InlineData("POST", "/api/v1/selfserve/package/payments", RateLimitedRoute.None)]
     [InlineData("GET", "/api/v1/publicity", RateLimitedRoute.None)]
     [InlineData("GET", "/api/v1/jobs", RateLimitedRoute.None)]
     public void Classifies_requests_by_method_and_path(string method, string path, RateLimitedRoute expected) =>
@@ -173,6 +176,41 @@ public sealed class RateLimitRulesTests
 
         Acquire(limiter, "POST", "/api/v1/public/contact-requests", "192.0.2.99").Should().BeFalse();
         Acquire(limiter, "POST", "/api/v1/public/signup/email/start", "192.0.2.99").Should().BeTrue();
+    }
+
+    // docs/17 §5.3: รูปสลิปที่ LINE ดึงมีถังต่อ IP ของตัวเอง ไม่กินโควตาฟอร์มติดต่อ และไม่ถูกฟอร์มติดต่อลากไปตัน
+    [Fact]
+    public void Package_slip_links_have_their_own_per_ip_bucket()
+    {
+        using var limiter = RateLimitingSetup.BuildGlobalLimiter();
+        const string ip = "198.51.100.9";
+
+        for (var i = 0; i < RateLimitRules.PackageSlipPerHour; i++)
+            Acquire(limiter, "GET", $"/api/v1/public/package-slips/{i}", ip).Should().BeTrue();
+
+        Acquire(limiter, "GET", "/api/v1/public/package-slips/x", ip).Should().BeFalse();
+        Acquire(limiter, "GET", "/api/v1/public/package-slips/x", "198.51.100.10").Should().BeTrue("IP อื่นเป็นคนละถัง");
+        Acquire(limiter, "POST", "/api/v1/public/contact-requests", ip).Should().BeTrue("ไม่แตะถัง public-global");
+    }
+
+    [Fact]
+    public void Package_submit_rejection_is_rate_limited_with_an_hour_fallback()
+    {
+        var rejection = RateLimitRules.DescribeRejection(RateLimitPolicies.PackagePaymentSubmit, "POST",
+            "/api/v1/selfserve/package/payments", null);
+
+        rejection.Code.Should().Be("RATE_LIMITED");
+        rejection.MessageTh.Should().Contain("แจ้งชำระ");
+        rejection.RetryAfterSeconds.Should().Be(3600);
+    }
+
+    [Fact]
+    public void Package_submit_endpoint_uses_its_policy()
+    {
+        var attribute = typeof(SelfServePackageController).GetMethod(nameof(SelfServePackageController.Submit))!
+            .GetCustomAttribute<EnableRateLimitingAttribute>();
+        attribute!.PolicyName.Should().Be(RateLimitPolicies.PackagePaymentSubmit);
+        RateLimitRules.PackagePaymentSubmitPerHour.Should().Be(10);
     }
 
     private static bool Acquire(PartitionedRateLimiter<HttpContext> limiter, string method, string path, string ip)

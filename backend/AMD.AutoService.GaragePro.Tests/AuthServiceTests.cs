@@ -699,7 +699,7 @@ public sealed class AuthServiceTests
     }
 
     [Fact]
-    public async Task Revocation_kicks_self_serve_tokens_when_the_plan_changes_or_locks()
+    public async Task Revocation_kicks_self_serve_tokens_only_when_the_plan_gets_stricter()
     {
         var reader = new StubLegacyUserReader(SelfServeOwner("x"), SelfServeBranch);
         var role = RoleOf(SelfServeOwner("x"));
@@ -712,7 +712,15 @@ public sealed class AuthServiceTests
 
         (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: expires), PlanKind.Trial, expires)
             .GetSessionRevocationReasonAsync()).Should().BeNull();
+        // [BIZ] D8 อนุมัติ trial→paid: สิทธิ์เพิ่ม ไม่ต้อง login ใหม่ (หน้าจอเปลี่ยนเองจาก /auth/me)
         (await ServiceFor(FakeWorkspacePolicy.Paid(), PlanKind.Trial, expires)
+            .GetSessionRevocationReasonAsync()).Should().BeNull();
+        // ต่ออายุหลังหมด: claim ยังบอกอ่านอย่างเดียว แต่นโยบายเขียนได้แล้ว ไม่เตะ
+        (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: DateTime.UtcNow.AddDays(30)), PlanKind.Trial,
+                DateTime.UtcNow.AddDays(-1))
+            .GetSessionRevocationReasonAsync()).Should().BeNull();
+        // paid→trial: สิทธิ์ลดลง ต้อง login ใหม่
+        (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: expires), PlanKind.Paid, null)
             .GetSessionRevocationReasonAsync()).Should().Be(PlanAccess.PlanChangedReason);
         (await ServiceFor(FakeWorkspacePolicy.Trial(expiresAt: expires, readOnly: true, locked: true), PlanKind.Trial, expires)
             .GetSessionRevocationReasonAsync()).Should().Be(PlanAccess.PlanLockedReason);

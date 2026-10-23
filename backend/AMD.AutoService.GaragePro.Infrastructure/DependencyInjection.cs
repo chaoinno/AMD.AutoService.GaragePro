@@ -79,6 +79,9 @@ public static class DependencyInjection
         services.AddScoped<IJobRepository, JobRepository>();
         services.AddScoped<IJobNumberGenerator, JobNumberGenerator>();
         services.AddScoped<IJobBoardRepository, JobBoardRepository>();
+        // API ภายในของ GaragePro Admin (docs/17 §8.6) · อ่านอย่างเดียว · ไม่ต้องตั้ง self-serve (สาขา db2 ใช้ได้เสมอ)
+        services.AddScoped<AMD.AutoService.GaragePro.Application.Internal.IInternalSiteReader,
+            AMD.AutoService.GaragePro.Infrastructure.Internal.InternalSiteReader>();
         services.AddScoped<JobBoardService>();
         services.AddScoped<IIntakeChecklistRepository, IntakeChecklistRepository>();
         services.AddScoped<IIntakeChecklistService, IntakeChecklistService>();

@@ -10,10 +10,12 @@ import {
   isFeatureLocked,
   lockedFeatureForPath,
   lockedFeatures,
+  PAID_WARN_DAYS,
   trialTone,
 } from '../src/lib/plan.ts'
 
 const trial = (overrides = {}) => ({ kind: 'trial', readOnly: false, features: [], ...overrides })
+const paid = (overrides = {}) => ({ kind: 'paid', readOnly: false, features: [], ...overrides })
 const now = new Date('2026-10-13T03:00:00Z')
 
 test('registry keys match the backend feature strings and every path belongs to exactly one feature', () => {
@@ -70,7 +72,7 @@ test('lockedFeatureForPath matches by path prefix on segment boundaries only', (
   assert.equal(lockedFeatureForPath(trial(), '/reports/vehicle-history'), null)
 })
 
-test('trialTone: none for legacy/paid/no plan · warn at 7 days or less · expired when read-only or suspended', () => {
+test('trialTone: none for legacy/no plan · trial warns at 7 days or less · expired when read-only or suspended', () => {
   assert.equal(trialTone(undefined, now), 'none')
   assert.equal(trialTone({ kind: 'legacy', readOnly: false, features: [] }, now), 'none')
   assert.equal(trialTone({ kind: 'paid', readOnly: false, features: [] }, now), 'none')
@@ -94,7 +96,7 @@ test('daysLeftOf prefers the server value, falls back to trialEndsAt, and format
   assert.equal(daysLeftOf(trial({ trialEndsAt: '2026-10-12T00:00:00Z' }), now), 0)
   assert.equal(daysLeftOf(trial({ trialEndsAt: 'not-a-date' }), now), null)
   assert.equal(daysLeftOf(trial(), now), null)
-  assert.equal(daysLeftOf({ kind: 'paid', readOnly: false, features: [] }, now), null)
+  assert.equal(daysLeftOf({ kind: 'paid', readOnly: false, features: [] }, now), null, 'paid without an end date has no countdown')
   assert.equal(daysLeftOf(undefined, now), null)
 
   assert.equal(formatDaysLeft(23), 'เหลือ 23 วัน')
@@ -102,4 +104,29 @@ test('daysLeftOf prefers the server value, falls back to trialEndsAt, and format
   assert.equal(formatDaysLeft(0), 'หมดอายุวันนี้')
   assert.equal(formatDaysLeft(null), 'ไม่ทราบวันหมดอายุ')
   assert.equal(formatDaysLeft(undefined), 'ไม่ทราบวันหมดอายุ')
+})
+
+test('trialTone for paid plans: hidden normally, warns at 14 days or less, expired when read-only (docs/17 §6.1)', () => {
+  assert.equal(PAID_WARN_DAYS, 14)
+  // ไม่มีวันหมดอายุ หรือยังเหลือนาน = ไม่แสดงแถบ (พฤติกรรมเดิม)
+  assert.equal(trialTone(paid(), now), 'none')
+  assert.equal(trialTone(paid({ daysLeft: 60 }), now), 'none')
+  assert.equal(trialTone(paid({ daysLeft: 15 }), now), 'none')
+  assert.equal(trialTone(paid({ daysLeft: 14 }), now), 'warn')
+  assert.equal(trialTone(paid({ daysLeft: 8 }), now), 'warn', 'paid warns earlier than trial (8 > 7)')
+  assert.equal(trialTone(paid({ daysLeft: 0 }), now), 'warn')
+  // เดิมคืน none ก่อนตรวจ readOnly → อู่ที่จ่ายแล้วกลายเป็นอ่านอย่างเดียวโดยไม่มีคำอธิบาย
+  assert.equal(trialTone(paid({ readOnly: true }), now), 'expired')
+  assert.equal(trialTone(paid({ daysLeft: -3, readOnly: true }), now), 'expired')
+  // server ไม่ส่ง daysLeft → คำนวณจาก trialEndsAt (server ส่งชื่อฟิลด์นี้ให้ paid ด้วย)
+  assert.equal(trialTone(paid({ trialEndsAt: '2026-10-20T17:00:00Z' }), now), 'warn')
+  assert.equal(trialTone(paid({ trialEndsAt: '2026-12-31T17:00:00Z' }), now), 'none')
+})
+
+test('daysLeftOf counts down paid plans that have an end date, never suspended/legacy', () => {
+  assert.equal(daysLeftOf(paid({ daysLeft: 10 }), now), 10)
+  assert.equal(daysLeftOf(paid({ daysLeft: -4 }), now), 0)
+  assert.equal(daysLeftOf(paid({ trialEndsAt: '2026-10-14T00:00:00Z' }), now), 1)
+  assert.equal(daysLeftOf({ kind: 'suspended', readOnly: true, features: [], daysLeft: 5 }, now), null)
+  assert.equal(daysLeftOf({ kind: 'legacy', readOnly: false, features: [], daysLeft: 5 }, now), null)
 })

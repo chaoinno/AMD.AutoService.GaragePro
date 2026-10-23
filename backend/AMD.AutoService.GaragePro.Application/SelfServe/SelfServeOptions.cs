@@ -28,6 +28,7 @@ public sealed class SelfServeOptions
     public EmailOptions Email { get; set; } = new();
     public BlocklistOptions Blocklist { get; set; } = new();
     public JobsOptions Jobs { get; set; } = new();
+    public PackageOptions Package { get; set; } = new();
 
     /// <summary>ใช้สร้างลิงก์ในอีเมล/LINE — โดเมน canonical เดียว (docs/12 §8)</summary>
     public string PublicBaseUrl { get; set; } = "https://service.garage-pro.net";
@@ -128,6 +129,181 @@ public sealed class SelfServeOptions
         public string Url { get; set; } = "";
 
         public int RefreshDays { get; set; } = 30;
+    }
+
+    /// <summary>
+    /// แจ้งชำระเงิน/ต่ออายุแพ็กเกจ (docs/17 §5.5) · ค่าเริ่มต้นในโค้ดว่าง (ไม่มีราคา/บัญชี) · ค่าจริงของ production
+    /// (ราคา 3,999/เดือน + VAT 7% · บัญชีกสิกรไทย · เจ้าของยืนยัน 2026-10-22) อยู่ใน appsettings.json ของ API และ spadmin
+    /// · array ทุกตัวเริ่มว่างโดยตั้งใจ (ConfigurationBinder ต่อท้าย array เดิม · ดู <see cref="TrialOptions.ReminderDays"/>) อ่านผ่าน Effective...
+    /// · [SECURITY] <see cref="SlipLinkKey"/> · <see cref="LineCommandKey"/> · <see cref="LineRelayKey"/> อยู่ใน user-secrets / env file เท่านั้น
+    /// </summary>
+    public sealed class PackageOptions
+    {
+        public static readonly int[] DefaultMonthOptions = [1, 2, 3, 6, 12];
+        public static readonly int[] DefaultPaidReminderDays = [14, 3];
+
+        /// <summary>จำนวนเดือนสูงสุดที่รับได้ต่อรายการ (กันพิมพ์ config ผิดเป็น 120)</summary>
+        public const int MaxMonthCount = 36;
+
+        /// <summary>[SECURITY] คีย์ HMAC ของลิงก์สลิปต้องยาวอย่างน้อยเท่านี้ ไม่งั้นถือว่าไม่ได้ตั้ง (ไม่ส่งรูปเข้า LINE)</summary>
+        public const int MinSlipLinkKeyLength = 32;
+
+        /// <summary>เวลาที่โอนเกินเวลาปัจจุบันได้ไม่เกินเท่านี้ (นาฬิกาเครื่องลูกค้าคลาด · วงล้อนาทีของแอปปัดขึ้นทีละ 5 นาที)</summary>
+        public static readonly TimeSpan PaidAtFutureTolerance = TimeSpan.FromMinutes(5);
+
+        /// <summary>ว่าง = <see cref="DefaultMonthOptions"/> · อ่านผ่าน <see cref="EffectiveMonthOptions"/></summary>
+        public int[] MonthOptions { get; set; } = [];
+
+        /// <summary>
+        /// จำนวนเดือนที่ลูกค้าเลือกได้: ตัดซ้ำ · เฉพาะ 1..<see cref="MaxMonthCount"/> · เรียงน้อยไปมาก
+        /// · config ผิดทั้งหมด (เหลือว่าง) ใช้ค่าเริ่มต้น ดีกว่าเปิดหน้าแล้วไม่มีตัวเลือกให้เลือก
+        /// </summary>
+        public IReadOnlyList<int> EffectiveMonthOptions
+        {
+            get
+            {
+                var valid = MonthOptions.Where(m => m is >= 1 and <= MaxMonthCount).Distinct().Order().ToArray();
+                return valid.Length > 0 ? valid : DefaultMonthOptions;
+            }
+        }
+
+        /// <summary>
+        /// ราคาต่อเดือน**ก่อน VAT** (production 3,999 ใน appsettings.json) · ราคาของ N เดือน = N × ค่านี้ เว้นแต่ตั้ง <see cref="Prices"/>
+        /// · ≤ 0 หรือไม่ตั้ง = ไม่มีราคามาตรฐาน · คำนวณที่ <c>Package.PackagePricing</c> ที่เดียว
+        /// </summary>
+        public decimal? MonthlyPrice { get; set; }
+
+        /// <summary>
+        /// อัตรา VAT เป็นสัดส่วน (0.07 = 7%) บวกเพิ่มจากราคาก่อน VAT · ไม่ตั้ง/0 = ไม่แยก VAT (ยอดโอน = ราคาก่อน VAT)
+        /// · ต้องอยู่ช่วง 0 ถึงน้อยกว่า 1 · ผิดช่วง = ไม่แสดงราคาเลย (ดู <c>Package.PackagePricing</c>)
+        /// </summary>
+        public decimal? VatRate { get; set; }
+
+        /// <summary>
+        /// ราคาก่อน VAT ของจำนวนเดือนนั้นแทน N × <see cref="MonthlyPrice"/> (ไว้ทำส่วนลด) key = จำนวนเดือนเป็นข้อความ
+        /// (<c>SelfServe:Package:Prices:12 = 43990</c>) · ≤ 0 = ไม่ได้ตั้ง (กลับไปใช้ MonthlyPrice)
+        /// </summary>
+        public Dictionary<string, decimal> Prices { get; set; } = new(StringComparer.Ordinal);
+
+        public PaymentAccountOptions PaymentAccount { get; set; } = new();
+
+        public string SlipLinkKey { get; set; } = "";
+
+        /// <summary>คีย์ที่ใช้ได้จริง · null = ไม่ได้ตั้งหรือสั้นกว่า <see cref="MinSlipLinkKeyLength"/> ตัว</summary>
+        public string? EffectiveSlipLinkKey =>
+            SlipLinkKey?.Trim() is { Length: >= MinSlipLinkKeyLength } key ? key : null;
+
+        /// <summary>อายุของลิงก์สลิปที่ส่งเข้า LINE (วัน)</summary>
+        public int SlipLinkDays { get; set; } = 7;
+
+        /// <summary>โดเมน API (ไม่ใช่โดเมนเว็บ) ที่ LINE ใช้ดึงรูปสลิป</summary>
+        public string PublicApiBaseUrl { get; set; } = "https://gpservice-api.garage-pro.net";
+
+        /// <summary>อีเมลเตือนอู่ paid ก่อนหมดอายุ (วัน) · ว่าง = <see cref="DefaultPaidReminderDays"/></summary>
+        public int[] PaidReminderDays { get; set; } = [];
+
+        public IReadOnlyList<int> EffectivePaidReminderDays =>
+            PaidReminderDays.Length > 0 ? PaidReminderDays.Where(d => d > 0).Distinct().ToArray() : DefaultPaidReminderDays;
+
+        /// <summary>วันที่โอนย้อนหลังได้ไม่เกินกี่วัน</summary>
+        public int PaidAtMaxPastDays { get; set; } = 60;
+
+        /// <summary>แจ้งชำระของสาขา GaragePro (db1/db2 กลุ่ม Service) ผ่านระบบแจ้งชำระเดิม (docs/17 §8.7.1)</summary>
+        public GarageProApiOptions GarageProApi { get; set; } = new();
+
+        /// <summary>
+        /// [SECURITY] คีย์ HMAC ของคำสั่ง <c>/SP_…</c> บนปุ่มของการ์ด LINE (docs/17 §8.7.2) · ≥ 32 ตัว · user-secrets/env file เท่านั้น
+        /// · ไม่ตั้ง = การ์ดไม่มีปุ่ม (อนุมัติผ่าน Admin/spadmin) และคำสั่งที่ส่งมาตรวจไม่ผ่านทุกครั้ง
+        /// </summary>
+        public string LineCommandKey { get; set; } = "";
+
+        public string? EffectiveLineCommandKey =>
+            LineCommandKey?.Trim() is { Length: >= MinSlipLinkKeyLength } key ? key : null;
+
+        /// <summary>
+        /// [SECURITY] คีย์ร่วมที่ตัวส่งต่อข้อความ LINE ส่งมาใน header <c>X-Line-Relay-Key</c> · ≥ 32 ตัว · user-secrets/env file เท่านั้น
+        /// · ไม่ตั้ง = <c>POST /api/v1/public/line-commands</c> ตอบ 404
+        /// </summary>
+        public string LineRelayKey { get; set; } = "";
+
+        public string? EffectiveLineRelayKey =>
+            LineRelayKey?.Trim() is { Length: >= MinSlipLinkKeyLength } key ? key : null;
+
+        /// <summary>
+        /// LINE userId ที่กดอนุมัติ/ปฏิเสธผ่าน LINE ได้ · ว่าง = ทุกคนในกลุ่มทีมงาน (และคำสั่งที่ไม่มี groupId ถูกปฏิเสธ)
+        /// · array เริ่มว่างโดยตั้งใจ (ConfigurationBinder ต่อท้าย array เดิม)
+        /// </summary>
+        public string[] LineApproverUserIds { get; set; } = [];
+
+        public IReadOnlyList<string> EffectiveLineApproverUserIds =>
+            LineApproverUserIds.Select(id => id?.Trim() ?? "").Where(id => id.Length > 0).Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+        /// <summary>ลิงก์หน้าตรวจการแจ้งชำระใน GaragePro Admin (ไม่บังคับ) · ใส่ในคำตอบ LINE เมื่อทีมงานต้องไปอนุมัติที่นั่น</summary>
+        public string AdminReviewUrl { get; set; } = "";
+
+        public const string DefaultLineIconBaseUrl = "https://service.garage-pro.net/line-icons/";
+
+        /// <summary>
+        /// ที่อยู่ไอคอนบนการ์ด LINE (PNG ของ Material Design Icons · เก็บที่ <c>web/public/line-icons/</c> โครงโฟลเดอร์ตามแพ็กเกจต้นทาง) ·
+        /// LINE ดึงรูปเองจึงต้องเป็น https ที่เปิดได้จากภายนอก · เครื่องทดสอบชี้ไป CDN ของแพ็กเกจเดียวกันได้ (ไฟล์ชุดเดียวกัน)
+        /// </summary>
+        public string LineIconBaseUrl { get; set; } = DefaultLineIconBaseUrl;
+
+        public string EffectiveLineIconBaseUrl =>
+            System.Uri.TryCreate(LineIconBaseUrl?.Trim(), UriKind.Absolute, out var uri) && uri.Scheme == System.Uri.UriSchemeHttps
+                ? uri.AbsoluteUri.EndsWith('/') ? uri.AbsoluteUri : uri.AbsoluteUri + "/"
+                : DefaultLineIconBaseUrl;
+    }
+
+    /// <summary>
+    /// API แจ้งชำระของระบบ GaragePro เดิม (docs/17 §8.7.1) · <see cref="BaseUrl"/>/<see cref="SlipBaseUrl"/> ไม่มีค่าเริ่มต้นในโค้ด
+    /// · ว่าง = ปิด (หน้าแพ็กเกจของสาขา db2 บอกว่ายังแจ้งชำระผ่านระบบไม่ได้)
+    /// </summary>
+    public sealed class GarageProApiOptions
+    {
+        /// <summary>shard → zone ของ API เดิม (ไม่ใช่ความลับ) · ใช้เมื่อไม่ได้ตั้ง <see cref="Zones"/></summary>
+        public static readonly IReadOnlyDictionary<string, int> DefaultZones =
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase) { ["db1"] = 1, ["db2"] = 2 };
+
+        public string BaseUrl { get; set; } = "";
+
+        /// <summary>ต้นทางของรูปสลิปที่ระบบเดิมเก็บ (path ในตารางเป็น relative) · ว่าง = ไม่ส่งลิงก์สลิป</summary>
+        public string SlipBaseUrl { get; set; } = "";
+
+        /// <summary>ว่าง = <see cref="DefaultZones"/></summary>
+        public Dictionary<string, int> Zones { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public IReadOnlyDictionary<string, int> EffectiveZones =>
+            Zones.Count > 0 ? new Dictionary<string, int>(Zones, StringComparer.OrdinalIgnoreCase) : DefaultZones;
+
+        public int? ZoneFor(string? shardKey) =>
+            !string.IsNullOrWhiteSpace(shardKey) && EffectiveZones.TryGetValue(shardKey.Trim(), out var zone) ? zone : null;
+
+        /// <summary>ลิงก์ http(s) แบบเต็ม · null = ไม่ได้ตั้งหรือรูปแบบผิด</summary>
+        public Uri? EffectiveBaseUrl => Absolute(BaseUrl);
+
+        public Uri? EffectiveSlipBaseUrl => Absolute(SlipBaseUrl);
+
+        private static Uri? Absolute(string? value) =>
+            Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+                ? uri
+                : null;
+    }
+
+    /// <summary>บัญชีรับเงินที่แสดงบนหน้าแจ้งชำระ (ไม่ใช่ความลับ แสดงให้ลูกค้าทุกคน · ค่า production อยู่ใน appsettings.json)</summary>
+    public sealed class PaymentAccountOptions
+    {
+        public string BankName { get; set; } = "";
+        public string AccountNo { get; set; } = "";
+        public string AccountName { get; set; } = "";
+        public string PromptPayId { get; set; } = "";
+
+        /// <summary>[BIZ] ต้องมีชื่อบัญชี + (เลขบัญชี หรือ PromptPay) ไม่งั้นแจ้งชำระไม่ได้ (ลูกค้าไม่รู้จะโอนไปไหน)</summary>
+        public bool IsConfigured =>
+            !string.IsNullOrWhiteSpace(AccountName)
+            && (!string.IsNullOrWhiteSpace(AccountNo) || !string.IsNullOrWhiteSpace(PromptPayId));
     }
 
     /// <summary>เวลาไทย (Asia/Bangkok) รูปแบบ HH:mm — งานรายวันของ S4</summary>

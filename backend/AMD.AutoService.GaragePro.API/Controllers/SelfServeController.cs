@@ -54,6 +54,7 @@ public sealed class SelfServeController(IServiceProvider services) : ControllerB
     /// </summary>
     public static int StatusFor(string? code) =>
         SelfServeErrors.StatusCodeFor(code)
+        ?? Application.SelfServe.Package.PackageErrors.StatusCodeFor(code)
         ?? SelfServeLifecycleErrors.StatusCodeFor(code)
         ?? PlanErrors.StatusCodeFor(code)
         ?? code switch
