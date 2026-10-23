@@ -65,6 +65,14 @@ public class WorkspacePurgerTests
             return Task.FromResult<IReadOnlyList<string>>(AttachmentPaths);
         }
 
+        public List<string> SlipPaths { get; } = [];
+
+        public Task<IReadOnlyList<string>> ReadPackageSlipPathsAsync(Guid workspaceId, CancellationToken ct = default)
+        {
+            log.Add("slips");
+            return Task.FromResult<IReadOnlyList<string>>(SlipPaths);
+        }
+
         public Task<ServicePurgeResult> PurgeServiceDataAsync(IServiceProvider scope, ServicePurgeScope purgeScope,
             CancellationToken ct = default)
         {
@@ -209,7 +217,7 @@ public class WorkspacePurgerTests
         h.Log.Should().Equal(
             "check:sp1", "find", "users", $"scope:sp1/{BranchId}", "paths",
             $"file:sp1/{BranchId}/job1/intake/a.jpg", $"file:sp1/{BranchId}/job1/chat/b.png",
-            $"scope:sp1/{BranchId}", "svc",
+            $"scope:sp1/{BranchId}", "svc", "slips",
             "shadow", "image:2026/10/5_1.jpg", "image:Car/9.jpg", "mark");
         h.Data.ServiceScope.Should().BeEquivalentTo(new ServicePurgeScope("sp1", BranchId, [11, 12]));
         h.Data.ScopeUser!.ShardKey.Should().Be("sp1", "ServiceDbContext ของ scope ต้องชี้ GarageSelfServe");
@@ -222,6 +230,39 @@ public class WorkspacePurgerTests
         report.DeletedRows.Should().Contain("svc_Job", 2).And.Contain("dbo.Branch", 1);
         h.Data.Marked!.Value.Actor.Should().Be("system:lifecycle");
         h.Data.Marked.Value.Payload.Should().Contain("\"filesDeleted\":2");
+    }
+
+    [Fact]
+    public async Task Package_slip_files_are_deleted_before_the_tombstone_and_through_the_branch_prefix_guard()
+    {
+        var h = Create();
+        h.Data.SlipPaths.Add($"sp1/{BranchId}/package-slip/aa/bb.jpg");
+        h.Data.SlipPaths.Add("sp1/999/package-slip/cc/dd.jpg");   // อ้างสาขาอื่น · ห้ามลบ
+
+        var result = await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target!.WorkspaceId, "system:lifecycle"));
+
+        result.Success.Should().BeTrue();
+        h.Log.IndexOf($"file:sp1/{BranchId}/package-slip/aa/bb.jpg").Should().BeLessThan(h.Log.IndexOf("mark"));
+        h.Log.Should().NotContain("file:sp1/999/package-slip/cc/dd.jpg");
+        result.Data!.FilesFailed.Should().Contain("sp1/999/package-slip/cc/dd.jpg");
+    }
+
+    [Fact]
+    public async Task Workspace_with_a_pending_payment_is_not_purged_without_confirmation()
+    {
+        var h = Create();
+        h.Data.Target = h.Data.Target! with { HasPendingPayment = true };
+
+        var refused = await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target.WorkspaceId, "system:lifecycle"));
+        refused.Success.Should().BeFalse();
+        refused.Error!.Code.Should().Be(SelfServeLifecycleErrors.PurgeRefusedCode);
+        refused.Error.MessageTh.Should().Contain("แจ้งชำระรอตรวจ");
+        h.Log.Should().NotContain("svc").And.NotContain("mark");
+
+        var allowed = await h.Purger.PurgeAsync(new WorkspacePurgeRequest(h.Data.Target.WorkspaceId, "spadmin:noi",
+            AllowPaid: true));
+        allowed.Success.Should().BeTrue("ทีมงานยืนยัน --allow-paid แล้ว");
+        h.Log.Should().Contain("mark");
     }
 
     [Theory]

@@ -55,6 +55,8 @@ class UnreadNotificationCount extends Notifier<int?> {
 /// ตรงกับเว็บ (`notificationHref` ใน web/src/api/notifications.ts) ที่เปิดการ์ดจ๊อบขั้นเสนอราคา
 String? notificationTarget(AppNotification n) {
   final jobId = n.jobId;
+  // ผลตรวจการแจ้งชำระแพ็กเกจไม่ผูกจ๊อบ พาไปหน้าแพ็กเกจ (ตรงกับ linkHint "package" ของ server)
+  if (n.entityType == packagePaymentEntityType || n.linkHint == 'package') return Routes.package;
   if (n.entityType == 'PR' || n.entityType == 'PO') return null;
   if (jobId == null || jobId.isEmpty) return null;
   if (n.linkHint == 'chat') return Routes.jobChat(jobId);

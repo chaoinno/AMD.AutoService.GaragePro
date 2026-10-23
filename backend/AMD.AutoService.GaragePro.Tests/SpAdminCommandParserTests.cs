@@ -99,6 +99,55 @@ public class SpAdminCommandParserTests
         CommandParser.Usage(helpFor).Should().Contain("spadmin");
     }
 
+    // ───────────────────────────────────────────── แจ้งชำระ (docs/17 §7)
+
+    [Fact]
+    public void Payment_commands_parse_with_their_options()
+    {
+        CommandParser.Parse(["payments"]).Command!.Get("status").Should().BeNull("ค่าเริ่มต้น pending ตัดสินที่ runner");
+        CommandParser.Parse(["payments", "--status", "ALL", "--workspace", "SP1042"]).Command!.Get("status").Should().Be("all");
+
+        var approve = CommandParser.Parse(
+            ["approve-payment", "--id", "3f2a9c1b", "--by", "noi", "--until", "2027-02-13", "--note", "ส่วนลด"]).Command!;
+        approve.Get("id").Should().Be("3f2a9c1b");
+        approve.Get("until").Should().Be("2027-02-13");
+        CommandRunner.Actor(approve).Should().Be("spadmin:noi");
+
+        CommandParser.Parse(["reject-payment", "--id", "3f2a9c1b", "--by", "noi", "--reason", "Not_Received"])
+            .Command!.Get("reason").Should().Be("not_received");
+    }
+
+    [Theory]
+    [InlineData(new[] { "approve-payment", "--id", "3f2a9c1b" }, "--by")]
+    [InlineData(new[] { "reject-payment", "--id", "3f2a9c1b", "--reason", "other" }, "--by")]
+    [InlineData(new[] { "reject-payment", "--id", "3f2a9c1b", "--by", "noi" }, "--reason")]
+    [InlineData(new[] { "reject-payment", "--id", "3f2a9c1b", "--by", "noi", "--reason", "fraud" },
+        "slip_unreadable|amount_mismatch|not_received|duplicate|other")]
+    [InlineData(new[] { "payments", "--status", "deleted" }, "pending|approved|rejected|cancelled|all")]
+    [InlineData(new[] { "payment" }, "--id")]
+    [InlineData(new[] { "payment", "3f2a9c1b" }, "ไม่เข้าใจ")]
+    public void Payment_commands_reject_missing_or_unknown_values(string[] args, string expected)
+    {
+        var result = CommandParser.Parse(args);
+
+        result.Command.Should().BeNull();
+        result.Error.Should().Contain(expected);
+    }
+
+    [Fact]
+    public void Approving_or_rejecting_money_requires_an_explicit_operator()
+    {
+        foreach (var name in new[] { "approve-payment", "reject-payment" })
+        {
+            var spec = CommandParser.Find(name)!;
+            spec.Mutates.Should().BeTrue();
+            spec.Options.Single(o => o.Name == "by").Required.Should().BeTrue("ใน container $USER ไม่มีความหมาย");
+        }
+
+        CommandParser.Find("payments")!.Mutates.Should().BeFalse();
+        CommandParser.Find("payment")!.Mutates.Should().BeFalse();
+    }
+
     [Fact]
     public void Every_mutating_command_accepts_an_operator_name()
     {
@@ -185,6 +234,8 @@ public class SpAdminCommandParserTests
         var sp = scope.ServiceProvider;
 
         sp.GetRequiredService<SelfServeAdminService>().Should().NotBeNull();
+        sp.GetRequiredService<Application.SelfServe.Package.PackagePaymentAdminService>().Should().NotBeNull(
+            "payments/payment/approve-payment/reject-payment");
         sp.GetRequiredService<IConversionService>().Should().BeOfType<ConversionService>();
         sp.GetRequiredService<ISelfServeAdminRepository>().CheckWritableDatabase().Should().BeNull();
         sp.GetRequiredService<ICurrentUser>().ShardKey.Should().Be("db2", "scope ที่ไม่ได้ตั้ง override = ผู้ใช้ระบบของ db2");

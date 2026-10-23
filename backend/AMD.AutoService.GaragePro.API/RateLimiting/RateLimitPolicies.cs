@@ -28,4 +28,7 @@ public static class RateLimitPolicies
 
     /// <summary>ฟอร์มติดต่อ ต่อ IP 5 ครั้ง/10 นาที (เดิม)</summary>
     public const string PublicContact = PublicContactController.RateLimitPolicy;
+
+    /// <summary>แจ้งชำระแพ็กเกจ ต่อ shard:สาขา (ต่ออู่) 10 ครั้ง/ชม. (docs/17 §5.1) · นับทุกคำขอรวมที่ถูกปฏิเสธ (กันยิงอัปโหลดไฟล์ซ้ำ)</summary>
+    public const string PackagePaymentSubmit = "package-payment-submit";
 }

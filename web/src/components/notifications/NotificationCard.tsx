@@ -25,6 +25,8 @@ const KINDS: Record<string, { icon: LucideIcon; tone: Tone; label: string }> = {
   'purchase.pending': { icon: Hourglass, tone: 'warning', label: 'รออนุมัติ' },
   'purchase.approved': { icon: BadgeCheck, tone: 'success', label: 'อนุมัติแล้ว' },
   'purchase.returned': { icon: Undo2, tone: 'danger', label: 'ถูกตีกลับ' },
+  'package.payment_approved': { icon: BadgeCheck, tone: 'success', label: 'อนุมัติการชำระเงินแล้ว' },
+  'package.payment_rejected': { icon: CircleX, tone: 'danger', label: 'ปฏิเสธการแจ้งชำระเงิน' },
 }
 
 const FALLBACK = { icon: Bell, tone: 'neutral' as Tone, label: 'แจ้งเตือน' }

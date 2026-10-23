@@ -39,7 +39,7 @@ test('structured data contains the shared FAQ, verified trial offer and contact 
   assert.equal(organization.contactPoint.telephone, '+66-90-996-6446')
   assert.equal(organization.logo, 'https://canonical.example/servicepro-logo.png')
   assert.deepEqual(software.offers, { '@type': 'Offer', price: '0', priceCurrency: 'THB', description: 'ทดลองใช้ฟรี 30 วัน' })
-  assert.equal(software.operatingSystem, 'Web, Android')
+  assert.equal(software.operatingSystem, 'Web, Android, iOS')
   assert.equal(software.description, PUBLIC_ROUTES[0].description)
   assert.ok(!('aggregateRating' in software) && !('review' in software))
   assert.deepEqual(faq.mainEntity.map((item) => ({ q: item.name, a: item.acceptedAnswer.text })), FAQ_ITEMS)

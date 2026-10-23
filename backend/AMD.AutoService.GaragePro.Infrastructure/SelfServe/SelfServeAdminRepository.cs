@@ -58,14 +58,16 @@ public sealed class SelfServeAdminRepository(
             .ToListAsync(ct);
         if (rows.Count == 0) return [];
 
-        var ends = await ReadBranchEndsAsync(ct);
+        var branches = await ReadBranchPackagesAsync(ct);
         return rows.Select(r =>
         {
             var w = r.Workspace;
-            var branchEnd = w.BranchId is { } b && ends.TryGetValue(b, out var e) ? e : null;
-            var endsAt = branchEnd ?? (w.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended ? w.TrialEndsAt : null);
+            var branch = w.BranchId is { } b ? branches.GetValueOrDefault(b) : null;
+            var endsAt = branch?.EndsAtUtc
+                         ?? (w.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended ? w.TrialEndsAt : null);
             return new AdminWorkspaceRow(w.Id, w.WorkspaceNo, w.BranchId, w.Name, w.Phone, w.Plan, w.Status, endsAt,
-                w.CreatedAt, r.Email, w.PurgeAfter, w.ConvertedToBranchId);
+                w.CreatedAt, r.Email, w.PurgeAfter, w.ConvertedToBranchId, branch, w.TrialStartsAt, w.TrialEndsAt,
+                w.ExtensionRequestedAt);
         }).ToList();
     }
 
@@ -120,56 +122,151 @@ public sealed class SelfServeAdminRepository(
             db.ChangeTracker.Clear();
             await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-            var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Id == change.WorkspaceId, ct)
-                            ?? throw new InvalidOperationException($"ไม่พบ workspace {change.WorkspaceId}");
-            if (workspace.BranchId != change.BranchId)
-                throw new InvalidOperationException(
-                    $"สาขาของ workspace เปลี่ยนไประหว่างทำงาน ({workspace.BranchId} ≠ {change.BranchId}) ยกเลิก");
+            var workspace = await LoadWorkspaceForChangeAsync(change, ct);
+            if (change.SetBranchEnd && await UpdateBranchEndAsync(change, guard: null, ct) != 1)
+                throw new InvalidOperationException($"ไม่พบแถว Branch {change.BranchId} ในฐาน self-serve ยกเลิก");
 
-            if (change.SetBranchEnd)
-            {
-                var local = change.EndsAtUtc is { } end ? BranchPackageDates.ToBranchLocal(end) : (DateTime?)null;
-                var rows = await db.Database.ExecuteSqlRawAsync(UpdateBranchEndSql,
-                    [
-                        new SqlParameter("@EndPackageDate", System.Data.SqlDbType.DateTime) { Value = (object?)local ?? DBNull.Value },
-                        new SqlParameter("@BranchId", change.BranchId)
-                    ], ct);
-                if (rows != 1)
-                    throw new InvalidOperationException($"ไม่พบแถว Branch {change.BranchId} ในฐาน self-serve ยกเลิก");
-
-                workspace.TrialEndsAt = change.EndsAtUtc;   // สำเนาต้องตรงกับ Branch เสมอ (Workspace.cs)
-            }
-
-            workspace.Plan = change.Plan;
-            workspace.Status = change.Status;
-            if (change.ClearPurgeAfter) workspace.PurgeAfter = null;
-            workspace.UpdatedAt = change.Now;
-
-            db.WorkspaceAudits.Add(new WorkspaceAudit
-            {
-                WorkspaceId = change.WorkspaceId,
-                Action = change.AuditAction,
-                Actor = Limit(change.Actor, 200) ?? string.Empty,
-                Note = Limit(change.Note, 1000),
-                PayloadJson = change.PayloadJson,
-                CreatedAt = change.Now
-            });
-
+            ApplyWorkspaceChange(workspace, change);
             await db.SaveChangesAsync(ct);
             await tx.CommitAsync(ct);
         });
     }
 
-    private async Task<Dictionary<int, DateTime?>> ReadBranchEndsAsync(CancellationToken ct)
+    public async Task<ApprovePaymentOutcome> ApprovePaymentAsync(WorkspacePackageChange change,
+        PackagePaymentApproval approval, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(change);
+        ArgumentNullException.ThrowIfNull(approval);
+        if (!change.SetBranchEnd || change.EndsAtUtc is null)
+            throw new ArgumentException("การอนุมัติต้องกำหนดวันหมดใหม่เสมอ", nameof(change));
+        if (CheckWritableDatabase() is { } mismatch)
+            throw new InvalidOperationException($"ไม่เขียนฐาน: {mismatch}");
+
+        var reviewedBy = Limit(approval.ReviewedBy, 200);
+        var reviewNote = Limit(approval.ReviewNote, 1000);
+
+        return await db.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            db.ChangeTracker.Clear();
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+            // (1) รายการก่อน: Pending → Approved แบบมีเงื่อนไข · คนที่สองที่กดพร้อมกันรอล็อกแถวนี้แล้วได้ 0 แถว
+            var rows = await db.PackagePayments
+                .Where(p => p.Id == approval.PaymentId && p.WorkspaceId == change.WorkspaceId
+                            && p.Status == PackagePaymentStatus.Pending)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(p => p.Status, PackagePaymentStatus.Approved)
+                    .SetProperty(p => p.ReviewedBy, reviewedBy)
+                    .SetProperty(p => p.ReviewedAt, (DateTime?)approval.ReviewedAt)
+                    .SetProperty(p => p.ReviewNote, reviewNote)
+                    .SetProperty(p => p.PrevEndsAt, approval.PrevEndsAt)
+                    .SetProperty(p => p.PeriodStartsAt, (DateTime?)approval.PeriodStartsAt)
+                    .SetProperty(p => p.PeriodEndsAt, (DateTime?)approval.PeriodEndsAt), ct);
+            if (rows == 0)
+            {
+                // retry ของ execution strategy หลัง commit สำเร็จแต่เน็ตหลุดตอนตอบกลับ = ผลของคำขอนี้เอง
+                var current = await db.PackagePayments.AsNoTracking()
+                    .FirstOrDefaultAsync(p => p.Id == approval.PaymentId, ct);
+                return current is { Status: PackagePaymentStatus.Approved } && current.ReviewedBy == reviewedBy
+                                                                             && current.ReviewedAt == approval.ReviewedAt
+                    ? ApprovePaymentOutcome.Applied
+                    : ApprovePaymentOutcome.PaymentNotPending;
+            }
+
+            // (2) Branch: ต่อเมื่อวันหมดยังเป็นค่าที่อ่านมา · ไม่ตรง = มีคนเลื่อนวันพร้อมกัน rollback ทั้งหมด (รายการกลับเป็น Pending)
+            var workspace = await LoadWorkspaceForChangeAsync(change, ct);
+            if (await UpdateBranchEndAsync(change, new BranchEndGuard(approval.ExpectedBranchEndUtc), ct) != 1)
+                return ApprovePaymentOutcome.BranchEndChanged;
+
+            // (3) sp_Workspace + audit แล้ว commit ครั้งเดียว
+            ApplyWorkspaceChange(workspace, change);
+            await db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+            return ApprovePaymentOutcome.Applied;
+        });
+    }
+
+    /// <summary>
+    /// เงื่อนไขกันชนของ UPDATE Branch · ส่งเป็น SqlDbType.DateTime เวลาไทย (ชนิดเดียวกับคอลัมน์) ให้เทียบเท่ากันได้ตรงทุก tick
+    /// ของค่าที่ Dapper อ่านมา (datetime ละเอียด 1/300 วิ · แปลง ToUtc แล้ว ToBranchLocal กลับได้ค่าเดิม)
+    /// </summary>
+    private sealed record BranchEndGuard(DateTime? ExpectedEndUtc);
+
+    internal const string ExpectedEndCondition =
+        " AND ((@ExpectedEnd IS NULL AND EndPackageDate IS NULL) OR EndPackageDate = @ExpectedEnd)";
+
+    private async Task<Workspace> LoadWorkspaceForChangeAsync(WorkspacePackageChange change, CancellationToken ct)
+    {
+        var workspace = await db.Workspaces.FirstOrDefaultAsync(w => w.Id == change.WorkspaceId, ct)
+                        ?? throw new InvalidOperationException($"ไม่พบ workspace {change.WorkspaceId}");
+        if (workspace.BranchId != change.BranchId)
+            throw new InvalidOperationException(
+                $"สาขาของ workspace เปลี่ยนไประหว่างทำงาน ({workspace.BranchId} ≠ {change.BranchId}) ยกเลิก");
+        return workspace;
+    }
+
+    private Task<int> UpdateBranchEndAsync(WorkspacePackageChange change, BranchEndGuard? guard, CancellationToken ct)
+    {
+        var local = change.EndsAtUtc is { } end ? BranchPackageDates.ToBranchLocal(end) : (DateTime?)null;
+        var parameters = new List<SqlParameter>
+        {
+            new("@EndPackageDate", System.Data.SqlDbType.DateTime) { Value = (object?)local ?? DBNull.Value },
+            new("@BranchId", change.BranchId)
+        };
+        var sql = UpdateBranchEndSql;
+        if (guard is not null)
+        {
+            var expected = guard.ExpectedEndUtc is { } e ? BranchPackageDates.ToBranchLocal(e) : (DateTime?)null;
+            parameters.Add(new SqlParameter("@ExpectedEnd", System.Data.SqlDbType.DateTime)
+            {
+                Value = (object?)expected ?? DBNull.Value
+            });
+            sql += ExpectedEndCondition;
+        }
+
+        return db.Database.ExecuteSqlRawAsync(sql, parameters, ct);
+    }
+
+    private void ApplyWorkspaceChange(Workspace workspace, WorkspacePackageChange change)
+    {
+        if (change.SetBranchEnd) workspace.TrialEndsAt = change.EndsAtUtc;   // สำเนาต้องตรงกับ Branch เสมอ (Workspace.cs)
+
+        workspace.Plan = change.Plan;
+        workspace.Status = change.Status;
+        if (change.ClearPurgeAfter) workspace.PurgeAfter = null;
+        workspace.UpdatedAt = change.Now;
+
+        db.WorkspaceAudits.Add(new WorkspaceAudit
+        {
+            WorkspaceId = change.WorkspaceId,
+            Action = change.AuditAction,
+            Actor = Limit(change.Actor, 200) ?? string.Empty,
+            Note = Limit(change.Note, 1000),
+            PayloadJson = change.PayloadJson,
+            CreatedAt = change.Now
+        });
+    }
+
+    /// <summary>
+    /// แพ็กเกจของทุกสาขาใน shard sp1 ครั้งเดียว (ไม่ยิงทีละอู่) · ชุดคอลัมน์เดียวกับ <see cref="WorkspacePlanReader.BranchPackageSql"/>
+    /// ให้ <see cref="PlanPolicy"/> ประเมินได้ครบ (สถานะ Branch · วันเริ่ม · วันหมด) · เวลาไทย → UTC ที่นี่
+    /// </summary>
+    internal const string BranchPackagesSql = """
+        SELECT b.Id, ISNULL(b.Status, 0) AS Status, b.StartPackageDate, b.PackageDaysAmout, b.EndPackageDate
+        FROM Branch b WITH (READUNCOMMITTED)
+        """;
+
+    private async Task<Dictionary<int, BranchPackage>> ReadBranchPackagesAsync(CancellationToken ct)
     {
         if (!_legacy.ConnectionStrings.TryGetValue(_options.ShardKey, out var cs) || string.IsNullOrWhiteSpace(cs))
             throw new InvalidOperationException(
                 $"ไม่รู้จัก shard '{_options.ShardKey}' ตั้งค่า {LegacyShardOptions.SectionName}:ConnectionStrings:{_options.ShardKey}");
 
         await using var connection = new SqlConnection(cs);
-        var rows = await connection.QueryAsync<(int Id, DateTime? EndPackageDate)>(
-            new CommandDefinition(SelfServeLifecycleRepository.BranchEndDatesSql, cancellationToken: ct));
-        return rows.ToDictionary(r => r.Id, r => BranchPackageDates.ToUtc(r.EndPackageDate));
+        var rows = await connection.QueryAsync<(int Id, int Status, DateTime? StartPackageDate, int? PackageDaysAmout,
+            DateTime? EndPackageDate)>(new CommandDefinition(BranchPackagesSql, cancellationToken: ct));
+        return rows.ToDictionary(r => r.Id, r => new BranchPackage(r.Id, r.Status,
+            BranchPackageDates.ToUtc(r.StartPackageDate), r.PackageDaysAmout, BranchPackageDates.ToUtc(r.EndPackageDate)));
     }
 
     private static string? Limit(string? value, int max) =>

@@ -29,3 +29,6 @@ appsettings.*.local.json
 
 # macOS
 .DS_Store
+
+# เอกสารภายในทีมเรื่องขั้นตอนต่ออายุของระบบเดิม: ห้าม commit (repo นี้เป็น public)
+docs/Package-Renewal-Flow*.md

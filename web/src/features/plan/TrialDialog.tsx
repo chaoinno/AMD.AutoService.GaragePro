@@ -1,5 +1,6 @@
-import { CheckCircle2, CircleAlert, ExternalLink, Lock, MessageCircle, Send } from 'lucide-react'
+import { CheckCircle2, CircleAlert, ExternalLink, Lock, MessageCircle, Send, Wallet } from 'lucide-react'
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import { isApiError, PLAN_ERROR_EVENT } from '../../api/client'
 import { isExtensionAlreadyRequested } from '../../api/selfserve'
 import type { ApiError } from '../../api/types'
@@ -71,6 +72,12 @@ export function TrialDialogProvider({ children }: { children: ReactNode }) {
 
 function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClose: () => void }) {
   const { mutation, alreadyRequested } = useExtensionRequest()
+  const { plan } = useSessionPlan()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const paid = plan?.kind === 'paid'
+  // อู่ที่ถูกระงับแจ้งชำระไม่ได้ (PACKAGE_NOT_RENEWABLE) · อยู่หน้าแพ็กเกจอยู่แล้วไม่ต้องพาไปซ้ำ
+  const showPayLink = plan?.kind !== 'suspended' && pathname !== '/package'
   const [note, setNote] = useState(request.note ?? '')
   // requestId ใหม่ทุกครั้งที่แก้หมายเหตุ — กด "ลองใหม่" หลังเน็ตหลุดโดยไม่แก้อะไรใช้ค่าเดิม ทีมขายไม่ได้ข้อความซ้ำ
   const [requestId, setRequestId] = useState(() => crypto.randomUUID())
@@ -92,8 +99,8 @@ function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClos
     : request.error?.code === 'PLAN_LIMIT_REACHED'
       ? 'ครบจำนวนที่แพ็กเกจทดลองใช้รองรับ'
       : request.error?.code === 'TRIAL_EXPIRED'
-        ? 'ช่วงทดลองใช้สิ้นสุดแล้ว'
-        : 'ขอต่ออายุ / สมัครแพ็กเกจ'
+        ? paid ? 'แพ็กเกจหมดอายุแล้ว' : 'ช่วงทดลองใช้สิ้นสุดแล้ว'
+        : paid ? 'ขอให้ทีมงานติดต่อ' : 'ขอต่ออายุ / สมัครแพ็กเกจ'
 
   return (
     <ConfirmModal
@@ -168,6 +175,23 @@ function TrialDialog({ request, onClose }: { request: TrialDialogRequest; onClos
             }}
           />
         </Label>
+
+        {showPayLink ? (
+          <div className="trial-dialog__contact trial-dialog__contact--pay">
+            <Wallet aria-hidden="true" />
+            <span>โอนเงินแล้ว? แจ้งชำระเงินพร้อมสลิป ทีมงานตรวจแล้วต่ออายุให้</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onClose()
+                navigate('/package')
+              }}
+            >
+              แจ้งชำระเงิน
+            </Button>
+          </div>
+        ) : null}
 
         <div className="trial-dialog__contact">
           <MessageCircle aria-hidden="true" />

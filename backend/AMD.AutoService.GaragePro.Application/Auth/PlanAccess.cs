@@ -63,26 +63,33 @@ public static class PlanAccess
         utc is { } v ? new DateTimeOffset(DateTime.SpecifyKind(v, DateTimeKind.Utc)).ToUnixTimeSeconds() : null;
 
     /// <summary>
-    /// ตัดสิน token ของอู่ที่สมัครเองเทียบกับนโยบายปัจจุบัน — null = ยังใช้ได้ · มีค่า = ข้อความไทยให้เข้าสู่ระบบใหม่
+    /// ตัดสิน token ของอู่ที่สมัครเองเทียบกับนโยบายปัจจุบัน: null = ยังใช้ได้ · มีค่า = ข้อความไทยให้เข้าสู่ระบบใหม่
+    /// [BIZ] เตะออกเฉพาะเมื่อนโยบาย "เข้มกว่า" claim (เจ้าของเลือก 2026-10-21 · docs/17 หัวข้อ 4.1 D8) เพราะช่างที่จำรหัสสุ่มไม่ได้
+    /// จะเข้าระบบไม่ได้ทุกรอบที่อนุมัติแพ็กเกจหรือต่ออายุ และ token มือถืออายุ 10 ปี claim จึงค้างค่าเก่าได้ตลอด
     /// · legacy (นโยบายเป็น Legacy และ token ไม่มี claim หรือเป็น legacy) → null เสมอ = พฤติกรรมเดิม
     /// · ถูกล็อก (เลยช่วงอ่านอย่างเดียว / ระงับ) → <see cref="PlanLockedReason"/>
-    /// · ชนิดแพ็กเกจใน claim ไม่ตรง → <see cref="PlanChangedReason"/>
-    /// · สถานะ "อ่านอย่างเดียวตามเวลา" ที่ claim plan_exp บอก ไม่ตรงกับนโยบาย (ทีมงานเลื่อนวัน/ตัดวันหลังออก token)
-    ///   → <see cref="PlanChangedReason"/> — เทียบที่ระดับวินาทีทั้งสองฝั่ง และเทียบเฉพาะส่วนที่ขึ้นกับเวลา:
-    ///   การหมดอายุตามธรรมชาติไม่เตะใครออก (claim กับนโยบายเปลี่ยนพร้อมกัน) และการต่ออายุก่อนหมดก็ไม่เตะ
-    ///   (ทั้งคู่ยังเขียนได้) — ช่างที่จำรหัสสุ่มไม่ได้จะไม่ถูกบังคับ login ใหม่โดยไม่จำเป็น
-    ///   ส่วนอ่านอย่างเดียวที่ไม่ขึ้นกับเวลา (เช่นย้ายไปสาขาจริงแล้ว) ไม่อยู่ใน claim — TrialReadOnlyFilter ถามนโยบายเองทุกครั้ง
+    /// · ชนิดแพ็กเกจเปลี่ยน: trial → paid ไม่เตะ (สิทธิ์เพิ่ม) · ชนิดอื่นที่ไม่ตรง (paid → trial · ไม่มี claim · legacy) → <see cref="PlanChangedReason"/>
+    /// · เวลา: เตะเฉพาะเมื่อนโยบายอ่านอย่างเดียวแล้ว แต่ claim plan_exp ยังบอกว่าเขียนได้ (ทีมงานตัดวันหลังออก token)
+    ///   ไม่เตะเมื่อหมดอายุตามธรรมชาติ (เปลี่ยนพร้อมกันทั้งคู่) · ต่ออายุหลังหมด (claim อ่านอย่างเดียว นโยบายเขียนได้) ·
+    ///   ต่อก่อนหมดแล้วเลยวันหมดเดิมใน claim · เทียบที่ระดับวินาทีทั้งสองฝั่งเหมือนที่ JWT เก็บ
+    /// · ไม่เตะ ≠ ได้สิทธิ์ตาม claim: การล็อกฟีเจอร์/ลิมิต/อ่านอย่างเดียวถาม <see cref="IWorkspacePolicy"/> เสมอ
+    ///   (TrialReadOnlyFilter ใช้ claim แค่ข้าม shard ที่ไม่ใช่ self-serve) และเว็บ/แอปดึงแพ็กเกจใหม่จาก /auth/me ทุก 5 นาที
+    ///   ส่วนอ่านอย่างเดียวที่ไม่ขึ้นกับเวลา (ย้ายไปสาขาจริงแล้ว: Paid ไม่มีวันหมด) ไม่อยู่ใน claim จึงไม่เตะเช่นกัน
+    /// · ไม่วนเตะ: login ใหม่ได้ claim เท่ากับนโยบาย ณ ตอนนั้นเสมอ (ชนิดตรงกัน · สถานะอ่านอย่างเดียวตรงกัน)
     /// </summary>
     public static string? RevocationReason(WorkspacePlan current, PlanKind? claimKind, DateTime? claimExpiresAtUtc, DateTime nowUtc)
     {
         if (current.Kind == PlanKind.Legacy && claimKind is null or PlanKind.Legacy) return null;
         if (current.IsLocked) return PlanLockedReason;
-        if (claimKind != current.Kind) return PlanChangedReason;
+        if (claimKind != current.Kind && !IsUpgrade(claimKind, current.Kind)) return PlanChangedReason;
 
         var claimReadOnly = ToUnixSeconds(claimExpiresAtUtc) is { } claimEnd && Seconds(nowUtc) >= claimEnd;
         var policyReadOnly = ToUnixSeconds(current.ExpiresAt) is { } policyEnd && Seconds(nowUtc) >= policyEnd;
-        return claimReadOnly == policyReadOnly ? null : PlanChangedReason;
+        return policyReadOnly && !claimReadOnly ? PlanChangedReason : null;
     }
+
+    /// <summary>[BIZ] การเปลี่ยนชนิดที่ได้สิทธิ์เพิ่มอย่างเดียว: trial → paid (ฟีเจอร์ครบ · ไม่จำกัดจำนวน)</summary>
+    private static bool IsUpgrade(PlanKind? from, PlanKind to) => from == PlanKind.Trial && to == PlanKind.Paid;
 
     private static long Seconds(DateTime utc) => ToUnixSeconds(utc)!.Value;
 }

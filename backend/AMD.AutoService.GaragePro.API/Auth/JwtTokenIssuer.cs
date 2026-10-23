@@ -130,8 +130,9 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
             claims.Add(new Claim(GarageClaims.StaffId, staffId.ToString()));
 
         // B5 — แพ็กเกจของอู่ที่สมัครเอง (legacy ไม่มี Plan ใน DTO = ไม่มี claim = token รูปเดิมทุกประการ)
-        // plan_exp ใส่เมื่อแพ็กเกจมีวันหมดอายุ (trial เสมอ · paid/suspended ถ้ามีกำหนด) — SessionRevocation เทียบสถานะ
-        // อ่านอย่างเดียวจากค่านี้ ถ้า paid ที่มีวันหมดไม่มี claim จะถูกเตะออกวนซ้ำหลังวันหมด
+        // plan_exp ใส่เมื่อแพ็กเกจมีวันหมดอายุ (trial เสมอ · paid/suspended ถ้ามีกำหนด) · SessionRevocation เตะออกเฉพาะเมื่อ
+        // นโยบายเป็นอ่านอย่างเดียวแล้วแต่ค่านี้ยังบอกว่าเขียนได้ (PlanAccess.RevocationReason) ถ้า paid ที่มีวันหมดไม่มี claim
+        // จะถูกเตะออกวนซ้ำหลังวันหมด · claim ที่ค้างค่าเก่าเพราะอนุมัติ/ต่ออายุทีหลังไม่ทำให้เตะ (สิทธิ์จริงถาม IWorkspacePolicy เสมอ)
         if (user.Plan is { } plan)
         {
             claims.Add(new Claim(GarageClaims.Plan, plan.Kind));

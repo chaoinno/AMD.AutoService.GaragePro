@@ -5,12 +5,16 @@ import 'package:dio/dio.dart';
 
 /// ข้อผิดพลาดจาก API — [UI] ทุก error state ต้องมี สาเหตุ + ปุ่มถัดไป + รหัสอ้างอิง
 class ApiException implements Exception {
-  ApiException(this.code, this.messageTh, {this.traceId, this.details});
+  ApiException(this.code, this.messageTh, {this.traceId, this.details, this.field});
 
   final String code;
   final String messageTh;
   final String? traceId;
   final Object? details;
+
+  /// ช่องที่ผิด (`error.field` ของ envelope เช่น `amount`/`paidAt`) ให้หน้าฟอร์มแสดงข้อความใต้ช่องนั้นได้
+  /// server ไม่ส่ง = null (ตัดฟิลด์ null ทิ้งจาก JSON)
+  final String? field;
 
   /// เซสชันหมดอายุ — ต้องเด้งกลับหน้าเข้าสู่ระบบ
   bool get isUnauthorized => code == 'AUTH_REQUIRED';
@@ -144,6 +148,7 @@ class ApiClient {
       error?['messageTh'] as String? ?? 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ',
       traceId: body['traceId'] as String?,
       details: error?['details'],
+      field: error?['field'] as String?,
     );
     _notifyAuthFailure(ex, request);
     return ex;
@@ -164,6 +169,7 @@ class ApiClient {
         error['messageTh'] as String? ?? 'เกิดข้อผิดพลาด',
         traceId: body['traceId'] as String?,
         details: error['details'],
+        field: error['field'] as String?,
       );
       _notifyAuthFailure(ex, e.requestOptions);
       return ex;

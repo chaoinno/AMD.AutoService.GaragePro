@@ -205,8 +205,15 @@ public sealed class WorkspacePurgeData(
     public Task<PurgeTarget?> FindAsync(Guid workspaceId, CancellationToken ct = default) =>
         db.Workspaces.AsNoTracking()
             .Where(w => w.Id == workspaceId)
-            .Select(w => new PurgeTarget(w.Id, w.WorkspaceNo, w.BranchId, w.Plan, w.Status, w.OwnerAccountId))
+            .Select(w => new PurgeTarget(w.Id, w.WorkspaceNo, w.BranchId, w.Plan, w.Status, w.OwnerAccountId,
+                db.PackagePayments.Any(p => p.WorkspaceId == w.Id && p.Status == PackagePaymentStatus.Pending)))
             .FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<string>> ReadPackageSlipPathsAsync(Guid workspaceId, CancellationToken ct = default) =>
+        await db.PackagePayments.AsNoTracking()
+            .Where(p => p.WorkspaceId == workspaceId && p.SlipPath != "")
+            .Select(p => p.SlipPath)
+            .ToListAsync(ct);
 
     public async Task<IReadOnlyList<long>> ReadBranchUserIdsAsync(string shardKey, int branchId,
         CancellationToken ct = default)
@@ -299,6 +306,16 @@ public sealed class WorkspacePurgeData(
 
         db.SampleEntities.RemoveRange(
             await db.SampleEntities.Where(s => s.WorkspaceId == target.WorkspaceId).ToListAsync(ct));
+
+        // docs/17 กฎข้อ 12: รายการรอตรวจของอู่ที่ลบแล้วไม่มีวันถูกอนุมัติ · หมายเหตุเป็นข้อความอิสระของลูกค้า ล้างทิ้ง
+        foreach (var payment in await db.PackagePayments.Where(p => p.WorkspaceId == target.WorkspaceId).ToListAsync(ct))
+        {
+            payment.Note = null;
+            if (payment.Status != PackagePaymentStatus.Pending) continue;
+            payment.Status = PackagePaymentStatus.Cancelled;
+            payment.CancelledAt = now;
+            payment.CancelledBy = string.IsNullOrWhiteSpace(actor) ? "system" : actor.Length > 200 ? actor[..200] : actor;
+        }
         db.WorkspaceAudits.Add(new WorkspaceAudit
         {
             WorkspaceId = target.WorkspaceId,

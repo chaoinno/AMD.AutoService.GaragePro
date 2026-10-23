@@ -7,6 +7,7 @@ using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.SelfServe;
 using AMD.AutoService.GaragePro.Application.SelfServe.Admin;
 using AMD.AutoService.GaragePro.Application.SelfServe.Conversion;
+using AMD.AutoService.GaragePro.Application.SelfServe.Package;
 using AMD.AutoService.GaragePro.Domain.Entities.SelfServe;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -53,6 +54,10 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
             "purge" => await PurgeAsync(sp, command, ct),
             "run-jobs" => await RunJobsAsync(sp, command, ct),
             "convert" => await ConvertAsync(sp, command, ct),
+            "payments" => await PaymentsAsync(sp, command, ct),
+            "payment" => await PaymentAsync(sp, command, ct),
+            "approve-payment" => await ApprovePaymentAsync(sp, command, ct),
+            "reject-payment" => await RejectPaymentAsync(sp, command, ct),
             _ => Usage($"ไม่รู้จักคำสั่ง {command.Name}")
         };
     }
@@ -331,6 +336,148 @@ public sealed class CommandRunner(IServiceProvider services, TextWriter output, 
 
         return report.TotalFailed == 0 ? ExitCodes.Ok : ExitCodes.CompletedWithFailures;
     }
+
+    // ───────────────────────────────────────────── แจ้งชำระ (docs/17 §7)
+
+    private async Task<int> PaymentsAsync(IServiceProvider sp, ParsedCommand command, CancellationToken ct)
+    {
+        var statusText = command.Get("status") ?? "pending";
+        PackagePaymentStatus? status = null;
+        if (statusText != "all")
+        {
+            if (!PackagePaymentRules.TryParseStatus(statusText, out var parsed)) return Usage("--status ไม่ถูกต้อง");
+            status = parsed;
+        }
+
+        int? workspaceNo = null;
+        if (command.Get("workspace") is { } raw)
+        {
+            if (!SelfServeAdminService.TryParseWorkspaceNo(raw, out var no))
+                return Usage("--workspace ต้องเป็นรหัสอู่ เช่น SP1042 หรือ 1042");
+            workspaceNo = no;
+        }
+
+        var result = await sp.GetRequiredService<PackagePaymentAdminService>().ListAsync(status, workspaceNo, null, ct);
+        if (!result.Success) return Refused(result.Error!);
+
+        var table = new TextTable("id", "อู่", "สถานะ", "เดือน", "ยอดโอน", "ราคา", "โอนเมื่อ", "แจ้งเมื่อ",
+            "ถ้าอนุมัติตอนนี้ใช้ได้ถึง", "สลิปซ้ำ");
+        foreach (var item in result.Data!)
+        {
+            var p = item.Payment;
+            table.Add(p.ShortId, $"{item.WorkspaceNo} {SelfServeText.SingleLine(item.WorkspaceName, 24)}", p.Status,
+                N(p.MonthCount ?? 0), Money(p.Amount), Money(p.ExpectedAmount), SelfServeText.FormatThaiDateTime(p.PaidAt),
+                SelfServeText.FormatThaiDateTime(p.SubmittedAt),
+                item.Preview is { } preview ? SelfServeText.FormatThaiDate(preview.LastUsableDate) : "-",
+                item.Duplicates.Count > 0 ? $"⚠ {N(item.Duplicates.Count)}" : "-");
+        }
+
+        table.Write(output);
+        output.WriteLine($"ทั้งหมด {N(result.Data!.Count)} รายการ ({statusText})");
+        return ExitCodes.Ok;
+    }
+
+    private async Task<int> PaymentAsync(IServiceProvider sp, ParsedCommand command, CancellationToken ct)
+    {
+        var result = await sp.GetRequiredService<PackagePaymentAdminService>().ShowAsync(command.Get("id"), ct);
+        if (!result.Success) return Refused(result.Error!);
+
+        var d = result.Data!;
+        var item = d.Item;
+        var p = item.Payment;
+        output.WriteLine($"รายการ {p.Id} ({p.ShortId}) · {item.WorkspaceNo} · {item.WorkspaceName}");
+        Line("สถานะ", p.Status);
+        Line("อู่ แพ็กเกจ/สถานะ",
+            $"{item.Plan}/{item.WorkspaceStatus} · สาขา {item.BranchId?.ToString(CultureInfo.InvariantCulture) ?? "-"}");
+        Line("จำนวนเดือน", N(p.MonthCount ?? 0));
+        Line("ยอดโอน / ราคามาตรฐาน", $"{Money(p.Amount)} / {Money(p.ExpectedAmount)}" +
+                                     (p.ExpectedAmount is { } e && p.Amount != e ? "  ⚠ ไม่ตรงราคา (อนุมัติต้องใส่ --note)" : ""));
+        if (p.Status == PackagePaymentRules.StatusCode(PackagePaymentStatus.Pending))
+            Line("ราคาตามค่าตั้งตอนนี้",
+                CurrentPrice(sp.GetRequiredService<IOptions<SelfServeOptions>>().Value.Package, p.MonthCount ?? 0));
+        Line("โอนเมื่อ", SelfServeText.FormatThaiDateTime(p.PaidAt));
+        Line("แจ้งเมื่อ / โดย", $"{SelfServeText.FormatThaiDateTime(p.SubmittedAt)} / {p.SubmittedBy}");
+        Line("หมายเหตุลูกค้า", string.IsNullOrWhiteSpace(p.Note) ? "-" : SelfServeText.SingleLine(p.Note, 200));
+        Line("สลิป", $"{p.Slip?.ContentType ?? "-"} · {N((int)((p.Slip?.SizeBytes ?? 0) / 1024))} KB · {d.SlipPath}");
+        Line("ลิงก์ดูสลิป", d.SlipLink ?? "ไม่ได้ตั้ง SelfServe:Package:SlipLinkKey (เปิดจากเว็บของอู่แทน)");
+        Line("ตอนนี้ใช้ได้ถึง", FmtLastUsable(item.CurrentEndsAt));
+        if (item.Preview is { } preview)
+            Line("ถ้าอนุมัติตอนนี้", $"เริ่มนับ {SelfServeText.FormatThaiDate(preview.BaseAt)} · " +
+                                     $"ใช้ได้ถึง {SelfServeText.FormatThaiDate(preview.LastUsableDate)}");
+        if (p.PeriodEndsAt is { } periodEnd) Line("ต่อให้แล้ว", $"ใช้ได้ถึง {FmtLastUsable(periodEnd)}");
+        if (p.ReviewedAt is { } reviewedAt)
+            Line("ตรวจเมื่อ / โดย", $"{SelfServeText.FormatThaiDateTime(reviewedAt)} / {d.ReviewedBy ?? "-"}");
+        if (p.RejectReasonTh is { } reason) Line("เหตุผลที่ปฏิเสธ", reason);
+        if (!string.IsNullOrWhiteSpace(d.ReviewNote)) Line("หมายเหตุทีมงาน", SelfServeText.SingleLine(d.ReviewNote, 200));
+        if (p.CancelledAt is { } cancelledAt) Line("ยกเลิกเมื่อ", SelfServeText.FormatThaiDateTime(cancelledAt));
+
+        foreach (var dup in item.Duplicates)
+            output.WriteLine($"⚠ สลิปซ้ำกับรายการ {dup.PaymentId:D} ({dup.WorkspaceNo} · {dup.Status} · " +
+                             $"{SelfServeText.FormatThaiDateTime(dup.SubmittedAt)})");
+
+        if (p.Status == PackagePaymentRules.StatusCode(PackagePaymentStatus.Pending))
+        {
+            output.WriteLine();
+            output.WriteLine($"อนุมัติ: spadmin approve-payment --id {p.ShortId} --by <ชื่อ>");
+            output.WriteLine($"ปฏิเสธ: spadmin reject-payment --id {p.ShortId} --by <ชื่อ> --reason " +
+                             string.Join('|', CommandParser.RejectReasons));
+        }
+
+        return ExitCodes.Ok;
+    }
+
+    private async Task<int> ApprovePaymentAsync(IServiceProvider sp, ParsedCommand command, CancellationToken ct)
+    {
+        DateOnly? until = null;
+        if (command.Get("until") is { } raw)
+        {
+            if (!ValueParsers.TryParseDate(raw, out var parsed)) return Usage("--until ต้องเป็นวันที่ yyyy-MM-dd (ค.ศ.)");
+            until = parsed;
+        }
+
+        var result = await sp.GetRequiredService<PackagePaymentAdminService>()
+            .ApproveAsync(command.Get("id"), until, command.Get("note"), Actor(command), ct);
+        if (!result.Success) return Refused(result.Error!);
+
+        var r = result.Data!;
+        output.WriteLine($"{r.Payment.WorkspaceNo}: อนุมัติรายการ {r.Payment.Payment.ShortId} แล้ว " +
+                         $"({N(r.Payment.Payment.MonthCount ?? 0)} เดือน)");
+        Line("ใช้ได้ถึง", $"{FmtLastUsable(r.EndsFrom)} → {FmtLastUsable(r.EndsTo)}");
+        Line("แพ็กเกจ / สถานะ", $"{r.Payment.Plan} / {r.Payment.WorkspaceStatus}");
+        Line("อีเมลถึงเจ้าของ", r.EmailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง (ไม่มีอีเมลหรือส่งไม่สำเร็จ ดู log)");
+        Line("แจ้งเตือนในระบบ", r.InAppSaved ? "บันทึกแล้ว" : "ไม่สำเร็จ (ดู log)");
+        output.WriteLine("มีผลกับ API ภายใน ~60 วินาที (cache ของนโยบายแพ็กเกจ)");
+        return ExitCodes.Ok;
+    }
+
+    private async Task<int> RejectPaymentAsync(IServiceProvider sp, ParsedCommand command, CancellationToken ct)
+    {
+        var result = await sp.GetRequiredService<PackagePaymentAdminService>()
+            .RejectAsync(command.Get("id"), command.Get("reason"), command.Get("note"), Actor(command), ct);
+        if (!result.Success) return Refused(result.Error!);
+
+        var r = result.Data!;
+        output.WriteLine($"{r.Payment.WorkspaceNo}: ปฏิเสธรายการ {r.Payment.Payment.ShortId} แล้ว " +
+                         $"({r.Payment.Payment.RejectReasonTh})");
+        Line("อีเมลถึงเจ้าของ", r.EmailSent ? "ส่งแล้ว" : "ไม่ได้ส่ง (ไม่มีอีเมลหรือส่งไม่สำเร็จ ดู log)");
+        Line("แจ้งเตือนในระบบ", r.InAppSaved ? "บันทึกแล้ว" : "ไม่สำเร็จ (ดู log)");
+        return ExitCodes.Ok;
+    }
+
+    private static string Money(decimal? amount) =>
+        amount is { } a ? a.ToString("N2", CultureInfo.InvariantCulture) : "-";
+
+    /// <summary>ราคามาตรฐาน (ก่อน VAT + VAT = รวม) จากค่าตั้งของเครื่องที่รัน spadmin · สูตรเดียวกับ API (PackagePricing)</summary>
+    private static string CurrentPrice(SelfServeOptions.PackageOptions package, int months) =>
+        PackagePricing.ConfigProblem(package)
+        ?? (PackagePricing.For(package, months) is not { } price
+            ? "ยังไม่ตั้งราคา (SelfServe:Package:MonthlyPrice หรือ Prices)"
+            : price.VatRate is { } rate
+                ? $"{Money(price.Subtotal)} + VAT {PackagePricing.Percent(rate)} {Money(price.Vat)} = {Money(price.Total)}"
+                : $"{Money(price.Total)} (ไม่แยก VAT)");
+
+    private static string FmtLastUsable(DateTime? end) =>
+        end is { } e ? SelfServeText.FormatThaiDate(PackageRenewal.LastUsableDay(e)) : "ไม่มีกำหนด";
 
     // ───────────────────────────────────────────── ตัวช่วย
 

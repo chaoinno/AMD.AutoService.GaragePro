@@ -161,12 +161,16 @@ class StickyActionBar extends StatelessWidget {
     this.onSecondary,
     this.disabledReason,
     this.hint,
+    this.summary,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+
+  /// สรุปเหนือปุ่ม เช่นยอดที่จะส่ง (หน้าแพ็กเกจ) · ผู้เรียกจัดการไม่ให้ล้นเอง
+  final Widget? summary;
 
   /// [UI] ปุ่มที่ปิดใช้งานต้องบอกเหตุผลเสมอ ห้าม disable เฉยๆ
   final String? disabledReason;
@@ -190,6 +194,7 @@ class StickyActionBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (summary != null) ...[summary!, const SizedBox(height: T.s8)],
           if (disabledReason != null)
             Padding(
               padding: const EdgeInsets.only(bottom: T.s8),
@@ -266,12 +271,16 @@ class InfoBanner extends StatelessWidget {
     required this.title,
     this.body,
     required this.tone,
+    this.trailing,
   });
 
   final IconData icon;
   final String title;
   final String? body;
   final StateTone tone;
+
+  /// ท้ายแถบ เช่นลูกศรบอกว่าแตะได้ (ผู้เรียกเป็นคนจัดการการแตะเอง)
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -308,6 +317,10 @@ class InfoBanner extends StatelessWidget {
               ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: T.s8),
+            IconTheme.merge(data: IconThemeData(color: fg), child: trailing!),
+          ],
         ],
       ),
     );

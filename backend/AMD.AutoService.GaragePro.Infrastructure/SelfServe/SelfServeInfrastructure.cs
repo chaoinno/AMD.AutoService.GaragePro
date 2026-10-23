@@ -56,12 +56,16 @@ public static partial class SelfServeInfrastructure
             RegisterStarterData(services, configuration);   // S3
             RegisterLifecycle(services, configuration);     // S4
             RegisterAdmin(services, configuration);         // S5
+            RegisterPackage(services, configuration);       // docs/17 แจ้งชำระ/ต่ออายุ
         }
         else
         {
             // deployment ที่ไม่มีฐาน self-serve: ไม่ลงทะเบียน SelfServeDbContext เลย (สตาร์ทได้เหมือนเดิม) และทุก shard เป็น legacy
             services.AddScoped<IWorkspacePolicy, UnlimitedWorkspacePolicy>();
         }
+
+        // หน้าแพ็กเกจของสาขา GaragePro (db1/db2 · docs/17 §8.7.1) ไม่ต้องใช้ฐาน self-serve → ลงทะเบียนเสมอ (SelfServeInfrastructure.Package.cs)
+        RegisterPackageFlows(services, configuration);
 
         return services;
     }
@@ -91,6 +95,7 @@ public static partial class SelfServeInfrastructure
     static partial void RegisterStarterData(IServiceCollection services, IConfiguration configuration);
     static partial void RegisterLifecycle(IServiceCollection services, IConfiguration configuration);
     static partial void RegisterAdmin(IServiceCollection services, IConfiguration configuration);
+    static partial void RegisterPackage(IServiceCollection services, IConfiguration configuration);
 
     public const string ConnectionStringKey = SelfServeOptions.SectionName + ":ConnectionString";
 

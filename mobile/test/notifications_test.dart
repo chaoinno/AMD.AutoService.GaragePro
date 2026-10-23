@@ -117,6 +117,24 @@ void main() {
       }
     });
 
+    test('ผลตรวจการแจ้งชำระแพ็กเกจเปิดหน้าแพ็กเกจ (ไม่มีจ๊อบ)', () {
+      for (final kind in [
+        NotificationKind.packagePaymentApproved,
+        NotificationKind.packagePaymentRejected,
+      ]) {
+        final n = AppNotification.fromJson(
+            _json(kind: kind, entityType: 'PackagePayment', jobId: null, linkHint: 'package'));
+        expect(notificationTarget(n), Routes.package, reason: kind);
+      }
+      // backend ไม่ส่ง linkHint ก็ยังไปถูกจาก entityType
+      final noHint = AppNotification.fromJson(_json(
+          kind: NotificationKind.packagePaymentApproved,
+          entityType: 'PackagePayment',
+          jobId: null,
+          linkHint: null));
+      expect(notificationTarget(noHint), Routes.package);
+    });
+
     test('ไม่มีจ๊อบ = ไม่มีที่หมาย', () {
       expect(notificationTarget(AppNotification.fromJson(_json(jobId: null))), isNull);
     });

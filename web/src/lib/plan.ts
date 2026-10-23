@@ -148,6 +148,12 @@ export type TrialTone = 'none' | 'neutral' | 'warn' | 'expired'
 /** เหลือไม่เกินกี่วันถึงเปลี่ยนเป็นโทนเตือน (docs/12 §6: วันที่ 23 ของ 30) */
 export const TRIAL_WARN_DAYS = 7
 
+/**
+ * [ASSUME] อู่ที่ชำระเงินแล้ว: แสดงแถบเตือนเมื่อเหลือไม่เกินกี่วัน (docs/17 §6.1 · ตรงกับอีเมลเตือนรอบแรก `PaidReminderDays` 14)
+ * ต้องยืนยันกับฝ่ายขาย (docs/17 §11)
+ */
+export const PAID_WARN_DAYS = 14
+
 const DAY_MS = 24 * 60 * 60 * 1000
 
 function parseInstant(value: string): number {
@@ -157,11 +163,12 @@ function parseInstant(value: string): number {
 }
 
 /**
- * จำนวนวันที่เหลือของช่วงทดลองใช้ — ค่าจาก server เป็นหลัก (คำนวณด้วยกติกาเดียวกับที่บังคับใช้)
- * คำนวณจาก `trialEndsAt` เองเฉพาะเมื่อ server ไม่ส่ง `daysLeft` · null = ไม่ใช่ trial หรือไม่รู้
+ * จำนวนวันที่เหลือของแพ็กเกจ (ทดลองใช้ หรือแพ็กเกจที่ชำระเงินแล้วซึ่งมีวันหมดอายุ): ค่าจาก server เป็นหลัก
+ * (คำนวณด้วยกติกาเดียวกับที่บังคับใช้) · server ส่ง `trialEndsAt`/`daysLeft` ให้ paid ด้วย (ชื่อฟิลด์เดิมจากยุคทดลองใช้)
+ * คำนวณจาก `trialEndsAt` เองเฉพาะเมื่อ server ไม่ส่ง `daysLeft` · null = ไม่มีวันหมดอายุ ไม่ใช่ trial/paid หรือไม่รู้
  */
 export function daysLeftOf(plan: PlanInfo | undefined, now: Date = new Date()): number | null {
-  if (!plan || plan.kind !== 'trial') return null
+  if (!plan || (plan.kind !== 'trial' && plan.kind !== 'paid')) return null
   if (typeof plan.daysLeft === 'number' && Number.isFinite(plan.daysLeft)) return Math.max(0, plan.daysLeft)
   if (plan.trialEndsAt) {
     const end = parseInstant(plan.trialEndsAt)
@@ -170,11 +177,18 @@ export function daysLeftOf(plan: PlanInfo | undefined, now: Date = new Date()): 
   return null
 }
 
-/** โทนของแถบทดลองใช้: none = ไม่แสดง · neutral = ปกติ · warn = ≤7 วัน · expired = อ่านอย่างเดียว/ถูกระงับ */
+/**
+ * โทนของแถบแพ็กเกจ: none = ไม่แสดง · neutral = ทดลองใช้ปกติ · warn = ใกล้หมด · expired = อ่านอย่างเดียว/ถูกระงับ
+ * · trial: warn เมื่อเหลือ ≤ 7 วัน
+ * · paid: ไม่แสดงตามปกติ · warn เมื่อเหลือ ≤ 14 วัน · expired เมื่ออ่านอย่างเดียว (เดิมคืน none ทุกกรณี
+ *   อู่ที่จ่ายแล้วจึงกลายเป็นอ่านอย่างเดียวโดยไม่มีคำอธิบาย docs/17 §6.1) · paid ที่ไม่มีวันหมดอายุ = none
+ * ตรวจ readOnly ก่อนชนิดแพ็กเกจ เพราะเป็นสถานะที่ผู้ใช้ต้องรู้มากที่สุด
+ */
 export function trialTone(plan: PlanInfo | undefined, now: Date = new Date()): TrialTone {
-  if (!plan || plan.kind === 'legacy' || plan.kind === 'paid') return 'none'
+  if (!plan || plan.kind === 'legacy') return 'none'
   if (plan.kind === 'suspended' || plan.readOnly) return 'expired'
   const days = daysLeftOf(plan, now)
+  if (plan.kind === 'paid') return days !== null && days <= PAID_WARN_DAYS ? 'warn' : 'none'
   if (days !== null && days <= TRIAL_WARN_DAYS) return 'warn'
   return 'neutral'
 }

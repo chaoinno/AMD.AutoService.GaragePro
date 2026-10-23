@@ -280,6 +280,9 @@ public class SelfServeAdminServiceTests
             Changes.Add(change);
             return Task.CompletedTask;
         }
+
+        public Task<ApprovePaymentOutcome> ApprovePaymentAsync(WorkspacePackageChange change,
+            PackagePaymentApproval approval, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUsage : IPlanUsageCounter

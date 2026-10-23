@@ -132,7 +132,7 @@ public class SelfServeDbPlumbingTests
 
         model.GetEntityTypes().Select(e => e.GetTableName()).Should().BeEquivalentTo(
             "sp_Account", "sp_Workspace", "sp_SignupAttempt", "sp_EmailOtp", "sp_BlockedDomain", "sp_JobRun",
-            "sp_WorkspaceNotice", "sp_SampleEntity", "sp_ConversionMap", "sp_WorkspaceAudit");
+            "sp_WorkspaceNotice", "sp_SampleEntity", "sp_ConversionMap", "sp_WorkspaceAudit", "sp_PackagePayment");
 
         var account = model.FindEntityType(typeof(Domain.Entities.SelfServe.SelfServeAccount))!;
         account.GetIndexes().Single(i => i.GetDatabaseName() == "UX_sp_Account_NormalizedEmail")
@@ -148,5 +148,21 @@ public class SelfServeDbPlumbingTests
         workspaceNo.GetIdentityIncrement().Should().Be(1);
         workspace.GetIndexes().Single(i => i.GetDatabaseName() == "UX_sp_Workspace_BranchId")
             .GetFilter().Should().Be("[BranchId] IS NOT NULL");
+
+        // docs/17 §3 · รอตรวจได้ครั้งละหนึ่งรายการต่ออู่ บังคับที่ฐาน
+        var payment = model.FindEntityType(typeof(Domain.Entities.SelfServe.PackagePayment))!;
+        var onePending = payment.GetIndexes().Single(i => i.GetDatabaseName() == SelfServeDbContext.OnePendingIndex);
+        onePending.IsUnique.Should().BeTrue();
+        onePending.GetFilter().Should().Be("[Status] = N'Pending'");
+        payment.GetIndexes().Single(i => i.GetDatabaseName() == SelfServeDbContext.WorkspaceRequestIndex)
+            .IsUnique.Should().BeTrue();
+        payment.FindProperty(nameof(Domain.Entities.SelfServe.PackagePayment.Id))!.ValueGenerated
+            .Should().Be(Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never);
+        payment.FindProperty(nameof(Domain.Entities.SelfServe.PackagePayment.Status))!.GetProviderClrType()
+            .Should().Be(typeof(string));
+        payment.FindProperty(nameof(Domain.Entities.SelfServe.PackagePayment.RejectReason))!.GetProviderClrType()
+            .Should().Be(typeof(string));
+        payment.FindProperty(nameof(Domain.Entities.SelfServe.PackagePayment.SlipSha256))!.GetColumnType()
+            .Should().Be("char(64)");
     }
 }
