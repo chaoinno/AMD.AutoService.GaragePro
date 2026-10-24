@@ -137,7 +137,18 @@ function ReportBody({ report }: { report: ServiceDueReport }) {
             { id: 'status', header: 'สถานะ', size: 170, value: (x) => x.daysUntilDue, render: (x) => <DueStatus item={x} /> },
             { id: 'plate', header: 'ทะเบียน', size: 140, value: (x) => x.vehicleRegistration, render: (x) => <>{x.vehicleRegistration}<small className="purchase-sub">{x.vehicleModel ?? ''}</small></> },
             { id: 'customer', header: 'ลูกค้า', size: 200, value: (x) => x.customerName, render: (x) => <>{x.customerName}<small className="purchase-sub">{x.customerPhone ?? 'ไม่มีเบอร์โทร'}</small></> },
-            { id: 'nextKm', header: 'นัดที่ไมล์', size: 150, value: (x) => x.nextServiceMileage ?? 0, render: (x) => <span className="report-num">{formatKm(x.nextServiceMileage)}</span> },
+            // 1 แถวต่อรถ — วันนัดของแถวคือรายการที่ครบเร็วที่สุด · รายการทั้งหมดแสดงใต้แถว (เร็วสุดก่อน)
+            { id: 'items', header: 'รายการนัด', size: 300, value: (x) => x.nextServiceMileage ?? 0, render: (x) => (
+              <ul className="service-due-items">
+                {x.items.map((i) => (
+                  <li key={i.name} className={i.daysUntilDue < 0 ? 'service-due-items__overdue' : undefined}>
+                    <strong>{i.name}</strong>
+                    <span className="report-num"> {formatKm(i.nextServiceMileage)}</span>
+                    <small> · {formatDateOnly(i.nextServiceDueOn)}{i.daysUntilDue < 0 ? ' (เลยกำหนด)' : ''}</small>
+                  </li>
+                ))}
+              </ul>
+            ) },
             { id: 'handoverKm', header: 'ไมล์ส่งมอบ', size: 150, value: (x) => x.mileageAtHandover ?? 0, render: (x) => <span className="report-num">{formatKm(x.mileageAtHandover)}</span> },
             { id: 'last', header: 'เข้าครั้งล่าสุด', size: 190, value: (x) => new Date(x.handedOverAt).getTime(), render: (x) => (
               <>{formatDate(x.handedOverAt)}<small className="purchase-sub"><Link className="report-link" to={`/jobs?job=${x.lastJobId}`}>{x.lastJobNo}</Link></small></>

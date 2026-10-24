@@ -13,6 +13,7 @@ import { SupplierPage } from './features/master-data/SupplierPage'
 import { WarehousePage } from './features/master-data/WarehousePage'
 import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
 import { QuotationTemplatePage } from './features/master-data/QuotationTemplatePage'
+import { ServiceReminderTemplatePage } from './features/master-data/ServiceReminderTemplatePage'
 import { PurchasingPage } from './features/purchasing/PurchasingPage'
 import { InventoryPage } from './features/purchasing/InventoryPage'
 import { DashboardReportPage } from './features/reports/DashboardReportPage'
@@ -51,6 +52,7 @@ export default function AppRoutes() {
           <Route path="/warehouses" element={<ProtectedRoute><FeatureGate><WarehousePage /></FeatureGate></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
           <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
+          <Route path="/service-reminder-templates" element={<ProtectedRoute><ServiceReminderTemplatePage /></ProtectedRoute>} />
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><FeatureGate><PurchasingPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><FeatureGate><InventoryPage /></FeatureGate></ProtectedRoute>} />

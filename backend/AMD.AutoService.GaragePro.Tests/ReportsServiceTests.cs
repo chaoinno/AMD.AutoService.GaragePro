@@ -356,13 +356,25 @@ public sealed class ReportsServiceTests
             Receipts = [new Receipt { JobId = job.Id, DocumentNo = "RC-26-0001", TotalAmount = 535m }],
             Handovers =
             [
-                new HandoverRecord
-                {
-                    JobId = job.Id, SubmittedAt = DateTime.UtcNow.AddDays(-9), MileageAtHandover = 40_020,
-                    NextServiceMileage = 50_000, NextServiceMonths = 6, NextServiceDueOn = new DateOnly(2027, 4, 1)
-                }
+                HandedOver(job.Id, DateTime.UtcNow.AddDays(-9), 40_020,
+                    ("น้ำมันเครื่อง", 50_000, new DateOnly(2027, 4, 1)),
+                    ("กรองอากาศ", 60_000, new DateOnly(2027, 10, 1)))
             ]
         };
+    }
+
+    /// <summary>ใบส่งมอบที่เซ็นแล้วพร้อมรายการนัด (ชื่อ, ไมล์, วันนัด) — เรียงตามลำดับที่ส่งมา</summary>
+    private static HandoverRecord HandedOver(
+        Guid jobId, DateTime submittedAt, int mileage, params (string Name, int Mileage, DateOnly DueOn)[] items)
+    {
+        var record = new HandoverRecord { JobId = jobId, SubmittedAt = submittedAt, MileageAtHandover = mileage };
+        for (var i = 0; i < items.Length; i++)
+            record.ServiceItems.Add(new HandoverServiceItem
+            {
+                HandoverRecordId = record.Id, Name = items[i].Name, NextServiceMileage = items[i].Mileage,
+                NextServiceMonths = 6, NextServiceDueOn = items[i].DueOn, SortOrder = i
+            });
+        return record;
     }
 
     [Fact]
@@ -376,8 +388,13 @@ public sealed class ReportsServiceTests
         visit.MileageAtIntake.Should().Be(40_000);
         visit.MileageAtHandover.Should().Be(40_020);
         result.Data.ShowAmounts.Should().BeTrue();
+        // วันนัดของรถ = รายการที่ครบเร็วที่สุด · รายการทั้งหมดแสดงในแต่ละครั้งที่เข้า
         result.Data.NextService!.DueOn.Should().Be(new DateOnly(2027, 4, 1));
         result.Data.NextService.Mileage.Should().Be(50_000);
+        result.Data.NextService.Items.Select(i => i.Name).Should().Equal("น้ำมันเครื่อง", "กรองอากาศ");
+        visit.ServiceItems.Select(i => (i.Name, i.NextServiceMileage)).Should().Equal(
+            ("น้ำมันเครื่อง", 50_000), ("กรองอากาศ", 60_000));
+        visit.NextServiceMileage.Should().Be(50_000);
     }
 
     [Theory]
@@ -415,11 +432,8 @@ public sealed class ReportsServiceTests
         var v3 = VehicleJob(3, "JB-3A", now.AddDays(-150), plate: "3คค 3333");
         var v3Cancelled = VehicleJob(3, "JB-3B", now.AddDays(-5), plate: "3คค 3333", status: JobStatus.Cancelled);
 
-        HandoverRecord Handed(Job job, int daysAgo, int dueInDays) => new()
-        {
-            JobId = job.Id, SubmittedAt = now.AddDays(-daysAgo), NextServiceDueOn = today.AddDays(dueInDays),
-            MileageAtHandover = 10_000, NextServiceMileage = 15_000
-        };
+        HandoverRecord Handed(Job job, int daysAgo, int dueInDays) =>
+            HandedOver(job.Id, now.AddDays(-daysAgo), 10_000, ("เช็คระยะ", 15_000, today.AddDays(dueInDays)));
         var repo = new FakeReportsRepository
         {
             Jobs = [v1Old, v1New, v2, v2Back, v3, v3Cancelled],
@@ -434,6 +448,50 @@ public sealed class ReportsServiceTests
         result.Data.Items[0].DaysUntilDue.Should().Be(-2);
     }
 
+    /// <summary>[BIZ] 1 แถวต่อรถ วันนัดของแถว = รายการที่ครบเร็วที่สุด · รายการทั้งหมดแสดงใต้แถว (เร็วสุดก่อน)</summary>
+    [Fact]
+    public async Task GetServiceDueAsync_uses_the_earliest_item_as_the_row_and_lists_every_item_under_it()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var job = VehicleJob(1, "JB-1A", DateTime.UtcNow.AddDays(-30), status: JobStatus.Completed);
+        var repo = new FakeReportsRepository
+        {
+            Jobs = [job],
+            Handovers = [HandedOver(job.Id, DateTime.UtcNow.AddDays(-30), 10_000,
+                ("กรองอากาศ", 30_000, today.AddDays(20)),
+                ("น้ำมันเครื่อง", 20_000, today.AddDays(5)),
+                ("น้ำมันเกียร์", 50_000, today.AddDays(400)))]
+        };
+
+        var result = await CreateService(repo, UserRole.Manager).GetServiceDueAsync(null, null);
+
+        var row = result.Data!.Items.Should().ContainSingle().Subject;
+        row.NextServiceMileage.Should().Be(20_000);
+        row.NextServiceDueOn.Should().Be(today.AddDays(5));
+        row.DaysUntilDue.Should().Be(5);
+        row.Items.Select(i => i.Name).Should().Equal("น้ำมันเครื่อง", "กรองอากาศ", "น้ำมันเกียร์");
+        row.Items[2].DaysUntilDue.Should().Be(400);
+    }
+
+    /// <summary>รถที่รายการเร็วสุดเลยช่วงที่เลือกไปแล้ว ไม่ขึ้นในช่วงนั้นเพียงเพราะมีรายการอื่นตกอยู่ในช่วง</summary>
+    [Fact]
+    public async Task GetServiceDueAsync_filters_the_window_by_the_earliest_item_not_by_any_item()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var job = VehicleJob(1, "JB-1A", DateTime.UtcNow.AddDays(-300), status: JobStatus.Completed);
+        var repo = new FakeReportsRepository
+        {
+            Jobs = [job],
+            Handovers = [HandedOver(job.Id, DateTime.UtcNow.AddDays(-300), 10_000,
+                ("น้ำมันเครื่อง", 20_000, today.AddDays(-100)),
+                ("กรองอากาศ", 30_000, today.AddDays(10)))]
+        };
+
+        var result = await CreateService(repo, UserRole.Manager).GetServiceDueAsync(null, null);
+
+        result.Data!.Items.Should().BeEmpty();
+    }
+
     /// <summary>พบตอนทดสอบกับข้อมูลจริง 2026-10-08: รถมีงานเปิดค้างไว้ก่อนวันส่งมอบ ยังขึ้นในรายชื่อโทรตาม</summary>
     [Fact]
     public async Task GetServiceDueAsync_drops_vehicles_that_still_have_another_open_job_even_if_opened_before_handover()
@@ -444,11 +502,8 @@ public sealed class ReportsServiceTests
         var openBefore = VehicleJob(1, "JB-1B", now.AddDays(-5), status: JobStatus.WaitApprove);
         var closedOther = VehicleJob(2, "JB-2A", now.AddDays(-20), plate: "2ขข 2222");
         var closedBefore = VehicleJob(2, "JB-2B", now.AddDays(-15), plate: "2ขข 2222", status: JobStatus.Completed);
-        HandoverRecord Handed(Job job) => new()
-        {
-            JobId = job.Id, SubmittedAt = now.AddDays(-1), NextServiceDueOn = today.AddDays(3),
-            MileageAtHandover = 10_000, NextServiceMileage = 15_000
-        };
+        HandoverRecord Handed(Job job) =>
+            HandedOver(job.Id, now.AddDays(-1), 10_000, ("เช็คระยะ", 15_000, today.AddDays(3)));
         var repo = new FakeReportsRepository
         {
             Jobs = [handedJob, openBefore, closedOther, closedBefore],
@@ -568,7 +623,9 @@ public sealed class ReportsServiceTests
             string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct)
         {
             foreach (var h in Handovers) h.Job = Jobs.First(j => j.Id == h.JobId);
-            var candidates = Handovers.Where(h => h.SubmittedAt != null && h.NextServiceDueOn >= from && h.NextServiceDueOn <= to).ToList();
+            // เหมือน ReportsRepository: กรองช่วงวันด้วยรายการที่ครบเร็วที่สุดของใบส่งมอบ
+            var candidates = Handovers.Where(h => h.SubmittedAt != null && h.ServiceItems.Count > 0
+                && h.ServiceItems.Min(i => i.NextServiceDueOn) >= from && h.ServiceItems.Min(i => i.NextServiceDueOn) <= to).ToList();
             return Task.FromResult(new ServiceDueData(
                 candidates,
                 Jobs.Select(j => new VehicleVisitRef(j.VehicleId, j.Id, j.CreatedAt, j.Status)).ToList(),

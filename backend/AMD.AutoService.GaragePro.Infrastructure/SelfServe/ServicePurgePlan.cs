@@ -60,6 +60,11 @@ public static class ServicePurgePlan
             .ExecuteDeleteAsync(ct)),
         Step<IntakeChecklist>("svc_IntakeChecklist", (db, s, ct) => db.IntakeChecklists
             .Where(c => JobIds(db, s).Contains(c.JobId)).ExecuteDeleteAsync(ct)),
+        Step<HandoverServiceItem>("svc_HandoverServiceItem", (db, s, ct) => db.HandoverServiceItems
+            .Where(i => db.HandoverRecords.Any(h => h.Id == i.HandoverRecordId && JobIds(db, s).Contains(h.JobId)))
+            .ExecuteDeleteAsync(ct)),
+        Step<ServiceReminderTemplate>("svc_ServiceReminderTemplate", (db, s, ct) => db.ServiceReminderTemplates
+            .Where(t => t.LegacyShardKey == s.ShardKey && t.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
         Step<HandoverChecklistItem>("svc_HandoverChecklistItem", (db, s, ct) => db.HandoverChecklistItems
             .Where(i => db.HandoverRecords.Any(h => h.Id == i.HandoverRecordId && JobIds(db, s).Contains(h.JobId)))
             .ExecuteDeleteAsync(ct)),

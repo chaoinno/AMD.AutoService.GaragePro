@@ -114,7 +114,11 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
             .AsSplitQuery()
             .ToListAsync(ct);
         var receipts = await db.Receipts.AsNoTracking().Where(r => jobIds.Contains(r.JobId)).ToListAsync(ct);
-        var handovers = await db.HandoverRecords.AsNoTracking().Where(h => jobIds.Contains(h.JobId)).ToListAsync(ct);
+        var handovers = await db.HandoverRecords.AsNoTracking()
+            .Include(h => h.ServiceItems)
+            .Where(h => jobIds.Contains(h.JobId))
+            .AsSplitQuery()
+            .ToListAsync(ct);
 
         return new VehicleHistoryData(jobs, quotations, receipts, handovers);
     }
@@ -124,9 +128,14 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
     {
         var candidates = await db.HandoverRecords.AsNoTracking()
             .Include(h => h.Job)
-            .Where(h => h.SubmittedAt != null && h.NextServiceDueOn != null
-                && h.NextServiceDueOn >= from && h.NextServiceDueOn <= to
+            .Include(h => h.ServiceItems)
+            // วันนัดของรถ = รายการที่ครบเร็วที่สุด — กรองช่วงวันด้วยค่าต่ำสุด ไม่ใช่ "มีรายการใดรายการหนึ่งในช่วง"
+            // (ไม่งั้นรถที่น้ำมันเครื่องเลยกำหนดไปนานแล้วแต่กรองอากาศเพิ่งใกล้ครบ จะโผล่ในช่วงที่ไม่ใช่วันนัดของแถว)
+            .Where(h => h.SubmittedAt != null
+                && h.ServiceItems.Min(i => (DateOnly?)i.NextServiceDueOn) >= from
+                && h.ServiceItems.Min(i => (DateOnly?)i.NextServiceDueOn) <= to
                 && h.Job!.LegacyShardKey == shardKey && h.Job.BranchId == branchId)
+            .AsSplitQuery()
             .ToListAsync(ct);
         if (candidates.Count == 0)
             return new ServiceDueData([], [], []);

@@ -21,6 +21,7 @@ import 'package_api.dart';
 import 'pos_api.dart';
 import 'qc_api.dart';
 import 'quotations_api.dart';
+import 'service_reminder_api.dart';
 import 'reports_api.dart';
 import 'staffs_api.dart';
 
@@ -133,6 +134,7 @@ final qcApiProvider = Provider((ref) => QcApi(ref.watch(apiClientProvider)));
 final intakeApiProvider = Provider((ref) => IntakeApi(ref.watch(apiClientProvider)));
 final posApiProvider = Provider((ref) => PosApi(ref.watch(apiClientProvider)));
 final handoverApiProvider = Provider((ref) => HandoverApi(ref.watch(apiClientProvider)));
+final serviceReminderApiProvider = Provider((ref) => ServiceReminderApi(ref.watch(apiClientProvider)));
 final reportsApiProvider = Provider((ref) => ReportsApi(ref.watch(apiClientProvider)));
 final customersApiProvider = Provider((ref) => CustomersApi(ref.watch(apiClientProvider)));
 final workApiProvider = Provider((ref) => WorkApi(ref.watch(apiClientProvider)));

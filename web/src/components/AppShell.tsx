@@ -97,6 +97,7 @@ const navGroups = [
       { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
       { to: '/catalog-categories', icon: FolderTree, label: 'หมวดหมู่สินค้า' },
       { to: '/quotation-templates', icon: FileStack, label: 'เทมเพลตใบเสนอราคา' },
+      { to: '/service-reminder-templates', icon: AlarmClock, label: 'รายการนัดบริการ' },
       { to: '/promotions', icon: TrendingUp, label: 'โปรโมชัน' },
     ],
   },

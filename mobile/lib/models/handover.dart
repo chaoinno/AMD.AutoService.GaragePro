@@ -36,6 +36,36 @@ class HandoverChecklistItem {
       );
 }
 
+/// หนึ่งรายการนัดเข้ารับบริการครั้งถัดไป (น้ำมันเครื่อง/กรอง/เบรก…)
+class HandoverServiceItem {
+  const HandoverServiceItem({
+    required this.id,
+    this.templateId,
+    required this.name,
+    required this.nextServiceMileage,
+    required this.nextServiceMonths,
+    this.nextServiceDueOn,
+  });
+
+  final String id;
+  final String? templateId;
+  final String name;
+  final int nextServiceMileage;
+  final int nextServiceMonths;
+
+  /// วันนัด — ก่อนเซ็นเป็นพรีวิว server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น
+  final DateTime? nextServiceDueOn;
+
+  static HandoverServiceItem fromJson(Map<String, dynamic> j) => HandoverServiceItem(
+        id: j['id'] as String,
+        templateId: j['templateId'] as String?,
+        name: j['name'] as String? ?? '',
+        nextServiceMileage: (j['nextServiceMileage'] as num?)?.toInt() ?? 0,
+        nextServiceMonths: (j['nextServiceMonths'] as num?)?.toInt() ?? 0,
+        nextServiceDueOn: parseDateOnly(j['nextServiceDueOn'] as String?),
+      );
+}
+
 class Handover {
   const Handover({
     required this.id,
@@ -52,6 +82,7 @@ class Handover {
     this.nextServiceMileage,
     this.nextServiceMonths,
     this.nextServiceDueOn,
+    this.serviceItems = const [],
   });
 
   final String id;
@@ -68,16 +99,20 @@ class Handover {
 
   final List<HandoverChecklistItem> items;
 
-  /// [BIZ] ไมล์ส่งมอบ + นัดครั้งถัดไป บังคับก่อนเซ็น (`HANDOVER_SERVICE_INFO_REQUIRED`)
+  /// [BIZ] ไมล์ส่งมอบ + นัดครั้งถัดไปอย่างน้อย 1 รายการ บังคับก่อนเซ็น (`HANDOVER_SERVICE_INFO_REQUIRED`)
   /// วันนัดก่อนเซ็นเป็นพรีวิว server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น
   final int? mileageAtIntake;
   final int? mileageAtHandover;
+
+  /// ฟิลด์นัดเดี่ยวเดิม = รายการที่ครบเร็วที่สุด (server เติมไว้ให้แอปรุ่นเก่า) — แอปรุ่นนี้อ่านจาก [serviceItems]
   final int? nextServiceMileage;
   final int? nextServiceMonths;
   final DateTime? nextServiceDueOn;
 
-  bool get serviceInfoComplete =>
-      mileageAtHandover != null && nextServiceMileage != null && nextServiceMonths != null;
+  /// นัดเข้ารับบริการครั้งถัดไปได้หลายรายการ
+  final List<HandoverServiceItem> serviceItems;
+
+  bool get serviceInfoComplete => mileageAtHandover != null && serviceItems.isNotEmpty;
 
   int get pendingCount => items.where((i) => i.isPending).length;
   bool get allDecided => items.isNotEmpty && pendingCount == 0;
@@ -101,5 +136,8 @@ class Handover {
         nextServiceMileage: (j['nextServiceMileage'] as num?)?.toInt(),
         nextServiceMonths: (j['nextServiceMonths'] as num?)?.toInt(),
         nextServiceDueOn: parseDateOnly(j['nextServiceDueOn'] as String?),
+        serviceItems: ((j['serviceItems'] as List<dynamic>?) ?? const [])
+            .map((e) => HandoverServiceItem.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }

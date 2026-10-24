@@ -158,6 +158,7 @@ const NAV_EXPECTATIONS = {
   '/warehouses': 'inventory',
   '/catalog-categories': null,
   '/quotation-templates': null,
+  '/service-reminder-templates': null,
   '/promotions': 'pos',
 }
 

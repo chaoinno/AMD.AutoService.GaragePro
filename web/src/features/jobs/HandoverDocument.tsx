@@ -1,7 +1,6 @@
 import type { Handover } from '../../api/handover'
 import type { Job } from '../../api/types'
-import { formatDateTime, formatKm } from '../../lib/format'
-import { nextServiceText } from './HandoverServiceInfoSection'
+import { formatDateOnly, formatDateTime, formatKm } from '../../lib/format'
 import { BRAND_NAME, DocumentBrandMark } from '../../components/Brand'
 
 type HandoverDocumentProps = { job: Job; handover: Handover; signatureImageUrl: string | null }
@@ -12,6 +11,7 @@ type HandoverDocumentProps = { job: Job; handover: Handover; signatureImageUrl: 
 /// signatureImageUrl เป็น blob URL ที่ parent (HandoverDocumentModal) โหลดมาแล้วด้วย Bearer token — endpoint
 /// ไฟล์แนบต้อง auth เสมอ ใส่ตรงๆ ใน <img src> ไม่ได้ (ดู StaffAvatar.tsx/getStaffImage เป็น pattern เดียวกัน)
 export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverDocumentProps) {
+  const serviceItems = handover.serviceItems ?? []
   return (
     <article className="quotation-document">
       <header className="document-header">
@@ -47,11 +47,33 @@ export function HandoverDocument({ job, handover, signatureImageUrl }: HandoverD
         </InfoBlock>
       </section>
 
-      {/* [BIZ] นัดครั้งถัดไป — ก่อนยืนยันส่งมอบวันที่เป็นพรีวิว (server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น) */}
+      {/* [BIZ] นัดครั้งถัดไป (หลายรายการ) — ก่อนยืนยันส่งมอบวันที่เป็นพรีวิว (server คำนวณใหม่จากวันส่งมอบจริงตอนเซ็น)
+          พิมพ์ขาวดำได้: กรอบเส้นทึบ + ตัวหนา ไม่พึ่งสี */}
       <section className="document-next-service" aria-label="นัดเข้ารับบริการครั้งถัดไป">
         <span>นัดเข้ารับบริการครั้งถัดไป</span>
-        <strong>{nextServiceText(handover.nextServiceMileage, handover.nextServiceDueOn)}</strong>
-        {!handover.isLocked && handover.nextServiceDueOn ? (
+        {serviceItems.length === 0 ? (
+          <strong>ไม่ระบุ</strong>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>รายการ</th>
+                <th>ไมล์ที่นัด</th>
+                <th>วันที่นัด</th>
+              </tr>
+            </thead>
+            <tbody>
+              {serviceItems.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.name}</td>
+                  <td>{formatKm(item.nextServiceMileage)}</td>
+                  <td>{formatDateOnly(item.nextServiceDueOn)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {!handover.isLocked && serviceItems.length > 0 ? (
           <small>วันที่จะนับใหม่จากวันที่ยืนยันส่งมอบจริง</small>
         ) : null}
       </section>

@@ -101,6 +101,7 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/quotations/{id}/lines` · DELETE | `catalogCode` ว่าง = รายการนอกแคตตาล็อก (ad-hoc) — ต้องส่ง `name`+`type`+`unitPrice` แทน (2026-09-15, [docs/07-quotation-adhoc-line.md](07-quotation-adhoc-line.md)) |
 | POST | `/api/v1/quotations/{id}/lines/from-template` | **[เพิ่ม 2026-09-16]** `{ templateId, source? }` เพิ่มหลายบรรทัดจากเทมเพลตในครั้งเดียว — [docs/08-quotation-template.md](08-quotation-template.md) |
 | GET/POST | `/api/v1/quotation-templates` · GET/PUT `/{id}` · PATCH `/{id}/status` | **[เพิ่ม 2026-09-16]** ข้อมูลหลักเทมเพลตใบเสนอราคา — อ่านเปิดทุก role, เขียนเฉพาะผู้จัดการ |
+| GET/POST | `/api/v1/service-reminder-templates` · PUT `/{id}` · PATCH `/{id}/status` | **[เพิ่ม 2026-10-25]** รายการนัดบริการตั้งต้น (ตอนส่งมอบรถ) — อ่านเปิดทุก role (seed ชุดตั้งต้นให้สาขาเอง), เขียนเฉพาะผู้จัดการ · ดูหัวข้อส่งมอบรถ |
 | POST | `/quotations/{id}/lock` · `/unlock` | **[UI]** ขอสิทธิ์แก้คนเดียว |
 | GET | `/quotations/{id}/warnings` | ของไม่พอ / ซ้ำ / margin ต่ำ / หมดอายุ |
 | POST | `/quotations/{id}/send` | ✅ validate ทุก line มี price+tech, ไม่ซ้ำ → `waitapprove` |
@@ -212,6 +213,23 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 · `submit` ปฏิเสธ `HANDOVER_SERVICE_INFO_REQUIRED` ถ้ายังไม่บันทึก · `HandoverDto` เพิ่ม `mileageAtIntake`/`mileageAtHandover`/
 `nextServiceMileage`/`nextServiceMonths`/`nextServiceDueOn` (yyyy-MM-dd ตามปฏิทินไทย = วันส่งมอบจริง + N เดือน — ก่อนเซ็นเป็นพรีวิว)
 
+**[เปลี่ยน 2026-10-25] นัดครั้งถัดไปได้หลายรายการ** (น้ำมันเครื่อง/กรอง/เบรก…) — ตาราง `svc_HandoverServiceItem` (migration `AddHandoverServiceItems`)
+· body ใหม่ `PUT .../handover/service-info`:
+`{ mileageAtHandover, items: [{ templateId?, name, nextServiceMileage, nextServiceMonths }] }` — ส่งชุดเต็มทุกครั้ง แทนที่ของเดิมทั้งชุด · `items: []` บันทึกร่างได้ (เฉพาะไมล์)
+· **body เดิม (นัดเดียว) ยังรับอยู่** — แปลงเป็น 1 รายการชื่อ "เช็คระยะ" (แอปรุ่นที่อยู่บน store ต้องส่งมอบรถได้) · ถ้าส่ง `items` มาด้วย ใช้ `items` และไม่สนฟิลด์เดิม
+· กฎต่อรายการ (`HANDOVER_VALIDATION` · `field` = `items[i].name|nextServiceMileage|nextServiceMonths`, รูปเดิมนัดเดียวคงชื่อ field เดิม):
+ชื่อไม่ว่าง/ไม่เกิน 100/ไม่ซ้ำในใบเดียว (ตัดช่องว่าง ไม่สนตัวพิมพ์) · ไมล์นัด > ไมล์ส่งมอบ · เดือน 1–24 · ไม่เกิน 10 รายการ (`field` = `items`)
+· `submit` ต้องมีไมล์ส่งมอบ + **อย่างน้อย 1 รายการ** (`HANDOVER_SERVICE_INFO_REQUIRED`) แล้วคำนวณ `nextServiceDueOn` **ทุกรายการ** ใหม่จากวันส่งมอบจริง (`ServiceSchedule`) · ล็อกพร้อมใบส่งมอบ
+· `HandoverDto` เพิ่ม `serviceItems: [{ id, templateId?, name, nextServiceMileage, nextServiceMonths, nextServiceDueOn }]` —
+ฟิลด์เดี่ยวเดิม (`nextServiceMileage`/`nextServiceMonths`/`nextServiceDueOn`) เติมจากรายการที่ครบเร็วที่สุดให้แอปรุ่นเก่า ·
+คอลัมน์เดิมใน `svc_HandoverRecord` คงไว้แต่เลิกใช้ (backfill เป็นรายการ "เช็คระยะ" แล้ว)
+
+รายการตั้งต้นของสาขา: `GET /api/v1/service-reminder-templates?includeInactive=` (**ทุกบทบาทอ่านได้** — สาขาที่ยังไม่เคยมีรายการได้ชุดตั้งต้น 6 รายการให้เองตอนเรียกครั้งแรก:
+น้ำมันเครื่อง 10,000 กม./6 · กรองน้ำมันเครื่อง 10,000/6 · น้ำมันเกียร์ 40,000/24 · น้ำมันเบรก 40,000/24 · กรองอากาศ 20,000/12 · เช็คระยะ 10,000/6) ·
+`POST` · `PUT /{id}` `{ name, defaultMileageInterval, defaultMonths, sortOrder }` · `PATCH /{id}/status` `{ isActive }` — **เขียนเฉพาะผู้จัดการ** (`MASTER_DATA_MANAGE_FORBIDDEN` 403) ·
+ไม่มีลบ (ปิดใช้งานแทน) · error: `SERVICE_TEMPLATE_NOT_FOUND` 404 · `SERVICE_TEMPLATE_NAME_DUPLICATE` 409 (ชื่อไม่ซ้ำต่อสาขา) · `SERVICE_TEMPLATE_VALIDATION` 422
+· `templateId` ในรายการนัดเป็นแค่อ้างอิง ไม่มี FK — ชื่อเก็บเป็นสำเนา ณ ตอนบันทึก
+
 ---
 
 ## 12 · Reports
@@ -231,6 +249,10 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
 | GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
 | GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+
+**[เปลี่ยน 2026-10-25] นัดหลายรายการ**: `service-due` — **1 แถวต่อรถ** วันนัดของแถว (`nextServiceDueOn`/`nextServiceMileage`/`daysUntilDue`) = รายการที่ครบเร็วที่สุด
+และกรองช่วงวันด้วยรายการนั้น (ไม่ใช่ "มีรายการใดในช่วง") · แถวมี `items: [{ name, nextServiceMileage, nextServiceDueOn, daysUntilDue }]` ทุกรายการเรียงครบเร็วสุดก่อน ·
+`vehicle-history` — แต่ละครั้งที่เข้ามี `serviceItems: [{ name, nextServiceMileage, nextServiceDueOn }]` (ฟิลด์เดี่ยวเดิม = รายการที่ครบเร็วสุด) และ `nextService` เพิ่ม `items`
 
 ---
 

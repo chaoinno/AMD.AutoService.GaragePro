@@ -137,7 +137,14 @@ function HistoryBody({ history }: { history: VehicleHistory }) {
           {history.nextService ? (
             <>
               <strong>{nextServiceText(history.nextService.mileage, history.nextService.dueOn)}</strong>
-              <small>จากการส่งมอบงาน {history.nextService.fromJobNo}</small>
+              {history.nextService.items.length > 1 ? (
+                <ul className="vehicle-history-next__items">
+                  {history.nextService.items.map((i) => (
+                    <li key={i.name}><strong>{i.name}</strong> — {nextServiceText(i.nextServiceMileage, i.nextServiceDueOn)}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <small>จากการส่งมอบงาน {history.nextService.fromJobNo}{history.nextService.items.length > 1 ? ' · แถวบนคือรายการที่ครบเร็วที่สุด' : ''}</small>
             </>
           ) : (
             <strong>ยังไม่มีนัด (ไม่มีการส่งมอบที่บันทึกนัดไว้)</strong>
@@ -176,8 +183,17 @@ function VisitCard({ visit, showAmounts }: { visit: VehicleHistoryVisit; showAmo
         <div><dt><Gauge aria-hidden="true" /> ไมล์รับรถ</dt><dd className="report-num">{formatKm(visit.mileageAtIntake)}</dd></div>
         <div><dt><Gauge aria-hidden="true" /> ไมล์ส่งมอบ</dt><dd className="report-num">{visit.mileageAtHandover != null ? formatKm(visit.mileageAtHandover) : 'ยังไม่ส่งมอบ'}</dd></div>
         {visit.handedOverAt ? <div><dt>ส่งมอบเมื่อ</dt><dd>{formatDateTime(visit.handedOverAt)}</dd></div> : null}
-        {visit.nextServiceDueOn ? (
-          <div><dt><CalendarClock aria-hidden="true" /> นัดครั้งถัดไป</dt><dd>{nextServiceText(visit.nextServiceMileage, visit.nextServiceDueOn)}</dd></div>
+        {visit.serviceItems.length > 0 ? (
+          <div>
+            <dt><CalendarClock aria-hidden="true" /> นัดครั้งถัดไป</dt>
+            <dd>
+              <ul className="vehicle-history-next__items">
+                {visit.serviceItems.map((i) => (
+                  <li key={i.name}><strong>{i.name}</strong> — {nextServiceText(i.nextServiceMileage, i.nextServiceDueOn)}</li>
+                ))}
+              </ul>
+            </dd>
+          </div>
         ) : null}
         {visit.receiptDocumentNo ? (
           <div>

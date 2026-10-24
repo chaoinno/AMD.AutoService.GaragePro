@@ -388,19 +388,24 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
                 job.MileageAtIntake, handedOver ? handover!.MileageAtHandover : null,
                 lines,
                 receipt?.DocumentNo, showAmounts ? receipt?.TotalAmount : null,
-                handedOver ? handover!.NextServiceMileage : null, handedOver ? handover!.NextServiceDueOn : null);
+                handedOver ? HandoverMapper.Earliest(handover!)?.NextServiceMileage : null,
+                handedOver ? HandoverMapper.Earliest(handover!)?.NextServiceDueOn : null,
+                handedOver ? ServiceItemsOf(handover!) : []);
         }).ToList();
 
         var latestJob = data.Jobs.OrderByDescending(j => j.CreatedAt).First();
         var lastService = data.Handovers
-            .Where(h => h.SubmittedAt is not null && h.NextServiceDueOn is not null)
+            .Where(h => h.SubmittedAt is not null && h.ServiceItems.Count > 0)
             .OrderByDescending(h => h.SubmittedAt)
             .FirstOrDefault();
+        // วันนัดของรถ = รายการที่ครบเร็วที่สุดของการส่งมอบล่าสุด · รายการทั้งหมดแนบไปให้หน้าจอแสดงครบ
         var nextService = lastService is null
             ? null
             : new VehicleNextServiceDto(
                 data.Jobs.First(j => j.Id == lastService.JobId).JobNo,
-                lastService.NextServiceMileage, lastService.NextServiceDueOn!.Value);
+                HandoverMapper.Earliest(lastService)!.NextServiceMileage,
+                HandoverMapper.Earliest(lastService)!.NextServiceDueOn,
+                ServiceItemsOf(lastService));
 
         return Result<VehicleHistoryDto>.Ok(new VehicleHistoryDto(
             vehicleId, latestJob.VehicleRegistration, latestJob.VehicleModel, latestJob.VehicleVin,
@@ -448,10 +453,21 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
                 var hasOpenJob = otherVisits.Any(v => !JobStateMachine.IsTerminal(v.Status));
                 return isLatest && !cameBack && !hasOpenJob;
             })
-            .Select(h => new ServiceDueItemDto(
-                h.Job!.VehicleId, h.Job.VehicleRegistration, h.Job.VehicleModel, h.Job.CustomerName, h.Job.CustomerPhone,
-                h.JobId, h.Job.JobNo, h.SubmittedAt!.Value, h.MileageAtHandover,
-                h.NextServiceMileage, h.NextServiceDueOn!.Value, h.NextServiceDueOn.Value.DayNumber - today.DayNumber))
+            .Select(h =>
+            {
+                // 1 แถวต่อรถ — วันนัดของแถว = รายการที่ครบเร็วที่สุด · รายการทั้งหมดแสดงใต้แถว (ครบเร็วสุดก่อน)
+                var earliest = HandoverMapper.Earliest(h)!;
+                var lines = h.ServiceItems
+                    .OrderBy(i => i.NextServiceDueOn).ThenBy(i => i.SortOrder)
+                    .Select(i => new ServiceDueLineDto(
+                        i.Name, i.NextServiceMileage, i.NextServiceDueOn, i.NextServiceDueOn.DayNumber - today.DayNumber))
+                    .ToList();
+                return new ServiceDueItemDto(
+                    h.Job!.VehicleId, h.Job.VehicleRegistration, h.Job.VehicleModel, h.Job.CustomerName, h.Job.CustomerPhone,
+                    h.JobId, h.Job.JobNo, h.SubmittedAt!.Value, h.MileageAtHandover,
+                    earliest.NextServiceMileage, earliest.NextServiceDueOn,
+                    earliest.NextServiceDueOn.DayNumber - today.DayNumber, lines);
+            })
             .OrderBy(x => x.NextServiceDueOn).ThenBy(x => x.VehicleRegistration)
             .ToList();
 
@@ -462,6 +478,12 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             DueWithin30DaysCount: items.Count(x => x.DaysUntilDue is >= 0 and <= 30),
             Items: items));
     }
+
+    private static IReadOnlyList<VehicleServiceItemDto> ServiceItemsOf(HandoverRecord handover) =>
+        handover.ServiceItems
+            .OrderBy(i => i.SortOrder).ThenBy(i => i.NextServiceDueOn)
+            .Select(i => new VehicleServiceItemDto(i.Name, i.NextServiceMileage, i.NextServiceDueOn))
+            .ToList();
 
     private static DateOnly ThaiDate(DateTime utc) => DateOnly.FromDateTime(utc.AddHours(7));
     private static DateTime ThaiDateStartUtc(DateOnly date) =>
