@@ -46,7 +46,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/11-retail-sale-pos.md](docs/11-retail-sale-pos.md) | ขายสินค้าหน้าร้าน (POS) ตัดสต็อก FIFO · ส่วนลด/โปรโมชัน · ใบเสร็จ `SL-` · ยกเลิกบิลคืนล็อตเดิม — **เริ่มพัฒนาแล้ว (2026-09-29) · หน้าเว็บทำใหม่ตามแผนแล้ว (รอบสอง) · มีรายงาน `/reports/retail-sales` + การ์ดบนแดชบอร์ด · พิมพ์ใบเสร็จได้ทั้ง A4 และกระดาษม้วน 80/58 มม. · ยังไม่ได้ทดสอบกับ API จริง · เกณฑ์ส่วนลด ≥10% ยังไม่บังคับที่ API — ดูท้ายเอกสาร** |
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
-| [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[merge เข้า main 2026-10-23 · ยังไม่ deploy · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
+| [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -1957,7 +1957,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     ต้องแก้ตารางในหน้า `/privacy` ด้วย · แก้เนื้อหาแล้วเปลี่ยน `LEGAL_UPDATED_AT`
   · ทดสอบแล้ว: `tsc -b` · `vite build` · SSR build + prerender ผ่าน (HTML ของสองหน้ามีเนื้อหาครบ) · เบราว์เซอร์ 1024px และ 375px: หัวข้อครบ ลิงก์ถูก ไม่มี horizontal scroll
     ตารางเลื่อนในกรอบบนมือถือ (แก้ `.landing-legal` เป็น `grid-template-columns: minmax(0, 1fr)` ไม่งั้นตารางดัน grid จนถูกตัดขอบ) · ไม่มี console error
-- ✅ **[เพิ่ม 2026-10-22 · ServicePro merge เข้า main 2026-10-23 (รวม PR #10-#17 + D9 เป็นชุดเดียว) · Admin 2 PR ยังไม่ merge · ยังไม่ deploy] แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 และสถานะ site ใน GaragePro Admin**
+- ✅ **[เพิ่ม 2026-10-22 · ServicePro main #18 (รวม PR #10-#17 + D9) · Admin master #1+#2 · deploy production 2026-10-24] แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 และสถานะ site ใน GaragePro Admin**
   (คำขอผู้ใช้ · ต้นทางคือขั้นตอนต่ออายุของระบบ GaragePro เดิม · การตัดสินใจ D1-D8 และสัญญา API อยู่ที่ [docs/17](docs/17-package-renewal.md))
   · **branch**: `feat/package-renewal` (เอกสาร + .gitignore) → `feat/package-renewal-api` (PR 1 backend + spadmin) → `feat/package-renewal-internal` (API ภายใน) →
     `feat/package-renewal-internal-review` (อนุมัติจาก Admin) · `feat/package-renewal-web` · `feat/package-renewal-app` (แอป `1.2.0+4`) ·
@@ -2006,6 +2006,23 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
       ใช้ไอคอน Material Design Icons (Apache-2.0) ที่ `web/public/line-icons/` · **deploy เว็บก่อนหรือพร้อม API** ไม่งั้นการ์ดไม่มีไอคอน ·
       อนุมัติ/ไม่อนุมัติผ่าน LINE ตอบเป็นการ์ด · บทเรียน: ข้อความที่ตัดบรรทัดได้ใน box `flex: 0` ขยายกินทั้งแถว (หัวการ์ดเคยสูงผิดปกติ) ป้าย/ปุ่มต้อง `wrap: false` ·
       ตรวจโครงสร้างการ์ดได้โดยไม่ส่งจริงที่ `POST https://api.line.me/v2/bot/message/validate/push` · รูปสลิปบนการ์ดดูได้เฉพาะเมื่อ API อยู่บนโดเมน https (localhost ไม่มีรูป)
+  · **[Deploy production 2026-10-24]** ServicePro main `0c1b50d` (เพื่อนในทีม deploy) · Admin master `541d275` · migration `AddPackagePayment` ลง `GarageSelfServe` แล้ว
+    · **ค่าตั้งที่ตั้งแล้ว** (user-secrets ของ Mac → `bootstrap-production-secrets.sh` → deploy): `Production:SelfServe:Package:{SlipLinkKey,LineCommandKey,LineRelayKey}` ·
+      `Production:Internal:ApiKey` (ฝั่ง Admin = `SERVICEPRO_INTERNAL_KEY` ใน `.env` ของ `/home/deployment/sources/AMD.GaragePro.Admin`) · relay key ส่งให้ทีมระบบเดิมทางช่องทางส่วนตัว ·
+      **ยังไม่ตั้ง** `GarageProApi:BaseUrl`/`SlipBaseUrl` → สาขา db2 เห็นหน้าแพ็กเกจแต่แจ้งชำระไม่ได้ (ตั้งใจ ทดสอบ sp1 ก่อน)
+    · **bootstrap ต้องรันจาก Mac ที่มี user-secrets `Production:*` ครบเท่านั้น** (สคริปต์เขียนทับ env file ทั้งไฟล์)
+    · ติดตั้ง `add-api-internal-deny.sh` แล้ว (เจ้าของเครื่องรันด้วย sudo): `/api/v1/internal/*` จากอินเทอร์เน็ตได้ 404 พร้อม header `X-GP-Internal-Deny: nginx` ·
+      Admin เรียก `http://garagepro_service_api:8080` ผ่าน network `garagepro-servicepro` ได้ (มีคีย์ 200 · ไม่มีคีย์ 401) · API ภายในคืน 16 site
+    · **Admin deploy** = บน server `cd /home/deployment/sources/AMD.GaragePro.Admin && git pull --ff-only && docker compose -p amdgarageproadmin up --build -d` ·
+      `.env` ของ Admin เปลี่ยนเป็น `chmod 600` แล้ว (เดิมทุก user บนเครื่องอ่านได้)
+    · **ทดสอบบน production ผ่าน**: พิมพ์ `/SP_test` ในกลุ่ม → ได้ "คำสั่งนี้ไม่ถูกต้อง…" (รอบแรกได้ข้อความขัดข้องจากฝั่ง webhook ก่อนตั้งค่าเสร็จ ไม่มี log ฝั่งเรา) ·
+      อู่ทดสอบ **SP1002 "[ทดสอบ] Avenger"** สมัคร 11:22 → แจ้งชำระ 1 เดือน 4,278.93 → การ์ดมีรูปสลิป/ไอคอน/ปุ่มครบ → กดอนุมัติในกลุ่ม 11:24 (31 วินาที) →
+      paid ใช้ได้ถึง 23/12/2569 · การ์ด "อนุมัติแล้ว" ถูก · audit `line:<ชื่อ>` · **SP1002 ยังเก็บไว้ทดสอบต่อ** (ลบด้วย `spadmin purge --allow-paid` เมื่อเลิกใช้)
+    · **[RISK] พบระหว่างทดสอบ**: ดึงรูปสลิปจาก FTP ล้ม 1 ครั้ง (`No connection to the server exists` → 500) ครั้งอื่นสำเร็จ รูปบนการ์ดจึงขึ้น ·
+      ควรลองใหม่ 1 ครั้งแล้วตอบ 503 แทน 500 (กระทบหน้าดูสลิปบนเว็บ/Admin ด้วย) · หัวการ์ดบนจอมือถือบรรทัด "ServicePro · รายการ …" ตกเป็น 2 บรรทัด
+    · debug ตัวส่งต่อ: endpoint ไม่ log คำขอที่ปกติ (ตั้งใจ) · ดูสถานะจริงได้จาก Nginx access log ซึ่งต้องใช้ sudo
+      (`ssh -t garage_amd "sudo grep 'line-commands' /var/log/nginx/access.log | tail -20"`)
+    · ยังไม่ได้ทดสอบบน production: ปฏิเสธผ่าน LINE · กดซ้ำ · กดจากแชทส่วนตัว · อนุมัติจาก Admin · อีเมลเตือน paid 14/3 วันก่อนหมด · ทีมขายยังไม่มีแจ้งเตือนใน LINE เมื่ออู่ paid ใกล้หมด
 
 
 ### ยังไม่ได้ทำ

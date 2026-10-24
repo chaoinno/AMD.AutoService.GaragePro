@@ -1,6 +1,6 @@
 # 17 · แจ้งชำระเงินและต่ออายุแพ็กเกจ (Package Renewal)
 
-> สถานะ: **merge เข้า main แล้ว · ยังไม่ deploy** (2026-10-23 · งานแบ่งตามหัวข้อ 10 · ผลตรวจหัวข้อ 12) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
+> สถานะ: **deploy production แล้ว 2026-10-24** (อู่ sp1 + ปุ่มใน LINE ทดสอบผ่านจริง · สาขา db2 ยังไม่ตั้ง `GarageProApi` · งานแบ่งตามหัวข้อ 10 · ผลตรวจหัวข้อ 12) · หัวข้อ 5 และ 8.6 เป็น **สัญญา API** ที่ทุก PR ยึด
 > ที่มา: ขั้นตอนต่ออายุแพ็กเกจของระบบ GaragePro เดิม (เอกสารภายในทีม ไม่เก็บใน repo นี้)
 > อ่านคู่กับ [docs/12](12-self-serve-trial-proposal.md) (self-serve) และ [docs/03 §16](03-api-contract.md)
 
@@ -633,7 +633,17 @@ Docs: `docs/api-branches.md` ฟิลด์ใหม่ของรายกา
 
 ---
 
-## 12. สถานะ (2026-10-22)
+## 12. สถานะ (2026-10-24)
+
+- **deploy production แล้ว 2026-10-24**: ServicePro (main `0c1b50d`) + Admin (master `541d275`) · migration `AddPackagePayment` ลงฐาน `GarageSelfServe` แล้ว
+  · ตั้ง `SlipLinkKey`/`LineCommandKey`/`LineRelayKey` และ `Internal:ApiKey` แล้ว · ติดตั้ง Nginx ปิด `/api/v1/internal` แล้ว
+- **ทดสอบบน production ผ่าน**: webhook ของระบบเดิมส่งต่อ `/SP_` มาถึง (พิมพ์ `/SP_test` ในกลุ่มได้คำตอบ "คำสั่งนี้ไม่ถูกต้อง…") ·
+  อู่ทดสอบสมัคร → แจ้งชำระ → การ์ดมีรูปสลิปและปุ่ม → กดอนุมัติในกลุ่ม → อู่เป็น paid ทันทีพร้อมการ์ด "อนุมัติแล้ว" ·
+  Admin เรียก API ภายในผ่าน docker network ได้ (มีคีย์ 200 · ไม่มีคีย์ 401) และจากอินเทอร์เน็ตถูก Nginx ตอบ 404
+- ยังไม่เปิด: สาขา db2 (`flow: "garagepro"`) จนกว่าจะตั้ง `GarageProApi:BaseUrl`/`SlipBaseUrl` · แอป `1.2.0+4` ยังไม่ปล่อย
+- ยังไม่ได้ทดสอบบน production: ปฏิเสธผ่าน LINE · กดปุ่มซ้ำ · กดจากแชทส่วนตัวกับบอท · อนุมัติจากหน้า Admin · อีเมลเตือนอู่ paid ก่อนหมด
+
+### บันทึกก่อน deploy (2026-10-22)
 
 - โค้ดครบทุก PR ในหัวข้อ 10 และใช้ระบบเดิมตาม D9 (หัวข้อ 8.7) · merge เข้า main แล้ว 2026-10-23 · Admin เป็นอีก repo
 - migration `AddPackagePayment` รันกับ `GarageSelfServe_Dev` แล้ว · production รันตอน deploy (`efbundle-selfserve`)
