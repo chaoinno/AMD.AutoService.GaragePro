@@ -47,6 +47,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/12-self-serve-trial-proposal.md](docs/12-self-serve-trial-proposal.md) · [docs/03](docs/03-api-contract.md) §16 · [deploy/selfserve/README.md](deploy/selfserve/README.md) · [tools/spadmin/README.md](tools/spadmin/README.md) | **[ทำแล้วบน branch `feat/sp1-selfserve` 2026-10-14 · ยังไม่ deploy · E2E กับฐาน dev ผ่านแล้ว]** ServicePro ทดลองใช้ด้วยตัวเอง 30 วัน: shard `sp1` = ฐาน `GarageSelfServe` · signup อีเมล+OTP/Google · ล็อกฟีเจอร์/ลิมิตที่ API · อ่านอย่างเดียว 90 วันแล้วลบ · `spadmin convert` ย้ายข้อมูลหลักไปสาขา GaragePro ใน db2 · หน้าสาธารณะ prerender + sitemap/robots — ดูหัวข้อ "Self-serve trial" ในสถานะปัจจุบัน |
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
+| [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2024,6 +2025,29 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
       (`ssh -t garage_amd "sudo grep 'line-commands' /var/log/nginx/access.log | tail -20"`)
     · ยังไม่ได้ทดสอบบน production: ปฏิเสธผ่าน LINE · กดซ้ำ · กดจากแชทส่วนตัว · อนุมัติจาก Admin · อีเมลเตือน paid 14/3 วันก่อนหมด · ทีมขายยังไม่มีแจ้งเตือนใน LINE เมื่ออู่ paid ใกล้หมด
 
+- ✅ **[เพิ่ม 2026-10-25 · branch `integration/backlog-6` ยังไม่ merge main/ยังไม่ deploy] 6 งานตาม [docs/18](docs/18-stock-service-backlog-plan.md)**
+  (sub agent Sonnet 3 สายใน worktree แยก แล้วรวมที่ branch นี้ · รายละเอียดการตัดสินใจอยู่ใน docs/18)
+  · **[1] min-max สต็อก**: `CatalogItem.MinStock/MaxStock` · กฎเดียว `Domain/Common/StockLevel.cs` (พร้อมใช้ ≤ min · แนะนำสั่ง = max − พร้อมใช้ − OnOrder · `BelowMin` expression ใช้กับ EF)
+    · `GET /inventory/low-stock/count` · `PUT /inventory/items/{id}/stock-levels` (Manager/Office) · ฟอร์มสินค้า (Manager) ใช้ validation เดียวกัน ·
+    แถวเหลือง+ไอคอน+ป้าย "ถึงจุดต่ำสุด" · ตัวเลขเมนู "สต็อก FIFO" · ตัวกรอง `LowStockOnly` เดิมความหมายเดิม · ขายหน้าร้าน/เบิกเข้าจ๊อบ invalidate query สต็อกแล้ว (เดิมไม่)
+  · **[2] นัดบริการหลายรายการ**: `svc_ServiceReminderTemplate` (สร้าง 6 รายการตั้งต้นตอนสาขาอ่านครั้งแรก · แก้ได้เฉพาะ Manager) + `svc_HandoverServiceItem` ·
+    คอลัมน์ `HandoverRecord.NextService*` เลิกใช้ (backfill เป็นรายการ "เช็คระยะ") · `service-info` รับทั้ง body ใหม่ `items[]` และ body เดิม (แอปบน store ส่งมอบได้ต่อ) ·
+    `templateId` ต้องเป็นของสาขาปัจจุบัน · รายงานใกล้ครบรอบ 1 แถวต่อรถ วันนัด = รายการที่ครบเร็วสุด · **web/app รุ่นเก่าเห็นแค่รายการที่ครบเร็วสุด — deploy เว็บพร้อม backend**
+  · **[3] รายงานการเบิกอะไหล่** `GET /reports/stock-usage` + `/reports/stock-usage` (documents/items/requesters · job/manual/pos · ต้นทุน null ตาม role · Manager/Office ·
+    AdvancedReports) · หน้าเว็บยังไม่มีตัวกรองคลัง/สินค้า/ผู้เบิก (API มี)
+  · **[4] คืนอะไหล่** `POST /inventory/withdrawals/{operationId}/returns` เลข `RT-` · คืนเข้าล็อตเดิมต้นทุนเดิม (ล็อตที่ตัดทีหลังคืนก่อน) · `StockMovement.SourceMovementId` ·
+    plan การเบิกนับ issue − issue-return · เฉพาะใบเบิกผูก job · Manager/Office · ออกใบเสร็จแล้วคืนไม่ได้ · เหตุผล 4 ตัว · ไม่รับของชำรุด
+  · **[5] รถใกล้ครบรอบ** `GET /reports/service-due/count` (วันนี้−30..+7) · รายงาน+count เปิดให้ FrontDesk · แจ้งเตือน `service.due` ถึง FrontDesk|Manager ครั้งเดียวต่อรถต่อรอบ
+    (`SubjectKey service-due:{vehicleId}:{date}`) · resolved เมื่อเปิดจ๊อบใหม่ของรถคันนั้น · `ServiceDueDailyJob` 08:00 + 1 นาทีหลังสตาร์ต (ปิดด้วย `ServiceDue:Jobs:Enabled=false`)
+    ไล่ฐานหลัก + sp1 เมื่อตั้งค่า · กติกาเดียวกับรายงานที่ `ServiceDueRows` · [RISK] ไม่มี unique index กันแจ้งซ้ำ ถ้ารัน API หลาย instance พร้อมกันอาจแจ้งซ้ำ
+  · **[6] มือถือสลับสาขา** (admin · หน้าโปรไฟล์ · token มือถือจาก backend เดิม) · เวอร์ชันแอป `1.3.0+5`
+  · **migration ใหม่ 3 ตัว (ยังไม่ได้รันกับฐานใดเลย)**: `AddCatalogItemMinMax` · `AddHandoverServiceItems` (มี backfill SQL) · `AddStockMovementSource` ·
+    `has-pending-model-changes` หลังรวม branch = ไม่มี · ต้องรันทั้ง `GarageService` และ `GarageSelfServe` (ฐานร่วม production — ขออนุญาตก่อน)
+  · ผลตรวจหลังรวม (2026-10-25): `dotnet build` 0 error · `dotnet test` **1661 ผ่าน / 23 ข้าม** · Web `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) **95** ·
+    Mobile `dart analyze` สะอาด · `flutter test` **231**
+  · **ยังไม่ได้ทดสอบ**: ไม่ได้เปิดเบราว์เซอร์/simulator · query ใหม่ทั้งหมดยังไม่เคยรันบน SQL Server จริง (เช่น `BelowMin`, `Min(...)` ของ service-due, รายงานการเบิก) ·
+    งานรายวันยังไม่เคยรันจริง · การแยกสาขาของรายงาน/ตัวเลขตรวจแค่ว่าส่ง shard/branch ถูก · Android
+  · **[RISK] ลำดับ deploy**: แอป 1.3.0+5 ต้องปล่อยหลัง backend · เว็บต้อง deploy พร้อม backend
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง
