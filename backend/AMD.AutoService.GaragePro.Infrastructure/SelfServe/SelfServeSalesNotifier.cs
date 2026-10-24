@@ -37,4 +37,8 @@ public sealed class SelfServeSalesNotifier : ISelfServeSalesNotifier
 
     public Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct = default) =>
         _inner.SendAsync(retryKey, text, ct);
+
+    /// <summary>ข้อความ + รูปใน push เดียว (แจ้งชำระพร้อมสลิป · docs/17 §5.3)</summary>
+    public Task<bool> SendAsync(Guid retryKey, IReadOnlyList<LineOutboundMessage> messages, CancellationToken ct = default) =>
+        _inner.SendAsync(retryKey, messages, ct);
 }

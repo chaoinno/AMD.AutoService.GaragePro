@@ -216,28 +216,40 @@ public sealed class SelfServeAdminService(
         var snapshot = await repository.GetAsync(workspaceNo, 0, ct);
         if (snapshot is null) return (null, SelfServeLifecycleErrors.WorkspaceNotFound());
 
+        var refusal = ChangeRefusal(snapshot, options.ShardKey, () => repository.CheckWritableDatabase());
+        return refusal is null ? (snapshot, null) : (null, refusal);
+    }
+
+    /// <summary>
+    /// เหตุผลที่เปลี่ยนแพ็กเกจ/วันหมดของอู่นี้ไม่ได้ (ใช้ร่วมกับการอนุมัติการชำระเงิน · docs/17 §7) · null = เปลี่ยนได้
+    /// · ตรวจค่าตั้งฐานเป็นขั้นสุดท้าย (<paramref name="databaseMismatch"/> เรียกเมื่อผ่านข้ออื่นแล้วเท่านั้น)
+    /// </summary>
+    public static ApiError? ChangeRefusal(AdminWorkspaceSnapshot snapshot, string shardKey, Func<string?> databaseMismatch)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        ArgumentNullException.ThrowIfNull(databaseMismatch);
+
         var ws = snapshot.Workspace;
         var code = SelfServeText.WorkspaceCode(ws.WorkspaceNo);
         if (ws.Status is WorkspaceStatus.Purged or WorkspaceStatus.Provisioning)
-            return (null, SelfServeAdminErrors.Refused($"อู่ {code} อยู่สถานะ {ws.Status} เปลี่ยนแพ็กเกจไม่ได้"));
+            return SelfServeAdminErrors.Refused($"อู่ {code} อยู่สถานะ {ws.Status} เปลี่ยนแพ็กเกจไม่ได้");
         if (ws.Plan == WorkspacePlanKind.Converted)
-            return (null, SelfServeAdminErrors.Refused($"อู่ {code} ย้ายไปสาขาจริงแล้ว (converted) แก้แพ็กเกจที่สาขาปลายทางแทน"));
+            return SelfServeAdminErrors.Refused($"อู่ {code} ย้ายไปสาขาจริงแล้ว (converted) แก้แพ็กเกจที่สาขาปลายทางแทน");
         if (ws.BranchId is null || snapshot.Branch is null)
-            return (null, SelfServeAdminErrors.Refused($"อู่ {code} ไม่มีแถว Branch ใน shard {options.ShardKey}"));
-        if (repository.CheckWritableDatabase() is { } mismatch)
-            return (null, SelfServeAdminErrors.Refused($"ไม่เขียนฐาน: {mismatch}"));
-
-        return (snapshot, null);
+            return SelfServeAdminErrors.Refused($"อู่ {code} ไม่มีแถว Branch ใน shard {shardKey}");
+        if (databaseMismatch() is { } mismatch)
+            return SelfServeAdminErrors.Refused($"ไม่เขียนฐาน: {mismatch}");
+        return null;
     }
 
     /// <summary>Branch เป็นตัวจริง · สำเนาใน sp_Workspace ใช้เฉพาะ trial/suspended (paid ที่ไม่มีกำหนด = ไม่มีวันหมด) — กติกาเดียวกับ PlanPolicy</summary>
-    private static DateTime? EndsAt(AdminWorkspaceSnapshot snapshot) =>
+    public static DateTime? EndsAt(AdminWorkspaceSnapshot snapshot) =>
         snapshot.Branch?.EndsAtUtc
         ?? (snapshot.Workspace.Plan is WorkspacePlanKind.Trial or WorkspacePlanKind.Suspended
             ? snapshot.Workspace.TrialEndsAt
             : null);
 
-    private static WorkspaceStatus Reactivated(WorkspaceStatus status, DateTime newEnd, DateTime now) =>
+    public static WorkspaceStatus Reactivated(WorkspaceStatus status, DateTime newEnd, DateTime now) =>
         status == WorkspaceStatus.Expired && newEnd > now ? WorkspaceStatus.Active : status;
 
     private static Result<AdminChangeResult> Fail(ApiError error) => Result<AdminChangeResult>.Fail(error);

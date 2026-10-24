@@ -24,9 +24,11 @@ export type TrialBannerCopy = {
 
 /**
  * ข้อความของแถบทดลองใช้ตามโทน — `daysLabel` มาจาก `formatDaysLeft()` ของ lib/plan.ts (ข้อความวันเดียวกับทุกจุดในระบบ)
- * null = ไม่ต้องแสดงแถบ (ลูกค้าเดิม/แพ็กเกจเต็ม)
+ * `paid` = อู่ที่ชำระเงินแล้ว (ใกล้หมด/อ่านอย่างเดียว) ใช้ข้อความของแพ็กเกจแทนทดลองใช้
+ * null = ไม่ต้องแสดงแถบ (ลูกค้าเดิม/แพ็กเกจที่ยังไม่ใกล้หมด)
  */
-export function trialBannerCopy(tone: TrialTone, daysLabel: string, suspended = false): TrialBannerCopy | null {
+export function trialBannerCopy(tone: TrialTone, daysLabel: string, suspended = false, paid = false): TrialBannerCopy | null {
+  if (paid && !suspended) return paidBannerCopy(tone, daysLabel)
   switch (tone) {
     case 'none':
       return null
@@ -38,7 +40,7 @@ export function trialBannerCopy(tone: TrialTone, daysLabel: string, suspended = 
     case 'warn':
       return {
         title: `ทดลองใช้ · ${daysLabel}`,
-        detail: 'ใกล้ครบช่วงทดลองใช้ สมัครแพ็กเกจหรือขอต่ออายุก่อนระบบเป็นอ่านอย่างเดียว',
+        detail: 'ใกล้ครบช่วงทดลองใช้ แจ้งชำระเงินหรือขอต่ออายุก่อนระบบเป็นอ่านอย่างเดียว',
       }
     case 'expired':
       return suspended
@@ -48,9 +50,36 @@ export function trialBannerCopy(tone: TrialTone, daysLabel: string, suspended = 
           }
         : {
             title: 'ช่วงทดลองใช้ครบ 30 วันแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
-            detail: 'ข้อมูลของอู่ยังอยู่ครบ ขอต่ออายุหรือสมัครแพ็กเกจได้เลย',
+            detail: 'ข้อมูลของอู่ยังอยู่ครบ แจ้งชำระเงินเพื่อใช้งานต่อ หรือขอต่ออายุกับทีมงานได้เลย',
           }
   }
+}
+
+function paidBannerCopy(tone: TrialTone, daysLabel: string): TrialBannerCopy | null {
+  switch (tone) {
+    case 'warn':
+      return {
+        title: `แพ็กเกจใกล้หมดอายุ · ${daysLabel}`,
+        detail: 'แจ้งชำระเงินพร้อมสลิปก่อนวันหมดอายุ ทีมงานตรวจแล้วต่ออายุให้ต่อจากวันหมดเดิม ไม่เสียวันที่เหลือ',
+      }
+    case 'expired':
+      return {
+        title: 'แพ็กเกจหมดอายุแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้',
+        detail: 'ข้อมูลของอู่ยังอยู่ครบ แจ้งชำระเงินพร้อมสลิป ระบบกลับมาใช้งานได้หลังทีมงานอนุมัติ',
+      }
+    default:
+      return null
+  }
+}
+
+/** ชื่อแถบสำหรับโปรแกรมอ่านหน้าจอ */
+export function trialBannerLabel(paid: boolean): string {
+  return paid ? 'สถานะแพ็กเกจ' : 'สถานะแพ็กเกจทดลองใช้'
+}
+
+/** ป้ายปุ่มขอให้ทีมขายติดต่อ (หน้าต่างเดิม POST /selfserve/extension-request) */
+export function extensionButtonLabel(paid: boolean): string {
+  return paid ? 'ขอให้ทีมงานติดต่อ' : 'ขอต่ออายุ / สมัครแพ็กเกจ'
 }
 
 function parseInstant(value: string): number {

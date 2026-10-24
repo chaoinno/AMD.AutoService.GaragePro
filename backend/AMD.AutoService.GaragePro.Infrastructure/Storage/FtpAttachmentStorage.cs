@@ -39,7 +39,7 @@ public sealed class FtpOptions
 /// ห้ามเลียนแบบ FileManagerController ของ AMD.GaragePro.Admin ตรงๆ — ตัวนั้นต่อ path จาก query string
 /// ตรงๆ ไม่มีการกัน path traversal เลย (ดู CLAUDE.md เรื่องไม่ทำตาม pattern ของโปรเจกต์นั้น)
 /// </summary>
-public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IOptions<FtpOptions> ftpOptions) : IAttachmentStorage
+public sealed partial class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IOptions<FtpOptions> ftpOptions) : IAttachmentStorage
 {
     private static readonly HashSet<string> AllowedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -92,20 +92,30 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
         var uploadSource = await PrepareUploadStreamAsync(content, extension, ct);
         try
         {
-            var limited = new HashingLimitedStream(uploadSource, _options.MaxSizeBytes);
-
-            await using var client = CreateClient();
-            await client.Connect(ct);
-            await client.UploadStream(limited, _rootPrefix + relativePath,
-                FtpRemoteExists.Overwrite, createRemoteDir: true, token: ct);
-
-            return new StoredFile(id, relativePath, limited.TotalBytesRead, limited.GetSha256Hex());
+            var (size, sha256) = await UploadAsync(uploadSource, relativePath, ct);
+            return new StoredFile(id, relativePath, size, sha256);
         }
         finally
         {
             if (!ReferenceEquals(uploadSource, content))
                 await uploadSource.DisposeAsync();
         }
+    }
+
+    /// <summary>
+    /// แกนอัปโหลดที่ใช้ร่วมกันทั้งไฟล์แนบของจ๊อบและสลิปค่าแพ็กเกจ: นับขนาด/แฮชระหว่างสตรีมเข้า FTP (ไม่พักไฟล์บนดิสก์)
+    /// · <paramref name="relativePath"/> ต้องสร้างจาก <see cref="SafeSegment"/> แล้ว (ผู้เรียกเป็นผู้ประกอบ path)
+    /// </summary>
+    private async Task<(long Size, string Sha256)> UploadAsync(Stream source, string relativePath, CancellationToken ct)
+    {
+        var limited = new HashingLimitedStream(source, _options.MaxSizeBytes);
+
+        await using var client = CreateClient();
+        await client.Connect(ct);
+        await client.UploadStream(limited, _rootPrefix + relativePath,
+            FtpRemoteExists.Overwrite, createRemoteDir: true, token: ct);
+
+        return (limited.TotalBytesRead, limited.GetSha256Hex());
     }
 
     /// <summary>
@@ -186,7 +196,7 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
     }
 
     /// <summary>กัน path traversal — ต้องเป็น relative path ล้วน ไม่มี .. หรือ \ (เทียบเจตนาเดียวกับ ResolveInsideRoot เดิมบนดิสก์)</summary>
-    private static bool IsSafeRelativePath(string relativePath)
+    internal static bool IsSafeRelativePath(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath) || relativePath.StartsWith('/') || relativePath.Contains('\\'))
             return false;
@@ -195,7 +205,7 @@ public sealed class FtpAttachmentStorage(IOptions<AttachmentOptions> options, IO
         return segments.Length > 0 && segments.All(s => s != "." && s != "..");
     }
 
-    private static string SafeSegment(string value)
+    internal static string SafeSegment(string value)
     {
         var safe = new string(value.Where(c => char.IsLetterOrDigit(c) || c is '-' or '_').ToArray());
         if (string.IsNullOrEmpty(safe))

@@ -338,9 +338,73 @@ Events → client:
 | `POST /api/v1/selfserve/extension-request` `{requestId, note?}` | แจ้ง LINE ทีมขาย · ซ้ำภายใน 24 ชม. = 409 `SELFSERVE_EXTENSION_ALREADY_REQUESTED` |
 | `POST /api/v1/selfserve/sample-data` · `POST …/sample-data/clear` | ผู้จัดการเท่านั้น (`SELFSERVE_SAMPLE_FORBIDDEN`) · ล้างตาม ledger `sp_SampleEntity` กดซ้ำได้ |
 
+### 16.4.1 แพ็กเกจและการแจ้งชำระเงิน **[เพิ่ม 2026-10-21 · สัญญาเต็มที่ [docs/17 §5](17-package-renewal.md) · flow garagepro/LINE ที่ [§8.7](17-package-renewal.md)]**
+เรียกได้แม้อู่อ่านอย่างเดียว (อยู่ใต้ `/selfserve`) · ตัวเงิน/หมายเหตุ/สลิปเห็นเฉพาะผู้จัดการ (role อื่นได้ null ที่ server)
+
+**[เพิ่ม 2026-10-22] สองแบบตาม shard ใน JWT (route เดียวกัน)**: อู่ sp1 = `flow: "selfserve"` (ระบบของเรา) · สาขา db1/db2 ที่ `BranchGroupId = 7` =
+`flow: "garagepro"` (ส่งต่อให้ระบบแจ้งชำระเดิมของ GaragePro · ServicePro อ่านอย่างเดียว) · shard/กลุ่มอื่น = 404 `SELFSERVE_NOT_APPLICABLE` เหมือนเดิม
+- `PackageOverview` เพิ่ม `flow` (`selfserve` | `garagepro`) · `canCancel` (ยกเลิกรายการรอตรวจเองได้ไหม) · `amountRequired` (ฟอร์มต้องมียอดเงินไหม)
+  · sp1: `canCancel: true` · `amountRequired: true` · garagepro: `plan: "legacy"` · `status` `active`/`expired` (ไม่ล็อก `readOnly: false` เสมอ) ·
+  `workspaceNo` = เลขสาขาเป็นข้อความ · `canCancel: false` · `amountRequired: false` · พรีวิว = `EndPackageDate` + N เดือน (ต่อจากวันหมดเดิมแม้หมดแล้ว) ·
+  `lastUsableDate`/`daysLeft` กติกาเดียวกับ sp1 (เที่ยงคืนไทยของวันหมด − 1 tick) · ไม่ได้ตั้งการเชื่อมต่อ = `cannotSubmitCode: "unavailable"` พร้อมเหตุผล
+- `PackagePayment.id` เป็นข้อความ (sp1 = GUID เดิม · garagepro = เลขแถวของระบบเดิม `shortId` เดียวกัน) · `monthCount`/`submittedBy` ไม่อยู่ได้ (garagepro)
+  · `slip` ของ garagepro = `{ url }` ลิงก์รูปที่ระบบเดิมเก็บ (ไม่มี `contentType`/`sizeBytes` · เฉพาะผู้จัดการ) · garagepro: สถานะ 1 `pending` · 2 `approved` ·
+  อื่น `cancelled` · `periodEndsAt`/`periodLastUsableDate` เฉพาะ `approved` · ไม่มี `amount`/`note`/`reject*`
+- garagepro POST: ฟิลด์ multipart เดิม แต่ `amount`/`note` ไม่ใช้ · มีรายการรอตรวจ = 409 `PACKAGE_PAYMENT_PENDING_EXISTS` · requestId เดิมภายใน 10 นาที = ผลเดิม ·
+  ระบบเดิมไม่รับพร้อมข้อความไทย = 422 `PACKAGE_PAYMENT_VALIDATION` (ข้อความของระบบเดิม) · อื่นๆ/ไม่ทราบผล = 503 `PACKAGE_PAYMENT_UNAVAILABLE` (ลองใหม่ด้วย requestId เดิม) ·
+  cancel = 409 `PACKAGE_PAYMENT_NOT_CANCELLABLE` (รอตรวจ) / `PACKAGE_PAYMENT_NOT_PENDING` · `/slip` = 404 (ใช้ `slip.url`)
+| Method · Path | หมายเหตุ |
+|---|---|
+| `GET /api/v1/selfserve/package` | `PackageOverview` `{workspaceNo, plan, status, endsAt?, lastUsableDate?, daysLeft?, readOnly, vatRate?, monthOptions[{months, subtotal?, vat?, price?, previewEndsAt, previewLastUsableDate}], paymentAccount?, pending?, canSubmit, cannotSubmitCode?, cannotSubmitReasonTh?, paidAtMaxPastDays}` · `cannotSubmitCode`: not_renewable → unavailable → not_manager → pending_exists (เหตุผลแรกที่เข้าเงื่อนไข) · ราคา: `subtotal` ก่อน VAT · `vat` (0 เมื่อไม่แยก VAT) · `price` = ยอดที่ต้องโอนรวม VAT = `expectedAmount` ตอนแจ้ง · ไม่อยู่ทั้งสามช่อง = ยังไม่ตั้งราคา · `vatRate` ไม่อยู่ = ไม่คิด VAT แยก · ตัวอย่าง production (3,999/เดือน + VAT 7%): `{"months":1,"subtotal":3999.00,"vat":279.93,"price":4278.93,"previewEndsAt":"2026-12-13T17:00:00Z","previewLastUsableDate":"2026-12-13"}` |
+| `GET /api/v1/selfserve/package/payments?take=20` | `PackagePayment[]` ใหม่สุดก่อน (take ≤ 50) |
+| `POST /api/v1/selfserve/package/payments` | multipart `requestId · paidAt · amount · monthCount · note? · slip` (ผู้จัดการ · 10 ครั้ง/ชม. ต่ออู่) → `PackagePayment` · requestId เดิม = แถวเดิม ไม่อัปโหลด/ไม่ส่ง LINE ซ้ำ · request ≤ 16 MB (สลิป ≤ 15 MB) · content-type ของสลิปไม่ระบุหรือ `application/octet-stream` ได้ (ตัดสินจากเนื้อไฟล์) |
+| `POST /api/v1/selfserve/package/payments/{id}/cancel` | ผู้จัดการยกเลิกรายการรอตรวจของอู่ตัวเอง |
+| `GET /api/v1/selfserve/package/payments/{id}/slip` | ไฟล์ `image/jpeg` หรือ `application/pdf` · ผู้จัดการ · ต้องมี Bearer |
+| `GET /api/v1/public/package-slips/{id}?exp=&sig=` | anonymous · ลิงก์มีลายเซ็น HMAC ที่ส่งเข้า LINE ทีมงาน (อายุ 7 วัน) · ผิดทุกกรณี 404 เปล่า · ถังจำกัดอัตรา 300/ชม. ต่อ IP แยกจากฟอร์มติดต่อ |
+| `POST /api/v1/public/line-commands` | **[เพิ่ม 2026-10-22]** anonymous · คำสั่ง `/SP_…` จากปุ่มบนการ์ดแจ้งชำระของอู่ sp1 ที่ตัวส่งต่อ (LineRelay) จาก webhook LINE ของระบบเดิมส่งมา · รายละเอียดด้านล่าง |
+
+Error: `PACKAGE_PAYMENT_FORBIDDEN` 403 · `PACKAGE_PAYMENT_UNAVAILABLE` 503 · `PACKAGE_PAYMENT_VALIDATION` 422 (+`field`: requestId · paidAt · amount · monthCount · note · slip · until · reason · id) ·
+`PACKAGE_PAYMENT_PENDING_EXISTS` 409 · `PACKAGE_NOT_RENEWABLE` 409 · `PACKAGE_PAYMENT_NOT_FOUND` 404 · `PACKAGE_PAYMENT_NOT_PENDING` 409 · `PACKAGE_APPROVAL_CONFLICT` 409 ·
+`PACKAGE_SLIP_UPLOAD_FAILED` 503 · `PACKAGE_PAYMENT_NOT_CANCELLABLE` 409 (garagepro) · `ATTACHMENT_EMPTY` 422 · `ATTACHMENT_TYPE_INVALID` 422 · `ATTACHMENT_TOO_LARGE` 413 · `RATE_LIMITED` 429
+· แจ้งเตือนในระบบหลังทีมงานตรวจ: kind `package.payment_approved` / `package.payment_rejected` · `entityType: "PackagePayment"` · `linkHint: "package"`
+
+**`POST /api/v1/public/line-commands`** (สัญญาตายตัวกับทีมระบบเดิม · docs/17 §8.7.2)
+- header `X-Line-Relay-Key` (เทียบแบบ constant-time กับ `SelfServe:Package:LineRelayKey` ≥ 32 ตัว) · server ไม่ได้ตั้งคีย์ = **404** ไม่มี body ·
+  ไม่มี/ผิด/ส่งหลายค่า = **401** ไม่มี body
+- body JSON (camelCase): `{ "text": "/SP_…", "lineUserId": "U…", "displayName": "ชื่อใน LINE", "groupId": "C…" }` · `displayName`/`groupId` ไม่บังคับ · ≤ 8 KB
+- ผ่านคีย์แล้วตอบ **HTTP 200** เสมอ เป็น JSON เปล่า (ไม่มี envelope): `{ "handled": true|false, "messages": [ LINE message objects ≤ 5 ] }`
+  · `handled: false` + `messages: []` = ไม่ใช่คำสั่งของ ServicePro (ไม่ต้องตอบกลุ่ม) · `handled: true` = เอา `messages` ไปตอบกลุ่มด้วย reply token
+  · body เสีย/เกิดเรื่องไม่คาดคิด = `{ "handled": true, "messages": [ { "type": "text", "text": "ขออภัย ระบบ ServicePro ขัดข้อง ลองใหม่อีกครั้ง" } ] }` (ไม่ตอบ 500)
+  · ข้อยกเว้นเดียว: ถังจำกัดอัตรา 600/ชม. ต่อ IP เต็ม = 429 (envelope `RATE_LIMITED` · ไม่ต้องตอบกลุ่ม)
+- ตรวจลายเซ็น/วันหมดของคำสั่ง (14 วัน) ก่อนแตะฐาน · `groupId` ที่ส่งมาต้องเป็นกลุ่มทีมงาน (`SelfServe:SalesLineGroupId` ไม่งั้น `LineMessaging:ContactGroupId`) ·
+  ไม่มี `groupId` ใช้ได้เฉพาะผู้กดที่อยู่ใน `SelfServe:Package:LineApproverUserIds` · ตั้งรายชื่อไว้ = ผู้กดต้องอยู่ในรายชื่อเสมอ
+- อนุมัติ/ปฏิเสธด้วย service เดียวกับ spadmin/Admin · ผู้กระทำ `line:{displayName}#{lineUserId}` · ปฏิเสธใส่หมายเหตุ "ทีมงานกดผ่าน LINE" ·
+  ยอดไม่ตรงราคาอนุมัติใน LINE ไม่ได้ (ตอบให้ไปทำใน Admin พร้อม `SelfServe:Package:AdminReviewUrl` ถ้าตั้ง) · ตรวจแล้ว = ตอบว่าใครตรวจเมื่อไร
+- คำตอบที่สำเร็จ: อนุมัติ = Flex "✅ อนุมัติแล้ว … ใช้งานได้ถึง …" · อย่างอื่น = ข้อความ (`type: "text"`)
+
 ### 16.5 งานเบื้องหลังและเครื่องมือผู้ดูแล
 - งานรายวันใน API (`SelfServeDailyJob`, ปิดได้ด้วย `SelfServe:Jobs:Enabled=false`): 03:30 เตือนก่อนหมด 7/1 วัน · หมดอายุวันที่ 30 · อีเมลชวนกลับวันที่ 45 หลังหมด · ลบข้อมูลเมื่อพ้นช่วงอ่านอย่างเดียว (เก็บ `NormalizedEmail` ไว้กันสมัครซ้ำ) · อู่ที่ย้ายไป db2 แล้วลบเมื่อพ้น `PurgeAfter` · ล้างอู่ที่สร้างค้าง > 1 ชม. · 08:30 สรุปส่ง LINE ทีมขาย · กันรันซ้ำข้ามเครื่องด้วย `sp_JobRun`
-- `tools/spadmin` (CLI): `list · show · extend · set-plan · suspend · purge · run-jobs · convert` — รายละเอียดใน `tools/spadmin/README.md` · **`convert` ย้ายเฉพาะข้อมูลหลัก** (หมวดหมู่ · คลัง · สินค้า · เทมเพลต · พนักงาน · ลูกค้า · รถ) ไปสาขา GaragePro ที่สร้างด้วย GaragePro Admin แล้ว ผ่าน service เดิม · `--dry-run` ก่อนเสมอ
+- งานรายวัน (docs/17 กฎข้อ 13): อู่ที่มีรายการแจ้งชำระรอตรวจไม่ได้อีเมลเตือน/เชิญกลับและไม่ถูกลบ · อู่ paid ได้อีเมลเตือนก่อนหมด 14 และ 3 วัน (`SelfServe:Package:PaidReminderDays`) · สรุปรายวันต่อท้าย " · แจ้งชำระรอตรวจ N"
+- `tools/spadmin` (CLI): `list · show · extend · set-plan · suspend · purge · run-jobs · convert · payments · payment · approve-payment · reject-payment` · รายละเอียดใน `tools/spadmin/README.md` · **`convert` ย้ายเฉพาะข้อมูลหลัก** (หมวดหมู่ · คลัง · สินค้า · เทมเพลต · พนักงาน · ลูกค้า · รถ) ไปสาขา GaragePro ที่สร้างด้วย GaragePro Admin แล้ว ผ่าน service เดิม · `--dry-run` ก่อนเสมอ
 
 ### 16.6 Error code ใหม่ (ข้อความไทยอยู่ที่ `Application/SelfServe/*Errors.cs`, `Application/Common/PlanErrors.cs`, `Application/Auth/SelfServeAuthErrors.cs`)
 `SIGNUP_DISABLED` · `SIGNUP_VALIDATION` · `SIGNUP_BOT_CHECK_FAILED` · `SIGNUP_EMAIL_DISPOSABLE` · `SIGNUP_EMAIL_DOMAIN_INVALID` · `SIGNUP_EMAIL_SEND_FAILED` · `SIGNUP_LOOKUP_UNAVAILABLE` · `SIGNUP_OTP_THROTTLED` · `SIGNUP_OTP_INVALID` · `SIGNUP_OTP_EXPIRED` · `SIGNUP_OTP_LOCKED` · `SIGNUP_PASSWORD_MISMATCH` · `SIGNUP_TOKEN_INVALID` · `SIGNUP_GOOGLE_INVALID` · `SIGNUP_ACCOUNT_EXISTS` · `SIGNUP_PROVISION_FAILED` · `SIGNUP_RATE_LIMITED` · `AUTH_RATE_LIMITED` · `AUTH_GOOGLE_NOT_REGISTERED` · `AUTH_GOOGLE_DISABLED` · `TRIAL_EXPIRED` · `PLAN_FEATURE_LOCKED` · `PLAN_LIMIT_REACHED` · `STAFF_ROLE_REQUIRED` · `STAFF_ACCOUNT_CONFLICT` · `STAFF_PASSWORD_TOO_SHORT` · `STAFF_PASSWORD_TOO_LONG` · `STAFF_WORKSPACE_NOT_FOUND` · `SELFSERVE_NOT_APPLICABLE` · `SELFSERVE_VALIDATION` · `SELFSERVE_EXTENSION_ALREADY_REQUESTED` · `SELFSERVE_NOTIFY_FAILED` · `SELFSERVE_SAMPLE_FORBIDDEN` · `SELFSERVE_SAMPLE_UNAVAILABLE` · `SELFSERVE_SAMPLE_FAILED` · `SELFSERVE_SAMPLE_WORKSPACE_NOT_READY` · `SELFSERVE_SAMPLE_CLEAR_INCOMPLETE` · `SELFSERVE_WORKSPACE_NOT_FOUND` · `SELFSERVE_PURGE_REFUSED` · `POS_RECEIPT_CONFLICT` (409 — เลขใบเสร็จชน) · `AUTH_BRANCH_FORBIDDEN` (ขอกะของสาขาอื่น)
+
+## 17 · API ภายในสำหรับ GaragePro Admin **[เพิ่ม 2026-10-22 · สัญญาเต็มที่ [docs/17 §8.6](17-package-renewal.md)]**
+- ทางเข้า: docker network `garagepro-servicepro` → `http://garagepro_service_api:8080` เท่านั้น · Nginx ของโดเมน API ตอบ 404 ให้ `/api/v1/internal` จากภายนอกเสมอ
+  (header `X-GP-Internal-Deny: nginx` · ติดตั้งด้วย `deploy/production/add-api-internal-deny.sh`)
+- auth: header `X-Internal-Key` เทียบแบบ constant-time กับ `Internal:ApiKey` (≥ 32 ตัว · user-secrets/env file) · ไม่ใช้ JWT ·
+  server ไม่ตั้งคีย์ = 404 เปล่าทุก route · ไม่มี/ผิดคีย์ = 401 `INTERNAL_AUTH_REQUIRED` · คำตอบทุกแบบ `Cache-Control: no-store`
+- ไม่ผ่าน `SessionRevocationMiddleware` และ `TrialReadOnlyFilter` (token ที่ติดมาด้วยไม่มีผล)
+
+| Method · Path | หมายเหตุ |
+|---|---|
+| `GET /api/v1/internal/sites` | envelope ปกติ · `data: { generatedAt, sites: [{ source, shardKey, branchId, code, name, phone?, plan, workspaceStatus?, branchActive?, startsAt?, endsAt?, lastUsableDate?, daysLeft?, usage, pendingPayments?, latestPaymentAt?, extensionRequestedAt?, jobsLast30Days, lastJobAt?, createdAt? }] }` · อ่านฐานไม่สำเร็จ = 503 `INTERNAL_SOURCE_UNAVAILABLE` |
+| `GET /api/v1/internal/package-payments?status=pending&take=50` | **[ระยะ B]** `data` = array ใหม่สุดก่อน · status `pending` (ค่าเริ่มต้น) · `approved` · `rejected` · `cancelled` · `all` · take 1–500 · แต่ละรายการ = ฟิลด์ `PackagePayment` ครบ (ไม่ซ่อน) + `reviewedBy?` · `reviewNote?` · `cancelledBy?` · `workspaceNo` · `workspaceName` · `branchId?` · `plan` · `workspaceStatus` · `currentEndsAt?` · `duplicates[{paymentId, workspaceNo, status, submittedAt}]` · `preview?{baseAt, endsAt, lastUsableDate}` |
+| `GET /api/v1/internal/package-payments/{id}/slip` | **[ระยะ B]** ไฟล์ `image/jpeg` / `application/pdf` · อู่ที่ลบแล้ว/ไม่พบไฟล์ = 404 `PACKAGE_PAYMENT_NOT_FOUND` |
+| `POST /api/v1/internal/package-payments/{id}/approve` | **[ระยะ B]** body `{actorName, actorId, until?: "yyyy-MM-dd", note?}` → `{payment, endsFrom?, endsTo, emailSent, inAppSaved}` · ใช้ `PackagePaymentAdminService` ตัวเดียวกับ spadmin |
+| `POST /api/v1/internal/package-payments/{id}/reject` | **[ระยะ B]** body `{actorName, actorId, reason, note?}` → `{payment, emailSent, inAppSaved}` |
+
+ระยะ B: `{id}` ต้องเป็น GUID เต็ม (ไม่ใช่ prefix แบบ spadmin · ผิดรูป = 404) · ผู้กระทำบันทึกเป็น `admin:{actorName}#{actorId}` (ชื่อ 1–100 ตัวไม่มีอักขระควบคุม · id > 0 รับ number หรือข้อความ) ·
+body อ่านเองเป็น JSON (ผิดรูป/ผิดชนิด = 422 ไม่ใช่ 400 ProblemDetails) · Error ชุดเดียวกับ §16.4.1 และ `PACKAGE_PAYMENT_VALIDATION` field เพิ่ม `actorName` · `actorId` · `status` · `take` · `body` ·
+`SPADMIN_REFUSED` 409 (อู่ purged/provisioning/ไม่มี Branch) · `SELFSERVE_WORKSPACE_NOT_FOUND` 404 · ไม่ได้ตั้ง self-serve = 404 `SELFSERVE_NOT_APPLICABLE`

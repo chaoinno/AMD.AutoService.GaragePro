@@ -4,6 +4,7 @@ import {
   checklistProgress,
   credentialsBelongTo,
   deriveChecklist,
+  extensionButtonLabel,
   featureInterestNote,
   formatLimitUsage,
   isExtensionRecentlyRequested,
@@ -14,13 +15,19 @@ import {
   parseSampleCredentials,
   STAFF_ROLE_OPTIONS,
   trialBannerCopy,
+  trialBannerLabel,
   welcomeDismissKey,
 } from '../src/features/plan/trialUx.ts'
 import { daysLeftOf, featureForPath, formatDaysLeft, lockedFeatureForPath, trialTone } from '../src/lib/plan.ts'
 
 const trial = (overrides = {}) => ({ kind: 'trial', readOnly: false, features: [], ...overrides })
 const now = new Date('2026-10-14T03:00:00Z')
-const bannerFor = (plan) => trialBannerCopy(trialTone(plan, now), formatDaysLeft(daysLeftOf(plan, now)), plan?.kind === 'suspended')
+const bannerFor = (plan) => trialBannerCopy(
+  trialTone(plan, now),
+  formatDaysLeft(daysLeftOf(plan, now)),
+  plan?.kind === 'suspended',
+  plan?.kind === 'paid',
+)
 
 // ---- เช็คลิสต์ --------------------------------------------------------------------------------------
 
@@ -72,10 +79,11 @@ test('limit usage renders "พนักงาน 2/5 · สินค้า 42/20
 
 // ---- แถบทดลองใช้ ------------------------------------------------------------------------------------
 
-test('banner: legacy/paid/no plan render nothing; trial is neutral, ≤7 days warns, read-only/suspended is expired', () => {
+test('banner: legacy/no plan/paid far from expiry render nothing; trial is neutral, ≤7 days warns, read-only/suspended is expired', () => {
   assert.equal(bannerFor(undefined), null)
   assert.equal(bannerFor({ kind: 'legacy', readOnly: false, features: [] }), null)
   assert.equal(bannerFor({ kind: 'paid', readOnly: false, features: [] }), null)
+  assert.equal(bannerFor({ kind: 'paid', readOnly: false, features: [], daysLeft: 30 }), null)
 
   assert.equal(trialTone(trial({ daysLeft: 23 }), now), 'neutral')
   assert.equal(bannerFor(trial({ daysLeft: 23 })).title, 'ทดลองใช้ · เหลือ 23 วัน')
@@ -89,6 +97,32 @@ test('banner: legacy/paid/no plan render nothing; trial is neutral, ≤7 days wa
   const expired = bannerFor(trial({ daysLeft: -3, readOnly: true }))
   assert.equal(expired.title, 'ช่วงทดลองใช้ครบ 30 วันแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้')
   assert.match(bannerFor({ kind: 'suspended', readOnly: true, features: [] }).title, /ถูกระงับ/)
+})
+
+test('banner for paid plans: ≤14 days warns with payment copy, read-only explains and points to payment', () => {
+  const paid = (overrides = {}) => ({ kind: 'paid', readOnly: false, features: [], ...overrides })
+
+  const warn = bannerFor(paid({ daysLeft: 10 }))
+  assert.equal(warn.title, 'แพ็กเกจใกล้หมดอายุ · เหลือ 10 วัน')
+  assert.match(warn.detail, /แจ้งชำระเงิน/)
+  assert.doesNotMatch(warn.title + warn.detail, /ทดลองใช้/, 'paid copy must not talk about the trial')
+  assert.equal(bannerFor(paid({ daysLeft: 0 })).title, 'แพ็กเกจใกล้หมดอายุ · หมดอายุวันนี้')
+
+  const expired = bannerFor(paid({ daysLeft: -2, readOnly: true }))
+  assert.equal(expired.title, 'แพ็กเกจหมดอายุแล้ว ดูและพิมพ์ข้อมูลได้ แต่แก้ไขไม่ได้')
+  assert.match(expired.detail, /แจ้งชำระเงิน/)
+  assert.doesNotMatch(expired.title + expired.detail, /ทดลองใช้/)
+
+  // trial ใกล้หมด/หมดแล้วก็ชวนแจ้งชำระเงินด้วย (ปุ่ม "แจ้งชำระเงิน" บนแถบ)
+  assert.match(bannerFor(trial({ daysLeft: 3 })).detail, /แจ้งชำระเงิน/)
+  assert.match(bannerFor(trial({ readOnly: true })).detail, /แจ้งชำระเงิน/)
+
+  // ถูกระงับใช้ข้อความระงับเสมอ แม้ไม่ใช่ trial
+  assert.match(trialBannerCopy('expired', 'x', true, true).title, /ถูกระงับ/)
+  assert.equal(trialBannerLabel(true), 'สถานะแพ็กเกจ')
+  assert.equal(trialBannerLabel(false), 'สถานะแพ็กเกจทดลองใช้')
+  assert.equal(extensionButtonLabel(false), 'ขอต่ออายุ / สมัครแพ็กเกจ')
+  assert.equal(extensionButtonLabel(true), 'ขอให้ทีมงานติดต่อ')
 })
 
 test('extension request counts as sent for 24 hours (backend allows one per day)', () => {

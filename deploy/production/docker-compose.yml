@@ -42,6 +42,9 @@ services:
       - garagepro_service_storage:/app/storage
     networks:
       - internal
+      # GaragePro Admin API เรียก API ภายใน (/api/v1/internal · docs/17 §8.6) ผ่าน http://garagepro_service_api:8080
+      # ไม่ผ่านอินเทอร์เน็ต · Nginx ของโดเมนสาธารณะตอบ 404 ให้ path นี้ (add-api-internal-deny.sh)
+      - servicepro
 
   web:
     build:
@@ -70,6 +73,12 @@ services:
 networks:
   internal:
     driver: bridge
+  # network ร่วมกับ GaragePro Admin สร้างครั้งเดียวต่อเครื่อง นอก compose ทั้งสอง project:
+  #   docker network create garagepro-servicepro
+  # scripts/deploy-production.sh สร้างให้เองถ้ายังไม่มี (ไม่มีแล้ว compose run/up ล้มด้วย "declared as external, but could not be found")
+  servicepro:
+    external: true
+    name: garagepro-servicepro
 
 volumes:
   garagepro_service_storage:

@@ -526,7 +526,8 @@ public sealed class AuthService(
         if (role != currentUser.Role)
             return "สิทธิ์ของบัญชีนี้เปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่";
 
-        // B5 — แพ็กเกจของอู่ที่สมัครเอง: ถูกล็อก/เปลี่ยนชนิด/ทีมงานเลื่อนวันจนสถานะอ่านอย่างเดียวไม่ตรงกับ token
+        // B5 แพ็กเกจของอู่ที่สมัครเอง: เตะเฉพาะเมื่อนโยบายเข้มกว่า token (ล็อก · paid→trial · ทีมงานตัดวันจนอ่านอย่างเดียว)
+        // สิทธิ์เพิ่ม (trial→paid · ต่ออายุ) ไม่ต้อง login ใหม่ · กติกาอยู่ที่ PlanAccess.RevocationReason
         // legacy: นโยบายคืน Legacy โดยไม่แตะฐาน และ token ไม่มี claim plan → ไม่มีผล (พฤติกรรมเดิมทุกประการ)
         var branchId = currentUser.BranchId > 0 ? currentUser.BranchId : user.BranchId ?? 0;
         var plan = await workspacePolicy.GetAsync(shardKey, branchId, ct);

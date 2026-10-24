@@ -163,6 +163,8 @@
 .trial-dialog__contact > svg { width: 18px; height: 18px; color: #06c755; }
 .trial-dialog__contact > span { flex: 1 1 220px; }
 .trial-dialog__contact a svg { width: 14px; height: 14px; }
+.trial-dialog__contact--pay { border-color: #c9dbf7; background: var(--blue-50); }
+.trial-dialog__contact--pay > svg { color: var(--blue-600); }
 
 /* ---- การ์ดเริ่มต้นใช้งานบนหน้าจ๊อบ ---- */
 .welcome-checklist {

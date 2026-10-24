@@ -23,6 +23,7 @@ import {
   Truck,
   UserCog,
   Users,
+  Wallet,
   Warehouse,
   Wrench,
 } from 'lucide-react'
@@ -266,6 +267,11 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   <small>{session?.branchName}</small>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {/* ทุกผู้ใช้ ServicePro (docs/17 §8.7 · D9): อู่ที่สมัครเอง (sp1) และสาขา GaragePro กลุ่ม Service (db2)
+                    · login ของ ServicePro รับเฉพาะสาขากลุ่ม Service อยู่แล้ว · สาขาที่ server ไม่รองรับ หน้าแพ็กเกจบอกทางต่อเอง */}
+                <DropdownMenuItem onClick={() => navigate('/package')}>
+                  <Wallet aria-hidden="true" /> แพ็กเกจและการชำระเงิน
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={logout}>
                   <LogOut aria-hidden="true" /> ออกจากระบบ
                 </DropdownMenuItem>

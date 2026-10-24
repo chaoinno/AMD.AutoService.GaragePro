@@ -14,6 +14,7 @@ import '../features/jobs/chat/job_chat_page.dart';
 import '../features/jobs/job_detail_page.dart';
 import '../features/jobs/job_list_page.dart';
 import '../features/notifications/notifications_page.dart';
+import '../features/package/package_page.dart';
 import '../features/pos/payment_page.dart';
 import '../features/qc/qc_page.dart';
 import '../features/reports/reports_page.dart';
@@ -82,6 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.notifications,
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: Routes.package,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PackagePage(),
       ),
       GoRoute(
         path: Routes.newJob,

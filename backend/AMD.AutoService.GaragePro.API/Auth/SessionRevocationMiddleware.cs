@@ -26,8 +26,11 @@ public sealed class SessionRevocationMiddleware(
     public async Task InvokeAsync(HttpContext context, IAuthService auth)
     {
         var principal = context.User;
+        // API ภายใน (docs/17 §8.6) ยืนยันตัวด้วย X-Internal-Key ไม่ใช่ JWT · token ที่ติดมาด้วยต้องไม่ทำให้ได้ 401 AUTH_REQUIRED
+        // และไม่ยิง Garage DB เพิ่ม
         if (principal.Identity?.IsAuthenticated != true
-            || principal.HasClaim(GarageClaims.PreSession, "true"))
+            || principal.HasClaim(GarageClaims.PreSession, "true")
+            || Internal.InternalApi.IsInternalPath(context.Request.Path))
         {
             await next(context);
             return;

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
+import '../../app/routes.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
 import '../../widgets/trial_banner.dart';
@@ -55,7 +56,12 @@ class AppShell extends ConsumerWidget {
       // navigation shell จะถูกย้ายตำแหน่งใน tree ทั้งที่ไม่จำเป็น
       body: Column(
         children: [
-          if (trial != null) TrialBanner(spec: trial),
+          if (trial != null)
+            TrialBanner(
+              spec: trial,
+              // แตะแถบ = ไปหน้าแพ็กเกจ (แจ้งชำระเงิน/ดูสถานะ) · push ทับแท็บ ย้อนกลับมาแท็บเดิมได้
+              onTap: trial.opensPackage ? () => context.push(Routes.package) : null,
+            ),
           // แถบกินช่อง status bar ไปแล้ว — ตัด padding บนออก ไม่งั้น AppBar ของแต่ละแท็บเว้นซ้ำอีกชั้น
           Expanded(
             child: MediaQuery.removePadding(

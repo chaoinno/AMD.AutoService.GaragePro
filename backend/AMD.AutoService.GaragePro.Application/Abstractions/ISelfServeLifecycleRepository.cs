@@ -27,11 +27,13 @@ public sealed record SelfServeWorkspaceInfo(
 /// <summary>
 /// หนึ่ง workspace ที่งานรายวันพิจารณา — <see cref="BranchEndsAt"/> = Branch.EndPackageDate แปลงเป็น UTC แล้ว
 /// (ตัวจริงของวันหมดอายุ — sp_Workspace.TrialEndsAt เป็นแค่สำเนา) · <see cref="NoticesSent"/> = Kind ใน sp_WorkspaceNotice
+/// · <see cref="HasPendingPayment"/> = มีรายการแจ้งชำระรอตรวจ (docs/17 กฎข้อ 12–13: ไม่ลบ ไม่เตือน ไม่เชิญกลับ)
 /// </summary>
 public sealed record LifecycleWorkspace(
     SelfServeWorkspaceInfo Workspace,
     DateTime? BranchEndsAt,
-    IReadOnlySet<string> NoticesSent);
+    IReadOnlySet<string> NoticesSent,
+    bool HasPendingPayment = false);
 
 /// <summary>หนึ่งแถวใน sp_SampleEntity — <see cref="EntityId"/> เป็นข้อความ (Guid ของ svc_* หรือ id ตัวเลขของตาราง shadow)</summary>
 public sealed record SampleLedgerItem(string EntityType, string EntityId);
@@ -110,6 +112,11 @@ public interface ISelfServeSalesNotifier
 
     /// <returns>true เมื่อปลายทางรับแล้ว (รวมคำขอซ้ำด้วย retry key เดิม)</returns>
     Task<bool> SendAsync(Guid retryKey, string text, CancellationToken ct = default);
+
+    /// <summary>หลายข้อความใน push เดียว · ค่าเริ่มต้นรวมเป็นข้อความเดียว (fake เดิมในเทสต์ใช้ได้เลย) · ดู IContactNotifier</summary>
+    Task<bool> SendAsync(Guid retryKey, IReadOnlyList<Contact.LineOutboundMessage> messages,
+        CancellationToken ct = default) =>
+        SendAsync(retryKey, Contact.LineOutboundMessage.Join(messages), ct);
 }
 
 /// <summary>ดาวน์โหลดรายชื่อโดเมนอีเมลชั่วคราวจาก <c>SelfServe:Blocklist:Url</c> (หนึ่งบรรทัดต่อโดเมน)</summary>

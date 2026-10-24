@@ -60,6 +60,7 @@ public sealed class TrialReadOnlyFilterTests
     [InlineData("/api/v1/selfserve/extension-request")]
     [InlineData("/api/v1/notifications/abc/read")]
     [InlineData("/API/V1/Notifications/read-all")]
+    [InlineData("/api/v1/internal/package-payments/3f2a9c1b-0000-0000-0000-000000000000/approve")]
     public async Task Exempt_paths_pass_while_read_only(string path)
     {
         var policy = new FakeWorkspacePolicy(FakeWorkspacePolicy.Trial(readOnly: true));

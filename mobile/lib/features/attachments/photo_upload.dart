@@ -80,6 +80,35 @@ Future<List<Attachment>> pickAndUploadPhotos(
   return uploaded;
 }
 
+/// รูปที่เลือกแล้ว ยังไม่อัปโหลด (อ่านไบต์ไว้ให้แสดงตัวอย่างและส่งซ้ำได้)
+typedef PickedImage = ({Uint8List bytes, String fileName});
+
+/// ถ่ายรูปหรือเลือกจากคลังภาพ 1 รูป โดยไม่ผูกกับจ๊อบ (เช่นสลิปการโอนค่าแพ็กเกจ)
+/// คืน null เมื่อผู้ใช้ยกเลิกหรือไม่ได้รับสิทธิ์ (กรณีหลังแสดงวิธีเปิดสิทธิ์ให้แล้ว)
+///
+/// ย่อ/บีบอัดด้วยค่าเดียวกับรูปของจ๊อบ (1600px quality 85) ผลพลอยได้คือรูป HEIC จากกล้องถูกแปลงเป็น JPEG
+/// ซึ่ง server รับได้ · ผู้เรียกตรวจขนาด/ชนิดไฟล์เองตามกติกาของงานนั้น
+Future<PickedImage?> pickSingleImage(BuildContext context) async {
+  final source = await _askSource(context, allowMultiple: false);
+  if (source == null) return null;
+
+  XFile? picked;
+  try {
+    picked = await _picker.pickImage(
+      source: source,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      imageQuality: 85,
+    );
+  } on PlatformException catch (e) {
+    if (context.mounted) _showPermissionHelp(context, e.code);
+    return null;
+  }
+  if (picked == null) return null;
+
+  return (bytes: await picked.readAsBytes(), fileName: picked.name);
+}
+
 Future<ImageSource?> _askSource(BuildContext context, {required bool allowMultiple}) =>
     showModalBottomSheet<ImageSource>(
       context: context,

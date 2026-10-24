@@ -26,6 +26,7 @@ import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
 import { FeatureGate } from './features/plan/LockedFeaturePage'
+import { PackagePage } from './features/plan/PackagePage'
 import { useSession } from './lib/session'
 
 export default function AppRoutes() {
@@ -65,6 +66,8 @@ export default function AppRoutes() {
           <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><FeatureGate><StockReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><FeatureGate><WorkIntervalsPage /></FeatureGate></ProtectedRoute>} />
+          {/* แพ็กเกจและการชำระเงิน (docs/17): ไม่ผ่าน FeatureGate: ต้องเปิดได้แม้อ่านอย่างเดียว เพื่อแจ้งชำระต่ออายุ */}
+          <Route path="/package" element={<ProtectedRoute><PackagePage /></ProtectedRoute>} />
           <Route path="*" element={<ProtectedRoute><NotFoundPage /></ProtectedRoute>} />
         </Routes>
       </div>

@@ -1017,6 +1017,8 @@ export type NotificationKind =
   | 'purchase.pending'
   | 'purchase.approved'
   | 'purchase.returned'
+  | 'package.payment_approved'
+  | 'package.payment_rejected'
 
 /// ฟิลด์ที่อาจเป็น null ประกาศเป็น optional — API ตัดฟิลด์ null ทิ้ง (WhenWritingNull) ห้ามเช็ค === null
 export type AppNotification = {
@@ -1025,7 +1027,7 @@ export type AppNotification = {
   titleTh: string
   bodyTh?: string
   jobId?: string
-  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO'
+  /// 'JobChatMessage' | 'Quotation' | 'PR' | 'PO' | 'PackagePayment'
   entityType: string
   entityId?: string
   linkHint?: string

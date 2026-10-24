@@ -53,6 +53,17 @@ public static class CommandParser
 
     private static readonly OptionSpec Yes = new("yes", "ยืนยันคำสั่งที่ลบ/ย้ายข้อมูล", IsFlag: true);
 
+    // docs/17 §7 · อนุมัติ/ปฏิเสธเรื่องเงิน: --by บังคับ (ใน container $USER ไม่มีความหมาย)
+    private static readonly OptionSpec ReviewerBy =
+        new("by", "ชื่อทีมงานผู้อนุมัติ/ปฏิเสธ (บังคับ · ลง sp_WorkspaceAudit)", Required: true, ValueHint: "ชื่อ");
+
+    private static readonly OptionSpec PaymentId =
+        new("id", "id ของรายการแจ้งชำระ หรือ 8 ตัวอักษรแรก (shortId ในข้อความ LINE)", Required: true, ValueHint: "id");
+
+    public static readonly IReadOnlyList<string> PaymentStatusFilter = ["pending", "approved", "rejected", "cancelled", "all"];
+    public static readonly IReadOnlyList<string> RejectReasons =
+        ["slip_unreadable", "amount_mismatch", "not_received", "duplicate", "other"];
+
     public static readonly IReadOnlyList<OptionSpec> GlobalOptions =
     [
         new("verbose", "แสดง log ละเอียดและ stack trace", IsFlag: true),
@@ -115,6 +126,37 @@ public static class CommandParser
             new("date", "ชื่อเดิมของ --as-of", ValueHint: "เวลา")
         ],
         ["spadmin run-jobs", "spadmin run-jobs --task maintenance --as-of +91d"]),
+
+        new("payments", "รายการแจ้งชำระค่าแพ็กเกจ (ค่าเริ่มต้นเฉพาะที่รอตรวจ)",
+        [
+            new("status", "สถานะ (ค่าเริ่มต้น pending)", ValueHint: "status", Allowed: PaymentStatusFilter),
+            new("workspace", "เฉพาะอู่นี้ เช่น SP1042", ValueHint: "SP1042")
+        ],
+        ["spadmin payments", "spadmin payments --status all --workspace SP1042"]),
+
+        new("payment", "รายละเอียดรายการแจ้งชำระ · สลิปซ้ำ · วันหมดใหม่ถ้าอนุมัติตอนนี้ · ลิงก์ดูสลิป",
+            [PaymentId], ["spadmin payment --id 3f2a9c1b"]),
+
+        new("approve-payment", "อนุมัติการชำระ: ต่อวันหมด + เปลี่ยนเป็น paid + ปิดรายการใน transaction เดียว · แจ้งเจ้าของอู่",
+        [
+            PaymentId,
+            ReviewerBy,
+            new("until", "กำหนดวันสุดท้ายที่ใช้ได้เอง (เวลาไทย) แทนการต่อตามจำนวนเดือน เช่น แถมวัน", ValueHint: "yyyy-MM-dd"),
+            new("note", "หมายเหตุของทีมงาน (บังคับเมื่อยอดไม่ตรงราคามาตรฐาน)", ValueHint: "ข้อความ")
+        ],
+        [
+            "spadmin approve-payment --id 3f2a9c1b --by noi",
+            "spadmin approve-payment --id 3f2a9c1b --by noi --note \"ส่วนลดเปิดตัว\""
+        ], Mutates: true),
+
+        new("reject-payment", "ปฏิเสธการแจ้งชำระพร้อมเหตุผล · แจ้งเจ้าของอู่ (อีเมล + แจ้งเตือนในระบบ)",
+        [
+            PaymentId,
+            ReviewerBy,
+            new("reason", "เหตุผล", Required: true, ValueHint: "reason", Allowed: RejectReasons),
+            new("note", "ข้อความถึงลูกค้า (บังคับเมื่อ --reason other)", ValueHint: "ข้อความ")
+        ],
+        ["spadmin reject-payment --id 3f2a9c1b --by noi --reason not_received"], Mutates: true),
 
         new("convert", "ย้ายข้อมูลหลัก (หมวดหมู่/คลัง/สินค้า/เทมเพลต/พนักงาน/ลูกค้า/รถ) ไปสาขา GaragePro จริง รัน --dry-run ก่อนเสมอ",
         [
@@ -265,9 +307,10 @@ public static class CommandParser
         sb.AppendLine("วิธีใช้: spadmin <คำสั่ง> [ตัวเลือก]   ·   spadmin <คำสั่ง> --help");
         sb.AppendLine();
         sb.AppendLine("คำสั่ง:");
-        foreach (var c in Commands) sb.AppendLine(CultureInfo.InvariantCulture, $"  {c.Name,-10} {c.Summary}");
+        foreach (var c in Commands) sb.AppendLine(CultureInfo.InvariantCulture, $"  {c.Name,-16} {c.Summary}");
         sb.AppendLine();
         sb.AppendLine("ทุกคำสั่งที่เปลี่ยนข้อมูลบันทึก sp_WorkspaceAudit (ผู้กระทำ = --by หรือ $USER) · purge/convert ต้อง --yes");
+        sb.AppendLine("approve-payment/reject-payment ต้องระบุ --by เสมอ (การอนุมัติเรื่องเงิน)");
         sb.AppendLine("ค่าตั้ง: appsettings.json ข้างไฟล์โปรแกรม → dotnet user-secrets ของ API (นอก container) → ตัวแปรแวดล้อม");
         sb.AppendLine("ต้องมี SelfServe:ConnectionString และ LegacyShards:ConnectionStrings:sp1 (convert ต้องมีของ shard ปลายทางด้วย)");
         return sb.ToString();

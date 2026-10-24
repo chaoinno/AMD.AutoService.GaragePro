@@ -377,6 +377,10 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage>
         (icon: Icons.verified_outlined, fg: const Color(0xFF0B7A6C), bg: const Color(0xFFE2F5F2), label: 'อนุมัติแล้ว'),
       NotificationKind.purchaseReturned =>
         (icon: Icons.undo, fg: T.red600, bg: const Color(0xFFFBE9E9), label: 'ถูกตีกลับ'),
+      NotificationKind.packagePaymentApproved =>
+        (icon: Icons.workspace_premium_outlined, fg: const Color(0xFF0B7A6C), bg: const Color(0xFFE2F5F2), label: 'ต่ออายุแพ็กเกจแล้ว'),
+      NotificationKind.packagePaymentRejected =>
+        (icon: Icons.cancel_outlined, fg: T.red600, bg: const Color(0xFFFBE9E9), label: 'แจ้งชำระไม่ผ่าน'),
       _ => (icon: Icons.notifications_none, fg: T.muted, bg: const Color(0xFFEEF1F5), label: 'แจ้งเตือน'),
     };
 

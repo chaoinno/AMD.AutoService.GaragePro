@@ -68,8 +68,38 @@ jq -r '
   (["Google:ClientId","Turnstile:SiteKey","Turnstile:SecretKey","Email:Provider","Email:ApiKey","Email:AccountId","Email:FromAddress","Email:FromName","Email:ReplyToAddress","SalesLineGroupId"][] as $k
     | (.["Production:SelfServe:" + $k] // "") as $v
     | select($v | length > 0)
-    | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v)
+    | "SelfServe__" + ($k | gsub(":"; "__")) + "=" + $v),
+  # แจ้งชำระ/ต่ออายุแพ็กเกจ (docs/17 §5.5, §8.7): ทุกคีย์ใต้ Production:SelfServe:Package:* เช่น SlipLinkKey · PublicApiBaseUrl ·
+  # GarageProApi:{BaseUrl,SlipBaseUrl,Zones:{shard}} · LineCommandKey · LineRelayKey · LineApproverUserIds:{ลำดับ} · AdminReviewUrl ·
+  # PaymentAccount:{BankName,AccountNo,AccountName,PromptPayId} · MonthlyPrice · VatRate · Prices:{เดือน} · MonthOptions:{ลำดับ} ·
+  # PaidReminderDays:{ลำดับ} (":" กลายเป็น "__" ตามรูปแบบ env ของ .NET) · ราคา/บัญชีจริงอยู่ใน appsettings.json แล้ว
+  # ตั้งที่นี่เฉพาะเมื่อจะทับ · ค่าว่างไม่ออกเป็นบรรทัด (บรรทัด KEY= ว่างจะทับค่าใน appsettings.json เป็นค่าว่าง)
+  (to_entries[]
+    | select(.key | startswith("Production:SelfServe:Package:"))
+    | select((.value | tostring | gsub("^\\s+|\\s+$"; "")) | length > 0)
+    | "SelfServe__" + (.key | ltrimstr("Production:SelfServe:") | gsub(":"; "__")) + "=" + (.value | tostring)),
+  # API ภายในของ GaragePro Admin (docs/17 §8.6 · ไม่บังคับ) · ค่าเดียวกับ SERVICEPRO_INTERNAL_KEY ของ Admin
+  # ไม่ตั้ง = ไม่มีบรรทัด = ทุก route ใต้ /api/v1/internal ตอบ 404
+  (select(.["Production:Internal:ApiKey"] // "" | length > 0)
+    | "Internal__ApiKey=" + .["Production:Internal:ApiKey"])
 ' "$input_json" > "$temp_env"
+# [SECURITY] คีย์ภายในสั้นเกิน = แอปปิด API ภายใน (404) · หยุดตรงนี้ดีกว่าค้นพบทีหลังว่าแท็บ ServicePro ของ Admin ว่าง
+if grep -q '^Internal__ApiKey=' "$temp_env" \
+  && [ "$(grep '^Internal__ApiKey=' "$temp_env" | cut -d= -f2- | tr -d '\n' | wc -c)" -lt 32 ]; then
+  rm -f "$temp_env" "$input_json"
+  echo "Production:Internal:ApiKey must be at least 32 characters" >&2
+  exit 1
+fi
+# [SECURITY] คีย์ของแพ็กเกจสั้นเกิน = แอปถือว่าไม่ได้ตั้ง · หยุดตรงนี้ดีกว่าค้นพบทีหลัง (ไม่พิมพ์ค่า)
+#   SlipLinkKey: ไม่ส่งรูปสลิปเข้า LINE · LineCommandKey: การ์ดไม่มีปุ่มอนุมัติ · LineRelayKey: /api/v1/public/line-commands ตอบ 404
+for package_key in SlipLinkKey LineCommandKey LineRelayKey; do
+  if grep -q "^SelfServe__Package__${package_key}=" "$temp_env" \
+    && [ "$(grep "^SelfServe__Package__${package_key}=" "$temp_env" | cut -d= -f2- | tr -d '\n' | wc -c)" -lt 32 ]; then
+    rm -f "$temp_env" "$input_json"
+    echo "Production:SelfServe:Package:${package_key} must be at least 32 characters" >&2
+    exit 1
+  fi
+done
 if grep -Eq '^(SelfServe__ConnectionString|LegacyShards__ConnectionStrings__sp1|SelfServe__MigrationConnectionString)=.*GarageSelfServe_Dev' "$temp_env"; then
   rm -f "$temp_env" "$input_json"
   echo "Production self-serve connection points at GarageSelfServe_Dev - fix Production:SelfServe:* in user-secrets" >&2

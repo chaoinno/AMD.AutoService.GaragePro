@@ -11,7 +11,8 @@ namespace AMD.AutoService.GaragePro.API.Auth;
 /// 403 <c>TRIAL_EXPIRED</c> · บังคับที่ API เป็น global filter (ไม่ใช่แค่ซ่อนปุ่ม) จึงครอบ endpoint ใหม่ในอนาคตเองด้วย
 /// · ข้าม: คำขอที่ไม่ได้ login · GET/HEAD/OPTIONS · <c>/api/v1/auth</c> (login/me/สลับสาขา) · <c>/api/v1/public</c> (signup) ·
 ///   <c>/api/v1/selfserve</c> (ขอต่ออายุ — ต้องทำได้ตอนหมดอายุ) · <c>/api/v1/notifications</c> (แอปมือถือกดอ่านแจ้งเตือน
-///   อยู่เบื้องหลัง ถ้าบล็อกจะเด้ง error ใส่ผู้ใช้ทุก 30 วิ) · action/controller ที่ติด <see cref="AllowWhenTrialExpiredAttribute"/>
+///   อยู่เบื้องหลัง ถ้าบล็อกจะเด้ง error ใส่ผู้ใช้ทุก 30 วิ) · <c>/api/v1/internal</c> (API ภายในของ GaragePro Admin) ·
+///   action/controller ที่ติด <see cref="AllowWhenTrialExpiredAttribute"/>
 /// · fast path: token ที่ไม่มี claim <c>plan</c> (หรือเป็น legacy) และไม่ใช่ shard ของ self-serve → ผ่านทันทีโดยไม่ถามอะไร
 ///   (ลูกค้าเดิมไม่ช้าลง) · token ของ sp1 ถามนโยบายจริงเสมอ (cache 60 วิใน WorkspacePolicy) ไม่เชื่อ claim อย่างเดียว
 ///   เพราะทีมงานอาจเลื่อนวัน/ระงับหลังออก token
@@ -27,7 +28,9 @@ public sealed class TrialReadOnlyFilter(
         "/api/v1/auth",
         "/api/v1/public",
         "/api/v1/selfserve",
-        "/api/v1/notifications"
+        "/api/v1/notifications",
+        // API ภายในของ GaragePro Admin ไม่มี JWT ของอู่ · อนุมัติชำระเงินต้องทำได้ตอนอู่อ่านอย่างเดียว (docs/17 §8.6)
+        "/api/v1/internal"
     ];
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)

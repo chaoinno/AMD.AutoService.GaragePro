@@ -114,3 +114,35 @@ class JobStatusStyle {
   /// token ทั้งหมดที่รู้จัก — ใช้ในเทสต์เพื่อกันแมปตกหล่น
   static Iterable<String> get tokens => _map.keys;
 }
+
+/// สีสถานะรายการแจ้งชำระแพ็กเกจ (docs/17 §6.1: รอตรวจ · อนุมัติแล้ว · ปฏิเสธ · ยกเลิก)
+///
+/// แยกคลาสจาก [StatusStyle]/[JobStatusStyle] ด้วยเหตุผลเดียวกัน: `approved`/`rejected` มีหลายโดเมน
+/// ถ้าใช้แมปร่วมกัน token ที่พิมพ์ผิดจะได้ป้ายของอีกโดเมนแบบเงียบๆ · สีหยิบจากชุดที่ใช้อยู่แล้วในแอป
+class PackagePaymentStatusStyle {
+  const PackagePaymentStatusStyle(this.labelTh, this.bg, this.fg, this.icon);
+  final String labelTh;
+  final Color bg;
+  final Color fg;
+  final IconData icon;
+
+  /// [UI] ทุกสถานะสื่อด้วย สี + ไอคอน + ข้อความ
+  static const _map = <String, PackagePaymentStatusStyle>{
+    'pending': PackagePaymentStatusStyle(
+        'รอตรวจ', Color(0xFFFDF3E2), Color(0xFF8A5A00), Icons.hourglass_top_outlined),
+    'approved': PackagePaymentStatusStyle(
+        'อนุมัติแล้ว', Color(0xFFE3F5F1), Color(0xFF0B6D5E), Icons.check_circle_outline),
+    'rejected': PackagePaymentStatusStyle(
+        'ปฏิเสธ', Color(0xFFFBE9E9), Color(0xFFA31D1D), Icons.cancel_outlined),
+    'cancelled': PackagePaymentStatusStyle(
+        'ยกเลิก', Color(0xFFEEF1F5), Color(0xFF475569), Icons.block_outlined),
+  };
+
+  static PackagePaymentStatusStyle of(String token) =>
+      _map[token.trim().toLowerCase()] ??
+      const PackagePaymentStatusStyle(
+          'ไม่ทราบสถานะ', Color(0xFFEEF1F5), Color(0xFF475569), Icons.help_outline);
+
+  /// token ทั้งหมดที่รู้จัก ใช้ในเทสต์เพื่อกันแมปตกหล่น
+  static Iterable<String> get tokens => _map.keys;
+}
