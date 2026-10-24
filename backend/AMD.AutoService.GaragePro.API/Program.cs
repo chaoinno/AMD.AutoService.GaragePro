@@ -122,6 +122,8 @@ builder.Services.AddScoped<ITokenIssuer, JwtTokenIssuer>();
 builder.Services.AddMemoryCache();
 builder.Services.AddGarageProInfrastructure(builder.Configuration);
 builder.Services.AddSelfServeApi();
+// แจ้งเตือนรถใกล้ครบรอบบริการรายวัน 08:00 เวลาไทย (ปิดด้วย ServiceDue:Jobs:Enabled=false)
+builder.Services.AddHostedService<AMD.AutoService.GaragePro.API.ServiceDue.ServiceDueDailyJob>();
 // API ภายในของ GaragePro Admin (docs/17 §8.6) · ไม่ตั้ง Internal:ApiKey = ทุก route ใต้ /api/v1/internal ตอบ 404
 AMD.AutoService.GaragePro.API.Internal.InternalApi.AddInternalApi(builder.Services, builder.Configuration);
 

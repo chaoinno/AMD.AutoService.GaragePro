@@ -318,6 +318,19 @@ public sealed class NotificationTests
                 .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
                             && n.SubjectKey == subjectKey && n.ResolvedAt == null).ToList());
 
+        public Task<IReadOnlyList<Notification>> GetOpenBySubjectPrefixAsync(
+            string shardKey, int branchId, string subjectKeyPrefix, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<Notification>>(All
+                .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
+                            && n.SubjectKey != null && n.SubjectKey.StartsWith(subjectKeyPrefix) && n.ResolvedAt == null).ToList());
+
+        public Task<IReadOnlySet<string>> GetExistingSubjectKeysAsync(
+            string shardKey, int branchId, IReadOnlyCollection<string> subjectKeys, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlySet<string>>(All
+                .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
+                            && n.SubjectKey != null && subjectKeys.Contains(n.SubjectKey))
+                .Select(n => n.SubjectKey!).ToHashSet());
+
         public Task<IReadOnlyList<NotificationRow>> PageAsync(
             NotificationViewer viewer, DateTime since, bool unreadOnly,
             DateTime? beforeAt, Guid? beforeId, int take, CancellationToken ct = default)

@@ -110,3 +110,9 @@
 .service-due-status--overdue { background: #fbe9e9; color: #a31d1d; }
 .service-due-status--soon { background: #fdf3e2; color: #8a5a00; }
 .service-due-status--later { background: #eef1f6; color: var(--navy-900); }
+
+/* รถใกล้ครบรอบบริการ: หลายรายการนัดต่อรถ */
+.service-due-items { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.service-due-items small { color: var(--muted); }
+.service-due-items__overdue small { color: #a31d1d; font-weight: 600; }
+.vehicle-history-next__items { margin: 4px 0; padding-left: 18px; }

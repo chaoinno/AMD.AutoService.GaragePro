@@ -67,6 +67,10 @@ public static class NotificationKinds
     public const string PurchaseApproved = "purchase.approved";
     public const string PurchaseReturned = "purchase.returned";
 
+    /// <summary>รถใกล้ครบรอบบริการ (เหลือ ≤ 7 วัน) — แจ้งหน้าร้าน + ผู้จัดการ · entityType "ServiceDue" · linkHint "service-due"
+    /// · SubjectKey <c>service-due:{vehicleId}:{dueOn}</c> (กันซ้ำต่อรอบนัด · ปิดเมื่อรถถูกเปิดจ๊อบใหม่)</summary>
+    public const string ServiceDue = "service.due";
+
     /// <summary>อู่ self-serve: ทีมงานอนุมัติ/ปฏิเสธการแจ้งชำระ (docs/17 §5.4) · entityType "PackagePayment" · linkHint "package"</summary>
     public const string PackagePaymentApproved = "package.payment_approved";
     public const string PackagePaymentRejected = "package.payment_rejected";

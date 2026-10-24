@@ -122,7 +122,11 @@ public sealed record VehicleHistoryVisitDto(
     int? MileageAtIntake, int? MileageAtHandover,
     IReadOnlyList<VehicleHistoryLineDto> Lines,
     string? ReceiptDocumentNo, decimal? ReceiptTotal,
-    int? NextServiceMileage, DateOnly? NextServiceDueOn);
+    int? NextServiceMileage, DateOnly? NextServiceDueOn,
+    IReadOnlyList<VehicleServiceItemDto> ServiceItems);
+
+/// <summary>หนึ่งรายการนัดเข้ารับบริการครั้งถัดไป (น้ำมันเครื่อง/กรอง/เบรก…) จากใบส่งมอบ</summary>
+public sealed record VehicleServiceItemDto(string Name, int NextServiceMileage, DateOnly NextServiceDueOn);
 
 /// <param name="ShowAmounts">false = บทบาทนี้ไม่เห็นตัวเงิน (ช่าง/หัวหน้าช่าง) — ยอดเงินทุกช่องเป็น null</param>
 /// <param name="NextService">นัดครั้งถัดไปจากการส่งมอบล่าสุด (ถ้ามี)</param>
@@ -132,15 +136,25 @@ public sealed record VehicleHistoryDto(
     VehicleNextServiceDto? NextService,
     IReadOnlyList<VehicleHistoryVisitDto> Visits);
 
-public sealed record VehicleNextServiceDto(string FromJobNo, int? Mileage, DateOnly DueOn);
+/// <param name="Mileage">ไมล์/วันนัดของรายการที่ครบเร็วที่สุด · รายการทั้งหมดอยู่ใน <paramref name="Items"/></param>
+public sealed record VehicleNextServiceDto(
+    string FromJobNo, int? Mileage, DateOnly DueOn, IReadOnlyList<VehicleServiceItemDto> Items);
 
 // ---------- รถใกล้ครบรอบบริการ (CRM — ผู้จัดการ/ธุรการ) ----------
 
 /// <param name="DaysUntilDue">ติดลบ = เลยกำหนดมาแล้วกี่วัน</param>
+/// <param name="NextServiceMileage">1 แถวต่อรถ — ไมล์/วันนัดของแถวคือรายการที่ครบเร็วที่สุด · รายการทั้งหมดอยู่ใน <paramref name="Items"/></param>
 public sealed record ServiceDueItemDto(
     long VehicleId, string VehicleRegistration, string? VehicleModel, string CustomerName, string? CustomerPhone,
     Guid LastJobId, string LastJobNo, DateTime HandedOverAt, int? MileageAtHandover,
-    int? NextServiceMileage, DateOnly NextServiceDueOn, int DaysUntilDue);
+    int? NextServiceMileage, DateOnly NextServiceDueOn, int DaysUntilDue,
+    IReadOnlyList<ServiceDueLineDto> Items);
+
+/// <param name="DaysUntilDue">ติดลบ = เลยกำหนดมาแล้วกี่วัน (ของรายการนี้เอง)</param>
+public sealed record ServiceDueLineDto(string Name, int NextServiceMileage, DateOnly NextServiceDueOn, int DaysUntilDue);
+
+/// <param name="Count">รถที่วันนัดอยู่ระหว่าง <paramref name="FromDate"/>..<paramref name="ToDate"/> (วันนี้−30..วันนี้+7)</param>
+public sealed record ServiceDueCountDto(int Count, int OverdueCount, DateOnly FromDate, DateOnly ToDate);
 
 public sealed record ServiceDueReportDto(
     DateOnly FromDate, DateOnly ToDate, DateOnly Today,

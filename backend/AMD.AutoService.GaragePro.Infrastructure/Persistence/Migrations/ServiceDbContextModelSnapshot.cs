@@ -541,6 +541,45 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_HandoverRecord", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.HandoverServiceItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HandoverRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateOnly>("NextServiceDueOn")
+                        .HasColumnType("date");
+
+                    b.Property<int>("NextServiceMileage")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NextServiceMonths")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("TemplateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NextServiceDueOn");
+
+                    b.HasIndex("HandoverRecordId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_HandoverServiceItem_Name");
+
+                    b.ToTable("svc_HandoverServiceItem", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2179,6 +2218,51 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_SaleReceiptNumberCounter", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.ServiceReminderTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DefaultMileageInterval")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DefaultMonths")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("LastUpdated")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UX_svc_ServiceReminderTemplate_Name");
+
+                    b.ToTable("svc_ServiceReminderTemplate", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.Shift", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2994,6 +3078,17 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Job");
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.HandoverServiceItem", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.HandoverRecord", "HandoverRecord")
+                        .WithMany("ServiceItems")
+                        .HasForeignKey("HandoverRecordId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("HandoverRecord");
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.Job", "Job")
@@ -3260,6 +3355,8 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.HandoverRecord", b =>
                 {
                     b.Navigation("Items");
+
+                    b.Navigation("ServiceItems");
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.IntakeChecklist", b =>

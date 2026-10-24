@@ -1,4 +1,5 @@
 import {
+  AlarmClock,
   AtSign,
   BadgeCheck,
   Bell,
@@ -25,6 +26,7 @@ const KINDS: Record<string, { icon: LucideIcon; tone: Tone; label: string }> = {
   'purchase.pending': { icon: Hourglass, tone: 'warning', label: 'รออนุมัติ' },
   'purchase.approved': { icon: BadgeCheck, tone: 'success', label: 'อนุมัติแล้ว' },
   'purchase.returned': { icon: Undo2, tone: 'danger', label: 'ถูกตีกลับ' },
+  'service.due': { icon: AlarmClock, tone: 'warning', label: 'รถใกล้ครบรอบบริการ' },
   'package.payment_approved': { icon: BadgeCheck, tone: 'success', label: 'อนุมัติการชำระเงินแล้ว' },
   'package.payment_rejected': { icon: CircleX, tone: 'danger', label: 'ปฏิเสธการแจ้งชำระเงิน' },
 }

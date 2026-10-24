@@ -192,10 +192,13 @@ export type VehicleHistoryVisit = {
   lines: VehicleHistoryLine[]
   receiptDocumentNo?: string | null
   receiptTotal?: number | null
+  /** รายการที่ครบเร็วที่สุด (ฟิลด์เดี่ยวเดิม) — รายการทั้งหมดอยู่ใน serviceItems */
   nextServiceMileage?: number | null
   /** yyyy-MM-dd */
   nextServiceDueOn?: string | null
+  serviceItems: VehicleServiceItem[]
 }
+export type VehicleServiceItem = { name: string; nextServiceMileage: number; nextServiceDueOn: string }
 export type VehicleHistory = {
   vehicleId: number
   vehicleRegistration: string
@@ -204,7 +207,7 @@ export type VehicleHistory = {
   customerName: string
   customerPhone?: string | null
   showAmounts: boolean
-  nextService?: { fromJobNo: string; mileage?: number | null; dueOn: string } | null
+  nextService?: { fromJobNo: string; mileage?: number | null; dueOn: string; items: VehicleServiceItem[] } | null
   visits: VehicleHistoryVisit[]
 }
 
@@ -226,10 +229,19 @@ export type ServiceDueItem = {
   lastJobNo: string
   handedOverAt: string
   mileageAtHandover?: number | null
+  /** 1 แถวต่อรถ — ไมล์/วันนัดของแถวคือรายการที่ครบเร็วที่สุด · รายการทั้งหมดอยู่ใน items */
   nextServiceMileage?: number | null
   /** yyyy-MM-dd */
   nextServiceDueOn: string
   /** ติดลบ = เลยกำหนดมาแล้วกี่วัน */
+  daysUntilDue: number
+  /** ทุกรายการนัดของการส่งมอบล่าสุด เรียงครบเร็วสุดก่อน */
+  items: ServiceDueLine[]
+}
+export type ServiceDueLine = {
+  name: string
+  nextServiceMileage: number
+  nextServiceDueOn: string
   daysUntilDue: number
 }
 export type ServiceDueReport = {
@@ -241,6 +253,11 @@ export type ServiceDueReport = {
   dueWithin30DaysCount: number
   items: ServiceDueItem[]
 }
+
+/// ตัวเลขข้างเมนู — รถที่วันนัดอยู่ระหว่างวันนี้−30 ถึงวันนี้+7 (วันไทย) กติกาเดียวกับรายงาน · เปิดให้ผู้จัดการ/ธุรการ/หน้าร้าน
+export type ServiceDueCount = { count: number; overdueCount: number; fromDate: string; toDate: string }
+
+export const getServiceDueCount = () => apiRequest<ServiceDueCount>('/api/v1/reports/service-due/count')
 
 export const getServiceDueReport = (fromDate: string, toDate: string) =>
   apiRequest<ServiceDueReport>(`/api/v1/reports/service-due?fromDate=${fromDate}&toDate=${toDate}`)

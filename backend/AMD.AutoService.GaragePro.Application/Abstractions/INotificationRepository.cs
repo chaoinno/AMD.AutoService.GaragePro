@@ -13,6 +13,14 @@ public interface INotificationRepository
     Task<IReadOnlyList<Notification>> GetOpenBySubjectAsync(
         string shardKey, int branchId, string subjectKey, CancellationToken ct = default);
 
+    /// <summary>แถวที่ยังไม่ resolve ซึ่ง SubjectKey ขึ้นต้นด้วย prefix (tracked) — รวมแถวที่เพิ่ง Add ในคำขอเดียวกัน</summary>
+    Task<IReadOnlyList<Notification>> GetOpenBySubjectPrefixAsync(
+        string shardKey, int branchId, string subjectKeyPrefix, CancellationToken ct = default);
+
+    /// <summary>กุญแจเรื่องที่ "เคยมี" แจ้งเตือนแล้วในสาขานี้ ไม่ว่าจะ resolve ไปหรือยัง (ไม่ track) — ใช้กันแจ้งซ้ำต่อรอบ</summary>
+    Task<IReadOnlySet<string>> GetExistingSubjectKeysAsync(
+        string shardKey, int branchId, IReadOnlyCollection<string> subjectKeys, CancellationToken ct = default);
+
     Task<IReadOnlyList<NotificationRow>> PageAsync(
         NotificationViewer viewer, DateTime since, bool unreadOnly,
         DateTime? beforeAt, Guid? beforeId, int take, CancellationToken ct = default);

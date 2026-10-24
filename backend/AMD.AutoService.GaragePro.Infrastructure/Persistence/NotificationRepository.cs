@@ -28,6 +28,42 @@ public sealed class NotificationRepository(ServiceDbContext db) : INotificationR
         return stored.Concat(pending).Distinct().ToList();
     }
 
+    public async Task<IReadOnlyList<Notification>> GetOpenBySubjectPrefixAsync(
+        string shardKey, int branchId, string subjectKeyPrefix, CancellationToken ct = default)
+    {
+        var pending = db.ChangeTracker.Entries<Notification>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
+                        && n.SubjectKey != null && n.SubjectKey.StartsWith(subjectKeyPrefix) && n.ResolvedAt == null);
+
+        var stored = await db.Notifications
+            .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
+                        && n.SubjectKey != null && n.SubjectKey.StartsWith(subjectKeyPrefix) && n.ResolvedAt == null)
+            .ToListAsync(ct);
+
+        return stored.Concat(pending).Distinct().ToList();
+    }
+
+    public async Task<IReadOnlySet<string>> GetExistingSubjectKeysAsync(
+        string shardKey, int branchId, IReadOnlyCollection<string> subjectKeys, CancellationToken ct = default)
+    {
+        var found = new HashSet<string>(StringComparer.Ordinal);
+        // แบ่งเป็นชุดละ 500 กัน IN ยาวเกิน (สาขาหนึ่งมีรถถึงรอบนัดพร้อมกันได้หลายร้อยคัน)
+        foreach (var chunk in subjectKeys.Chunk(500))
+        {
+            var keys = chunk.ToList();
+            var rows = await db.Notifications.AsNoTracking()
+                .Where(n => n.LegacyShardKey == shardKey && n.LegacyBranchId == branchId
+                            && n.SubjectKey != null && keys.Contains(n.SubjectKey))
+                .Select(n => n.SubjectKey!)
+                .Distinct()
+                .ToListAsync(ct);
+            foreach (var key in rows) found.Add(key);
+        }
+        return found;
+    }
+
     public async Task<IReadOnlyList<NotificationRow>> PageAsync(
         NotificationViewer viewer, DateTime since, bool unreadOnly,
         DateTime? beforeAt, Guid? beforeId, int take, CancellationToken ct = default)

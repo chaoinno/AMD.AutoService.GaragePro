@@ -43,6 +43,15 @@ internal sealed class FakeNotificationPublisher : INotificationPublisher
         return Task.CompletedTask;
     }
 
+    public List<string> ResolvedPrefixes { get; } = [];
+
+    public Task ResolveByPrefixAsync(string subjectKeyPrefix, CancellationToken ct = default)
+    {
+        ResolvedPrefixes.Add(subjectKeyPrefix);
+        OpenSubjects.RemoveWhere(s => s.StartsWith(subjectKeyPrefix, StringComparison.Ordinal));
+        return Task.CompletedTask;
+    }
+
     public Task<bool> HasOpenAsync(string subjectKey, CancellationToken ct = default) =>
         Task.FromResult(OpenSubjects.Contains(subjectKey));
 

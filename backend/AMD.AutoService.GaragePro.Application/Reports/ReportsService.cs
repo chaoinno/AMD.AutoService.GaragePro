@@ -388,19 +388,24 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
                 job.MileageAtIntake, handedOver ? handover!.MileageAtHandover : null,
                 lines,
                 receipt?.DocumentNo, showAmounts ? receipt?.TotalAmount : null,
-                handedOver ? handover!.NextServiceMileage : null, handedOver ? handover!.NextServiceDueOn : null);
+                handedOver ? HandoverMapper.Earliest(handover!)?.NextServiceMileage : null,
+                handedOver ? HandoverMapper.Earliest(handover!)?.NextServiceDueOn : null,
+                handedOver ? ServiceItemsOf(handover!) : []);
         }).ToList();
 
         var latestJob = data.Jobs.OrderByDescending(j => j.CreatedAt).First();
         var lastService = data.Handovers
-            .Where(h => h.SubmittedAt is not null && h.NextServiceDueOn is not null)
+            .Where(h => h.SubmittedAt is not null && h.ServiceItems.Count > 0)
             .OrderByDescending(h => h.SubmittedAt)
             .FirstOrDefault();
+        // วันนัดของรถ = รายการที่ครบเร็วที่สุดของการส่งมอบล่าสุด · รายการทั้งหมดแนบไปให้หน้าจอแสดงครบ
         var nextService = lastService is null
             ? null
             : new VehicleNextServiceDto(
                 data.Jobs.First(j => j.Id == lastService.JobId).JobNo,
-                lastService.NextServiceMileage, lastService.NextServiceDueOn!.Value);
+                HandoverMapper.Earliest(lastService)!.NextServiceMileage,
+                HandoverMapper.Earliest(lastService)!.NextServiceDueOn,
+                ServiceItemsOf(lastService));
 
         return Result<VehicleHistoryDto>.Ok(new VehicleHistoryDto(
             vehicleId, latestJob.VehicleRegistration, latestJob.VehicleModel, latestJob.VehicleVin,
@@ -412,16 +417,13 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
     private const int ServiceDueDefaultDays = 30;
     private const int ServiceDueMaxDays = 366;
 
-    /// <summary>[BIZ] รายชื่อรถที่ถึง/ใกล้ถึงวันนัดเข้ารับบริการครั้งถัดไป (จากใบส่งมอบ) ให้ผู้จัดการ/ธุรการโทรตาม
-    /// เอาเฉพาะการส่งมอบล่าสุดของรถแต่ละคัน และตัดรถที่ไม่ต้องโทรตามแล้ว: (1) กลับมาเปิดจ๊อบใหม่หลังส่งมอบครั้งนั้น
-    /// (ไม่นับจ๊อบที่ยกเลิก) หรือ (2) **ยังมีจ๊อบอื่นที่ยังไม่ปิดอยู่** ไม่ว่าเปิดเมื่อไหร่ (เพิ่ม 2026-10-08 ตามคำขอผู้ใช้ —
-    /// พบตอนทดสอบว่ารถที่มีงานเปิดค้างไว้ก่อนวันส่งมอบยังขึ้นในรายชื่อโทรตาม ทั้งที่รถยังอยู่ในอู่)
-    /// จ๊อบของใบส่งมอบนั้นเองไม่นับ — หลังเซ็นส่งมอบยังอยู่ "พร้อมส่งมอบ" จนกว่าจะปิดงาน
+    /// <summary>[BIZ] รายชื่อรถที่ถึง/ใกล้ถึงวันนัดเข้ารับบริการครั้งถัดไป (จากใบส่งมอบ) ให้หน้าร้าน/ผู้จัดการ/ธุรการโทรตาม
+    /// กติกาเลือกรถ/ตัดรถที่ไม่ต้องโทรตามอยู่ที่ <see cref="ServiceDueRows"/> (ใช้ร่วมกับตัวเลขที่เมนูและงานแจ้งเตือน)
     /// ใช้วันที่เป็นหลัก — ไม่รู้เลขไมล์ปัจจุบันของรถ ไมล์นัดจึงแสดงประกอบเท่านั้น</summary>
     public async Task<Result<ServiceDueReportDto>> GetServiceDueAsync(
         DateOnly? fromDate, DateOnly? toDate, CancellationToken ct = default)
     {
-        if (!Allowed) return Forbidden<ServiceDueReportDto>();
+        if (!ServiceDueAllowed) return ServiceDueForbidden<ServiceDueReportDto>();
 
         var today = ThaiDate(Now);
         var from = fromDate ?? today.AddDays(-ServiceDueDefaultDays);
@@ -432,28 +434,8 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             return Result<ServiceDueReportDto>.Fail(
                 "REPORTS_VALIDATION", $"เลือกช่วงวันที่ได้ไม่เกิน {ServiceDueMaxDays} วัน", "toDate");
 
-        var data = await repo.GetServiceDueAsync(user.ShardKey, user.BranchId, from, to, ct);
-        var latestHandoverByVehicle = data.Handovers
-            .GroupBy(h => h.VehicleId)
-            .ToDictionary(g => g.Key, g => g.MaxBy(h => h.SubmittedAt)!.JobId);
-        var visitsByVehicle = data.Visits.ToLookup(v => v.VehicleId);
-
-        var items = data.Candidates
-            .Where(h =>
-            {
-                var vehicleId = h.Job!.VehicleId;
-                var isLatest = !latestHandoverByVehicle.TryGetValue(vehicleId, out var latestJobId) || latestJobId == h.JobId;
-                var otherVisits = visitsByVehicle[vehicleId].Where(v => v.JobId != h.JobId).ToList();
-                var cameBack = otherVisits.Any(v => v.CreatedAt > h.SubmittedAt && v.Status != JobStatus.Cancelled);
-                var hasOpenJob = otherVisits.Any(v => !JobStateMachine.IsTerminal(v.Status));
-                return isLatest && !cameBack && !hasOpenJob;
-            })
-            .Select(h => new ServiceDueItemDto(
-                h.Job!.VehicleId, h.Job.VehicleRegistration, h.Job.VehicleModel, h.Job.CustomerName, h.Job.CustomerPhone,
-                h.JobId, h.Job.JobNo, h.SubmittedAt!.Value, h.MileageAtHandover,
-                h.NextServiceMileage, h.NextServiceDueOn!.Value, h.NextServiceDueOn.Value.DayNumber - today.DayNumber))
-            .OrderBy(x => x.NextServiceDueOn).ThenBy(x => x.VehicleRegistration)
-            .ToList();
+        var items = ServiceDueRows.Build(
+            await repo.GetServiceDueAsync(user.ShardKey, user.BranchId, from, to, ct), today);
 
         return Result<ServiceDueReportDto>.Ok(new ServiceDueReportDto(
             from, to, today,
@@ -493,6 +475,38 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             new StockUsageFilter(warehouseId, catalogItemId, requesterStaffId), ct);
         return Result<StockUsageReportDto>.Ok(StockUsageReport.Build(data, view, source, from, to, fromUtc, toUtc, user.CanSeeCost));
     }
+
+    /// <summary>ตัวเลขข้างเมนู "รถใกล้ครบรอบบริการ" = รถที่วันนัดอยู่ระหว่างวันนี้−30 ถึงวันนี้+7 (วันไทย) — ช่วงล่างตรงกับค่าเริ่มต้น
+    /// ของรายงาน ช่วงบนคือหน้าต่างที่ระบบแจ้งเตือน · กติกาเดียวกับรายงาน (<see cref="ServiceDueRows"/>) จึงนับตรงกับแถวที่เห็นในรายงาน</summary>
+    public async Task<Result<ServiceDueCountDto>> GetServiceDueCountAsync(CancellationToken ct = default)
+    {
+        if (!ServiceDueAllowed) return ServiceDueForbidden<ServiceDueCountDto>();
+
+        var today = ThaiDate(Now);
+        var from = today.AddDays(-ServiceDueDefaultDays);
+        var to = today.AddDays(ServiceDueNotifyDays);
+        var items = ServiceDueRows.Build(
+            await repo.GetServiceDueAsync(user.ShardKey, user.BranchId, from, to, ct), today);
+
+        return Result<ServiceDueCountDto>.Ok(new ServiceDueCountDto(
+            items.Count, items.Count(x => x.DaysUntilDue < 0), from, to));
+    }
+
+    /// <summary>หน้าต่างแจ้งเตือน: ครบกำหนดภายในกี่วันข้างหน้า — ใช้ร่วมกับตัวเลขที่เมนูและ ServiceDueNotifier</summary>
+    public const int ServiceDueNotifyDays = 7;
+
+    /// <summary>[BIZ] เปิดให้หน้าร้าน (FrontDesk) ด้วย เพราะเป็นผู้รับแจ้งเตือน — กดแล้วต้องเปิดรายงานได้ (ยืนยัน 2026-10-25)
+    /// ผู้จัดการ/ธุรการเปิดได้อยู่แล้ว · รายงานอื่นทั้งหมดยังเป็นของผู้จัดการ/ธุรการเท่านั้น</summary>
+    private bool ServiceDueAllowed => Allowed || user.Role == UserRole.FrontDesk;
+
+    private static Result<T> ServiceDueForbidden<T>() =>
+        Result<T>.Fail("REPORTS_FORBIDDEN", "เฉพาะผู้จัดการ ธุรการ หรือหน้าร้านเท่านั้นที่ดูรายการรถใกล้ครบรอบบริการได้");
+
+    private static IReadOnlyList<VehicleServiceItemDto> ServiceItemsOf(HandoverRecord handover) =>
+        handover.ServiceItems
+            .OrderBy(i => i.SortOrder).ThenBy(i => i.NextServiceDueOn)
+            .Select(i => new VehicleServiceItemDto(i.Name, i.NextServiceMileage, i.NextServiceDueOn))
+            .ToList();
 
     private static DateOnly ThaiDate(DateTime utc) => DateOnly.FromDateTime(utc.AddHours(7));
     private static DateTime ThaiDateStartUtc(DateOnly date) =>

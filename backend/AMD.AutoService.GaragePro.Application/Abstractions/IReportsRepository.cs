@@ -52,6 +52,10 @@ public interface IReportsRepository
 
     Task<ServiceDueData> GetServiceDueAsync(
         string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct);
+
+    /// <summary>ทุกสาขาในฐานที่เชื่อมอยู่ (ไม่กรองสาขา/shard ของผู้เรียก) ที่มีใบส่งมอบเซ็นแล้วซึ่งมีรายการนัดครบกำหนดอยู่ใน [from, to]
+    /// — ให้งานแจ้งเตือนรายวันรู้ว่าต้องไล่สาขาไหนบ้าง · ใช้ index บนวันนัดของรายการ (ไม่สแกนทุกใบส่งมอบ)</summary>
+    Task<IReadOnlyList<ServiceDueBranch>> GetBranchesWithServiceDueAsync(DateOnly from, DateOnly to, CancellationToken ct);
 }
 
 public sealed record StockUsageFilter(Guid? WarehouseId, Guid? CatalogItemId, long? RequesterStaffId);
@@ -64,6 +68,8 @@ public sealed record StockUsageData(
     IReadOnlyDictionary<Guid, (string JobNo, string? Plate)> Jobs,
     IReadOnlyDictionary<Guid, string?> SaleReceipts,
     bool Truncated);
+
+public sealed record ServiceDueBranch(string ShardKey, int BranchId);
 
 public sealed record VehicleHistoryData(
     IReadOnlyList<Job> Jobs,

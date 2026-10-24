@@ -55,6 +55,19 @@ public class SelfServeLifecycleRegistrationTests
         return services.BuildServiceProvider();
     }
 
+    /// <summary>งานแจ้งเตือนรถใกล้ครบรอบบริการ: ไม่ตั้งฐาน self-serve ต้อง resolve ได้และไม่ไล่ฐาน sp1 (ไม่ error)</summary>
+    [Theory]
+    [InlineData(false, new[] { "db2" })]
+    [InlineData(true, new[] { "db2", "sp1" })]
+    public void Service_due_sweep_only_covers_the_self_serve_database_when_it_is_configured(bool selfServe, string[] expected)
+    {
+        using var provider = Build(Config(selfServe));
+
+        provider.GetRequiredService<Application.ServiceDue.ServiceDueSweepOptions>()
+            .DatabaseShardKeys.Should().Equal(expected);
+        provider.GetRequiredService<Application.ServiceDue.IServiceDueSweepService>().Should().NotBeNull();
+    }
+
     [Fact]
     public void Lifecycle_services_resolve_when_self_serve_is_configured()
     {

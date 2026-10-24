@@ -31,6 +31,8 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<TaxInvoiceLine> TaxInvoiceLines => Set<TaxInvoiceLine>();
     public DbSet<HandoverRecord> HandoverRecords => Set<HandoverRecord>();
     public DbSet<HandoverChecklistItem> HandoverChecklistItems => Set<HandoverChecklistItem>();
+    public DbSet<HandoverServiceItem> HandoverServiceItems => Set<HandoverServiceItem>();
+    public DbSet<ServiceReminderTemplate> ServiceReminderTemplates => Set<ServiceReminderTemplate>();
     public DbSet<Supplier> Suppliers => Set<Supplier>();
     public DbSet<Warehouse> Warehouses => Set<Warehouse>();
     public DbSet<CatalogCategory> CatalogCategories => Set<CatalogCategory>();
@@ -409,6 +411,34 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
 
             e.HasMany(x => x.Items).WithOne(x => x.HandoverRecord!)
              .HasForeignKey(x => x.HandoverRecordId).OnDelete(DeleteBehavior.Cascade);
+
+            e.HasMany(x => x.ServiceItems).WithOne(x => x.HandoverRecord!)
+             .HasForeignKey(x => x.HandoverRecordId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<HandoverServiceItem>(e =>
+        {
+            e.ToTable("svc_HandoverServiceItem");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+
+            // ชื่อไม่ซ้ำในใบเดียว (collation ของฐานเป็น CI) · รายงานใกล้ครบรอบกรองช่วงวันนัดจากตารางนี้
+            e.HasIndex(x => new { x.HandoverRecordId, x.Name }).IsUnique().HasDatabaseName("UX_svc_HandoverServiceItem_Name");
+            e.HasIndex(x => x.NextServiceDueOn);
+        });
+
+        b.Entity<ServiceReminderTemplate>(e =>
+        {
+            e.ToTable("svc_ServiceReminderTemplate");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.Property(x => x.LegacyShardKey).HasMaxLength(20).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(100).IsRequired();
+
+            // ชื่อไม่ซ้ำต่อสาขา — เป็นทั้งกฎธุรกิจและด่านสุดท้ายของการ seed ชุดตั้งต้นที่ชนกัน
+            e.HasIndex(x => new { x.LegacyShardKey, x.LegacyBranchId, x.Name })
+             .IsUnique().HasDatabaseName("UX_svc_ServiceReminderTemplate_Name");
         });
 
         b.Entity<HandoverChecklistItem>(e =>

@@ -69,6 +69,9 @@ public static class DependencyInjection
         services.AddScoped<IWarehouseService, WarehouseService>();
         services.AddScoped<IQuotationTemplateRepository, QuotationTemplateRepository>();
         services.AddScoped<IQuotationTemplateService, QuotationTemplateService>();
+        services.AddScoped<IServiceReminderTemplateRepository, ServiceReminderTemplateRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.ServiceReminders.IServiceReminderTemplateService,
+            AMD.AutoService.GaragePro.Application.ServiceReminders.ServiceReminderTemplateService>();
         services.AddScoped<ICatalogCategoryService, CatalogCategoryService>();
         services.AddScoped<IBranchDefaultsSeeder, AMD.AutoService.GaragePro.Application.MasterData.BranchDefaultsSeeder>();
         services.AddScoped<IPurchasingRepository, PurchasingRepository>();
@@ -114,6 +117,16 @@ public static class DependencyInjection
         services.AddScoped<IJobChatService, JobChatService>();
         services.AddScoped<IReportsRepository, ReportsRepository>();
         services.AddScoped<ReportsService>();
+
+        // แจ้งเตือนรถใกล้ครบรอบบริการรายวัน (hosted job อยู่ฝั่ง API) — ไล่ฐานหลัก + ฐาน self-serve เมื่อตั้งค่าไว้เท่านั้น
+        services.AddScoped<AMD.AutoService.GaragePro.Application.ServiceDue.IServiceDueNotifier,
+            AMD.AutoService.GaragePro.Application.ServiceDue.ServiceDueNotifier>();
+        services.AddSingleton(sp => new AMD.AutoService.GaragePro.Application.ServiceDue.ServiceDueSweepOptions(
+            AMD.AutoService.GaragePro.Infrastructure.SelfServe.SelfServeInfrastructure.IsConfigured(configuration)
+                ? ["db2", sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AMD.AutoService.GaragePro.Application.SelfServe.SelfServeOptions>>().Value.ShardKey]
+                : ["db2"]));
+        services.AddSingleton<AMD.AutoService.GaragePro.Application.ServiceDue.IServiceDueSweepService,
+            AMD.AutoService.GaragePro.Application.ServiceDue.ServiceDueSweepService>();
         services.AddScoped<ILegacyReader, LegacyReader>();
         services.AddScoped<IQuotationService, QuotationService>();
         services.AddScoped<IJobService, JobService>();

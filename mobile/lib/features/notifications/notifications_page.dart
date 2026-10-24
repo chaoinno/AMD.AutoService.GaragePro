@@ -191,7 +191,7 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage>
 
     final target = notificationTarget(n);
     if (target == null) {
-      showAppMessage('เอกสารจัดซื้อ (${n.entityType}) เปิดได้บนเว็บเท่านั้น');
+      showAppMessage(notificationWebOnlyMessage(n));
       return;
     }
     await context.push(target);
@@ -377,6 +377,8 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage>
         (icon: Icons.verified_outlined, fg: const Color(0xFF0B7A6C), bg: const Color(0xFFE2F5F2), label: 'อนุมัติแล้ว'),
       NotificationKind.purchaseReturned =>
         (icon: Icons.undo, fg: T.red600, bg: const Color(0xFFFBE9E9), label: 'ถูกตีกลับ'),
+      NotificationKind.serviceDue =>
+        (icon: Icons.alarm, fg: const Color(0xFF8A5A00), bg: const Color(0xFFFDF3E2), label: 'รถใกล้ครบรอบบริการ'),
       NotificationKind.packagePaymentApproved =>
         (icon: Icons.workspace_premium_outlined, fg: const Color(0xFF0B7A6C), bg: const Color(0xFFE2F5F2), label: 'ต่ออายุแพ็กเกจแล้ว'),
       NotificationKind.packagePaymentRejected =>

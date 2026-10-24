@@ -3,6 +3,7 @@ using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Customers;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Application.Notifications;
 using AMD.AutoService.GaragePro.Application.Work;
 using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
@@ -75,7 +76,8 @@ public sealed class JobService(
     IWorkIntervalHook workHook,
     ICurrentUser user,
     TimeProvider clock,
-    IWorkspacePolicy? workspacePolicy = null) : IJobService
+    IWorkspacePolicy? workspacePolicy = null,
+    INotificationPublisher? notifications = null) : IJobService
 {
     /// <summary>ลิมิตจำนวนจ๊อบของแพ็กเกจทดลองใช้ (B5) — null = ไม่จำกัด (legacy/ctor ในเทสต์เดิม)</summary>
     private readonly IWorkspacePolicy _policy = workspacePolicy ?? UnlimitedWorkspacePolicy.Instance;
@@ -384,6 +386,12 @@ public sealed class JobService(
             Source = user.Source,
             OccurredAt = Now
         }, ct);
+
+        // [BIZ] รถถูกเปิดจ๊อบใหม่แล้ว = ไม่ต้องตามให้เข้ารับบริการอีก — ปิดแจ้งเตือน "รถใกล้ครบรอบบริการ" ของคันนี้
+        // ใน SaveChanges เดียวกับจ๊อบ (publisher ไม่ save เอง) · ใช้ prefix เพราะไม่รู้วันนัดของรอบที่แจ้งไป
+        if (notifications is not null)
+            await notifications.ResolveByPrefixAsync(NotificationSubjects.ServiceDuePrefix(request.VehicleId), ct);
+
         await jobs.SaveChangesAsync(ct);
 
         return Result<CreatedJobDto>.Ok(new CreatedJobDto(job.Id, job.JobNo, openJob?.JobNo));

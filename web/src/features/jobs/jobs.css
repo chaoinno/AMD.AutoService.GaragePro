@@ -96,6 +96,10 @@
 .document-next-service span { font-size: 13px; }
 .document-next-service strong { font-size: 17px; }
 .document-next-service small { font-size: 12px; }
+.document-next-service table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.document-next-service th,
+.document-next-service td { padding: 3px 8px; border: 1px solid currentColor; text-align: left; font-size: 14px; }
+.document-next-service td:nth-child(2) { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .handover-service__intake { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 
 /* ---- บอร์ดสถานะรถในอู่ (ดูอย่างเดียว) ---- */
@@ -137,3 +141,26 @@
 .jobs-board-card__facts .jobs-board-card__fact--paused { color: #8a5a00; font-weight: 600; }
 .jobs-board-card__facts .jobs-board-card__fact--waiting { color: #c1691f; font-weight: 600; }
 .jobs-board-card__facts .jobs-board-card__fact--chat { color: var(--blue-600); font-weight: 600; }
+
+/* ส่งมอบรถ: รายการนัดบริการหลายแถว */
+.handover-service__items { display: grid; gap: 10px; }
+.handover-service__items-title { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 600; }
+.handover-service__items-title svg { width: 17px; height: 17px; }
+.handover-service__row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.4fr) minmax(150px, 1fr) minmax(100px, 0.6fr) auto;
+  align-items: start;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+}
+.handover-service__row-name { display: block; padding: 8px 0; }
+.handover-service__row-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; padding-top: 22px; }
+.handover-service__add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.handover-service__add .ui-select { min-width: 260px; }
+.handover-service__list ul { margin: 4px 0 0; padding-left: 20px; }
+@media (max-width: 1100px) {
+  .handover-service__row { grid-template-columns: 1fr 1fr; }
+  .handover-service__row-side { flex-direction: row; align-items: center; justify-content: flex-end; padding-top: 0; }
+}
