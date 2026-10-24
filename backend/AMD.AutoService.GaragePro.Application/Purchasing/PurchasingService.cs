@@ -563,8 +563,10 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
             .ToList();
 
         var items = approvedByCode.Count == 0 ? [] : await repo.ItemsByCodesAsync(approvedByCode.Select(x => x.Code).ToList(), ct);
+        // [BIZ] เบิกแล้ว = เบิก − คืน → ของที่คืนกลับไปเป็น "คงเหลือให้เบิก" ตามที่ลูกค้าอนุมัติ
         var withdrawn = (await repo.MovementsByJobAsync(job.Id, ct))
-            .GroupBy(x => x.CatalogItemId).ToDictionary(g => g.Key, g => g.Sum(x => Math.Abs(x.Quantity)));
+            .GroupBy(x => x.CatalogItemId).ToDictionary(g => g.Key,
+                g => Math.Max(0, g.Where(x => x.Type == "issue").Sum(x => Math.Abs(x.Quantity)) - g.Where(x => x.Type == "issue-return").Sum(x => x.Quantity)));
 
         var lines = new List<StockWithdrawalPlanLineDto>();
         var unavailable = new List<string>();
@@ -609,11 +611,17 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
     /// <summary>รายการใบเบิกสินค้าที่ผูกกับ job นี้ ล่าสุดก่อน — จัดกลุ่มตามเลขที่ใบเบิกเดียวกัน</summary>
     public Task<Result<IReadOnlyList<StockWithdrawalSummaryDto>>> WithdrawalsByJobAsync(Guid jobId, CancellationToken ct) => Run<IReadOnlyList<StockWithdrawalSummaryDto>>(async () =>
     {
-        var movements = await repo.MovementsByJobAsync(jobId, ct);
-        return movements.GroupBy(x => x.OperationId)
-            .Select(g => new StockWithdrawalSummaryDto(g.Key, g.First().DocumentNumber, Utc(g.Max(x => x.OccurredAt)),
-                g.First().RequesterName ?? "", g.First().PerformedByName, g.Select(x => x.CatalogItemId).Distinct().Count(),
-                g.Sum(x => Math.Abs(x.Quantity)), g.First().Reason))
+        var all = await repo.MovementsByJobAsync(jobId, ct);
+        var returns = all.Where(x => x.Type == "issue-return").ToList();
+        return all.Where(x => x.Type == "issue").GroupBy(x => x.OperationId)
+            .Select(g =>
+            {
+                var ids = g.Select(x => x.Id).ToHashSet();
+                var mine = returns.Where(r => r.SourceMovementId.HasValue && ids.Contains(r.SourceMovementId.Value)).ToList();
+                return new StockWithdrawalSummaryDto(g.Key, g.First().DocumentNumber, Utc(g.Max(x => x.OccurredAt)),
+                    g.First().RequesterName ?? "", g.First().PerformedByName, g.Select(x => x.CatalogItemId).Distinct().Count(),
+                    g.Sum(x => Math.Abs(x.Quantity)), g.First().Reason, mine.Sum(x => x.Quantity), ReturnRefs(mine));
+            })
             .OrderByDescending(x => x.OccurredAt).ToList();
     });
 
@@ -623,16 +631,143 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         var warehouse = await Warehouse(first.WarehouseId, ct);
         Job? job = first.JobId.HasValue ? await repo.JobAsync(first.JobId.Value, ct) : null;
         var lines = new List<StockWithdrawalLineDto>();
+        var ids = movements.Select(x => x.Id).ToHashSet();
+        var returns = first.JobId.HasValue
+            ? (await repo.MovementsByJobAsync(first.JobId.Value, ct))
+                .Where(x => x.Type == "issue-return" && x.SourceMovementId.HasValue && ids.Contains(x.SourceMovementId.Value)).ToList()
+            : [];
         foreach (var group in movements.GroupBy(x => x.CatalogItemId))
         {
             var item = await Item(group.Key, ct);
+            var groupIds = group.Select(x => x.Id).ToHashSet();
             lines.Add(new StockWithdrawalLineDto(item.Id, item.Code, item.Name, item.Unit,
-                group.Sum(x => Math.Abs(x.Quantity)), Manager ? group.First().UnitCost : null));
+                group.Sum(x => Math.Abs(x.Quantity)), Manager ? group.First().UnitCost : null,
+                returns.Where(r => groupIds.Contains(r.SourceMovementId!.Value)).Sum(r => r.Quantity)));
         }
         return new StockWithdrawalDto(first.OperationId, first.DocumentNumber, first.WarehouseId, warehouse.Name,
             first.JobId, job?.JobNo, first.RequesterStaffId ?? 0, first.RequesterName ?? "", first.PerformedByName,
             first.Reason, Utc(movements.Max(x => x.OccurredAt)), lines,
-            Manager ? lines.Sum(x => x.Quantity * (x.UnitCost ?? 0)) : null);
+            Manager ? lines.Sum(x => x.Quantity * (x.UnitCost ?? 0)) : null, ReturnRefs(returns));
+    }
+
+    private static IReadOnlyList<StockReturnRefDto> ReturnRefs(IEnumerable<StockMovement> returns) => returns
+        .GroupBy(x => x.OperationId).Select(g => new StockReturnRefDto(g.Key, g.First().DocumentNumber, Utc(g.Max(x => x.OccurredAt))))
+        .OrderBy(x => x.OccurredAt).ToList();
+
+    public static readonly IReadOnlyDictionary<string, string> ReturnReasons = new Dictionary<string, string>
+    {
+        ["over-issued"] = "เบิกเกิน",
+        ["not-used"] = "ไม่ได้ใช้ (ลูกค้ายกเลิก/เปลี่ยนใจ)",
+        ["wrong-item"] = "ผิดรุ่น/ผิดรายการ",
+        ["other"] = "อื่นๆ",
+    };
+
+    /// <summary>
+    /// คืนอะไหล่จากใบเบิก WD- ที่ผูก job (ธุรการ/ผู้จัดการ · ก่อนออกใบเสร็จเท่านั้น · เฉพาะของสภาพดี)
+    /// [BIZ] ของกลับเข้า "ล็อตเดิมที่ต้นทุนเดิม" ตามลำดับย้อน FIFO (ล็อตที่ตัดทีหลังคืนก่อน) แบบเดียวกับ SaleService.VoidAsync
+    /// · คืนได้ไม่เกิน เบิกในใบนั้น − คืนไปแล้ว (นับต่อ movement ผ่าน SourceMovementId) · RequestId กันคืนซ้ำ
+    /// </summary>
+    public Task<Result<StockReturnDto>> ReturnWithdrawalAsync(Guid withdrawalOperationId, StockReturnInput input, CancellationToken ct) => Run(async () =>
+    {
+        Valid(input.RequestId != Guid.Empty && input.Lines is { Count: > 0 and <= 100 }, "กรุณาระบุ RequestId และรายการสินค้าที่คืน 1–100 รายการ");
+        Valid(input.Lines.Select(x => x.CatalogItemId).Distinct().Count() == input.Lines.Count, "ห้ามใส่สินค้าซ้ำในใบคืนเดียวกัน");
+        Valid(input.Lines.All(x => x.Quantity is > 0 and <= 1000000), "จำนวนคืนต้องเป็นจำนวนเต็ม 1–1,000,000");
+        Valid(input.ReasonCode is not null && ReturnReasons.ContainsKey(input.ReasonCode), "กรุณาเลือกเหตุผลการคืน");
+        var note = Clean(input.Note);
+        Valid(note is null || note.Length <= 500, "หมายเหตุต้องไม่เกิน 500 ตัวอักษร");
+        Valid(input.ReasonCode != "other" || note is not null, "เหตุผล \"อื่นๆ\" ต้องระบุหมายเหตุ");
+
+        var hash = Hash(new { withdrawalOperationId, input });
+        var existing = await repo.MovementsAsync(null, input.RequestId, ct);
+        if (existing.Count > 0)
+        {
+            Require(existing.All(x => x.RequestHash == hash && x.Type == "issue-return"), "PURCHASING_CONFLICT", "RequestId นี้ถูกใช้กับรายการอื่นแล้ว");
+            return await BuildReturnDto(existing, ct);
+        }
+
+        var issues = await repo.MovementsAsync(null, withdrawalOperationId, ct);
+        Require(issues.Count > 0 && issues.All(x => x.Type == "issue"), "PURCHASING_NOT_FOUND", "ไม่พบใบเบิกสินค้านี้ในสาขาปัจจุบัน");
+        var jobId = issues[0].JobId;
+        Require(jobId.HasValue, "WITHDRAWAL_RETURN_NOT_JOB", "คืนของได้เฉพาะใบเบิกที่ผูกกับงาน (ใบเบิกจากหน้าสต็อกไม่รองรับ)");
+        var job = await repo.JobAsync(jobId!.Value, ct);
+        Require(job is not null, "JOB_NOT_FOUND", "ไม่พบงานที่อ้างอิงในสาขาปัจจุบัน");
+        Require(!await repo.JobHasReceiptAsync(job!.Id, ct), "WITHDRAWAL_RETURN_RECEIPT_ISSUED", "งานนี้ออกใบเสร็จแล้ว คืนของไม่ได้");
+
+        var issueIds = issues.Select(x => x.Id).ToHashSet();
+        var returnedBySource = (await repo.MovementsByJobAsync(job.Id, ct))
+            .Where(x => x.Type == "issue-return" && x.SourceMovementId.HasValue && issueIds.Contains(x.SourceMovementId.Value))
+            .GroupBy(x => x.SourceMovementId!.Value).ToDictionary(g => g.Key, g => g.Sum(x => x.Quantity));
+
+        var number = await repo.NumberAsync("RT", Now, ct);
+        var reason = ReturnReasons[input.ReasonCode!] + (note is null ? "" : $": {note}");
+        var created = new List<StockMovement>();
+        foreach (var line in input.Lines)
+        {
+            var item = await Item(line.CatalogItemId, ct);
+            // ล็อตที่ตัดทีหลังคืนก่อน — issues เรียงตามลำดับที่ตัด จึงไล่จากท้าย
+            var sources = issues.Where(x => x.CatalogItemId == item.Id).Reverse()
+                .Select(x => (Movement: x, Returnable: Math.Abs(x.Quantity) - returnedBySource.GetValueOrDefault(x.Id))).ToList();
+            Require(sources.Count > 0, "WITHDRAWAL_RETURN_EXCEEDS", $"{item.Code} ไม่อยู่ในใบเบิกนี้ จึงคืนไม่ได้");
+            Require(line.Quantity <= sources.Sum(x => x.Returnable), "WITHDRAWAL_RETURN_EXCEEDS",
+                $"คืน {item.Code} ได้ไม่เกินยอดที่เบิกในใบนี้และยังไม่ได้คืน ({sources.Sum(x => x.Returnable)} {item.Unit})");
+            var lots = await repo.LotsAsync(item.Id, ct);
+            var remaining = line.Quantity;
+            foreach (var (source, returnable) in sources)
+            {
+                if (remaining == 0) break;
+                var quantity = Math.Min(remaining, returnable);
+                if (quantity <= 0) continue;
+                var lot = lots.SingleOrDefault(x => x.Id == source.StockLotId);
+                Require(lot is not null, "PURCHASING_CONFLICT", "ไม่พบล็อตเดิมสำหรับคืนสต็อก");
+                var movement = Movement(item, lot!.WarehouseId, lot.Id, input.RequestId, hash, number, "issue-return", quantity, 0, source.UnitCost, reason);
+                movement.JobId = source.JobId; movement.RequesterStaffId = source.RequesterStaffId; movement.RequesterName = source.RequesterName;
+                movement.SourceMovementId = source.Id;
+                lot.RemainingQuantity += quantity; item.OnHand += quantity;
+                remaining -= quantity;
+                created.Add(movement);
+            }
+        }
+        repo.Add(new ActivityEvent
+        {
+            EntityId = job.Id, EntityType = "Stock", EventType = "stock.withdrawal.returned", OccurredAt = Now,
+            DescriptionTh = $"คืนสินค้า {number} (อ้างอิง {issues[0].DocumentNumber}): {created.Select(x => x.CatalogItemId).Distinct().Count()} รายการ, {reason} (งาน {job.JobNo})",
+            PerformedByUserId = user.UserId, PerformedByName = user.UserName, Source = user.Source,
+            PayloadJson = JsonSerializer.Serialize(new { user.ShardKey, user.BranchId, withdrawalOperationId, ReasonCode = input.ReasonCode })
+        });
+        return await BuildReturnDto(created, ct);
+    }, true, ct);
+
+    /// <summary>อ่านใบคืนสินค้าด้วยเลข operation เพื่อพิมพ์ซ้ำ</summary>
+    public Task<Result<StockReturnDto>> ReturnDetailAsync(Guid operationId, CancellationToken ct) => Run(async () =>
+    {
+        var movements = await repo.MovementsAsync(null, operationId, ct);
+        Require(movements.Count > 0 && movements.All(x => x.Type == "issue-return"), "PURCHASING_NOT_FOUND", "ไม่พบใบคืนสินค้านี้ในสาขาปัจจุบัน");
+        return await BuildReturnDto(movements, ct);
+    });
+
+    private async Task<StockReturnDto> BuildReturnDto(IReadOnlyList<StockMovement> movements, CancellationToken ct)
+    {
+        var first = movements[0];
+        var warehouse = await Warehouse(first.WarehouseId, ct);
+        var job = first.JobId.HasValue ? await repo.JobAsync(first.JobId.Value, ct) : null;
+        var source = first.JobId.HasValue && first.SourceMovementId.HasValue
+            ? (await repo.MovementsByJobAsync(first.JobId.Value, ct)).FirstOrDefault(x => x.Id == first.SourceMovementId.Value) : null;
+        var lines = new List<StockWithdrawalLineDto>();
+        foreach (var group in movements.GroupBy(x => x.CatalogItemId))
+        {
+            var item = await Item(group.Key, ct);
+            var quantity = group.Sum(x => x.Quantity);
+            // ต้นทุนต่อหน่วยเฉลี่ยถ่วงน้ำหนัก (คืนได้หลายล็อตต้นทุนต่างกัน) · มูลค่ารวมคิดจากแต่ละล็อตจริง
+            var avg = decimal.Round(group.Sum(x => x.Quantity * x.UnitCost) / quantity, 2);
+            lines.Add(new StockWithdrawalLineDto(item.Id, item.Code, item.Name, item.Unit, quantity, Manager ? avg : null));
+        }
+        var code = ReturnReasons.FirstOrDefault(r => first.Reason == r.Value || first.Reason.StartsWith(r.Value + ": ")).Key ?? "other";
+        var label = ReturnReasons[code];
+        var note = first.Reason.Length > label.Length + 2 && first.Reason.StartsWith(label + ": ") ? first.Reason[(label.Length + 2)..] : null;
+        return new StockReturnDto(first.OperationId, first.DocumentNumber, source?.OperationId ?? Guid.Empty, source?.DocumentNumber ?? "",
+            first.WarehouseId, warehouse.Name, first.JobId, job?.JobNo, first.RequesterName ?? "", first.PerformedByName,
+            code, label, note, Utc(movements.Max(x => x.OccurredAt)), lines,
+            Manager ? movements.Sum(x => x.Quantity * x.UnitCost) : null);
     }
 
     private async Task<PurchaseDocument> Document(string kind, Guid id, CancellationToken ct) => await repo.GetAsync(kind, id, ct)

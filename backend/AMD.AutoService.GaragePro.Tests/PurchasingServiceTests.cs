@@ -437,6 +437,107 @@ public class PurchasingServiceTests
             (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 1)), default)).Error?.Code);
     }
 
+    // 2 ล็อต: A 3 ชิ้น @10 (เก่า) + B 3 ชิ้น @20 (ใหม่) · ใบเบิกงาน 4 ชิ้น = A 3 + B 1 · ใบเสนอราคาอนุมัติ 5 ชิ้น
+    private static async Task<(Fixture F, Job Job, StockWithdrawalDto Withdrawal, StockLot LotA, StockLot LotB)> JobWithTwoLotWithdrawal()
+    {
+        var f = new Fixture(); f.Item.OnHand = 3;
+        Assert.True((await f.Service.OpeningAsync(new(f.Item.Id, f.Warehouse.Id, 10, 3, 0, "ยอดยกมา"), default)).Success);
+        var lotA = f.Repo.All<StockLot>().Single();
+        var lotB = new StockLot { LegacyShardKey = "db2", LegacyBranchId = 105, CatalogItemId = f.Item.Id, WarehouseId = f.Warehouse.Id,
+            DocumentNumber = "GRN-B", ReceivedAt = lotA.ReceivedAt.AddMinutes(5), ReceivedQuantity = 3, RemainingQuantity = 3, UnitCost = 20 };
+        f.Repo.Add(lotB); f.Item.OnHand += 3;
+        var job = f.AddJob();
+        f.AddQuotation(job, signed: true, Line("A", LineType.Part, 5, LineApprovalStatus.Approved));
+        var withdrawal = (await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 4)), default)).Data!;
+        Assert.Equal((0, 2), (lotA.RemainingQuantity, lotB.RemainingQuantity));
+        return (f, job, withdrawal, lotA, lotB);
+    }
+
+    [Fact]
+    public async Task Return_goes_back_to_the_latest_lots_first_at_original_cost_and_reopens_the_plan()
+    {
+        var (f, job, withdrawal, lotA, lotB) = await JobWithTwoLotWithdrawal();
+        var input = new StockReturnInput(Guid.NewGuid(), "not-used", null, [new(f.Item.Id, 2)]);
+        var result = await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, input, default);
+        Assert.True(result.Success, result.Error?.MessageTh);
+        Assert.StartsWith("RT-", result.Data!.DocumentNumber);
+        Assert.Equal(withdrawal.DocumentNumber, result.Data.WithdrawalNumber);
+        Assert.Equal("ไม่ได้ใช้ (ลูกค้ายกเลิก/เปลี่ยนใจ)", result.Data.ReasonLabelTh);
+
+        // ล็อต B ที่ตัดทีหลังคืนก่อน (1 ชิ้น @20) แล้วค่อยคืน A (1 ชิ้น @10) — ต้นทุนเดิมของแต่ละ movement
+        Assert.Equal((1, 3), (lotA.RemainingQuantity, lotB.RemainingQuantity));
+        var returns = f.Repo.All<StockMovement>().Where(x => x.Type == "issue-return").ToList();
+        Assert.Equal(new[] { (20m, 1), (10m, 1) }, returns.Select(x => (x.UnitCost, x.Quantity)).ToArray());
+        Assert.All(returns, x => { Assert.NotNull(x.SourceMovementId); Assert.Equal(job.Id, x.JobId); Assert.Equal(f.Requester.Id, x.RequesterStaffId); });
+        Assert.Equal(f.CurrentItem.OnHand, f.Repo.All<StockLot>().Sum(x => x.RemainingQuantity));
+        Assert.Equal(30m, result.Data.TotalCost);
+        Assert.Contains(f.Repo.All<ActivityEvent>(), x => x.EventType == "stock.withdrawal.returned");
+
+        // เบิกแล้ว = เบิก − คืน → คงเหลือให้เบิก 5 − (4 − 2) = 3
+        var plan = Assert.Single((await f.Service.WithdrawalPlanAsync(job.Id, default)).Data!.Lines);
+        Assert.Equal((2, 3), (plan.WithdrawnQuantity, plan.RemainingQuantity));
+        Assert.True((await f.Service.WithdrawAsync(f.JobWithdrawal(job, (f.Item.Id, 3)), default)).Success);
+
+        var detail = (await f.Service.WithdrawalDetailAsync(withdrawal.OperationId, default)).Data!;
+        Assert.Equal(2, Assert.Single(detail.Lines).ReturnedQuantity);
+        Assert.Equal(result.Data.DocumentNumber, Assert.Single(detail.Returns!).DocumentNumber);
+        var summary = (await f.Service.WithdrawalsByJobAsync(job.Id, default)).Data!.Single(x => x.OperationId == withdrawal.OperationId);
+        Assert.Equal((4, 2), (summary.TotalQuantity, summary.ReturnedQuantity));
+        Assert.Equal(2, (await f.Service.WithdrawalsByJobAsync(job.Id, default)).Data!.Count);   // ใบคืนไม่ถูกนับเป็นใบเบิก
+        Assert.Equal(result.Data.OperationId, (await f.Service.ReturnDetailAsync(result.Data.OperationId, default)).Data!.OperationId);
+
+        // RequestId เดิม = ผลเดิม ไม่คืนซ้ำ · ใช้กับเนื้อหาอื่น = ชน
+        var onHand = f.CurrentItem.OnHand;
+        Assert.True((await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, input, default)).Success);
+        Assert.Equal(onHand, f.CurrentItem.OnHand);
+        Assert.Equal("PURCHASING_CONFLICT", (await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, input with { Lines = [new(f.Item.Id, 1)] }, default)).Error?.Code);
+    }
+
+    [Fact]
+    public async Task Return_cannot_exceed_what_was_withdrawn_and_not_yet_returned()
+    {
+        var (f, _, withdrawal, _, _) = await JobWithTwoLotWithdrawal();
+        Assert.Equal("WITHDRAWAL_RETURN_EXCEEDS", (await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), "over-issued", null, [new(f.Item.Id, 5)]), default)).Error?.Code);
+        Assert.True((await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), "over-issued", null, [new(f.Item.Id, 3)]), default)).Success);
+        Assert.Equal("WITHDRAWAL_RETURN_EXCEEDS", (await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), "over-issued", null, [new(f.Item.Id, 2)]), default)).Error?.Code);
+        Assert.True((await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), "wrong-item", null, [new(f.Item.Id, 1)]), default)).Success);
+        Assert.Equal(6, f.CurrentItem.OnHand);
+        Assert.Equal(6, f.Repo.All<StockLot>().Sum(x => x.RemainingQuantity));
+    }
+
+    [Fact]
+    public async Task Return_is_blocked_after_receipt_for_non_job_withdrawals_and_for_other_roles()
+    {
+        var (f, job, withdrawal, _, _) = await JobWithTwoLotWithdrawal();
+        var input = new StockReturnInput(Guid.NewGuid(), "over-issued", null, [new(f.Item.Id, 1)]);
+
+        f.User.Role = UserRole.Technician;
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, input, default)).Error?.Code);
+        f.User.Role = UserRole.Office;
+
+        f.Repo.ReceiptJobs.Add(job.Id);
+        Assert.Equal("WITHDRAWAL_RETURN_RECEIPT_ISSUED", (await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, input, default)).Error?.Code);
+        f.Repo.ReceiptJobs.Clear();
+
+        var manual = (await f.Service.WithdrawAsync(new(Guid.NewGuid(), f.Warehouse.Id, null, f.Requester.Id, "เบิกทั่วไป", [new(f.Item.Id, 1)]), default)).Data!;
+        Assert.Equal("WITHDRAWAL_RETURN_NOT_JOB", (await f.Service.ReturnWithdrawalAsync(manual.OperationId, input with { RequestId = Guid.NewGuid() }, default)).Error?.Code);
+        Assert.Equal("PURCHASING_NOT_FOUND", (await f.Service.ReturnWithdrawalAsync(Guid.NewGuid(), input with { RequestId = Guid.NewGuid() }, default)).Error?.Code);
+        Assert.Empty(f.Repo.All<StockMovement>().Where(x => x.Type == "issue-return"));
+    }
+
+    [Theory]
+    [InlineData("other", null)]
+    [InlineData("other", "  ")]
+    [InlineData("ไม่รู้จัก", "x")]
+    [InlineData(null, "x")]
+    public async Task Return_requires_a_known_reason_and_a_note_for_other(string? code, string? note)
+    {
+        var (f, _, withdrawal, _, _) = await JobWithTwoLotWithdrawal();
+        var result = await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), code!, note, [new(f.Item.Id, 1)]), default);
+        Assert.Equal("PURCHASING_VALIDATION", result.Error?.Code);
+        Assert.True((await f.Service.ReturnWithdrawalAsync(withdrawal.OperationId, new(Guid.NewGuid(), "other", "ลูกค้าเปลี่ยนใจ", [new(f.Item.Id, 1)]), default)).Data!.Note == "ลูกค้าเปลี่ยนใจ");
+    }
+
     [Fact]
     public async Task Job_withdrawal_rejects_unapproved_items_and_excess_but_allows_partial_withdrawals()
     {
@@ -733,7 +834,9 @@ public class PurchasingServiceTests
         public Task<IReadOnlyList<StockLot>> LotsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockLot>>(All<StockLot>().Where(x => x.CatalogItemId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> ids, CancellationToken ct) => Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(All<StockLot>().Where(x => ids.Contains(x.CatalogItemId) && Scope(x.LegacyShardKey, x.LegacyBranchId)).GroupBy(x => x.CatalogItemId).ToDictionary(x => x.Key, x => x.Sum(l => l.RemainingQuantity * l.UnitCost)));
         public Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? id, Guid? op, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => (!id.HasValue || x.CatalogItemId == id) && (!op.HasValue || x.OperationId == op) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
-        public Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => x.JobId == jobId && x.Type == "issue" && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
+        public Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => x.JobId == jobId && (x.Type == "issue" || x.Type == "issue-return") && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
+        public HashSet<Guid> ReceiptJobs { get; } = [];
+        public Task<bool> JobHasReceiptAsync(Guid jobId, CancellationToken ct) => Task.FromResult(ReceiptJobs.Contains(jobId));
         public Task<Job?> JobAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Job>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.BranchId)));
         // Kept outside `data` so the JSON rollback snapshot never walks quotation → line → quotation cycles.
         public List<Quotation> Quotations { get; } = [];

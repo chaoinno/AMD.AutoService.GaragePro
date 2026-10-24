@@ -86,7 +86,9 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         return await query.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id).Take(200).ToListAsync(ct);
     }
     public async Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) =>
-        await Movements.Where(x => x.JobId == jobId && x.Type == "issue").OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
+        await Movements.Where(x => x.JobId == jobId && (x.Type == "issue" || x.Type == "issue-return")).OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
+    public Task<bool> JobHasReceiptAsync(Guid jobId, CancellationToken ct) => db.Set<Receipt>()
+        .AnyAsync(x => x.JobId == jobId && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     public Task<Job?> JobAsync(Guid id, CancellationToken ct) => db.Set<Job>()
         .SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.BranchId == user.BranchId, ct);
     // Caller resolves the job through JobAsync (shard/branch scoped) first — quotations hang off that job.

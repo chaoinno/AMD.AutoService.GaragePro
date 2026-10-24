@@ -2418,6 +2418,9 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("SaleId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("SourceMovementId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid?>("StockLotId")
                         .HasColumnType("uniqueidentifier");
 
@@ -2448,6 +2451,9 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("LegacyShardKey", "LegacyBranchId", "SaleId")
                         .HasFilter("[SaleId] IS NOT NULL");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "SourceMovementId")
+                        .HasFilter("[SourceMovementId] IS NOT NULL");
 
                     b.HasIndex("LegacyShardKey", "LegacyBranchId", "CatalogItemId", "OccurredAt");
 

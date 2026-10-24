@@ -5178,3 +5178,5 @@ body[data-plan='trial'] .document-footer::after {
 /* ตัวเลขเมนูสต็อก = จำนวนที่ถึงจุดต่ำสุด — เหลืองให้ต่างจากตัวเลขเอกสาร (ข้อความอธิบายอยู่ที่ title/aria-label) */
 .sidebar__count--warn,
 .sidebar__link--active .sidebar__count--warn { border-color: #e0b340; background: #fff1c7; color: #7a4f00; }
+
+.link-button { padding: 0 4px; border: 0; background: none; color: var(--blue-600); font: inherit; text-decoration: underline; cursor: pointer; }

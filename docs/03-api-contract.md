@@ -158,6 +158,16 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/inventory/issues` | เบิกให้งาน → `ISS-xxxx` |
 | GET | `/inventory/counts` · POST | ตรวจนับ `CNT-xxxx` |
 
+### 8.2 คืนอะไหล่จากใบเบิกของ job **[เพิ่ม 2026-10-25 · รายละเอียดที่ [docs/06 ข้อ 8](06-purchasing-fifo.md)]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| POST | `/api/v1/inventory/withdrawals/{operationId}/returns` | body `{ requestId, reasonCode: over-issued\|not-used\|wrong-item\|other, note?, lines:[{catalogItemId, quantity}] }` → 201 `StockReturnDto { operationId, documentNumber (RT-…), withdrawalOperationId, withdrawalNumber, warehouse*, jobId, jobNo, requesterName, returnedByName, reasonCode, reasonLabelTh, note, occurredAt, lines, totalCost (Manager) }` |
+| GET | `/api/v1/inventory/returns/{operationId}` | อ่านใบคืนเพื่อพิมพ์ซ้ำ |
+
+- error: `WITHDRAWAL_RETURN_EXCEEDS` 422 · `WITHDRAWAL_RETURN_NOT_JOB` 422 · `WITHDRAWAL_RETURN_RECEIPT_ISSUED` 409 · `PURCHASING_VALIDATION` (เหตุผลไม่ถูกต้อง/`other` ไม่มี note/จำนวนผิด) · `PURCHASING_FORBIDDEN` 403 · `PURCHASING_NOT_FOUND` 404 · `PURCHASING_CONFLICT` 409 (RequestId ซ้ำกับเนื้อหาอื่น)
+- `StockWithdrawalLineDto.returnedQuantity` · `StockWithdrawalDto.returns[]` · `StockWithdrawalSummaryDto.returnedQuantity`/`returns[]` — `{ operationId, documentNumber, occurredAt }` ของใบคืน · `WithdrawalPlan` นับ เบิกแล้ว = เบิก − คืน
+
 ### 8.1 min-max สต็อก (ที่ implement จริง `/api/v1/inventory`) **[เพิ่ม 2026-10-25]**
 
 | Method | Endpoint | หมายเหตุ |

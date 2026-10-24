@@ -46,9 +46,21 @@ export const stockIssue = (input: IssueInput) => apiRequest<StockMovement[]>('/a
 
 export type WithdrawalLineInput = { catalogItemId: string; quantity: number }
 export type WithdrawalInput = { requestId: string; warehouseId: string; jobId: string | null; requesterStaffId: number; reason: string; lines: WithdrawalLineInput[] }
-export type WithdrawalLine = { catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number | null }
-export type Withdrawal = { operationId: string; documentNumber: string; warehouseId: string; warehouseName: string; jobId: string | null; jobNo: string | null; requesterStaffId: number; requesterName: string; issuedByName: string; reason: string; occurredAt: string; lines: WithdrawalLine[]; totalCost: number | null }
-export type WithdrawalSummary = { operationId: string; documentNumber: string; occurredAt: string; requesterName: string; issuedByName: string; lineCount: number; totalQuantity: number; reason: string }
+export type WithdrawalLine = { catalogItemId: string; code: string; name: string; unit: string; quantity: number; unitCost: number | null; returnedQuantity?: number }
+export type ReturnRef = { operationId: string; documentNumber: string; occurredAt: string }
+export type Withdrawal = { operationId: string; documentNumber: string; warehouseId: string; warehouseName: string; jobId: string | null; jobNo: string | null; requesterStaffId: number; requesterName: string; issuedByName: string; reason: string; occurredAt: string; lines: WithdrawalLine[]; totalCost: number | null; returns?: ReturnRef[] }
+export type WithdrawalSummary = { operationId: string; documentNumber: string; occurredAt: string; requesterName: string; issuedByName: string; lineCount: number; totalQuantity: number; reason: string; returnedQuantity?: number; returns?: ReturnRef[] }
+// ---- คืนอะไหล่จากใบเบิกของงาน (RT-) ----
+export const RETURN_REASONS = [
+  { code: 'over-issued', label: 'เบิกเกิน' },
+  { code: 'not-used', label: 'ไม่ได้ใช้ (ลูกค้ายกเลิก/เปลี่ยนใจ)' },
+  { code: 'wrong-item', label: 'ผิดรุ่น/ผิดรายการ' },
+  { code: 'other', label: 'อื่นๆ (ต้องระบุหมายเหตุ)' },
+] as const
+export type ReturnInput = { requestId: string; reasonCode: string; note?: string; lines: { catalogItemId: string; quantity: number }[] }
+export type StockReturn = { operationId: string; documentNumber: string; withdrawalOperationId: string; withdrawalNumber: string; warehouseId: string; warehouseName: string; jobId: string | null; jobNo: string | null; requesterName: string; returnedByName: string; reasonCode: string; reasonLabelTh: string; note?: string; occurredAt: string; lines: WithdrawalLine[]; totalCost: number | null }
+export const createReturn = (withdrawalOperationId: string, input: ReturnInput) => apiRequest<StockReturn>(`/api/v1/inventory/withdrawals/${withdrawalOperationId}/returns`, { method: 'POST', body: JSON.stringify(input) })
+export const getReturn = (operationId: string) => apiRequest<StockReturn>(`/api/v1/inventory/returns/${operationId}`)
 export const createWithdrawal = (input: WithdrawalInput) => apiRequest<Withdrawal>('/api/v1/inventory/withdrawals', { method: 'POST', body: JSON.stringify(input) })
 export const getWithdrawal = (operationId: string) => apiRequest<Withdrawal>(`/api/v1/inventory/withdrawals/${operationId}`)
 // [BIZ] ใบเบิกที่ผูก job ต้องเบิกตาม plan นี้พอดี (ทุกบรรทัดที่ remainingQuantity > 0) — API ปฏิเสธถ้าเพิ่ม/ลบ/แก้จำนวน

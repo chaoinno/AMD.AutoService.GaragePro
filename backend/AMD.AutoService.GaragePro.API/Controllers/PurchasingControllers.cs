@@ -15,7 +15,7 @@ public abstract class PurchasingApiController : ControllerBase
         {
             var code when code.EndsWith("_FORBIDDEN") => 403,
             var code when code.EndsWith("_NOT_FOUND") => 404,
-            "PURCHASING_CONFLICT" or "PURCHASING_STATE" or "STOCK_INSUFFICIENT" or "STOCK_OPENING_REQUIRED" => 409,
+            "PURCHASING_CONFLICT" or "PURCHASING_STATE" or "STOCK_INSUFFICIENT" or "STOCK_OPENING_REQUIRED" or "WITHDRAWAL_RETURN_RECEIPT_ISSUED" => 409,
             _ => 422
         }, Envelope.From(result, HttpContext.TraceIdentifier));
 }
@@ -203,6 +203,15 @@ public sealed class StockFIFOController(PurchasingService service) : PurchasingA
     /// <summary>อ่านใบเบิกสินค้าที่สร้างแล้วด้วยเลข operation เพื่อแสดง/พิมพ์ซ้ำ</summary>
     [HttpGet("withdrawals/{operationId:guid}")]
     public async Task<IActionResult> WithdrawalDetail(Guid operationId, CancellationToken ct) => Render(await service.WithdrawalDetailAsync(operationId, ct));
+
+    /// <summary>คืนอะไหล่จากใบเบิกที่ผูกงาน (RT-) — กลับเข้าล็อตเดิมที่ต้นทุนเดิม เฉพาะของสภาพดี ก่อนออกใบเสร็จเท่านั้น</summary>
+    /// <remarks>ReasonCode: over-issued · not-used · wrong-item · other (other ต้องมี Note) · ระบุ RequestId (UUID) เดิมเมื่อ retry · คืนได้ไม่เกินที่เบิกในใบนั้นและยังไม่ได้คืน · ยอดที่คืนกลับไปเป็นคงเหลือให้เบิกของงาน</remarks>
+    [HttpPost("withdrawals/{operationId:guid}/returns")]
+    public async Task<IActionResult> ReturnWithdrawal(Guid operationId, StockReturnInput input, CancellationToken ct) => Render(await service.ReturnWithdrawalAsync(operationId, input, ct), true);
+
+    /// <summary>อ่านใบคืนสินค้าด้วยเลข operation เพื่อแสดง/พิมพ์ซ้ำ</summary>
+    [HttpGet("returns/{operationId:guid}")]
+    public async Task<IActionResult> ReturnDetail(Guid operationId, CancellationToken ct) => Render(await service.ReturnDetailAsync(operationId, ct));
 
     /// <summary>สินค้าที่ใบเบิกของ job นี้ต้องเบิก — รายการที่ลูกค้าอนุมัติแล้วหักส่วนที่เบิกไปแล้ว</summary>
     /// <remarks>ใบเบิกที่ผูก job ต้องส่งรายการและจำนวนตรงกับ <c>lines[].remainingQuantity</c> ที่มากกว่า 0 ทุกรายการพอดี</remarks>

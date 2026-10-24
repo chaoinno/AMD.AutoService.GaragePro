@@ -22,7 +22,10 @@ public interface IPurchasingRepository
     Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct);
     Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> itemIds, CancellationToken ct);
     Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? itemId, Guid? operationId, CancellationToken ct);
+    // ใบเบิกของ job (type issue) และใบคืน (issue-return) — ผู้เรียกแยกตาม Type
     Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct);
+    // ออกใบเสร็จแล้วหรือยัง — ใบเสร็จออกแล้วห้ามคืนของ (ยอดที่เก็บเงินไปแล้วไม่ควรเปลี่ยน)
+    Task<bool> JobHasReceiptAsync(Guid jobId, CancellationToken ct);
     Task<Job?> JobAsync(Guid id, CancellationToken ct);
     // ใบเสนอราคาที่ยังไม่ถูกแทนที่ของ job พร้อมบรรทัด+การอนุมัติ — ใช้กำหนดว่าใบเบิกของ job เบิกอะไรได้บ้าง
     Task<IReadOnlyList<Quotation>> JobQuotationsAsync(Guid jobId, CancellationToken ct);
