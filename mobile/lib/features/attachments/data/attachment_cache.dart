@@ -72,8 +72,9 @@ final attachmentCacheProvider = Provider<AttachmentCache>((ref) {
   final api = ref.watch(attachmentsApiProvider);
   final cache = AttachmentCache(api.download);
   // รูปผูกกับสาขา — ออกจากระบบแล้วต้องไม่เหลือให้ผู้ใช้คนถัดไปเห็น
-  ref.listen(sessionProvider, (_, next) {
-    if (next == null) cache.clear();
+  // สลับสาขา (ผู้ดูแลระบบ) ก็ล้างด้วย — รูปของสาขาเดิมต้องไม่ค้างในสาขาใหม่
+  ref.listen(sessionProvider, (prev, next) {
+    if (next == null || (prev != null && prev.branchId != next.branchId)) cache.clear();
   });
   return cache;
 });
@@ -82,8 +83,9 @@ final attachmentCacheProvider = Provider<AttachmentCache>((ref) {
 final vehicleImageCacheProvider = Provider<AttachmentCache>((ref) {
   final api = ref.watch(attachmentsApiProvider);
   final cache = AttachmentCache((key) => api.vehicleImage(int.parse(key)), maxBytes: 8 * 1024 * 1024);
-  ref.listen(sessionProvider, (_, next) {
-    if (next == null) cache.clear();
+  // สลับสาขา (ผู้ดูแลระบบ) ก็ล้างด้วย — รูปของสาขาเดิมต้องไม่ค้างในสาขาใหม่
+  ref.listen(sessionProvider, (prev, next) {
+    if (next == null || (prev != null && prev.branchId != next.branchId)) cache.clear();
   });
   return cache;
 });
