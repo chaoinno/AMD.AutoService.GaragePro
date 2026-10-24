@@ -407,6 +407,23 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         return items.Select(item => MapStock(item, values is null ? null : values.GetValueOrDefault(item.Id))).ToList();
     });
 
+    /// <summary>
+    /// ตั้ง/แก้จุดต่ำสุด-สูงสุดของอะไหล่ — Manager/Office (สิทธิ์เดียวกับโมดูลจัดซื้อ) ผ่านกติกา <see cref="StockLevel.Validate"/>
+    /// เดียวกับฟอร์มสินค้า · เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว · ล้างค่า (null) ได้เสมอ · ไม่แตะยอดคงเหลือ
+    /// </summary>
+    public Task<Result<StockItemDto>> SetStockLevelsAsync(Guid itemId, StockLevelsInput input, CancellationToken ct) => Run(async () =>
+    {
+        var item = await Item(itemId, ct);
+        if (input.Version is not null)
+            Require(Convert.ToBase64String(item.RowVersion) == input.Version, "PURCHASING_CONFLICT", "สินค้าถูกแก้ไขแล้ว กรุณาโหลดข้อมูลใหม่ก่อนดำเนินการ");
+        if (StockLevel.Validate(item.Type, input.MinStock, input.MaxStock) is var (_, message)) Valid(false, message);
+        Require(item.StockManaged || (!input.MinStock.HasValue && !input.MaxStock.HasValue), "PURCHASING_VALIDATION",
+            "ตั้งจุดต่ำสุด/สูงสุดได้เมื่อสินค้าเริ่มใช้สต็อก FIFO แล้ว (ตั้งยอดยกมาแล้ว)");
+        item.MinStock = input.MinStock; item.MaxStock = input.MaxStock;
+        Audit(item.Id, "Stock", "levels", $"ตั้งจุดต่ำสุด/สูงสุด {item.Code}: {(input.MinStock?.ToString() ?? "ไม่ตั้ง")} / {(input.MaxStock?.ToString() ?? "ไม่ตั้ง")}");
+        return MapStock(item, null);
+    }, true, ct);
+
     public Task<Result<StockDetailDto>> StockDetailAsync(Guid id, CancellationToken ct) => Run(async () =>
     {
         var item = await Item(id, ct); var lots = await repo.LotsAsync(id, ct);
@@ -663,7 +680,7 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
     private static ReceiptDto MapReceipt(GoodsReceipt x) => new(x.Id, x.Number, x.PurchaseOrderId, x.DeliveryNumber, Utc(x.ReceivedAt),
         x.ReceivedByName, x.Lines.Select(l => new ReceiptLineDto(l.PurchaseLineId, l.GoodQuantity, l.DamagedQuantity, l.UnitCost, l.Note)).ToList());
     private static StockItemDto MapStock(CatalogItem x, decimal? value) => new(x.Id, x.Code, x.Name, x.Unit, x.StockManaged, x.OnHand, x.Reserved, x.Available, x.OnOrder, x.Damaged, x.StockManaged ? value : null,
-        x.MinStock, x.MaxStock, StockLevel.IsBelowMin(x), StockLevel.SuggestedOrderQty(x));
+        x.MinStock, x.MaxStock, StockLevel.IsBelowMin(x), StockLevel.SuggestedOrderQty(x), Convert.ToBase64String(x.RowVersion));
     private StockMovementDto MapMovement(StockMovement x) => new(x.Id, x.OperationId, x.DocumentNumber, x.Type, x.WarehouseId,
         x.Quantity, x.DamagedQuantity, x.BalanceBefore, x.BalanceAfter, Manager ? x.UnitCost : null, x.Reason, x.PerformedByName, Utc(x.OccurredAt));
 }

@@ -699,6 +699,7 @@ export type CatalogManagementItem = CatalogItem & {
   maxStock?: number | null
   belowMin: boolean
   suggestedOrderQty?: number | null
+  stockManaged: boolean
 }
 
 export type CatalogItemInput = {

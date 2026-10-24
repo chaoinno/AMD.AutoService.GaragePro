@@ -36,7 +36,9 @@ public sealed record CatalogManagementItemDto(
     int? MinStock = null,
     int? MaxStock = null,
     bool BelowMin = false,
-    int? SuggestedOrderQty = null);
+    int? SuggestedOrderQty = null,
+    // min-max ตั้งได้เมื่อ StockManaged เท่านั้น (StockLocked รวม PurchasingLocked ด้วย จึงใช้แทนไม่ได้)
+    bool StockManaged = false);
 
 public sealed record CatalogUpsertRequest(
     string Code,

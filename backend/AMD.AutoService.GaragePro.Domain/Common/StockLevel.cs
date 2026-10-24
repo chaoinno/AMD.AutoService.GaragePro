@@ -23,6 +23,19 @@ public static class StockLevel
     public static int? SuggestedOrderQty(int onHand, int reserved, int onOrder, int? maxStock) =>
         maxStock.HasValue ? Math.Max(0, maxStock.Value - Available(onHand, reserved) - onOrder) : null;
 
+    /// <summary>
+    /// กติกาตั้งค่าเดียวของทุกทางที่แก้ min/max (ฟอร์มสินค้า + หน้าสต็อก) — คืน (field, ข้อความไทย) เมื่อผิด
+    /// 0 ≤ min ≤ max · เฉพาะอะไหล่ · ล้างค่า (null) ได้เสมอ
+    /// </summary>
+    public static (string Field, string MessageTh)? Validate(LineType type, int? minStock, int? maxStock)
+    {
+        if (minStock is < 0) return ("minStock", "จุดต่ำสุดต้องไม่น้อยกว่า 0");
+        if (maxStock is < 0) return ("maxStock", "ระดับสูงสุดต้องไม่น้อยกว่า 0");
+        if (minStock.HasValue && maxStock.HasValue && minStock > maxStock) return ("minStock", "จุดต่ำสุดต้องไม่มากกว่าระดับสูงสุด");
+        if ((minStock.HasValue || maxStock.HasValue) && type != LineType.Part) return ("minStock", "กำหนดจุดต่ำสุด/สูงสุดได้เฉพาะอะไหล่");
+        return null;
+    }
+
     public static bool IsBelowMin(CatalogItem item) =>
         item.Type == LineType.Part && IsBelowMin(item.OnHand, item.Reserved, item.MinStock);
 

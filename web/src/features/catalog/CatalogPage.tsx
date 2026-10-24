@@ -232,7 +232,7 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CatalogFormValues>({ resolver: zodResolver(catalogSchema), defaultValues: emptyForm })
   const type = watch('type')
   // min-max ตั้งได้เมื่อสินค้าเริ่มใช้สต็อก FIFO แล้วเท่านั้น (server บังคับ — สินค้าใหม่ยังไม่มียอดให้เทียบ)
-  const minMaxEditable = Boolean(itemId && details.data?.stockLocked)
+  const minMaxEditable = Boolean(itemId && details.data?.stockManaged)
   const selectedCategoryId = watch('categoryId')
   const selectedWarehouseId = watch('warehouseId')
   const [linkForm, setLinkForm] = useState({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true })

@@ -175,6 +175,11 @@ public sealed class StockFIFOController(PurchasingService service) : PurchasingA
     [HttpGet("low-stock/count")]
     public async Task<IActionResult> LowStockCount(CancellationToken ct) => Render(await service.CountLowStockAsync(ct));
 
+    /// <summary>ตั้ง/แก้จุดต่ำสุด-สูงสุดของอะไหล่ (ธุรการหรือผู้จัดการ)</summary>
+    /// <remarks>0 ≤ min ≤ max เฉพาะอะไหล่ที่ตั้งยอดยกมา FIFO แล้ว ส่ง null เพื่อล้างค่า ส่ง Version จากรายการสต็อกเพื่อกันแก้ชนกัน</remarks>
+    [HttpPut("items/{catalogItemId:guid}/stock-levels")]
+    public async Task<IActionResult> SetStockLevels(Guid catalogItemId, StockLevelsInput input, CancellationToken ct) => Render(await service.SetStockLevelsAsync(catalogItemId, input, ct));
+
     /// <summary>รายละเอียดสต็อก ล็อต FIFO เรียงเก่าก่อน และการเคลื่อนไหวล่าสุด 200 รายการ</summary>
     /// <remarks>ยอดก่อน/หลังในประวัติเป็นยอดของดีทั้งสาขา ต้นทุนล็อตและต้นทุนเบิกแสดงเฉพาะผู้จัดการ</remarks>
     [HttpGet("items/{id:guid}")]

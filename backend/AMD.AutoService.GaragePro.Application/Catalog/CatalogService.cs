@@ -198,7 +198,7 @@ public sealed class CatalogService : ICatalogService
         item.Unit, item.Price, currentUser.CanSeeCost ? item.Cost : null, item.StandardHours,
         item.OnHand, item.Reserved, item.OnOrder, item.Damaged, item.Available, item.EtaNote, item.IsActive,
         item.CategoryId, item.WarehouseId, item.StockManaged || item.PurchasingLocked,
-        item.MinStock, item.MaxStock, StockLevel.IsBelowMin(item), StockLevel.SuggestedOrderQty(item));
+        item.MinStock, item.MaxStock, StockLevel.IsBelowMin(item), StockLevel.SuggestedOrderQty(item), item.StockManaged);
 
     // [BIZ] min/max ตั้งได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว — สินค้าที่ยังไม่ตั้งยอดยกมาไม่มียอดให้เทียบ · ล้างค่า (null) ทำได้เสมอ
     private static ApiError? EnsureMinMaxAllowed(CatalogUpsertRequest request, bool stockManaged) =>

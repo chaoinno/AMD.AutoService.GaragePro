@@ -1,5 +1,6 @@
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Enums;
 
 namespace AMD.AutoService.GaragePro.Application.Catalog;
@@ -36,14 +37,8 @@ public static class CatalogValidator
             return new("CATALOG_STOCK_INVALID", "จำนวนสต็อกต้องไม่น้อยกว่า 0", "onHand");
         if (request.EtaNote?.Trim().Length > 200)
             return new("CATALOG_ETA_TOO_LONG", "หมายเหตุกำหนดรับต้องยาวไม่เกิน 200 ตัวอักษร", "etaNote");
-        if (request.MinStock is < 0)
-            return new("CATALOG_VALIDATION", "จุดต่ำสุดต้องไม่น้อยกว่า 0", "minStock");
-        if (request.MaxStock is < 0)
-            return new("CATALOG_VALIDATION", "ระดับสูงสุดต้องไม่น้อยกว่า 0", "maxStock");
-        if (request.MinStock.HasValue && request.MaxStock.HasValue && request.MinStock > request.MaxStock)
-            return new("CATALOG_VALIDATION", "จุดต่ำสุดต้องไม่มากกว่าระดับสูงสุด", "minStock");
-        if ((request.MinStock.HasValue || request.MaxStock.HasValue) && request.Type != LineType.Part)
-            return new("CATALOG_VALIDATION", "กำหนดจุดต่ำสุด/สูงสุดได้เฉพาะอะไหล่", "minStock");
+        if (StockLevel.Validate(request.Type, request.MinStock, request.MaxStock) is var (field, message))
+            return new("CATALOG_VALIDATION", message, field);
         return null;
     }
 }

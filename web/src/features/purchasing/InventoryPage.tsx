@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { Boxes, CheckCircle2, Clock3, FileSpreadsheet, RefreshCw, Search } from 'lucide-react'
+import { Boxes, CheckCircle2, Clock3, FileSpreadsheet, Pencil, RefreshCw, Search } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { getWarehouses } from '../../api/masterData'
-import { pendingCommand, stockCommand, stockDetail, stockIssue, stockItems, stockOpening, type IssueInput, type StockDetail, type StockMovement } from '../../api/purchasing'
+import { pendingCommand, setStockLevels, stockCommand, stockDetail, stockIssue, stockItems, stockOpening, type IssueInput, type StockDetail, type StockItem, type StockMovement } from '../../api/purchasing'
 import { BELOW_MIN_ROW_CLASS, BelowMinBadge } from '../../components/BelowMinBadge'
 import { ManagementTable } from '../../components/ManagementTable'
 import { AppShell } from '../../components/AppShell'
@@ -19,7 +19,7 @@ import { dateTime, money, usePurchasingRefresh } from './PurchasingPage'
 import { exportInventory } from './inventoryExport'
 
 export function InventoryPage() {
-  const [q, setQ] = useState(''); const [selected, setSelected] = useState<string | null>(null)
+  const [q, setQ] = useState(''); const [selected, setSelected] = useState<string | null>(null); const [levelsFor, setLevelsFor] = useState<StockItem | null>(null)
   const [belowMinOnly, setBelowMinOnly] = useState(false)
   const query = useQuery({ queryKey: ['inventory', q, belowMinOnly], queryFn: () => stockItems(q, belowMinOnly) })
   const { session } = useSession(); const manager = Boolean(session?.user.canSeeCost)
@@ -43,9 +43,9 @@ export function InventoryPage() {
         { id: 'onOrder', header: 'รอรับ', value: (item) => item.onOrder, size: 120, render: (item) => <>{item.onOrder}</> },
         { id: 'damaged', header: 'ชำรุด', value: (item) => item.damaged, size: 120, render: (item) => <>{item.damaged}</> },
         { id: 'value', header: 'มูลค่า FIFO', value: (item) => item.value, hidden: !manager, render: (item) => <><span className="money">{money(item.value)}</span></> },
-        { id: 'actions', header: '', render: (item) => <><Button variant="outline" size="sm" onClick={() => setSelected(item.id)}><Boxes aria-hidden="true" /> รายละเอียด</Button></> },
+        { id: 'actions', header: '', size: 260, render: (item) => <><Button variant="outline" size="sm" onClick={() => setSelected(item.id)}><Boxes aria-hidden="true" /> รายละเอียด</Button>{' '}<Button variant="outline" size="sm" disabled={!item.stockManaged} title={!item.stockManaged ? 'ตั้งยอดยกมา FIFO ก่อน จึงจะตั้งจุดต่ำสุด/สูงสุดได้' : undefined} onClick={() => setLevelsFor(item)}><Pencil aria-hidden="true" /> ตั้งจุดต่ำสุด</Button></> },
       ]} /></Card>
-    </QueryState>{selected && <StockModal key={selected} id={selected} onClose={() => setSelected(null)} />}
+    </QueryState>{selected && <StockModal key={selected} id={selected} onClose={() => setSelected(null)} />}{levelsFor && <StockLevelsModal key={levelsFor.id} item={levelsFor} onClose={() => setLevelsFor(null)} />}
   </AppShell>
 }
 
@@ -97,6 +97,29 @@ function StockForm({ detail, mode, onClose }: { detail: StockDetail; mode: 'open
       <Field label="คลังสินค้า *"><Select required value={warehouse} onChange={e => setWarehouse(e.target.value)}><option value="">เลือกคลัง</option>{warehouses.data?.map(x => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</Select>{warehouses.isError && <InlineError error={warehouses.error} />}</Field>
       {mode === 'opening' ? <><p>ของดีเดิม <strong>{detail.item.onHand}</strong> · ของชำรุดเดิม <strong>{detail.item.damaged}</strong> · จองแล้ว <strong>{detail.item.reserved}</strong></p><Field label="ต้นทุนต่อหน่วยของยอดยกมา (บาท) *"><Input required type="number" min="0" max="100000000" step="0.01" value={cost} onChange={e => setCost(e.target.value)} /></Field><p className="section-help">ต้นทุนนี้ใช้กับจำนวนของดีเดิมทั้งหมด โปรดตรวจสอบก่อนยืนยัน</p></> : <><p>ของดีในคลังนี้ {balance} · พร้อมใช้ทั้งสาขา {detail.item.available}</p><Field label="จำนวนเบิก *"><Input required type="number" min="1" max={Math.max(0, Math.min(balance, detail.item.available))} step="1" value={quantity} onChange={e => setQuantity(e.target.value)} /></Field></>}
       <Field label="เหตุผล / เลขงานอ้างอิง *"><Textarea required maxLength={1000} value={reason} onChange={e => setReason(e.target.value)} /></Field>
+    </fieldset>{save.isError && <InlineError error={save.error} />}</form>
+  </ConfirmModal>
+}
+
+/** ตั้งจุดต่ำสุด/สูงสุดต่อสินค้า — ธุรการ/ผู้จัดการ · กติกาเดียวกับฟอร์มสินค้า (ตรวจที่ server ด้วย StockLevel.Validate) */
+function StockLevelsModal({ item, onClose }: { item: StockItem; onClose: () => void }) {
+  const [min, setMin] = useState(item.minStock == null ? '' : String(item.minStock))
+  const [max, setMax] = useState(item.maxStock == null ? '' : String(item.maxStock))
+  const refresh = usePurchasingRefresh()
+  const isCount = (text: string) => text === '' || /^\d+$/.test(text)
+  const problem = !isCount(min) || !isCount(max) ? 'กรอกเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป หรือเว้นว่างเพื่อไม่ตั้ง'
+    : min !== '' && max !== '' && Number(min) > Number(max) ? 'จุดต่ำสุดต้องไม่มากกว่าระดับสูงสุด' : ''
+  const save = useMutation({
+    mutationFn: () => setStockLevels(item.id, { minStock: min === '' ? null : Number(min), maxStock: max === '' ? null : Number(max), version: item.version }),
+    onSuccess: async () => { await refresh(); toast.success('บันทึกจุดต่ำสุด/สูงสุดแล้ว'); onClose() },
+  })
+  return <ConfirmModal open title={`ตั้งจุดต่ำสุด/สูงสุด · ${item.name}`} description="เตือนเมื่อ พร้อมใช้ (คงเหลือ − จอง) ≤ จุดต่ำสุด · แนะนำให้สั่ง = สูงสุด − พร้อมใช้ − รอรับ (ไม่ต่ำกว่า 0) · เว้นว่าง = ไม่ตั้ง" size="small" onClose={() => { if (!save.isPending) onClose() }}
+    footer={<><Button variant="ghost" disabled={save.isPending} onClick={onClose}>กลับ</Button><Button type="submit" form="stock-levels-form" disabled={save.isPending || Boolean(problem)} title={problem || undefined}>{save.isPending ? 'กำลังบันทึก…' : 'บันทึก'}</Button></>}>
+    <form id="stock-levels-form" onSubmit={e => { e.preventDefault(); if (!problem) save.mutate() }}><fieldset className="purchase-fieldset management-form" disabled={save.isPending}>
+      <p>พร้อมใช้ตอนนี้ <strong>{item.available}</strong> · รอรับ <strong>{item.onOrder}</strong></p>
+      <Field label="จุดต่ำสุด"><Input type="number" min="0" step="1" placeholder="ไม่ตั้ง" value={min} onChange={e => setMin(e.target.value)} /></Field>
+      <Field label="ระดับสูงสุด"><Input type="number" min="0" step="1" placeholder="ไม่ตั้ง" value={max} onChange={e => setMax(e.target.value)} /></Field>
+      {problem && <p role="alert" className="section-help">{problem}</p>}
     </fieldset>{save.isError && <InlineError error={save.error} />}</form>
   </ConfirmModal>
 }

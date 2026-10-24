@@ -169,7 +169,9 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 
 - ฟิลด์ใหม่ใน `StockItemDto` (`/inventory/items` · `/inventory/items/{id}`) และ `CatalogManagementItemDto`: `minStock` · `maxStock` (ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง) · `belowMin` (bool) · `suggestedOrderQty` (= max − พร้อมใช้ − รอรับ ไม่ต่ำกว่า 0 · ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง max)
 - กฎอยู่ที่ `Domain/Common/StockLevel.cs` ที่เดียว: พร้อมใช้ = OnHand − Reserved (ไม่รวม OnOrder/Damaged) · ไม่ตั้ง min = ไม่เตือน/ไม่ถูกนับ · max ใช้คำนวณจำนวนแนะนำเท่านั้น ไม่เตือนเมื่อเกิน max
-- ตั้งค่าได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว (`StockManaged`) · `0 ≤ min ≤ max` · ผิดกติกา = 422 `CATALOG_VALIDATION` (field `minStock`/`maxStock`) · แก้ผ่านหน้าสินค้า → สิทธิ์เดียวกับแก้สินค้า (`CATALOG_MANAGE_FORBIDDEN` = ผู้จัดการ)
+- ตั้งค่าได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว (`StockManaged`) · `0 ≤ min ≤ max` (กติกาเดียว `StockLevel.Validate`) · ผิดกติกา = 422 `CATALOG_VALIDATION` (ฟอร์มสินค้า · field `minStock`/`maxStock`) หรือ `PURCHASING_VALIDATION` (endpoint ด้านล่าง)
+- **ผู้จัดการและธุรการตั้งได้** ผ่าน `PUT /api/v1/inventory/items/{catalogItemId}/stock-levels` body `{ minStock: int?, maxStock: int?, version?: string }` (null = ล้างค่า · `version` = ฟิลด์ `version` ของ `StockItemDto` กันแก้ชนกัน → 409 `PURCHASING_CONFLICT`) → `StockItemDto` · เขียน ActivityEvent `purchasing.stock.levels` · role อื่น 403 `PURCHASING_FORBIDDEN` · การแก้ผ่านฟอร์มสินค้า (`/catalog/manage`) ยังเป็นผู้จัดการเท่านั้นตามสิทธิ์แก้สินค้าเดิม
+- `CatalogManagementItemDto.stockManaged` บอกว่าฟอร์มสินค้าเปิดช่อง min/max ได้หรือไม่ (`stockLocked` รวม PurchasingLocked จึงใช้แทนไม่ได้)
 
 ---
 

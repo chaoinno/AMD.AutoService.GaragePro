@@ -28,7 +28,8 @@ public sealed record StockOpeningInput(Guid CatalogItemId, Guid WarehouseId, dec
 public sealed record StockIssueInput(Guid RequestId, Guid CatalogItemId, Guid WarehouseId, int Quantity, string Reason);
 public sealed record StockItemDto(Guid Id, string Code, string Name, string Unit, bool StockManaged,
     int OnHand, int Reserved, int Available, int OnOrder, int Damaged, decimal? Value,
-    int? MinStock = null, int? MaxStock = null, bool BelowMin = false, int? SuggestedOrderQty = null);
+    int? MinStock = null, int? MaxStock = null, bool BelowMin = false, int? SuggestedOrderQty = null, string? Version = null);
+public sealed record StockLevelsInput(int? MinStock, int? MaxStock, string? Version = null);
 public sealed record StockLotDto(Guid Id, Guid WarehouseId, string WarehouseName, string DocumentNumber,
     DateTime ReceivedAt, int ReceivedQuantity, int RemainingQuantity, decimal? UnitCost, decimal? Value);
 public sealed record StockMovementDto(Guid Id, Guid OperationId, string DocumentNumber, string Type,

@@ -567,6 +567,52 @@ public class PurchasingServiceTests
         Assert.Contains(f.Item.Code, (await f.Service.StockAsync(null, default)).Data!.Select(x => x.Code));
     }
 
+    [Theory]
+    [InlineData(UserRole.Office)]
+    [InlineData(UserRole.Manager)]
+    public async Task Manager_and_office_can_set_and_clear_stock_levels(UserRole role)
+    {
+        var f = new Fixture(); f.User.Role = role; f.Item.StockManaged = true; f.Item.OnHand = 3;
+        var saved = await f.Service.SetStockLevelsAsync(f.Item.Id, new(5, 20), default);
+        Assert.True(saved.Success, saved.Error?.MessageTh);
+        Assert.Equal((5, 20, true, 17), (saved.Data!.MinStock, saved.Data.MaxStock, saved.Data.BelowMin, saved.Data.SuggestedOrderQty));
+        Assert.Contains(f.Repo.All<ActivityEvent>(), x => x.EventType == "purchasing.stock.levels");
+
+        var cleared = await f.Service.SetStockLevelsAsync(f.Item.Id, new(null, null), default);
+        Assert.True(cleared.Success);
+        Assert.Null(f.CurrentItem.MinStock); Assert.False(cleared.Data!.BelowMin);
+    }
+
+    [Fact]
+    public async Task Stock_levels_are_forbidden_for_other_roles_and_unmanaged_items()
+    {
+        var f = new Fixture(); f.Item.StockManaged = true;
+        f.User.Role = UserRole.Technician;
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.SetStockLevelsAsync(f.Item.Id, new(1, 2), default)).Error?.Code);
+        f.User.Role = UserRole.Office; f.Item.StockManaged = false;
+        Assert.Equal("PURCHASING_VALIDATION", (await f.Service.SetStockLevelsAsync(f.Item.Id, new(1, 2), default)).Error?.Code);
+        Assert.True((await f.Service.SetStockLevelsAsync(f.Item.Id, new(null, null), default)).Success);
+    }
+
+    [Theory]
+    [InlineData(-1, 5)]
+    [InlineData(2, -1)]
+    [InlineData(9, 3)]
+    public async Task Stock_levels_reject_negative_values_and_min_above_max(int min, int max)
+    {
+        var f = new Fixture(); f.User.Role = UserRole.Office; f.Item.StockManaged = true;
+        Assert.Equal("PURCHASING_VALIDATION", (await f.Service.SetStockLevelsAsync(f.Item.Id, new(min, max), default)).Error?.Code);
+        Assert.Null(f.CurrentItem.MinStock);
+    }
+
+    [Fact]
+    public async Task Stock_levels_reject_a_stale_version()
+    {
+        var f = new Fixture(); f.User.Role = UserRole.Office; f.Item.StockManaged = true; f.Item.RowVersion = [1];
+        Assert.Equal("PURCHASING_CONFLICT", (await f.Service.SetStockLevelsAsync(f.Item.Id, new(1, 2, "AA=="), default)).Error?.Code);
+        Assert.True((await f.Service.SetStockLevelsAsync(f.Item.Id, new(1, 2, Convert.ToBase64String([1])), default)).Success);
+    }
+
     [Fact]
     public async Task Low_stock_count_and_filter_are_forbidden_for_other_roles()
     {
