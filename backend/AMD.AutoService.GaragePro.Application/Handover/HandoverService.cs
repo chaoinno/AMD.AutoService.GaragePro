@@ -38,6 +38,7 @@ public sealed class HandoverService(
     IHandoverRepository repository,
     IJobRepository jobs,
     IPosRepository pos,
+    IServiceReminderTemplateRepository templates,
     ICurrentUser user,
     TimeProvider clock) : IHandoverService
 {
@@ -99,6 +100,16 @@ public sealed class HandoverService(
 
         var validation = ValidateServiceInfo(job, request.MileageAtHandover, normalized.Data!);
         if (!validation.Success) return Result<HandoverDto>.Fail(validation.Error!);
+
+        // templateId ที่ส่งมาต้องเป็นรายการตั้งต้นของสาขานี้จริง (รวมที่ปิดใช้งานแล้ว — แถวที่บันทึกไว้เดิมยังส่งซ้ำได้)
+        for (var i = 0; i < normalized.Data!.Count; i++)
+        {
+            var templateId = normalized.Data[i].TemplateId;
+            if (templateId is null) continue;
+            if (await templates.GetAsync(user.ShardKey, user.BranchId, templateId.Value, ct) is null)
+                return Result<HandoverDto>.Fail(
+                    "HANDOVER_VALIDATION", "ไม่พบรายการนัดบริการตั้งต้นนี้ในสาขาปัจจุบัน", $"items[{i}].templateId");
+        }
 
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)

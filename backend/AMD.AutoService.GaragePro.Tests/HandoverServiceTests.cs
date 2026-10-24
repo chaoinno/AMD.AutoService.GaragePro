@@ -293,7 +293,7 @@ public sealed class HandoverServiceTests
     {
         var repo = new FakeHandoverRepository();
         SeedRecord(repo);
-        var templateId = Guid.NewGuid();
+        var templateId = KnownTemplateId;
 
         var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
             12_000, Items:
@@ -309,6 +309,19 @@ public sealed class HandoverServiceTests
             ("ลูกปืนล้อหน้า", 50_000, today.AddMonths(24)));
         result.Data.ServiceItems![0].TemplateId.Should().Be(templateId);
         result.Data.NextServiceMileage.Should().Be(22_000);
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_rejects_a_template_id_that_is_not_a_template_of_this_branch()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items: [new(KnownTemplateId, "ดี", 20_000, 6), new(Guid.NewGuid(), "ปลอม", 21_000, 6)]));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be("items[1].templateId");
     }
 
     [Fact]
@@ -474,7 +487,25 @@ public sealed class HandoverServiceTests
         bool receiptIssued = true,
         int? intakeMileage = 10_000) =>
         new(repo, new FakeJobRepository(intakeMileage), new FakePosRepository(receiptIssued ? IssuedReceipt : null),
-            new StubCurrentUser(role), TimeProvider.System);
+            new FakeTemplateRepository(KnownTemplateIds), new StubCurrentUser(role), TimeProvider.System);
+
+    private static readonly Guid KnownTemplateId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    private static readonly Guid[] KnownTemplateIds = [KnownTemplateId];
+
+    private sealed class FakeTemplateRepository(Guid[] known) : IServiceReminderTemplateRepository
+    {
+        public Task<ServiceReminderTemplate?> GetAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
+            Task.FromResult(shardKey == "db2" && branchId == 105 && known.Contains(id)
+                ? new ServiceReminderTemplate { Id = id, LegacyShardKey = shardKey, LegacyBranchId = branchId }
+                : null);
+        public Task<bool> AnyAsync(string shardKey, int branchId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<IReadOnlyList<ServiceReminderTemplate>> SearchAsync(string shardKey, int branchId, bool includeInactive, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> NameExistsAsync(string shardKey, int branchId, string name, Guid? excludingId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task AddAsync(ServiceReminderTemplate template, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task AddEventAsync(ActivityEvent activityEvent, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => throw new NotImplementedException();
+        public void DiscardPending() { }
+    }
 
     /// <summary>ออกใบเสร็จแล้วหรือยัง — เป็นเงื่อนไขเดียวที่ HandoverService อ่านจากฝั่ง POS</summary>
     private sealed class FakePosRepository(Receipt? receipt) : IPosRepository
