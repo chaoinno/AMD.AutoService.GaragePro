@@ -694,6 +694,12 @@ export type CatalogManagementItem = CatalogItem & {
   isActive: boolean
   categoryId: string | null
   warehouseId: string | null
+  // min-max สต็อก — API ตัดฟิลด์ null ทิ้ง จึงเป็น undefined ได้ (เช็คแบบ truthy/!= null เสมอ)
+  minStock?: number | null
+  maxStock?: number | null
+  belowMin: boolean
+  suggestedOrderQty?: number | null
+  stockManaged: boolean
 }
 
 export type CatalogItemInput = {
@@ -712,6 +718,8 @@ export type CatalogItemInput = {
   etaNote?: string
   categoryId?: string
   warehouseId?: string
+  minStock?: number
+  maxStock?: number
 }
 
 export type CatalogItemSupplier = {

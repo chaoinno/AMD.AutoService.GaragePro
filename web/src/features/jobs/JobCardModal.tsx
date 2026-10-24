@@ -62,6 +62,8 @@ import { useSession } from '../../lib/session'
 import { PlanInterestActions, PlanLockedPanel } from '../plan/PlanLockedPanel'
 import { useSessionPlan } from '../plan/usePlan'
 import { Field, InlineError } from '../master-data/MasterDataCommon'
+import { StockReturnDocumentModal } from '../purchasing/StockReturnDocumentModal'
+import { StockReturnModal } from '../purchasing/StockReturnModal'
 import { StockWithdrawalDocumentModal } from '../purchasing/StockWithdrawalDocumentModal'
 import { StockWithdrawalModal } from '../purchasing/StockWithdrawalModal'
 import { IntakeChecklistPanel } from './IntakeChecklistPanel'
@@ -941,6 +943,8 @@ function RepairStage({ job }: { job: Job }) {
   const inventoryLocked = isFeatureLocked(plan, 'inventory')
   const [creating, setCreating] = useState(false)
   const [printingOperationId, setPrintingOperationId] = useState<string | null>(null)
+  const [returningOperationId, setReturningOperationId] = useState<string | null>(null)
+  const [printingReturnId, setPrintingReturnId] = useState<string | null>(null)
 
   const query = useQuery({
     queryKey: ['job-withdrawals', job.jobId],
@@ -950,6 +954,18 @@ function RepairStage({ job }: { job: Job }) {
 
   const canCreateWithdrawal = REPAIR_ACTIVE_STATUSES.includes(job.status)
   const started = canCreateWithdrawal || job.status === 'completed'
+  // [BIZ] คืนของได้ก่อนออกใบเสร็จเท่านั้น — อ่านจากสรุปการชำระเงิน key เดียวกับขั้นชำระเงิน (server ตรวจซ้ำตอนคืน)
+  const receiptQuery = useQuery({
+    queryKey: ['payment-summary', job.jobId],
+    queryFn: () => getPaymentSummary(job.jobId),
+    enabled: canWithdraw && !inventoryLocked && started,
+  })
+  const receiptIssued = Boolean(receiptQuery.data?.receipt)
+  const returnBlockedReason = (w: WithdrawalSummary): string | undefined =>
+    !canWithdraw ? 'สำหรับผู้จัดการหรือธุรการเท่านั้น'
+    : receiptIssued ? 'ออกใบเสร็จแล้ว คืนของไม่ได้'
+    : w.totalQuantity - (w.returnedQuantity ?? 0) <= 0 ? 'คืนครบทุกรายการแล้ว'
+    : undefined
   // ปุ่ม "ยืนยันซ่อมเสร็จ" ส่งต่อไปขั้น QC เท่านั้น — เคยไล่ยาวไปจน completed ทีเดียว (ข้าม QC/ชำระเงินไปเลย)
   // ผู้ใช้ทดสอบแล้วพบว่าไม่ถูกต้อง แก้ให้หยุดที่ QC แล้วให้ QcStage เป็นคนตัดสินใจส่งต่อไปชำระเงินเอง
   const canSendToQc = (['inprogress', 'waitparts'] as JobStatusToken[]).includes(job.status)
@@ -1037,9 +1053,20 @@ function RepairStage({ job }: { job: Job }) {
                 <div className="job-detail-quotation-list__meta">
                   <span>ผู้เบิก {w.requesterName} · {formatDateTime(w.occurredAt)}</span>
                 </div>
+                {(w.returnedQuantity ?? 0) > 0 ? (
+                  <div className="job-detail-quotation-list__meta">
+                    <span>คืนแล้ว {w.returnedQuantity} ชิ้น · {w.returns?.map(r => (
+                      <button key={r.operationId} type="button" className="link-button" onClick={() => setPrintingReturnId(r.operationId)}>{r.documentNumber}</button>
+                    ))}</span>
+                  </div>
+                ) : null}
                 <Button variant="outline" size="sm" onClick={() => setPrintingOperationId(w.operationId)}>
                   <Printer aria-hidden="true" /> พิมพ์
                 </Button>
+                <Button variant="outline" size="sm" disabled={Boolean(returnBlockedReason(w))} title={returnBlockedReason(w)} onClick={() => setReturningOperationId(w.operationId)}>
+                  คืนของ
+                </Button>
+                {returnBlockedReason(w) ? <small className="field-hint">คืนของไม่ได้: {returnBlockedReason(w)}</small> : null}
               </li>
             ))}
           </ul>
@@ -1067,6 +1094,19 @@ function RepairStage({ job }: { job: Job }) {
         />
       )}
       <StockWithdrawalDocumentModal operationId={printingOperationId} onClose={() => setPrintingOperationId(null)} />
+      {returningOperationId && !inventoryLocked && (
+        <StockReturnModal
+          operationId={returningOperationId}
+          onClose={() => setReturningOperationId(null)}
+          onCreated={(returned) => {
+            setReturningOperationId(null)
+            setPrintingReturnId(returned.operationId)
+            toast.success(`คืนสินค้าเรียบร้อยแล้ว ${returned.documentNumber}`)
+            void queryClient.invalidateQueries({ queryKey: ['job-withdrawals', job.jobId] })
+          }}
+        />
+      )}
+      <StockReturnDocumentModal operationId={printingReturnId} onClose={() => setPrintingReturnId(null)} />
     </Card>
   )
 }

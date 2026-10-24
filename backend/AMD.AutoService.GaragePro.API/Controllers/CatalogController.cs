@@ -79,9 +79,10 @@ public sealed class CatalogSearchModel
     public LineType? Type { get; set; }
     public bool IncludeInactive { get; set; }
     public bool LowStockOnly { get; set; }
+    public bool BelowMinOnly { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 25;
 
     public CatalogManagementQuery ToQuery() =>
-        new(Keyword, Type, IncludeInactive, LowStockOnly, Page, PageSize);
+        new(Keyword, Type, IncludeInactive, LowStockOnly, Page, PageSize, BelowMinOnly);
 }

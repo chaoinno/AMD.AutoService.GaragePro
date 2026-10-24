@@ -1,5 +1,6 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -112,6 +113,7 @@ public sealed class CatalogRepository(ServiceDbContext db) : ICatalogRepository
             .Where(c => c.LegacyShardKey == shardKey && c.LegacyBranchId == branchId);
         if (!query.IncludeInactive) source = source.Where(c => c.IsActive);
         if (query.Type is not null) source = source.Where(c => c.Type == query.Type);
+        if (query.BelowMinOnly) source = source.Where(StockLevel.BelowMin);
         if (query.LowStockOnly) source = source.Where(c => c.Type == LineType.Part && c.OnHand - c.Reserved <= 0);
         if (!string.IsNullOrWhiteSpace(query.Keyword))
         {

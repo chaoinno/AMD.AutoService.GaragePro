@@ -482,6 +482,67 @@ public sealed class ReportsServiceTests
         (await service.GetServiceDueAsync(d, d.AddDays(400))).Error!.Code.Should().Be("REPORTS_VALIDATION");
     }
 
+    [Theory]
+    [InlineData(UserRole.Technician)]
+    [InlineData(UserRole.Cashier)]
+    [InlineData(UserRole.Lead)]
+    public async Task GetStockUsageAsync_rejects_roles_outside_manager_or_office(UserRole role)
+    {
+        var result = await CreateService(new FakeReportsRepository(), role)
+            .GetStockUsageAsync(Day1, Day1, null, null, null, null, null);
+        result.Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+    }
+
+    [Theory]
+    [InlineData("bogus", null, "view")]
+    [InlineData("items", "nowhere", "source")]
+    public async Task GetStockUsageAsync_validates_view_and_source(string view, string? source, string field)
+    {
+        var result = await CreateService(new FakeReportsRepository(), UserRole.Office)
+            .GetStockUsageAsync(Day1, Day1, view, source, null, null, null);
+        result.Error!.Code.Should().Be("REPORTS_VALIDATION");
+        result.Error.Field.Should().Be(field);
+    }
+
+    [Fact]
+    public async Task GetStockUsageAsync_limits_the_range_to_366_days_and_orders_the_dates()
+    {
+        var service = CreateService(new FakeReportsRepository(), UserRole.Manager);
+        (await service.GetStockUsageAsync(Day1, Day1.AddDays(365), null, null, null, null, null)).Success.Should().BeTrue();
+        (await service.GetStockUsageAsync(Day1, Day1.AddDays(366), null, null, null, null, null)).Error!.Field.Should().Be("toDate");
+        (await service.GetStockUsageAsync(Day1.AddDays(1), Day1, null, null, null, null, null)).Error!.Field.Should().Be("fromDate");
+    }
+
+    [Fact]
+    public async Task GetStockUsageAsync_queries_only_the_current_shard_and_branch_with_the_filters()
+    {
+        var repo = new FakeReportsRepository();
+        var warehouse = Guid.NewGuid(); var item = Guid.NewGuid();
+        await CreateService(repo, UserRole.Office).GetStockUsageAsync(Day1, Day1, null, null, warehouse, item, 77);
+        repo.LastStockUsageQuery.Should().Be(("db2", 105, new StockUsageFilter(warehouse, item, 77)));
+    }
+
+    [Theory]
+    [InlineData(UserRole.Manager, true)]
+    [InlineData(UserRole.Office, false)]
+    public async Task GetStockUsageAsync_strips_cost_for_roles_that_cannot_see_it(UserRole role, bool seesCost)
+    {
+        var movement = new StockMovement
+        {
+            Type = "issue", CatalogItemId = Guid.NewGuid(), Quantity = -2, UnitCost = 50, OperationId = Guid.NewGuid(),
+            DocumentNumber = "ISS-1", PerformedByName = "x", OccurredAt = new DateTime(2026, 9, 1, 3, 0, 0, DateTimeKind.Utc)
+        };
+        var repo = new FakeReportsRepository
+        {
+            StockUsage = new([movement], new Dictionary<Guid, (string, string, string)>(),
+                new Dictionary<Guid, (string, string?)>(), new Dictionary<Guid, string?>(), false)
+        };
+        var report = (await CreateService(repo, role).GetStockUsageAsync(Day1, Day1, "documents", null, null, null, null)).Data!;
+        report.Documents.Should().ContainSingle();
+        (report.NetCost is not null).Should().Be(seesCost);
+        if (seesCost) report.NetCost.Should().Be(100m);
+    }
+
     private static ReportsService CreateService(IReportsRepository repo, UserRole role) =>
         new(repo, new StubCurrentUser(role), TimeProvider.System);
 
@@ -540,6 +601,15 @@ public sealed class ReportsServiceTests
 
         public Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct) =>
             Task.FromResult(RetailDraftCount);
+
+        public StockUsageData StockUsage { get; set; } = new([], new Dictionary<Guid, (string, string, string)>(),
+            new Dictionary<Guid, (string, string?)>(), new Dictionary<Guid, string?>(), false);
+        public (string Shard, int Branch, StockUsageFilter Filter)? LastStockUsageQuery { get; private set; }
+        public Task<StockUsageData> GetStockUsageAsync(string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, StockUsageFilter filter, CancellationToken ct)
+        {
+            LastStockUsageQuery = (shardKey, branchId, filter);
+            return Task.FromResult(StockUsage);
+        }
 
         public List<Receipt> Receipts { get; set; } = [];
         public List<HandoverRecord> Handovers { get; set; } = [];

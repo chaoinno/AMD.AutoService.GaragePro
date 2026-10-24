@@ -51,6 +51,17 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     [RequireFeature(PlanFeature.AdvancedReports)]
     public async Task<IActionResult> Stock(CancellationToken ct) => Render(await service.GetStockAsync(ct));
 
+    /// <summary>การเบิกอะไหล่: รายใบเบิก · สรุปตามสินค้า (กดดูว่าใช้กับจ๊อบ/ขาย POS เมื่อไหร่) · สรุปตามช่างผู้เบิก — ต้นทุน strip ตาม role</summary>
+    /// <param name="fromDate">วันที่เริ่ม (ปฏิทินไทย yyyy-MM-dd) — ค่าเริ่มต้นวันที่ 1 ของเดือน</param>
+    /// <param name="toDate">วันที่สิ้นสุด (ปฏิทินไทย รวมวันนั้น) — ค่าเริ่มต้นวันนี้ · ช่วงยาวสุด 366 วัน</param>
+    /// <param name="view">documents (ค่าเริ่มต้น) · items · requesters</param>
+    /// <param name="source">job (เบิกผูกงาน+ใบคืน) · manual (เบิกหน้าสต็อก) · pos (ขายหน้าร้าน) — ไม่ส่ง = ทุกแหล่ง</param>
+    [HttpGet("stock-usage")]
+    [RequireFeature(PlanFeature.AdvancedReports)]
+    public async Task<IActionResult> StockUsage(DateOnly? fromDate, DateOnly? toDate, string? view, string? source,
+        Guid? warehouseId, Guid? catalogItemId, long? requesterStaffId, CancellationToken ct) =>
+        Render(await service.GetStockUsageAsync(fromDate, toDate, view, source, warehouseId, catalogItemId, requesterStaffId, ct));
+
     /// <summary>ค้นรถจากทะเบียนหรือเบอร์โทร (ตัดช่องว่าง/ขีดก่อนเทียบ) — ทุกบทบาท · เฉพาะงานในระบบนี้ของสาขาปัจจุบัน</summary>
     /// <param name="q">ทะเบียนรถหรือเบอร์โทร อย่างน้อย 3 ตัวอักษร</param>
     [HttpGet("vehicle-history/search")]

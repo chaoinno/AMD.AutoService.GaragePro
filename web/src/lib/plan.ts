@@ -84,6 +84,7 @@ export const FEATURES: Record<FeatureKey, FeatureInfo> = {
       '/reports/sales-margin',
       '/reports/retail-sales',
       '/reports/stock',
+      '/reports/stock-usage',
       '/reports/work-intervals',
     ],
   },

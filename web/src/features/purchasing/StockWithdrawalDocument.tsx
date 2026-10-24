@@ -8,6 +8,8 @@ type StockWithdrawalDocumentProps = { withdrawal: Withdrawal }
 /// เนื้อหาใบเบิกสินค้า — ใช้ซ้อนบน job card modal (StockWithdrawalDocumentModal) เมื่อเบิกผูกกับ job
 /// และจากหน้าสต็อกเมื่อเบิกแบบไม่ผูกงาน (jobNo เป็น null)
 export function StockWithdrawalDocument({ withdrawal }: StockWithdrawalDocumentProps) {
+  // แสดงยอดที่คืนแล้ว (เลขใบคืนอยู่ในข้อมูลการเบิก) เมื่อมีการคืนอย่างน้อยหนึ่งรายการ
+  const hasReturns = (withdrawal.returns?.length ?? 0) > 0
   return (
     <article className="quotation-document">
       <header className="document-header">
@@ -30,6 +32,7 @@ export function StockWithdrawalDocument({ withdrawal }: StockWithdrawalDocumentP
           <InfoRow label="วันที่" value={formatDateTime(withdrawal.occurredAt)} strong />
           <InfoRow label="คลังที่เบิก" value={withdrawal.warehouseName} />
           <InfoRow label="งานที่อ้างอิง" value={withdrawal.jobNo || 'ไม่ผูกกับงาน'} />
+          {hasReturns ? <InfoRow label="ใบคืนที่เกี่ยวข้อง" value={withdrawal.returns!.map(r => r.documentNumber).join(', ')} /> : null}
         </InfoBlock>
         <InfoBlock title="ผู้เกี่ยวข้อง">
           <InfoRow label="ผู้เบิก" value={withdrawal.requesterName} strong />
@@ -45,6 +48,7 @@ export function StockWithdrawalDocument({ withdrawal }: StockWithdrawalDocumentP
               <th>รายการ</th>
               <th className="document-number">จำนวน</th>
               <th>หน่วย</th>
+              {hasReturns ? <th className="document-number">คืนแล้ว</th> : null}
               {withdrawal.totalCost != null ? <th className="document-number">ต้นทุน/หน่วย</th> : null}
             </tr>
           </thead>
@@ -55,6 +59,7 @@ export function StockWithdrawalDocument({ withdrawal }: StockWithdrawalDocumentP
                 <td>{line.name}</td>
                 <td className="document-number">{line.quantity}</td>
                 <td>{line.unit}</td>
+                {hasReturns ? <td className="document-number">{line.returnedQuantity ?? 0}</td> : null}
                 {withdrawal.totalCost != null ? <td className="document-number">{money(line.unitCost ?? 0)}</td> : null}
               </tr>
             ))}

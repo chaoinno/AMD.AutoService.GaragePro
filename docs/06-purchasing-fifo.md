@@ -21,6 +21,17 @@
      · หน้าเว็บ: แถวลบไม่ได้ แต่ใส่จำนวน 0..คงเหลือได้ (0 = ยังไม่เบิกรอบนี้) ค่าเริ่มต้น = min(คงเหลือ, พร้อมใช้)
      · ใบเบิกที่ไม่ผูก job (`jobId = null`) ยังเลือกสินค้าเองได้ตามเดิม (ปัจจุบันไม่มีหน้าเว็บเรียกแบบนี้)
 
+8. **[เพิ่ม 2026-10-25] คืนอะไหล่จากใบเบิกของ job (`RT-`)** — ปุ่ม "คืนของ" ในประวัติใบเบิกของ JobCardModal (ธุรการ/ผู้จัดการ)
+   · `POST /api/v1/inventory/withdrawals/{operationId}/returns` `{ requestId, reasonCode, note?, lines:[{catalogItemId, quantity}] }` → `StockReturnDto`
+     · `GET /inventory/returns/{operationId}` พิมพ์ซ้ำ · เหตุผลตายตัว `over-issued` เบิกเกิน · `not-used` ไม่ได้ใช้ (ลูกค้ายกเลิก/เปลี่ยนใจ) · `wrong-item` ผิดรุ่น/ผิดรายการ · `other` อื่นๆ (ต้องมี `note`)
+   · **ของกลับเข้า "ล็อตเดิมที่ต้นทุนเดิม"** ไล่ย้อนลำดับที่ตัด (ล็อตที่ตัดทีหลังคืนก่อน) แบบเดียวกับ `SaleService.VoidAsync` — movement ใหม่ `issue-return` (จำนวนบวก)
+     คัด `JobId`/`RequesterStaffId`/`RequesterName` จากใบเดิม และเก็บ `SourceMovementId` ชี้ movement `issue` ที่ถูกคืน (migration `AddStockMovementSource`) · เลขเอกสาร `RT-yyyyMMdd-NNNNN` (`PurchaseNumberCounter` kind `RT`)
+   · คืนได้ไม่เกิน **เบิกในใบนั้น − คืนไปแล้ว** ต่อสินค้า (`WITHDRAWAL_RETURN_EXCEEDS`) · เฉพาะใบเบิกที่ผูก job (`WITHDRAWAL_RETURN_NOT_JOB`) ·
+     **ออกใบเสร็จแล้วคืนไม่ได้** (`WITHDRAWAL_RETURN_RECEIPT_ISSUED` 409) · เฉพาะของสภาพดี (ไม่รับของชำรุด — ยังไม่มีการปรับยอด/ตรวจนับ)
+   · **เบิกแล้ว = เบิก − คืน** ใน `BuildWithdrawalPlan` → ยอดที่คืนกลับไปเป็น "คงเหลือให้เบิก" เอง · `MovementsByJobAsync` คืนทั้ง `issue` และ `issue-return` ผู้เรียกแยกตาม `Type`
+   · RequestId กันคืนซ้ำ (ซ้ำ = ผลเดิม · เนื้อหาต่างจากเดิม = `PURCHASING_CONFLICT`) · ActivityEvent `stock.withdrawal.returned` · สิทธิ์ Manager/Office (`PURCHASING_FORBIDDEN`)
+   · ใบเบิกเดิม (`GET /withdrawals/{id}`) และรายการใบเบิกของ job แสดง `returnedQuantity` + `returns[]` (เลขใบคืน) · ต้นทุนในใบคืนเป็นค่าเฉลี่ยถ่วงน้ำหนักต่อบรรทัด (คืนได้หลายล็อต) และเห็นเฉพาะผู้จัดการ
+
 ## สถานะและสิทธิ์
 
 | เอกสาร | เส้นทาง |

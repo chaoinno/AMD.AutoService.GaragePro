@@ -122,6 +122,8 @@ public class StockMovement
     public string? RequesterName { get; set; }
     /// <summary>รายการขายหน้าร้านที่ตัดล็อตนี้ — null สำหรับ movement ประเภทอื่น</summary>
     public Guid? SaleId { get; set; }
+    /// <summary>movement "issue" ที่ถูกคืนโดย movement ประเภท "issue-return" นี้ — กันคืนเกินและให้รายงานจับคู่ได้</summary>
+    public Guid? SourceMovementId { get; set; }
 }
 
 public class PurchaseNumberCounter

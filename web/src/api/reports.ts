@@ -244,3 +244,38 @@ export type ServiceDueReport = {
 
 export const getServiceDueReport = (fromDate: string, toDate: string) =>
   apiRequest<ServiceDueReport>(`/api/v1/reports/service-due?fromDate=${fromDate}&toDate=${toDate}`)
+
+// ---------- การเบิกอะไหล่ (stock-usage) ----------
+export type StockUsageView = 'documents' | 'items' | 'requesters'
+export type StockUsageSource = 'job' | 'manual' | 'pos'
+export type StockUsageReturnRef = { operationId: string; documentNumber: string; quantity: number }
+export type StockUsageDocument = {
+  operationId: string; documentNumber: string; source: StockUsageSource; occurredAt: string
+  jobId?: string | null; jobNo?: string | null; vehicleRegistration?: string | null; saleId?: string | null
+  requesterStaffId?: number | null; requesterName?: string | null; performedByName: string
+  lineCount: number; issuedQuantity: number; returnedQuantity: number; netQuantity: number; netCost?: number | null
+  returns: StockUsageReturnRef[]
+}
+export type StockUsageDetail = {
+  kind: 'job-issue' | 'manual-issue' | 'job-return' | 'pos-sale' | 'pos-void'
+  occurredAt: string; operationId: string; documentNumber: string
+  jobId?: string | null; jobNo?: string | null; vehicleRegistration?: string | null
+  saleId?: string | null; receiptNo?: string | null; quantity: number; cost?: number | null
+}
+export type StockUsageItem = {
+  catalogItemId: string; code: string; name: string; unit: string
+  jobQuantity: number; manualQuantity: number; posQuantity: number; returnedQuantity: number; posVoidQuantity: number; netQuantity: number
+  netCost?: number | null; details: StockUsageDetail[]
+}
+export type StockUsageRequester = {
+  requesterStaffId: number; requesterName: string; documentCount: number; jobCount: number
+  issuedQuantity: number; returnedQuantity: number; netQuantity: number; netCost?: number | null
+}
+// API ตัดฟิลด์ null ทิ้ง — netCost เป็น undefined เมื่อ role ไม่เห็นต้นทุน (เช็คแบบ == null)
+export type StockUsageReport = {
+  fromDate: string; toDate: string; view: StockUsageView; source?: StockUsageSource | null; truncated: boolean
+  netQuantity: number; netCost?: number | null
+  documents?: StockUsageDocument[]; items?: StockUsageItem[]; requesters?: StockUsageRequester[]
+}
+export const getStockUsageReport = (q: { view: StockUsageView; source?: StockUsageSource; fromDate: string; toDate: string }) =>
+  apiRequest<StockUsageReport>(`/api/v1/reports/stock-usage?view=${q.view}&fromDate=${q.fromDate}&toDate=${q.toDate}${q.source ? `&source=${q.source}` : ''}`)

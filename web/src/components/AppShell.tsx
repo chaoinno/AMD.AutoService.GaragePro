@@ -3,6 +3,7 @@ import {
   AlarmClock,
   BarChart3,
   Boxes,
+  PackageMinus,
   CarFront,
   ChevronDown,
   ChevronsLeft,
@@ -32,7 +33,7 @@ import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
 import { NotificationBell } from './notifications/NotificationBell'
 import { BranchSwitcher } from './BranchSwitcher'
-import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
+import { countLowStock, countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
 import { countDraftSales } from '../api/sales'
 import { canUseRetailSale } from '../features/sales/saleFormat'
 import { TrialBanner } from '../features/plan/TrialBanner'
@@ -78,6 +79,7 @@ const navGroups = [
       { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
       { to: '/reports/retail-sales', icon: ShoppingCart, label: 'ขายหน้าร้าน' },
       { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
+      { to: '/reports/stock-usage', icon: PackageMinus, label: 'การเบิกอะไหล่' },
       // เปิดทุกบทบาท (หน้าร้าน/ช่างค้นตอนลูกค้ามาที่เคาน์เตอร์) — ช่าง/หัวหน้าช่างไม่เห็นยอดเงิน
       { to: '/reports/vehicle-history', icon: History, label: 'ประวัติรถ' },
       { to: '/reports/service-due', icon: AlarmClock, label: 'รถใกล้ครบรอบบริการ' },
@@ -138,6 +140,15 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     enabled: canUsePurchasing,
     staleTime: 30_000,
   })
+  // อะไหล่ที่ถึงจุดต่ำสุด (min-max) — key ขึ้นต้น 'purchase-count' ให้ usePurchasingRefresh ครอบคลุม
+  // (รับของ/เบิก/ตั้งยอดยกมา) ส่วนขายหน้าร้านกับใบเบิกผูกจ๊อบ invalidate key นี้เองตรงๆ
+  const canUseInventory = canUsePurchasing && !isFeatureLocked(plan, 'inventory')
+  const lowStockCount = useQuery({
+    queryKey: ['purchase-count', 'low-stock'],
+    queryFn: () => countLowStock(),
+    enabled: canUseInventory,
+    staleTime: 30_000,
+  })
   const jobsInShopCount = useQuery({
     queryKey: ['jobs-count-open', 9],
     queryFn: () => countOpenJobs(9),
@@ -183,6 +194,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   : item.purchaseKind === 'PO' ? poCount.data
                   : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
                   : 'saleDrafts' in item && item.saleDrafts ? saleDraftCount.data || undefined
+                  : item.to === '/inventory' ? lowStockCount.data || undefined
                   : undefined
                 const countTitle = 'jobsInShop' in item && item.jobsInShop
                   ? `จ๊อบรถในอู่ที่ยังไม่ปิดงาน ${count} รายการ`
@@ -190,6 +202,8 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   ? `ใบสั่งซื้อที่ยังไม่รับครบ ${count} รายการ`
                   : 'saleDrafts' in item && item.saleDrafts
                   ? `บิลขายร่างที่ยังไม่ชำระเงิน ${count} บิล`
+                  : item.to === '/inventory'
+                  ? `อะไหล่ที่ถึงจุดต่ำสุด ${count} รายการ`
                   : `เอกสารทั้งหมด ${count} รายการ`
                 const linkLabel = lockedFeature ? lockedNavLabel(item.label) : item.label
                 return (
@@ -207,7 +221,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                         <Lock />
                       </span>
                     ) : count !== undefined ? (
-                      <span className="sidebar__count" title={countTitle} aria-label={`${count} รายการ`}>
+                      <span className={`sidebar__count${item.to === '/inventory' ?' sidebar__count--warn' : ''}`} title={countTitle} aria-label={countTitle}>
                         {count > 999 ? '999+' : count}
                       </span>
                     ) : null}

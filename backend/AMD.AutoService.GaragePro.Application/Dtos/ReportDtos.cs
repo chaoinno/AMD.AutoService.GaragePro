@@ -146,3 +146,38 @@ public sealed record ServiceDueReportDto(
     DateOnly FromDate, DateOnly ToDate, DateOnly Today,
     int OverdueCount, int DueWithin7DaysCount, int DueWithin30DaysCount,
     IReadOnlyList<ServiceDueItemDto> Items);
+
+// ---------- รายงานการเบิกอะไหล่ (stock-usage) ----------
+// มุมมองเดียวต่อคำขอ (documents | items | requesters) — ฟิลด์ของมุมมองอื่นเป็น null (ตัดทิ้งจาก JSON)
+// ต้นทุนเป็น null ที่ server เมื่อ role ไม่เห็นต้นทุน · จำนวนเป็น "ชิ้นใช้จริง" บวกเสมอ ส่วนคืน/ยกเลิกแสดงแยกคอลัมน์
+
+public sealed record StockUsageReportDto(
+    DateOnly FromDate, DateOnly ToDate, string View, string? Source, bool Truncated,
+    int NetQuantity, decimal? NetCost,
+    IReadOnlyList<StockUsageDocumentDto>? Documents,
+    IReadOnlyList<StockUsageItemDto>? Items,
+    IReadOnlyList<StockUsageRequesterDto>? Requesters);
+
+public sealed record StockUsageReturnRefDto(Guid OperationId, string DocumentNumber, int Quantity);
+
+public sealed record StockUsageDocumentDto(
+    Guid OperationId, string DocumentNumber, string Source, DateTime OccurredAt,
+    Guid? JobId, string? JobNo, string? VehicleRegistration, Guid? SaleId,
+    long? RequesterStaffId, string? RequesterName, string PerformedByName,
+    int LineCount, int IssuedQuantity, int ReturnedQuantity, int NetQuantity, decimal? NetCost,
+    IReadOnlyList<StockUsageReturnRefDto> Returns);
+
+/// <summary>Kind: job-issue · manual-issue · job-return · pos-sale · pos-void · Quantity ติดลบเมื่อเป็นคืน/ยกเลิก</summary>
+public sealed record StockUsageDetailDto(
+    string Kind, DateTime OccurredAt, Guid OperationId, string DocumentNumber,
+    Guid? JobId, string? JobNo, string? VehicleRegistration,
+    Guid? SaleId, string? ReceiptNo, int Quantity, decimal? Cost);
+
+public sealed record StockUsageItemDto(
+    Guid CatalogItemId, string Code, string Name, string Unit,
+    int JobQuantity, int ManualQuantity, int PosQuantity, int ReturnedQuantity, int PosVoidQuantity, int NetQuantity,
+    decimal? NetCost, IReadOnlyList<StockUsageDetailDto> Details);
+
+public sealed record StockUsageRequesterDto(
+    long RequesterStaffId, string RequesterName, int DocumentCount, int JobCount,
+    int IssuedQuantity, int ReturnedQuantity, int NetQuantity, decimal? NetCost);

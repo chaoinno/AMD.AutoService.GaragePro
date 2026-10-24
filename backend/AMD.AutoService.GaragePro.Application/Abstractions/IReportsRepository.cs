@@ -45,9 +45,25 @@ public interface IReportsRepository
 
     /// <summary>ใบส่งมอบที่เซ็นแล้วและวันนัดครั้งถัดไปอยู่ในช่วง [from, to] (รวมปลายทั้งสอง) พร้อม Job
     /// และจ๊อบ/ใบส่งมอบอื่นของรถคันเดียวกัน เพื่อตัดคันที่กลับมาแล้วหรือมีการส่งมอบที่ใหม่กว่า</summary>
+    /// <summary>movement ประเภท issue/issue-return/sale/sale-void ที่เกิดใน [fromUtc, toUtc) + ใบคืน/ยกเลิกของใบที่อยู่ในช่วง
+    /// (แม้เกิดนอกช่วง) เพื่อคิดจำนวนสุทธิหลังคืน</summary>
+    Task<StockUsageData> GetStockUsageAsync(
+        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, StockUsageFilter filter, CancellationToken ct);
+
     Task<ServiceDueData> GetServiceDueAsync(
         string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct);
 }
+
+public sealed record StockUsageFilter(Guid? WarehouseId, Guid? CatalogItemId, long? RequesterStaffId);
+
+/// <summary>movement ที่ใช้ทำรายงานเบิกอะไหล่ + ข้อมูลอ้างอิงสำหรับแสดงผล (สินค้า · จ๊อบ+ทะเบียน · เลขใบเสร็จขาย)
+/// Truncated = เกินเพดานแถวแล้วตัดทิ้ง ผู้เรียกต้องบอกผู้ใช้</summary>
+public sealed record StockUsageData(
+    IReadOnlyList<StockMovement> Movements,
+    IReadOnlyDictionary<Guid, (string Code, string Name, string Unit)> Items,
+    IReadOnlyDictionary<Guid, (string JobNo, string? Plate)> Jobs,
+    IReadOnlyDictionary<Guid, string?> SaleReceipts,
+    bool Truncated);
 
 public sealed record VehicleHistoryData(
     IReadOnlyList<Job> Jobs,

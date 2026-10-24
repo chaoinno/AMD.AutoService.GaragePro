@@ -158,6 +158,31 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/inventory/issues` | เบิกให้งาน → `ISS-xxxx` |
 | GET | `/inventory/counts` · POST | ตรวจนับ `CNT-xxxx` |
 
+### 8.2 คืนอะไหล่จากใบเบิกของ job **[เพิ่ม 2026-10-25 · รายละเอียดที่ [docs/06 ข้อ 8](06-purchasing-fifo.md)]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| POST | `/api/v1/inventory/withdrawals/{operationId}/returns` | body `{ requestId, reasonCode: over-issued\|not-used\|wrong-item\|other, note?, lines:[{catalogItemId, quantity}] }` → 201 `StockReturnDto { operationId, documentNumber (RT-…), withdrawalOperationId, withdrawalNumber, warehouse*, jobId, jobNo, requesterName, returnedByName, reasonCode, reasonLabelTh, note, occurredAt, lines, totalCost (Manager) }` |
+| GET | `/api/v1/inventory/returns/{operationId}` | อ่านใบคืนเพื่อพิมพ์ซ้ำ |
+
+- error: `WITHDRAWAL_RETURN_EXCEEDS` 422 · `WITHDRAWAL_RETURN_NOT_JOB` 422 · `WITHDRAWAL_RETURN_RECEIPT_ISSUED` 409 · `PURCHASING_VALIDATION` (เหตุผลไม่ถูกต้อง/`other` ไม่มี note/จำนวนผิด) · `PURCHASING_FORBIDDEN` 403 · `PURCHASING_NOT_FOUND` 404 · `PURCHASING_CONFLICT` 409 (RequestId ซ้ำกับเนื้อหาอื่น)
+- `StockWithdrawalLineDto.returnedQuantity` · `StockWithdrawalDto.returns[]` · `StockWithdrawalSummaryDto.returnedQuantity`/`returns[]` — `{ operationId, documentNumber, occurredAt }` ของใบคืน · `WithdrawalPlan` นับ เบิกแล้ว = เบิก − คืน
+
+### 8.1 min-max สต็อก (ที่ implement จริง `/api/v1/inventory`) **[เพิ่ม 2026-10-25]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| GET | `/api/v1/inventory/items?q=&belowMin=true` | `belowMin=true` = เฉพาะอะไหล่ที่เปิดใช้งานและ **พร้อมใช้ ≤ min** · ไม่ส่ง = ทุกรายการเหมือนเดิม |
+| GET | `/api/v1/inventory/low-stock/count` | `data` = จำนวนอะไหล่ที่ถึงจุดต่ำสุดของสาขา (เปิดใช้งาน + ตั้ง min แล้ว) — ตัวเลขที่เมนู "สต็อก FIFO" · Manager/Office (`PURCHASING_FORBIDDEN` 403 ถ้าไม่ใช่) · อยู่ใต้ `[RequireFeature(Inventory)]` |
+| GET | `/api/v1/catalog/manage?belowMinOnly=true` | ตัวกรองเดียวกันของรายการสินค้า · **`lowStockOnly` เดิม (พร้อมใช้ ≤ 0) ความหมายไม่เปลี่ยน** |
+| PUT/POST | `/api/v1/catalog/manage[/{id}]` | body เพิ่ม `minStock` `maxStock` (int? · ไม่ส่ง = ล้างค่า) |
+
+- ฟิลด์ใหม่ใน `StockItemDto` (`/inventory/items` · `/inventory/items/{id}`) และ `CatalogManagementItemDto`: `minStock` · `maxStock` (ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง) · `belowMin` (bool) · `suggestedOrderQty` (= max − พร้อมใช้ − รอรับ ไม่ต่ำกว่า 0 · ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง max)
+- กฎอยู่ที่ `Domain/Common/StockLevel.cs` ที่เดียว: พร้อมใช้ = OnHand − Reserved (ไม่รวม OnOrder/Damaged) · ไม่ตั้ง min = ไม่เตือน/ไม่ถูกนับ · max ใช้คำนวณจำนวนแนะนำเท่านั้น ไม่เตือนเมื่อเกิน max
+- ตั้งค่าได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว (`StockManaged`) · `0 ≤ min ≤ max` (กติกาเดียว `StockLevel.Validate`) · ผิดกติกา = 422 `CATALOG_VALIDATION` (ฟอร์มสินค้า · field `minStock`/`maxStock`) หรือ `PURCHASING_VALIDATION` (endpoint ด้านล่าง)
+- **ผู้จัดการและธุรการตั้งได้** ผ่าน `PUT /api/v1/inventory/items/{catalogItemId}/stock-levels` body `{ minStock: int?, maxStock: int?, version?: string }` (null = ล้างค่า · `version` = ฟิลด์ `version` ของ `StockItemDto` กันแก้ชนกัน → 409 `PURCHASING_CONFLICT`) → `StockItemDto` · เขียน ActivityEvent `purchasing.stock.levels` · role อื่น 403 `PURCHASING_FORBIDDEN` · การแก้ผ่านฟอร์มสินค้า (`/catalog/manage`) ยังเป็นผู้จัดการเท่านั้นตามสิทธิ์แก้สินค้าเดิม
+- `CatalogManagementItemDto.stockManaged` บอกว่าฟอร์มสินค้าเปิดช่อง min/max ได้หรือไม่ (`stockLocked` รวม PurchasingLocked จึงใช้แทนไม่ได้)
+
 ---
 
 ## 9 · Purchasing
@@ -231,6 +256,7 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
 | GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
 | GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+| GET | `/api/v1/reports/stock-usage?fromDate=&toDate=&view=&source=&warehouseId=&catalogItemId=&requesterStaffId=` | **[เพิ่ม 2026-10-25]** การเบิกอะไหล่ (Manager/Office · `[RequireFeature(AdvancedReports)]`) · `view` = `documents` (ค่าเริ่มต้น รายใบเบิก/ใบขาย: เลขเอกสาร · แหล่งที่มา · งาน+ทะเบียน · ผู้เบิก/ผู้จ่าย · เบิก/คืน/สุทธิ · ใบคืนที่เกี่ยวข้อง) · `items` (ต่อสินค้า: เบิกเข้างาน · เบิกหน้าสต็อก · ขาย POS · คืน · ยกเลิกบิล · สุทธิ + `details[]` วันที่/เลขเอกสาร/เลขจ๊อบ+ทะเบียน หรือเลขใบเสร็จ SL- — ขาย POS ที่ยกเลิกแสดงคู่รายการยกเลิก) · `requesters` (ต่อช่างผู้เบิก: ใบ · งาน · ชิ้นสุทธิ · ไม่รวม POS) · `source` = `job` (WD-/ใบคืน) · `manual` (ISS-) · `pos` · แหล่งข้อมูล `StockMovement` ประเภท issue/issue-return/sale/sale-void · วันตามปฏิทินไทย ค่าเริ่มต้นวันที่ 1 ของเดือน–วันนี้ ช่วงสูงสุด 366 วัน (`REPORTS_VALIDATION`) · ต้นทุน (`netCost`/`cost`) เป็น null ที่ server เมื่อไม่ใช่ผู้จัดการ · ใบเบิก/ใบขายนับคืนทุกครั้งแม้ต่างช่วงวัน ส่วนสรุปตามสินค้า/ช่างนับเฉพาะรายการที่เกิดในช่วง · เกินเพดาน 50,000 movement = `truncated: true` |
 
 ---
 
