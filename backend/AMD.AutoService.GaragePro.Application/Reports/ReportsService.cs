@@ -463,6 +463,37 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             Items: items));
     }
 
+    private const int StockUsageMaxDays = 366;
+
+    /// <summary>รายงานการเบิกอะไหล่ (รายใบเบิก · สรุปตามสินค้า · สรุปตามช่างผู้เบิก) — ดู <see cref="StockUsageReport"/></summary>
+    public async Task<Result<StockUsageReportDto>> GetStockUsageAsync(
+        DateOnly? fromDate, DateOnly? toDate, string? view, string? source,
+        Guid? warehouseId, Guid? catalogItemId, long? requesterStaffId, CancellationToken ct = default)
+    {
+        if (!Allowed) return Forbidden<StockUsageReportDto>();
+        view = string.IsNullOrWhiteSpace(view) ? StockUsageReport.ViewDocuments : view.Trim().ToLowerInvariant();
+        source = string.IsNullOrWhiteSpace(source) ? null : source.Trim().ToLowerInvariant();
+        if (!StockUsageReport.IsView(view))
+            return Result<StockUsageReportDto>.Fail("REPORTS_VALIDATION", "มุมมองต้องเป็น documents, items หรือ requesters", "view");
+        if (!StockUsageReport.IsSource(source))
+            return Result<StockUsageReportDto>.Fail("REPORTS_VALIDATION", "แหล่งที่มาต้องเป็น job, manual หรือ pos", "source");
+
+        var today = ThaiDate(Now);
+        var to = toDate ?? today;
+        var from = fromDate ?? new DateOnly(to.Year, to.Month, 1);
+        if (from > to)
+            return Result<StockUsageReportDto>.Fail("REPORTS_VALIDATION", "วันที่เริ่มต้องไม่หลังวันที่สิ้นสุด", "fromDate");
+        if (to.DayNumber - from.DayNumber + 1 > StockUsageMaxDays)
+            return Result<StockUsageReportDto>.Fail(
+                "REPORTS_VALIDATION", $"เลือกช่วงวันที่ได้ไม่เกิน {StockUsageMaxDays} วัน", "toDate");
+
+        var fromUtc = ThaiDateStartUtc(from);
+        var toUtc = ThaiDateStartUtc(to.AddDays(1));
+        var data = await repo.GetStockUsageAsync(user.ShardKey, user.BranchId, fromUtc, toUtc,
+            new StockUsageFilter(warehouseId, catalogItemId, requesterStaffId), ct);
+        return Result<StockUsageReportDto>.Ok(StockUsageReport.Build(data, view, source, from, to, fromUtc, toUtc, user.CanSeeCost));
+    }
+
     private static DateOnly ThaiDate(DateTime utc) => DateOnly.FromDateTime(utc.AddHours(7));
     private static DateTime ThaiDateStartUtc(DateOnly date) =>
         DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue).AddHours(-7), DateTimeKind.Utc);
