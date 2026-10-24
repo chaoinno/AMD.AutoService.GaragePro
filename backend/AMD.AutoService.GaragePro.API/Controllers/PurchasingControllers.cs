@@ -168,7 +168,12 @@ public sealed class StockFIFOController(PurchasingService service) : PurchasingA
     /// <summary>ค้นหาสต็อกอะไหล่ของสาขาปัจจุบัน — พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</summary>
     /// <remarks>สูงสุด 200 รายการต่อการค้นหา มูลค่า FIFO แสดงเฉพาะผู้จัดการ สินค้าที่ยังไม่ตั้งยอดยกมาจะไม่มีมูลค่า FIFO</remarks>
     [HttpGet("items")]
-    public async Task<IActionResult> Items(string? q, CancellationToken ct) => Render(await service.StockAsync(q, ct));
+    public async Task<IActionResult> Items(string? q, bool belowMin, CancellationToken ct) => Render(await service.StockAsync(q, ct, belowMin));
+
+    /// <summary>นับอะไหล่ที่ถึงจุดต่ำสุด (พร้อมใช้ ≤ min) ของสาขาที่เข้าสู่ระบบ — ใช้กับตัวเลขในเมนู "สต็อก FIFO"</summary>
+    /// <remarks>นับเฉพาะอะไหล่ที่เปิดใช้งานและตั้ง min ไว้แล้ว พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</remarks>
+    [HttpGet("low-stock/count")]
+    public async Task<IActionResult> LowStockCount(CancellationToken ct) => Render(await service.CountLowStockAsync(ct));
 
     /// <summary>รายละเอียดสต็อก ล็อต FIFO เรียงเก่าก่อน และการเคลื่อนไหวล่าสุด 200 รายการ</summary>
     /// <remarks>ยอดก่อน/หลังในประวัติเป็นยอดของดีทั้งสาขา ต้นทุนล็อตและต้นทุนเบิกแสดงเฉพาะผู้จัดการ</remarks>

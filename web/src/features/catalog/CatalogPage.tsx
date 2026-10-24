@@ -24,6 +24,7 @@ import {
 } from '../../api/masterData'
 import { isApiError, isForbiddenError } from '../../api/client'
 import type { CatalogCategory, CatalogItemInput, CatalogItemSupplier, CatalogItemSupplierInput, CatalogManagementItem, PagedResult, Supplier } from '../../api/types'
+import { BELOW_MIN_ROW_CLASS, BelowMinBadge } from '../../components/BelowMinBadge'
 import { ManagementTable } from '../../components/ManagementTable'
 import { isFeatureLocked } from '../../lib/plan'
 import { PlanLockedPanel } from '../plan/PlanLockedPanel'
@@ -65,7 +66,16 @@ const catalogSchema = z.object({
   etaNote: z.string().trim().max(200, 'หมายเหตุต้องยาวไม่เกิน 200 ตัวอักษร'),
   categoryId: z.string(),
   warehouseId: z.string(),
+  minStock: z.string().trim(),
+  maxStock: z.string().trim(),
 }).superRefine((value, ctx) => {
+  const isCount = (text: string) => /^\d+$/.test(text)
+  if (value.type === 'part') {
+    if (value.minStock !== '' && !isCount(value.minStock)) ctx.addIssue({ code: 'custom', path: ['minStock'], message: 'จุดต่ำสุดต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป' })
+    if (value.maxStock !== '' && !isCount(value.maxStock)) ctx.addIssue({ code: 'custom', path: ['maxStock'], message: 'ระดับสูงสุดต้องเป็นเลขจำนวนเต็มตั้งแต่ 0 ขึ้นไป' })
+    if (isCount(value.minStock) && isCount(value.maxStock) && Number(value.minStock) > Number(value.maxStock))
+      ctx.addIssue({ code: 'custom', path: ['minStock'], message: 'จุดต่ำสุดต้องไม่มากกว่าระดับสูงสุด' })
+  }
   if (value.type === 'labor' && (value.standardHours === '' || Number(value.standardHours) <= 0)) {
     ctx.addIssue({ code: 'custom', path: ['standardHours'], message: 'กรุณาระบุชั่วโมงมาตรฐานมากกว่า 0' })
   }
@@ -76,7 +86,7 @@ type CatalogFormValues = z.infer<typeof catalogSchema>
 const emptyForm: CatalogFormValues = {
   code: '', type: 'part', name: '', compatibility: '', unit: 'ชิ้น', cost: '0', price: '0',
   standardHours: '', onHand: '0', reserved: '0', onOrder: '0', damaged: '0', etaNote: '',
-  categoryId: '', warehouseId: '',
+  categoryId: '', warehouseId: '', minStock: '', maxStock: '',
 }
 
 function flattenCategories(categories: CatalogCategory[], level = 0): Array<CatalogCategory & { level: number }> {
@@ -142,8 +152,14 @@ export function CatalogPage() {
     {
       id: 'stock', accessorFn: (x) => x.type === 'part' ? x.available : x.standardHours, header: 'คงเหลือ', size: 135,
       cell: ({ row }) => row.original.type === 'part'
-        ? <div className="two-line-cell"><strong className={row.original.available <= 0 ? 'stock-empty' : ''}>{row.original.available.toLocaleString('th-TH')} {row.original.unit}</strong><span>มี {row.original.onHand} · จอง {row.original.reserved} · รอ {row.original.onOrder}</span></div>
+        ? <div className="two-line-cell"><strong className={row.original.available <= 0 ? 'stock-empty' : ''}>{row.original.available.toLocaleString('th-TH')} {row.original.unit}</strong><span>มี {row.original.onHand} · จอง {row.original.reserved} · รอ {row.original.onOrder}</span>{row.original.belowMin && <BelowMinBadge minStock={row.original.minStock} />}</div>
         : <div className="two-line-cell"><strong>{row.original.standardHours?.toLocaleString('th-TH')} ชม.</strong><span>ชั่วโมงมาตรฐาน</span></div>,
+    },
+    {
+      id: 'minMax', accessorFn: (x) => x.minStock ?? null, header: 'จุดต่ำสุด / สูงสุด', size: 130,
+      cell: ({ row }) => row.original.type !== 'part' || (row.original.minStock == null && row.original.maxStock == null)
+        ? <span>—</span>
+        : <div className="two-line-cell"><strong>{row.original.minStock ?? '—'} / {row.original.maxStock ?? '—'}</strong>{row.original.suggestedOrderQty != null && <span>แนะนำให้สั่ง {row.original.suggestedOrderQty}</span>}</div>,
     },
     {
       id: 'compatibility', accessorFn: (x) => x.compatibility, header: 'รุ่นรถ / รายละเอียด', size: 240,
@@ -177,7 +193,7 @@ export function CatalogPage() {
   else if (query.isError && isForbiddenError(query.error)) content = <StateBlock variant="forbidden" title="ไม่มีสิทธิ์ดูรายการสินค้า" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (query.isError) content = <StateBlock variant="error" title="โหลดรายการสินค้าไม่สำเร็จ" reason={errorMessage(query.error)} traceId={traceId(query.error)} actionLabel="ลองใหม่" onAction={() => void query.refetch()} />
   else if (!query.data.items.length) content = <StateBlock variant="empty" title="ไม่พบสินค้าที่ตรงกับเงื่อนไข" reason="ลองเปลี่ยนคำค้นหาหรือตัวกรอง หรือเพิ่มสินค้าใหม่ได้ทันที" traceId="คำขอสำเร็จและไม่พบรายการ" actionLabel={canManage ? 'เพิ่มสินค้า' : 'ล้างตัวกรอง'} onAction={() => canManage ? setFormId('new') : setFilters({ page: 1, pageSize: 25 })} />
-  else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} onRowClick={canManage ? (row) => setFormId(row.id) : undefined} getRowLabel={(row) => `เปิดข้อมูลสินค้า ${row.name}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((old) => ({ ...old, page }))} /></Card>
+  else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} getRowClassName={(row) => row.belowMin ? BELOW_MIN_ROW_CLASS : undefined} onRowClick={canManage ? (row) => setFormId(row.id) : undefined} getRowLabel={(row) => `เปิดข้อมูลสินค้า ${row.name}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((old) => ({ ...old, page }))} /></Card>
 
   return <AppShell title="สินค้า">
     <section className="page-heading"><div><p className="eyebrow">แคตตาล็อกสินค้าและบริการ</p><h2>จัดการสินค้า</h2><p>จัดการอะไหล่ ค่าแรง ราคา และจำนวนคงเหลือของสาขาปัจจุบัน</p></div><Button disabled={!canManage} title={!canManage ? 'เฉพาะผู้จัดการสาขาเท่านั้นที่เพิ่มสินค้าได้' : undefined} onClick={() => setFormId('new')}><Plus /> เพิ่มสินค้า</Button></section>
@@ -186,6 +202,7 @@ export function CatalogPage() {
       <div className="filter-search input-with-icon"><Search /><Input value={keyword} onChange={(event) => { setKeyword(event.target.value); setFilters((old) => ({ ...old, page: 1 })) }} placeholder="ค้นหารหัส ชื่อสินค้า หรือรุ่นรถ" /></div>
       <Select value={filters.type || ''} onChange={(event) => setFilters((old) => ({ ...old, type: (event.target.value || undefined) as CatalogFilters['type'], page: 1 }))}><option value="">ทุกประเภท</option><option value="part">อะไหล่</option><option value="labor">ค่าแรง</option></Select>
       <label className="filter-check"><input type="checkbox" checked={Boolean(filters.lowStockOnly)} onChange={(event) => setFilters((old) => ({ ...old, lowStockOnly: event.target.checked, page: 1 }))} /> เฉพาะของหมด/ถูกจองหมด</label>
+      <label className="filter-check"><input type="checkbox" checked={Boolean(filters.belowMinOnly)} onChange={(event) => setFilters((old) => ({ ...old, belowMinOnly: event.target.checked, page: 1 }))} /> เฉพาะที่ถึงจุดต่ำสุด</label>
       <label className="filter-check"><input type="checkbox" checked={Boolean(filters.includeInactive)} onChange={(event) => setFilters((old) => ({ ...old, includeInactive: event.target.checked, page: 1 }))} /> รวมรายการปิดใช้งาน</label>
     </Card>
     {content}
@@ -214,6 +231,8 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
   const itemSuppliersQuery = useQuery({ queryKey: ['catalog-item-suppliers', itemId], queryFn: () => getCatalogItemSuppliers(itemId!), enabled: open && Boolean(itemId) && !purchasingLocked })
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<CatalogFormValues>({ resolver: zodResolver(catalogSchema), defaultValues: emptyForm })
   const type = watch('type')
+  // min-max ตั้งได้เมื่อสินค้าเริ่มใช้สต็อก FIFO แล้วเท่านั้น (server บังคับ — สินค้าใหม่ยังไม่มียอดให้เทียบ)
+  const minMaxEditable = Boolean(itemId && details.data?.stockLocked)
   const selectedCategoryId = watch('categoryId')
   const selectedWarehouseId = watch('warehouseId')
   const [linkForm, setLinkForm] = useState({ supplierId: '', supplierItemCode: '', supplierCost: '0', leadTimeDays: '', minOrderQty: '', isPreferred: false, isActive: true })
@@ -232,6 +251,7 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
       cost: String(item.cost ?? 0), price: String(item.price), standardHours: item.standardHours === null ? '' : String(item.standardHours),
       onHand: String(item.onHand), reserved: String(item.reserved), onOrder: String(item.onOrder), damaged: String(item.damaged), etaNote: item.etaNote || '',
       categoryId: item.categoryId || '', warehouseId: item.warehouseId || '',
+      minStock: item.minStock == null ? '' : String(item.minStock), maxStock: item.maxStock == null ? '' : String(item.maxStock),
     })
   }, [details.data, itemId, open, reset, initialName])
   const save = useMutation({
@@ -255,6 +275,9 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
     etaNote: values.type === 'part' ? values.etaNote || undefined : undefined,
     categoryId: values.categoryId || undefined,
     warehouseId: values.warehouseId || undefined,
+    // ช่องว่าง = ไม่ตั้ง (ส่ง undefined → server เก็บ null) · ส่งได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว
+    minStock: values.type === 'part' && values.minStock !== '' ? Number(values.minStock) : undefined,
+    maxStock: values.type === 'part' && values.maxStock !== '' ? Number(values.maxStock) : undefined,
   }))
   const linkMutation = useMutation({
     mutationFn: ({ supplierId, input }: { supplierId: string; input: CatalogItemSupplierInput }) => upsertCatalogItemSupplier(itemId!, supplierId, input),
@@ -316,6 +339,9 @@ export function CatalogFormModal({ open, itemId, onClose, initialName, onSuccess
         <Field label="กำลังสั่งซื้อ" error={errors.onOrder?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('onOrder')} /></Field>
         <Field label="ชำรุด" error={errors.damaged?.message}><Input readOnly={details.data?.stockLocked} type="number" min="0" step="1" {...register('damaged')} /></Field>
         <Field label="หมายเหตุกำหนดรับสินค้า" error={errors.etaNote?.message} wide><Input maxLength={200} placeholder="เช่น สั่งได้ภายใน 2 วัน" {...register('etaNote')} /></Field>
+        <Field label="จุดต่ำสุด (เตือนเมื่อพร้อมใช้ ≤ ค่านี้)" error={errors.minStock?.message}><Input readOnly={!minMaxEditable} disabled={!minMaxEditable} type="number" min="0" step="1" placeholder="ไม่ตั้ง" {...register('minStock')} /></Field>
+        <Field label="ระดับสูงสุด (ใช้คำนวณจำนวนแนะนำสั่ง)" error={errors.maxStock?.message}><Input readOnly={!minMaxEditable} disabled={!minMaxEditable} type="number" min="0" step="1" placeholder="ไม่ตั้ง" {...register('maxStock')} /></Field>
+        <p className="field--wide section-help">{minMaxEditable ? 'เตือนเมื่อ พร้อมใช้ (คงคลัง − จองแล้ว) ≤ จุดต่ำสุด · แนะนำให้สั่ง = สูงสุด − พร้อมใช้ − กำลังสั่งซื้อ (ไม่ต่ำกว่า 0) · เว้นว่าง = ไม่ตั้ง' : 'ตั้งจุดต่ำสุด/สูงสุดได้เมื่อสินค้าเริ่มใช้สต็อก FIFO แล้ว (ตั้งยอดยกมาที่เมนูสต็อก FIFO ก่อน)'}</p>
       </div><p className="stock-formula"><Boxes /> จำนวนพร้อมใช้คำนวณจาก “คงคลัง − จองแล้ว” โดยไม่รวมกำลังสั่งซื้อและของชำรุด</p></section> : null}
       <section><div className="section-heading-row"><div><h3>ซัพพลายเออร์ของสินค้า</h3><p className="section-help">กำหนดรหัสสินค้า ต้นทุน และเงื่อนไขสั่งซื้อแยกตามซัพพลายเออร์</p></div>{itemId && !purchasingLocked ? <Badge variant="outline">{itemSuppliersQuery.data?.length ?? 0} ราย</Badge> : null}</div>
         {purchasingLocked ? <PlanLockedPanel feature="purchasing" title="ซัพพลายเออร์ของสินค้าเปิดในแพ็กเกจเต็ม" detail="ผูกซัพพลายเออร์ ต้นทุนจากแต่ละราย และเงื่อนไขสั่งซื้อ ใช้คู่กับโมดูลจัดซื้อ ข้อมูลสินค้า ราคา และสต็อกด้านบนบันทึกได้ตามปกติ" /> : !itemId ? <p className="section-help">บันทึกสินค้าให้เรียบร้อยก่อน จึงจะเพิ่มซัพพลายเออร์ได้</p> : <>

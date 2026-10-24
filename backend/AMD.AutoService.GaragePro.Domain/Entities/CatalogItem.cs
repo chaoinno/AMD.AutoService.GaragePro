@@ -29,6 +29,11 @@ public class CatalogItem
     public int Damaged { get; set; }
     public string? EtaNote { get; set; }
 
+    /// <summary>จุดต่ำสุด — พร้อมใช้ ≤ ค่านี้ = เตือน (null = ไม่ได้ตั้ง) เฉพาะอะไหล่ที่คุมสต็อก ดู <c>StockLevel</c></summary>
+    public int? MinStock { get; set; }
+    /// <summary>ระดับสูงสุด — ใช้คำนวณจำนวนแนะนำให้สั่งเท่านั้น (null = ไม่ได้ตั้ง)</summary>
+    public int? MaxStock { get; set; }
+
     public string LegacyShardKey { get; set; } = "db2";
     public int LegacyBranchId { get; set; }
 

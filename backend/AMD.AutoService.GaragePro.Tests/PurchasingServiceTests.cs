@@ -544,6 +544,39 @@ public class PurchasingServiceTests
     }
 
     [Fact]
+    public async Task Low_stock_count_covers_only_active_below_min_items_of_the_current_branch()
+    {
+        var f = new Fixture();
+        CatalogItem Part(string code, int onHand, int reserved, int? min, bool active = true, int branch = 105, string shard = "db2") => new()
+        { Code = code, Name = code, Unit = "ชิ้น", Type = LineType.Part, OnHand = onHand, Reserved = reserved, MinStock = min, IsActive = active, LegacyBranchId = branch, LegacyShardKey = shard };
+        f.Repo.Add(Part("BELOW", 3, 0, 5));
+        f.Repo.Add(Part("EQUAL", 5, 0, 5));
+        f.Repo.Add(Part("RESERVED", 8, 4, 5));
+        f.Repo.Add(Part("OK", 9, 0, 5));
+        f.Repo.Add(Part("NOMIN", 0, 0, null));            // ไม่ตั้ง min = ไม่นับ (f.Item ก็เป็นแบบนี้)
+        f.Repo.Add(Part("INACTIVE", 0, 0, 5, active: false));
+        f.Repo.Add(Part("OTHER-BRANCH", 0, 0, 5, branch: 999));
+        f.Repo.Add(Part("OTHER-SHARD", 0, 0, 5, shard: "db1"));
+
+        Assert.Equal(3, (await f.Service.CountLowStockAsync(default)).Data);
+
+        var filtered = (await f.Service.StockAsync(null, default, belowMinOnly: true)).Data!;
+        Assert.Equal(new[] { "BELOW", "EQUAL", "RESERVED" }, filtered.Select(x => x.Code).OrderBy(x => x));
+        Assert.All(filtered, x => Assert.True(x.BelowMin));
+        // ตัวกรองเดิม (ไม่ส่ง belowMin) ยังเห็นทุกรายการของสาขา
+        Assert.Contains(f.Item.Code, (await f.Service.StockAsync(null, default)).Data!.Select(x => x.Code));
+    }
+
+    [Fact]
+    public async Task Low_stock_count_and_filter_are_forbidden_for_other_roles()
+    {
+        var f = new Fixture();
+        f.User.Role = UserRole.Technician;
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.CountLowStockAsync(default)).Error?.Code);
+        Assert.Equal("PURCHASING_FORBIDDEN", (await f.Service.StockAsync(null, default, belowMinOnly: true)).Error?.Code);
+    }
+
+    [Fact]
     public async Task Open_po_filter_and_count_exclude_complete_and_cancelled_documents()
     {
         var f = new Fixture();
@@ -649,7 +682,8 @@ public class PurchasingServiceTests
         public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Task.FromResult(All<CatalogItem>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
-        public Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
+        public Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => Scope(x.LegacyShardKey, x.LegacyBranchId) && (!belowMinOnly || x.IsActive && StockLevel.IsBelowMin(x))).ToList());
+        public Task<int> CountBelowMinAsync(CancellationToken ct) => Task.FromResult(All<CatalogItem>().Count(x => Scope(x.LegacyShardKey, x.LegacyBranchId) && x.IsActive && StockLevel.IsBelowMin(x)));
         public Task<IReadOnlyList<StockLot>> LotsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockLot>>(All<StockLot>().Where(x => x.CatalogItemId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> ids, CancellationToken ct) => Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(All<StockLot>().Where(x => ids.Contains(x.CatalogItemId) && Scope(x.LegacyShardKey, x.LegacyBranchId)).GroupBy(x => x.CatalogItemId).ToDictionary(x => x.Key, x => x.Sum(l => l.RemainingQuantity * l.UnitCost)));
         public Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? id, Guid? op, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockMovement>>(All<StockMovement>().Where(x => (!id.HasValue || x.CatalogItemId == id) && (!op.HasValue || x.OperationId == op) && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());

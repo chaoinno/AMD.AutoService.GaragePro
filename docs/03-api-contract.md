@@ -158,6 +158,19 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/inventory/issues` | เบิกให้งาน → `ISS-xxxx` |
 | GET | `/inventory/counts` · POST | ตรวจนับ `CNT-xxxx` |
 
+### 8.1 min-max สต็อก (ที่ implement จริง `/api/v1/inventory`) **[เพิ่ม 2026-10-25]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| GET | `/api/v1/inventory/items?q=&belowMin=true` | `belowMin=true` = เฉพาะอะไหล่ที่เปิดใช้งานและ **พร้อมใช้ ≤ min** · ไม่ส่ง = ทุกรายการเหมือนเดิม |
+| GET | `/api/v1/inventory/low-stock/count` | `data` = จำนวนอะไหล่ที่ถึงจุดต่ำสุดของสาขา (เปิดใช้งาน + ตั้ง min แล้ว) — ตัวเลขที่เมนู "สต็อก FIFO" · Manager/Office (`PURCHASING_FORBIDDEN` 403 ถ้าไม่ใช่) · อยู่ใต้ `[RequireFeature(Inventory)]` |
+| GET | `/api/v1/catalog/manage?belowMinOnly=true` | ตัวกรองเดียวกันของรายการสินค้า · **`lowStockOnly` เดิม (พร้อมใช้ ≤ 0) ความหมายไม่เปลี่ยน** |
+| PUT/POST | `/api/v1/catalog/manage[/{id}]` | body เพิ่ม `minStock` `maxStock` (int? · ไม่ส่ง = ล้างค่า) |
+
+- ฟิลด์ใหม่ใน `StockItemDto` (`/inventory/items` · `/inventory/items/{id}`) และ `CatalogManagementItemDto`: `minStock` · `maxStock` (ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง) · `belowMin` (bool) · `suggestedOrderQty` (= max − พร้อมใช้ − รอรับ ไม่ต่ำกว่า 0 · ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง max)
+- กฎอยู่ที่ `Domain/Common/StockLevel.cs` ที่เดียว: พร้อมใช้ = OnHand − Reserved (ไม่รวม OnOrder/Damaged) · ไม่ตั้ง min = ไม่เตือน/ไม่ถูกนับ · max ใช้คำนวณจำนวนแนะนำเท่านั้น ไม่เตือนเมื่อเกิน max
+- ตั้งค่าได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว (`StockManaged`) · `0 ≤ min ≤ max` · ผิดกติกา = 422 `CATALOG_VALIDATION` (field `minStock`/`maxStock`) · แก้ผ่านหน้าสินค้า → สิทธิ์เดียวกับแก้สินค้า (`CATALOG_MANAGE_FORBIDDEN` = ผู้จัดการ)
+
 ---
 
 ## 9 · Purchasing

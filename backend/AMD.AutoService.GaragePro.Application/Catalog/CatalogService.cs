@@ -2,6 +2,7 @@ using System.Text.Json;
 using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Common;
 using AMD.AutoService.GaragePro.Application.Dtos;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 
@@ -88,7 +89,7 @@ public sealed class CatalogService : ICatalogService
         CatalogUpsertRequest request, string eventType, CancellationToken ct)
     {
         var normalized = Normalize(request);
-        var error = CatalogValidator.Validate(normalized);
+        var error = CatalogValidator.Validate(normalized) ?? EnsureMinMaxAllowed(normalized, stockManaged: false);
         if (error is not null) return Result<CatalogManagementItemDto>.Fail(error);
         var referenceError = await ValidateReferencesAsync(normalized.CategoryId, normalized.WarehouseId, ct);
         if (referenceError is not null) return Result<CatalogManagementItemDto>.Fail(referenceError);
@@ -115,6 +116,8 @@ public sealed class CatalogService : ICatalogService
             OnOrder = normalized.OnOrder,
             Damaged = normalized.Damaged,
             EtaNote = normalized.EtaNote,
+            MinStock = normalized.MinStock,
+            MaxStock = normalized.MaxStock,
             LegacyShardKey = currentUser.ShardKey,
             LegacyBranchId = currentUser.BranchId,
             CategoryId = normalized.CategoryId,
@@ -139,6 +142,8 @@ public sealed class CatalogService : ICatalogService
         var item = await repository.GetAsync(currentUser.ShardKey, currentUser.BranchId, id, ct);
         if (item is null)
             return Result<CatalogManagementItemDto>.Fail("CATALOG_NOT_FOUND", "ไม่พบสินค้าหรือรายการนี้ไม่ได้อยู่ในสาขาปัจจุบัน");
+        var minMaxError = EnsureMinMaxAllowed(normalized, item.StockManaged);
+        if (minMaxError is not null) return Result<CatalogManagementItemDto>.Fail(minMaxError);
         if (await repository.CodeExistsAsync(currentUser.ShardKey, currentUser.BranchId, normalized.Code, id, ct))
             return Result<CatalogManagementItemDto>.Fail("CATALOG_CODE_DUPLICATE", "รหัสสินค้านี้มีอยู่แล้วในสาขาปัจจุบัน", "code");
 
@@ -159,6 +164,8 @@ public sealed class CatalogService : ICatalogService
         item.OnOrder = normalized.OnOrder;
         item.Damaged = normalized.Damaged;
         item.EtaNote = normalized.EtaNote;
+        item.MinStock = normalized.MinStock;
+        item.MaxStock = normalized.MaxStock;
         item.CategoryId = normalized.CategoryId;
         item.WarehouseId = normalized.WarehouseId;
         await repository.AddEventAsync(Event(item, "catalog.updated", $"แก้ไขสินค้า {item.Code} {item.Name}"), ct);
@@ -190,7 +197,14 @@ public sealed class CatalogService : ICatalogService
         item.Type == LineType.Part ? "อะไหล่" : "ค่าแรง", item.Name, item.Compatibility,
         item.Unit, item.Price, currentUser.CanSeeCost ? item.Cost : null, item.StandardHours,
         item.OnHand, item.Reserved, item.OnOrder, item.Damaged, item.Available, item.EtaNote, item.IsActive,
-        item.CategoryId, item.WarehouseId, item.StockManaged || item.PurchasingLocked);
+        item.CategoryId, item.WarehouseId, item.StockManaged || item.PurchasingLocked,
+        item.MinStock, item.MaxStock, StockLevel.IsBelowMin(item), StockLevel.SuggestedOrderQty(item));
+
+    // [BIZ] min/max ตั้งได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว — สินค้าที่ยังไม่ตั้งยอดยกมาไม่มียอดให้เทียบ · ล้างค่า (null) ทำได้เสมอ
+    private static ApiError? EnsureMinMaxAllowed(CatalogUpsertRequest request, bool stockManaged) =>
+        (request.MinStock.HasValue || request.MaxStock.HasValue) && !stockManaged
+            ? new("CATALOG_VALIDATION", "ตั้งจุดต่ำสุด/สูงสุดได้เมื่อสินค้าเริ่มใช้สต็อก FIFO แล้ว (ตั้งยอดยกมาแล้ว)", "minStock")
+            : null;
 
     private ActivityEvent Event(CatalogItem item, string eventType, string description) => new()
     {

@@ -397,9 +397,12 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
         return MapReceipt(grn);
     }, true, ct);
 
-    public Task<Result<IReadOnlyList<StockItemDto>>> StockAsync(string? q, CancellationToken ct) => Run<IReadOnlyList<StockItemDto>>(async () =>
+    /// <summary>จำนวนอะไหล่ที่ถึงจุดต่ำสุดในสาขา — ตัวเลขที่เมนู "สต็อก FIFO" (นับเฉพาะที่ตั้ง min และเปิดใช้งาน)</summary>
+    public Task<Result<int>> CountLowStockAsync(CancellationToken ct) => Run(() => repo.CountBelowMinAsync(ct));
+
+    public Task<Result<IReadOnlyList<StockItemDto>>> StockAsync(string? q, CancellationToken ct, bool belowMinOnly = false) => Run<IReadOnlyList<StockItemDto>>(async () =>
     {
-        var items = await repo.ItemsAsync(Clean(q), ct);
+        var items = await repo.ItemsAsync(Clean(q), ct, belowMinOnly);
         var values = Manager ? await repo.StockValuesAsync(items.Select(x => x.Id).ToList(), ct) : null;
         return items.Select(item => MapStock(item, values is null ? null : values.GetValueOrDefault(item.Id))).ToList();
     });
@@ -659,7 +662,8 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
     }
     private static ReceiptDto MapReceipt(GoodsReceipt x) => new(x.Id, x.Number, x.PurchaseOrderId, x.DeliveryNumber, Utc(x.ReceivedAt),
         x.ReceivedByName, x.Lines.Select(l => new ReceiptLineDto(l.PurchaseLineId, l.GoodQuantity, l.DamagedQuantity, l.UnitCost, l.Note)).ToList());
-    private static StockItemDto MapStock(CatalogItem x, decimal? value) => new(x.Id, x.Code, x.Name, x.Unit, x.StockManaged, x.OnHand, x.Reserved, x.Available, x.OnOrder, x.Damaged, x.StockManaged ? value : null);
+    private static StockItemDto MapStock(CatalogItem x, decimal? value) => new(x.Id, x.Code, x.Name, x.Unit, x.StockManaged, x.OnHand, x.Reserved, x.Available, x.OnOrder, x.Damaged, x.StockManaged ? value : null,
+        x.MinStock, x.MaxStock, StockLevel.IsBelowMin(x), StockLevel.SuggestedOrderQty(x));
     private StockMovementDto MapMovement(StockMovement x) => new(x.Id, x.OperationId, x.DocumentNumber, x.Type, x.WarehouseId,
         x.Quantity, x.DamagedQuantity, x.BalanceBefore, x.BalanceAfter, Manager ? x.UnitCost : null, x.Reason, x.PerformedByName, Utc(x.OccurredAt));
 }
