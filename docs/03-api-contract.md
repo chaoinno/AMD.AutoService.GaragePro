@@ -248,7 +248,11 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 ของจริงเพิ่ม 2026-10-08:
 | GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
 | GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
-| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office/FrontDesk) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+
+**[เพิ่ม 2026-10-25] `GET /api/v1/reports/service-due/count`** → `{ count, overdueCount, fromDate, toDate }` — จำนวนรถที่วันนัดอยู่ระหว่าง **วันนี้−30 ถึงวันนี้+7** (วันไทย)
+สำหรับตัวเลขข้างเมนู "รถใกล้ครบรอบบริการ" · กติกาเดียวกับรายงานทุกข้อ (`ServiceDueRows`: 1 แถวต่อรถ · วันนัด = รายการที่ครบเร็วสุด · ตัดคันที่กลับมาเปิดจ๊อบ/มีจ๊อบค้าง) จึงนับตรงกับแถวในรายงานช่วงเดียวกัน ·
+**`service-due` และ `/count` เปิดให้ Manager/Office/FrontDesk** (เดิม Manager/Office) — หน้าร้านเป็นผู้รับแจ้งเตือน กดแล้วต้องเปิดได้ · role อื่น 403 `REPORTS_FORBIDDEN` · รายงานอื่นยังเป็น Manager/Office เท่านั้น
 
 **[เปลี่ยน 2026-10-25] นัดหลายรายการ**: `service-due` — **1 แถวต่อรถ** วันนัดของแถว (`nextServiceDueOn`/`nextServiceMileage`/`daysUntilDue`) = รายการที่ครบเร็วที่สุด
 และกรองช่วงวันด้วยรายการนั้น (ไม่ใช่ "มีรายการใดในช่วง") · แถวมี `items: [{ name, nextServiceMileage, nextServiceDueOn, daysUntilDue }]` ทุกรายการเรียงครบเร็วสุดก่อน ·
@@ -269,6 +273,15 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 ผู้รับเป็น **รายบุคคล (Staff.Id)** หรือ **กลุ่มบทบาท (bitmask ของ UserRole)** — ไม่มีทางดึงรายชื่อพนักงานตามบทบาท
 จาก legacy จึงคัดตอนอ่านด้วย role ใน JWT · สถานะอ่านแยกต่อคน (`svc_NotificationRead`) · ชนิด/ผู้รับ/การปิดเรื่อง
 ดูที่ `CLAUDE.md` หัวข้อ "แจ้งเตือนบนเว็บ" · client poll `unread-count` ทุก 30 วิ จนกว่าจะมี realtime
+
+**[เพิ่ม 2026-10-25] ชนิด `service.due` — รถใกล้ครบรอบบริการ**: ผู้รับ = กลุ่มบทบาท **FrontDesk + Manager** (ไม่มี role "SA" ใช้หน้าร้านแทน · ธุรการเปิดรายงานได้แต่ไม่ได้รับแจ้งเตือน) ·
+แจ้ง **ครั้งเดียวต่อรถต่อรอบนัด** เมื่อวันนัดของรถ (= รายการนัดที่ครบเร็วที่สุด) อยู่ในช่วงวันนี้..วันนี้+7 (วันไทย) · **ไม่แจ้งย้อนหลัง** รถที่เลยกำหนดไปแล้ว ·
+`entityType: "ServiceDue"` · `linkHint: "service-due"` · ไม่มี `jobId`/`entityId` → เว็บเปิด `/reports/service-due` · `subjectKey` = `service-due:{vehicleId}:{yyyy-MM-dd วันนัด}` (กันซ้ำ — เคยมีแล้วแม้ปิดแล้วก็ไม่แจ้งซ้ำ ·
+วันนัดเปลี่ยน = รอบใหม่ = แจ้งใหม่) · ข้อความ: ชื่อเรื่องมีทะเบียน + "อีก N วัน/ครบกำหนดวันนี้" · เนื้อหามีชื่อลูกค้า เบอร์ และรายการที่ครบในหน้าต่าง 7 วัน ·
+**ปิด (`resolvedAt`) เมื่อรถคันนั้นถูกเปิดจ๊อบใหม่** (`JobService.CreateAsync` ใน SaveChanges เดียวกับจ๊อบ — ปิดด้วย prefix `service-due:{vehicleId}:`) ·
+สร้างโดยงานรายวัน `ServiceDueDailyJob` (hosted service ใน API · ตอนสตาร์ท 1 นาทีหลังขึ้นแล้วทุกวัน 08:00 เวลาไทย · ปิดได้ด้วย `ServiceDue:Jobs:Enabled=false`) —
+ไล่ทุกสาขาที่มีรายการนัดครบกำหนดภายใน 7 วัน ทั้งฐานหลัก (`GarageService`) และฐาน self-serve (ถ้าตั้ง `SelfServe:ConnectionString`) ทีละสาขาใน scope ของ shard/สาขานั้น (`IShardScopeFactory`) ·
+idempotent ด้วย subjectKey จึงรันซ้ำ/restart/หลาย instance ได้ (หลาย instance ที่ทำงานพร้อมกันเป๊ะอาจสร้างซ้ำได้ — ไม่มี unique key โดยตั้งใจ ดู `Notification.SubjectKey`)
 
 **Realtime (Open Question #2)** — แนะนำ **SignalR** เพราะทีมใช้ .NET อยู่แล้ว
 ```

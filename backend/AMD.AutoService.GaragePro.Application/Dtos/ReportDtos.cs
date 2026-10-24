@@ -153,6 +153,9 @@ public sealed record ServiceDueItemDto(
 /// <param name="DaysUntilDue">ติดลบ = เลยกำหนดมาแล้วกี่วัน (ของรายการนี้เอง)</param>
 public sealed record ServiceDueLineDto(string Name, int NextServiceMileage, DateOnly NextServiceDueOn, int DaysUntilDue);
 
+/// <param name="Count">รถที่วันนัดอยู่ระหว่าง <paramref name="FromDate"/>..<paramref name="ToDate"/> (วันนี้−30..วันนี้+7)</param>
+public sealed record ServiceDueCountDto(int Count, int OverdueCount, DateOnly FromDate, DateOnly ToDate);
+
 public sealed record ServiceDueReportDto(
     DateOnly FromDate, DateOnly ToDate, DateOnly Today,
     int OverdueCount, int DueWithin7DaysCount, int DueWithin30DaysCount,

@@ -296,10 +296,10 @@ public sealed class ReportsServiceTests
 
     // ── ประวัติรถ + รถใกล้ครบรอบบริการ (เพิ่ม 2026-10-08) ───────────────────────
 
-    private static Job VehicleJob(long vehicleId, string jobNo, DateTime createdAt, string plate = "1กก 1234",
-        string? phone = "081-234-5678", JobStatus status = JobStatus.Completed) => new()
+    internal static Job VehicleJob(long vehicleId, string jobNo, DateTime createdAt, string plate = "1กก 1234",
+        string? phone = "081-234-5678", JobStatus status = JobStatus.Completed, string shard = "db2", int branch = 105) => new()
     {
-        LegacyShardKey = "db2", BranchId = 105, VehicleId = vehicleId, JobNo = jobNo, CreatedAt = createdAt,
+        LegacyShardKey = shard, BranchId = branch, VehicleId = vehicleId, JobNo = jobNo, CreatedAt = createdAt,
         VehicleRegistration = plate, CustomerPhone = phone, CustomerName = "ลูกค้า ทดสอบ", Status = status
     };
 
@@ -364,7 +364,7 @@ public sealed class ReportsServiceTests
     }
 
     /// <summary>ใบส่งมอบที่เซ็นแล้วพร้อมรายการนัด (ชื่อ, ไมล์, วันนัด) — เรียงตามลำดับที่ส่งมา</summary>
-    private static HandoverRecord HandedOver(
+    internal static HandoverRecord HandedOver(
         Guid jobId, DateTime submittedAt, int mileage, params (string Name, int Mileage, DateOnly DueOn)[] items)
     {
         var record = new HandoverRecord { JobId = jobId, SubmittedAt = submittedAt, MileageAtHandover = mileage };
@@ -517,14 +517,87 @@ public sealed class ReportsServiceTests
 
     [Theory]
     [InlineData(UserRole.Technician)]
-    [InlineData(UserRole.FrontDesk)]
     [InlineData(UserRole.Cashier)]
     [InlineData(UserRole.Lead)]
-    public async Task GetServiceDueAsync_is_manager_or_office_only(UserRole role)
+    public async Task GetServiceDueAsync_is_closed_to_workshop_and_cashier_roles(UserRole role)
     {
-        var result = await CreateService(new FakeReportsRepository(), role).GetServiceDueAsync(null, null);
+        var service = CreateService(new FakeReportsRepository(), role);
+
+        (await service.GetServiceDueAsync(null, null)).Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+        (await service.GetServiceDueCountAsync()).Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+    }
+
+    /// <summary>หน้าร้านเป็นผู้รับแจ้งเตือน จึงต้องเปิดรายงานและตัวเลขเมนูได้ (ยืนยัน 2026-10-25) — ธุรการ/ผู้จัดการเปิดได้เหมือนเดิม</summary>
+    [Theory]
+    [InlineData(UserRole.FrontDesk)]
+    [InlineData(UserRole.Office)]
+    [InlineData(UserRole.Manager)]
+    public async Task GetServiceDue_and_count_are_open_to_front_desk_office_and_manager(UserRole role)
+    {
+        var service = CreateService(new FakeReportsRepository(), role);
+
+        (await service.GetServiceDueAsync(null, null)).Success.Should().BeTrue();
+        (await service.GetServiceDueCountAsync()).Success.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Other_reports_stay_closed_to_front_desk()
+    {
+        var result = await CreateService(new FakeReportsRepository(), UserRole.FrontDesk).GetDashboardAsync();
 
         result.Error!.Code.Should().Be("REPORTS_FORBIDDEN");
+    }
+
+    /// <summary>ตัวเลขเมนู = จำนวนแถวของรายงานในช่วงวันนี้−30..วันนี้+7 ด้วยกติกาเดียวกัน (รวมการตัดรถที่กลับมา/มีจ๊อบเปิด · วันนัดของรถ = รายการที่ครบเร็วสุด)</summary>
+    [Fact]
+    public async Task GetServiceDueCountAsync_matches_the_report_rows_for_the_same_window()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var now = DateTime.UtcNow;
+        var jobs = new List<Job>();
+        var handovers = new List<HandoverRecord>();
+        void Due(long vehicleId, int dueInDays, JobStatus? otherJob = null)
+        {
+            var job = VehicleJob(vehicleId, $"JB-{vehicleId}", now.AddDays(-40), plate: $"V{vehicleId}");
+            jobs.Add(job);
+            handovers.Add(HandedOver(job.Id, now.AddDays(-39), 10_000, ("เช็คระยะ", 15_000, today.AddDays(dueInDays))));
+            if (otherJob is { } status) jobs.Add(VehicleJob(vehicleId, $"JB-{vehicleId}-X", now.AddDays(-1), plate: $"V{vehicleId}", status: status));
+        }
+        Due(1, -45);                                   // เลยเกินขอบล่าง 30 วัน → ไม่นับ
+        Due(2, -30);                                   // ขอบล่างพอดี → นับ (เลยกำหนด)
+        Due(3, -1);                                    // เลยกำหนด → นับ
+        Due(4, 0);                                     // วันนี้ → นับ
+        Due(5, 7);                                     // ขอบบนพอดี → นับ
+        Due(6, 8);                                     // ยังไม่ถึงหน้าต่าง → ไม่นับ
+        Due(7, 3, otherJob: JobStatus.InProgress);     // เปิดจ๊อบใหม่แล้ว → ไม่นับ
+        Due(8, 2, otherJob: JobStatus.Cancelled);      // กลับมาแต่ยกเลิก → ยังนับ
+        var repo = new FakeReportsRepository { Jobs = jobs, Handovers = handovers };
+        var service = CreateService(repo, UserRole.Manager);
+
+        var count = (await service.GetServiceDueCountAsync()).Data!;
+        var report = (await service.GetServiceDueAsync(today.AddDays(-30), today.AddDays(7))).Data!;
+
+        count.Count.Should().Be(report.Items.Count).And.Be(5);
+        count.Count.Should().Be(5);
+        count.OverdueCount.Should().Be(2);
+        count.FromDate.Should().Be(today.AddDays(-30));
+        count.ToDate.Should().Be(today.AddDays(7));
+        report.Items.Select(i => i.VehicleRegistration).Should().BeEquivalentTo("V2", "V3", "V4", "V5", "V8");
+    }
+
+    [Fact]
+    public async Task GetServiceDueCountAsync_dates_a_vehicle_by_its_earliest_item_so_a_later_item_does_not_pull_it_into_the_window()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow.AddHours(7));
+        var job = VehicleJob(1, "JB-1", DateTime.UtcNow.AddDays(-300));
+        var repo = new FakeReportsRepository
+        {
+            Jobs = [job],
+            Handovers = [HandedOver(job.Id, DateTime.UtcNow.AddDays(-299), 10_000,
+                ("น้ำมันเครื่อง", 15_000, today.AddDays(-100)), ("กรองอากาศ", 30_000, today.AddDays(3)))]
+        };
+
+        (await CreateService(repo, UserRole.FrontDesk).GetServiceDueCountAsync()).Data!.Count.Should().Be(0);
     }
 
     [Fact]
@@ -552,7 +625,7 @@ public sealed class ReportsServiceTests
         public bool IsAdministrator => false;
     }
 
-    private sealed class FakeReportsRepository : IReportsRepository
+    internal sealed class FakeReportsRepository : IReportsRepository
     {
         public List<Job> Jobs { get; set; } = [];
         public List<ActivityEvent> Events { get; set; } = [];
@@ -619,12 +692,26 @@ public sealed class ReportsServiceTests
                 Handovers.Where(h => ids.Contains(h.JobId)).ToList()));
         }
 
+        /// <summary>ตั้งค่าเมื่อเทสต์อยากกำหนดผลการไล่หาสาขาเอง (ไม่คำนวณจาก Handovers)</summary>
+        public List<ServiceDueBranch>? BranchesOverride { get; set; }
+
+        public Task<IReadOnlyList<ServiceDueBranch>> GetBranchesWithServiceDueAsync(DateOnly from, DateOnly to, CancellationToken ct)
+        {
+            if (BranchesOverride is not null) return Task.FromResult<IReadOnlyList<ServiceDueBranch>>(BranchesOverride);
+            foreach (var h in Handovers) h.Job = Jobs.First(j => j.Id == h.JobId);
+            return Task.FromResult<IReadOnlyList<ServiceDueBranch>>(Handovers
+                .Where(h => h.SubmittedAt != null && h.ServiceItems.Any(i => i.NextServiceDueOn >= from && i.NextServiceDueOn <= to))
+                .Select(h => new ServiceDueBranch(h.Job!.LegacyShardKey, h.Job.BranchId))
+                .Distinct().ToList());
+        }
+
         public Task<ServiceDueData> GetServiceDueAsync(
             string shardKey, int branchId, DateOnly from, DateOnly to, CancellationToken ct)
         {
             foreach (var h in Handovers) h.Job = Jobs.First(j => j.Id == h.JobId);
             // เหมือน ReportsRepository: กรองช่วงวันด้วยรายการที่ครบเร็วที่สุดของใบส่งมอบ
             var candidates = Handovers.Where(h => h.SubmittedAt != null && h.ServiceItems.Count > 0
+                && h.Job!.LegacyShardKey == shardKey && h.Job.BranchId == branchId
                 && h.ServiceItems.Min(i => i.NextServiceDueOn) >= from && h.ServiceItems.Min(i => i.NextServiceDueOn) <= to).ToList();
             return Task.FromResult(new ServiceDueData(
                 candidates,

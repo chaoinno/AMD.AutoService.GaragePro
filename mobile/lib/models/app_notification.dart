@@ -14,10 +14,16 @@ abstract final class NotificationKind {
   static const purchaseApproved = 'purchase.approved';
   static const purchaseReturned = 'purchase.returned';
 
+  /// รถใกล้ครบรอบบริการ (เหลือ ≤ 7 วัน) — แจ้งหน้าร้าน/ผู้จัดการ · `entityType: "ServiceDue"` ไม่มีจ๊อบ · รายงานอยู่บนเว็บเท่านั้น
+  static const serviceDue = 'service.due';
+
   /// ผลตรวจการแจ้งชำระแพ็กเกจ (docs/17 §5.4) · `entityType: "PackagePayment"` ไม่มีจ๊อบ
   static const packagePaymentApproved = 'package.payment_approved';
   static const packagePaymentRejected = 'package.payment_rejected';
 }
+
+/// entityType ของแจ้งเตือนรถใกล้ครบรอบบริการ
+const serviceDueEntityType = 'ServiceDue';
 
 /// entityType ของแจ้งเตือนการแจ้งชำระแพ็กเกจ
 const packagePaymentEntityType = 'PackagePayment';

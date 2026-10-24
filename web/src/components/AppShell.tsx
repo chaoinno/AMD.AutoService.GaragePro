@@ -30,6 +30,7 @@ import {
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router'
 import { countOpenJobs } from '../api/jobs'
+import { getServiceDueCount } from '../api/reports'
 import { NotificationBell } from './notifications/NotificationBell'
 import { BranchSwitcher } from './BranchSwitcher'
 import { countOpenPurchaseOrders, purchases, type PurchaseKind } from '../api/purchasing'
@@ -59,7 +60,19 @@ type AppShellProps = {
   documentMode?: boolean
 }
 
-const navGroups = [
+// ฟิลด์ตัวเลขท้ายเมนู (นับเอกสาร/จ๊อบ/บิลร่าง/รถใกล้ครบรอบ) เป็น optional ทุกตัว — ต้องระบุชนิดตรงๆ ไม่งั้น TS อนุมานเป็น union
+// ที่แต่ละกลุ่มมีฟิลด์ไม่เหมือนกัน แล้ว item.purchaseKind พังเมื่อกลุ่มหนึ่งไม่มีฟิลด์นั้นเลย
+type NavItem = {
+  to: string
+  icon: typeof Wrench
+  label: string
+  jobsInShop?: true
+  purchaseKind?: PurchaseKind
+  saleDrafts?: boolean
+  serviceDue?: true
+}
+
+const navGroups: { label: string; items: NavItem[] }[] = [
   {
     label: 'Workplace',
     items: [
@@ -80,7 +93,8 @@ const navGroups = [
       { to: '/reports/stock', icon: Boxes, label: 'สต็อกสินค้า' },
       // เปิดทุกบทบาท (หน้าร้าน/ช่างค้นตอนลูกค้ามาที่เคาน์เตอร์) — ช่าง/หัวหน้าช่างไม่เห็นยอดเงิน
       { to: '/reports/vehicle-history', icon: History, label: 'ประวัติรถ' },
-      { to: '/reports/service-due', icon: AlarmClock, label: 'รถใกล้ครบรอบบริการ' },
+      // ตัวเลขข้างเมนูเห็นเฉพาะบทบาทที่เปิดรายงานได้ (ผู้จัดการ/ธุรการ/หน้าร้าน)
+      { to: '/reports/service-due', icon: AlarmClock, label: 'รถใกล้ครบรอบบริการ', serviceDue: true as const },
       // ยังไม่ใช่รายงานประเมินประสิทธิภาพ — เป็นข้อมูลดิบให้หัวหน้าช่าง/ผู้จัดการตรวจและแก้คาบที่ผิด
       // ระหว่างช่วงเก็บข้อมูล (บทบาทอื่นกดแล้วได้ 403 พร้อมเหตุผลจาก QueryState ตามคอนเวนชันของเมนู)
       { to: '/reports/work-intervals', icon: Timer, label: 'เวลาทำงานของช่าง' },
@@ -153,6 +167,15 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
     staleTime: 30_000,
   })
 
+  // รถใกล้ครบรอบบริการ — เฉพาะบทบาทที่เปิดรายงานได้ ไม่งั้นช่าง/แคชเชียร์จะยิงคำขอที่ได้ 403 ทุกหน้า
+  const canSeeServiceDue = ['manager', 'office', 'frontdesk'].includes(session?.user.role.toLowerCase() || '')
+  const serviceDueCount = useQuery({
+    queryKey: ['service-due-count'],
+    queryFn: getServiceDueCount,
+    enabled: canSeeServiceDue,
+    staleTime: 60_000,
+  })
+
   const logout = () => {
     queryClient.clear()
     clearStoredSession()
@@ -184,6 +207,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   : item.purchaseKind === 'PO' ? poCount.data
                   : 'jobsInShop' in item && item.jobsInShop ? jobsInShopCount.data
                   : 'saleDrafts' in item && item.saleDrafts ? saleDraftCount.data || undefined
+                  : 'serviceDue' in item && item.serviceDue ? serviceDueCount.data?.count || undefined
                   : undefined
                 const countTitle = 'jobsInShop' in item && item.jobsInShop
                   ? `จ๊อบรถในอู่ที่ยังไม่ปิดงาน ${count} รายการ`
@@ -191,6 +215,8 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                   ? `ใบสั่งซื้อที่ยังไม่รับครบ ${count} รายการ`
                   : 'saleDrafts' in item && item.saleDrafts
                   ? `บิลขายร่างที่ยังไม่ชำระเงิน ${count} บิล`
+                  : 'serviceDue' in item && item.serviceDue
+                  ? `รถที่ถึงรอบบริการแล้ว (เลยกำหนดไม่เกิน 30 วัน) หรือจะครบใน 7 วัน ${count} คัน`
                   : `เอกสารทั้งหมด ${count} รายการ`
                 const linkLabel = lockedFeature ? lockedNavLabel(item.label) : item.label
                 return (
@@ -208,7 +234,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                         <Lock />
                       </span>
                     ) : count !== undefined ? (
-                      <span className="sidebar__count" title={countTitle} aria-label={`${count} รายการ`}>
+                      <span className="sidebar__count" title={countTitle} aria-label={'serviceDue' in item && item.serviceDue ? `${count} คัน` : `${count} รายการ`}>
                         {count > 999 ? '999+' : count}
                       </span>
                     ) : null}

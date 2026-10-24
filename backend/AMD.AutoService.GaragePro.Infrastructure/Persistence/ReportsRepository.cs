@@ -154,6 +154,18 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
         return new ServiceDueData(candidates, visits, handovers);
     }
 
+    public async Task<IReadOnlyList<ServiceDueBranch>> GetBranchesWithServiceDueAsync(
+        DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var rows = await db.HandoverServiceItems.AsNoTracking()
+            .Where(i => i.NextServiceDueOn >= from && i.NextServiceDueOn <= to
+                        && i.HandoverRecord!.SubmittedAt != null)
+            .Select(i => new { i.HandoverRecord!.Job!.LegacyShardKey, i.HandoverRecord.Job.BranchId })
+            .Distinct()
+            .ToListAsync(ct);
+        return rows.Select(r => new ServiceDueBranch(r.LegacyShardKey, r.BranchId)).ToList();
+    }
+
     private static IQueryable<Job> Scope(IQueryable<Job> jobs, string shardKey, int branchId) =>
         jobs.Where(j => j.LegacyShardKey == shardKey && j.BranchId == branchId);
 }

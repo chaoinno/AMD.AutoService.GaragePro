@@ -33,6 +33,8 @@ export function markAllNotificationsRead() {
 export function notificationHref(n: AppNotification): string {
   // ผลการตรวจแจ้งชำระเงินค่าแพ็กเกจ (docs/17 §5.4): ไม่มี jobId จึงต้องจับก่อน fallback `/jobs`
   if (n.entityType === 'PackagePayment' || n.linkHint === 'package') return '/package'
+  // รถใกล้ครบรอบบริการ: ไม่ผูกจ๊อบ — เปิดรายงานตามที่ใช้ตัวเลขเมนู (วันนี้−30..วันนี้+7 คือค่าเริ่มต้นของรายงานอยู่แล้ว)
+  if (n.entityType === 'ServiceDue' || n.linkHint === 'service-due') return '/reports/service-due'
   if (n.entityType === 'PR' || n.entityType === 'PO') {
     const kind = n.entityType.toLowerCase()
     return n.entityId ? `/purchasing/${kind}?doc=${n.entityId}` : `/purchasing/${kind}`

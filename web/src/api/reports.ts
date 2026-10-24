@@ -254,5 +254,10 @@ export type ServiceDueReport = {
   items: ServiceDueItem[]
 }
 
+/// ตัวเลขข้างเมนู — รถที่วันนัดอยู่ระหว่างวันนี้−30 ถึงวันนี้+7 (วันไทย) กติกาเดียวกับรายงาน · เปิดให้ผู้จัดการ/ธุรการ/หน้าร้าน
+export type ServiceDueCount = { count: number; overdueCount: number; fromDate: string; toDate: string }
+
+export const getServiceDueCount = () => apiRequest<ServiceDueCount>('/api/v1/reports/service-due/count')
+
 export const getServiceDueReport = (fromDate: string, toDate: string) =>
   apiRequest<ServiceDueReport>(`/api/v1/reports/service-due?fromDate=${fromDate}&toDate=${toDate}`)

@@ -68,4 +68,10 @@ public sealed class ReportsController(ReportsService service) : ControllerBase
     [HttpGet("service-due")]
     public async Task<IActionResult> ServiceDue(DateOnly? fromDate, DateOnly? toDate, CancellationToken ct) =>
         Render(await service.GetServiceDueAsync(fromDate, toDate, ct));
+
+    /// <summary>จำนวนรถใกล้ครบรอบบริการสำหรับตัวเลขข้างเมนู — วันนัดระหว่างวันนี้−30 ถึงวันนี้+7 (วันไทย) กติกาเดียวกับรายงาน
+    /// เปิดให้ผู้จัดการ/ธุรการ/หน้าร้าน</summary>
+    [HttpGet("service-due/count")]
+    public async Task<IActionResult> ServiceDueCount(CancellationToken ct) =>
+        Render(await service.GetServiceDueCountAsync(ct));
 }

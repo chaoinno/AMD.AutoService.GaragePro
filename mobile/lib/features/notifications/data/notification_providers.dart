@@ -58,10 +58,17 @@ String? notificationTarget(AppNotification n) {
   // ผลตรวจการแจ้งชำระแพ็กเกจไม่ผูกจ๊อบ พาไปหน้าแพ็กเกจ (ตรงกับ linkHint "package" ของ server)
   if (n.entityType == packagePaymentEntityType || n.linkHint == 'package') return Routes.package;
   if (n.entityType == 'PR' || n.entityType == 'PO') return null;
+  // รถใกล้ครบรอบบริการ: รายงานอยู่บนเว็บเท่านั้น (แอปไม่มีรายงานนี้)
+  if (n.entityType == serviceDueEntityType) return null;
   if (jobId == null || jobId.isEmpty) return null;
   if (n.linkHint == 'chat') return Routes.jobChat(jobId);
   return Routes.job(jobId);
 }
+
+/// ข้อความตอนแตะการ์ดที่ไม่มีหน้าในแอปให้เปิด ([notificationTarget] เป็น null) — บอกให้ถูกเรื่อง ไม่ใช่ข้อความเอกสารจัดซื้อทุกกรณี
+String notificationWebOnlyMessage(AppNotification n) => n.entityType == serviceDueEntityType
+    ? 'รายงานรถใกล้ครบรอบบริการเปิดได้บนเว็บเท่านั้น'
+    : 'เอกสารจัดซื้อ (${n.entityType}) เปิดได้บนเว็บเท่านั้น';
 
 /// ตัวเลขบนกระดิ่ง — ไม่ให้ป้ายกว้างจนบังไอคอน
 String unreadBadgeLabel(int count) => count > 99 ? '99+' : '$count';
