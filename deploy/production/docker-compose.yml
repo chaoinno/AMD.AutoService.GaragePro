@@ -36,10 +36,10 @@ services:
       SelfServe__Trial__Days: "30"
       SelfServe__Trial__ReadOnlyDays: "90"
       SelfServe__Jobs__Enabled: "true"
-      # [BIZ] แจ้งเตือนรถใกล้ครบรอบบริการ (ServiceDueDailyJob) — ปิดไว้ใน deploy รอบแรกตามที่เจ้าของตัดสินใจ 2026-10-25
-      #       ยังไม่เคยรันกับข้อมูลจริง และรันทีเดียวส่งถึงหน้าร้าน/ผู้จัดการทุกสาขา · ตรวจรายงาน /reports/service-due ก่อน แล้วเปลี่ยนเป็น "true" + deploy ใหม่
-      #       ไม่ใส่บรรทัดนี้ = เปิด (ค่าเริ่มต้นของ ServiceDueDailyJob.IsEnabled)
-      ServiceDue__Jobs__Enabled: "false"
+      # [BIZ] แจ้งเตือนรถใกล้ครบรอบบริการ (ServiceDueDailyJob) — deploy รอบแรกปิดไว้ · เปิดแล้ว 2026-10-25 หลังเจ้าของตรวจรายงาน
+      #       /reports/service-due บน production · รัน 1 นาทีหลัง container เริ่ม + ทุกวัน 08:00 เวลาไทย · ส่งถึงหน้าร้าน/ผู้จัดการทุกสาขา
+      #       ครั้งเดียวต่อรถต่อรอบนัด (SubjectKey กันซ้ำ) · ปิดฉุกเฉิน: เปลี่ยนเป็น "false" + deploy
+      ServiceDue__Jobs__Enabled: "true"
     ports:
       - "127.0.0.1:${API_PORT:-5081}:8080"
     volumes:

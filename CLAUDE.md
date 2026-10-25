@@ -2033,7 +2033,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     และ log ยืนยันว่างานแจ้งเตือนปิดอยู่
     · **SQL backfill ของ `AddHandoverServiceItems` รันซ้ำกับ GarageService หลัง deploy แล้ว** (เจ้าของรันเอง 2026-10-25 — ครอบใบส่งมอบที่เซ็นระหว่างรัน migration ถึง deploy)
     · **ยังค้าง**: ปล่อยแอป 1.3.0+5 ·
-      migrate GarageSelfServe_Dev · เปิดงานแจ้งเตือน (ดูรายงาน `/reports/service-due` ก่อน แล้วแก้ compose เป็น `"true"` + deploy) ·
+      migrate GarageSelfServe_Dev ·
+    · **[2026-10-25] เปิดงานแจ้งเตือนรถใกล้ครบรอบแล้ว** (`ServiceDue__Jobs__Enabled: "true"` ใน compose) หลังเจ้าของตรวจรายงานสาขา 227 บน production
+      (ช่วง 90 วันเห็น จจ-1112 นัด 19 ม.ค. 2570 ตรงกับข้อมูล) · ต้อง deploy ใหม่ถึงมีผล ·
       ยังไม่ได้ลองใช้ฟีเจอร์ใหม่บน production ด้วยบัญชีจริง
   · **[1] min-max สต็อก**: `CatalogItem.MinStock/MaxStock` · กฎเดียว `Domain/Common/StockLevel.cs` (พร้อมใช้ ≤ min · แนะนำสั่ง = max − พร้อมใช้ − OnOrder · `BelowMin` expression ใช้กับ EF)
     · `GET /inventory/low-stock/count` · `PUT /inventory/items/{id}/stock-levels` (Manager/Office) · ฟอร์มสินค้า (Manager) ใช้ validation เดียวกัน ·
