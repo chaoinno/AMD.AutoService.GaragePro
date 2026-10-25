@@ -2033,7 +2033,6 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     และ log ยืนยันว่างานแจ้งเตือนปิดอยู่
     · **SQL backfill ของ `AddHandoverServiceItems` รันซ้ำกับ GarageService หลัง deploy แล้ว** (เจ้าของรันเอง 2026-10-25 — ครอบใบส่งมอบที่เซ็นระหว่างรัน migration ถึง deploy)
     · **ยังค้าง**: ปล่อยแอป 1.3.0+5 ·
-      migrate GarageSelfServe_Dev ·
     · **[2026-10-25] เปิดงานแจ้งเตือนรถใกล้ครบรอบแล้ว** (`ServiceDue__Jobs__Enabled: "true"` ใน compose) หลังเจ้าของตรวจรายงานสาขา 227 บน production
       (ช่วง 90 วันเห็น จจ-1112 นัด 19 ม.ค. 2570 ตรงกับข้อมูล) · **deploy แล้ว (`49055b1`)** · รอบแรกหลังสตาร์ต log
       "ตรวจ 0 สาขา สร้างแจ้งเตือนใหม่ 0 รายการ" (ยังไม่มีรถที่ครบภายใน 7 วัน) · log `fail` duplicate key ที่ `sp_JobRun` ตอนสตาร์ตเป็นเรื่องปกติของงาน self-serve ·
@@ -2052,6 +2051,11 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     (`SubjectKey service-due:{vehicleId}:{date}`) · resolved เมื่อเปิดจ๊อบใหม่ของรถคันนั้น · `ServiceDueDailyJob` 08:00 + 1 นาทีหลังสตาร์ต (ปิดด้วย `ServiceDue:Jobs:Enabled=false`)
     ไล่ฐานหลัก + sp1 เมื่อตั้งค่า · กติกาเดียวกับรายงานที่ `ServiceDueRows` · [RISK] ไม่มี unique index กันแจ้งซ้ำ ถ้ารัน API หลาย instance พร้อมกันอาจแจ้งซ้ำ
   · **[6] มือถือสลับสาขา** (admin · หน้าโปรไฟล์ · token มือถือจาก backend เดิม) · เวอร์ชันแอป `1.3.0+5`
+    · **[แก้ 2026-10-25 — ผู้ใช้หาปุ่มไม่เจอบน iPhone]** เซสชันที่บันทึกจากแอปรุ่นก่อนไม่มี `isAdministrator` (อ่านเป็น false) และ `/auth/me` เดิมเติมให้แค่แพ็กเกจ
+      → `MeResult.isAdministrator` + `updatePlan(..., isAdministrator:)` เติมค่าทุกครั้งที่ SessionGuard เช็ค ปุ่มขึ้นโดยไม่ต้อง login ใหม่
+    · **[เพิ่ม 2026-10-25] หน้าโปรไฟล์แสดง "ServicePro เวอร์ชัน x.y.z (build)"** ใต้ปุ่มออกจากระบบ — `core/app_version.dart` อ่านจาก bundle ผ่าน
+      `package_info_plus` (plugin ใหม่ ต้อง build ใหม่ทั้งตัว hot reload ไม่พอ) · อ่านไม่ได้ = ไม่แสดง · `dart analyze` สะอาด · `flutter test` 233 ·
+      ยังไม่ได้เห็นบนเครื่องจริงหลังรันใหม่
   · **migration ใหม่ 3 ตัว (ยังไม่ได้รันกับฐานใดเลย)**: `AddCatalogItemMinMax` · `AddHandoverServiceItems` (มี backfill SQL) · `AddStockMovementSource` ·
     `has-pending-model-changes` หลังรวม branch = ไม่มี · ต้องรันทั้ง `GarageService` และ `GarageSelfServe` (ฐานร่วม production — ขออนุญาตก่อน)
   · ผลตรวจหลังรวม (2026-10-25): `dotnet build` 0 error · `dotnet test` **1661 ผ่าน / 23 ข้าม** · Web `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) **95** ·
@@ -2060,8 +2064,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     งานรายวันยังไม่เคยรันจริง · การแยกสาขาของรายงาน/ตัวเลขตรวจแค่ว่าส่ง shard/branch ถูก · Android
   · **[RISK] ลำดับ deploy**: แอป 1.3.0+5 ต้องปล่อยหลัง backend · เว็บต้อง deploy พร้อม backend
   · **migration 3 ตัวรันกับ GarageService (ฐานร่วม production) แล้ว 2026-10-25** (ผู้ใช้อนุญาต · ก่อนรันค้าง 3 ตัวนี้พอดี · หลังรันไม่เหลือ Pending)
-    · **GarageSelfServe_Dev ยังไม่ได้รัน — ตัดสินใจ 2026-10-25 ให้คนที่มีเครื่องที่ต่อฐานนี้ได้รันเอง** ด้วย
-      `ConnectionStrings__ServiceDb="<SelfServe:MigrationConnectionString>" dotnet ef database update --context ServiceDbContext ...` จาก branch นี้
+    · **GarageSelfServe_Dev รัน 3 migration แล้ว 2026-10-25** ด้วย `REMOTE_HOST=deployment@10.10.3.13 ./scripts/migrate-selfserve-dev.sh` (ใหม่)
+      — รันจากเครื่อง production ด้วย image API ที่ deploy อยู่ · ใช้ `SelfServe__MigrationConnectionString` ของ env file แล้วเปลี่ยนชื่อฐานเป็น `_Dev` ใน container
+      (login ระดับ server รหัสเดียวกับ production) · เปลี่ยนชื่อไม่สำเร็จ = หยุด ไม่ลงฐาน production · **ใช้สคริปต์นี้กับ migration ใหม่ทุกครั้งหลัง deploy**
       · Mac เครื่องนี้ตั้ง user-secrets ของ sp1 ครบแล้ว (`Encrypt=False` ตาม connection ของ GarageService) แต่ต่อด้วย `gp_selfserve_app`/`gp_selfserve_migrate`
         ไม่ได้: **TLS handshake failed (connection reset by peer)** ทั้งที่ login `sa` ที่เซิร์ฟเวอร์เดียวกันต่อได้ — ยังไม่รู้สาเหตุ · API ตอนสตาร์ต log warning
         แล้วทำงานต่อ (sp1 ใช้ไม่ได้) · ตั้ง `SelfServe:Jobs:Enabled=false` บนเครื่องนี้แล้ว

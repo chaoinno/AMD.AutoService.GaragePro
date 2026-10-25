@@ -137,10 +137,13 @@ class WorkspaceInfo {
 /// ผลของ `GET /auth/me` ที่แอปใช้ — อ่านแพ็กเกจจาก `user.plan` ก่อน แล้วค่อย `plan` ระดับบน
 /// (MeDto มีทั้งสองที่) · ไม่มีทั้งคู่ = ลูกค้าเดิม/backend รุ่นก่อน → null
 class MeResult {
-  const MeResult({this.plan, this.workspace});
+  const MeResult({this.plan, this.workspace, this.isAdministrator});
 
   final PlanInfo? plan;
   final WorkspaceInfo? workspace;
+
+  /// null = คำตอบไม่มีฟิลด์นี้ (ไม่เปลี่ยนค่าในเซสชัน) — ใช้เติมให้เซสชันที่บันทึกจากแอปรุ่นก่อนมีปุ่มสลับสาขา
+  final bool? isAdministrator;
 
   factory MeResult.fromJson(Object? raw) {
     if (raw is! Map) return const MeResult();
@@ -150,6 +153,7 @@ class MeResult {
       plan: PlanInfo.tryParse(userMap['plan']) ?? PlanInfo.tryParse(raw['plan']),
       workspace:
           WorkspaceInfo.tryParse(userMap['workspace']) ?? WorkspaceInfo.tryParse(raw['workspace']),
+      isAdministrator: userMap['isAdministrator'] is bool ? userMap['isAdministrator'] as bool : null,
     );
   }
 }
@@ -205,7 +209,7 @@ class AuthUser {
   final PlanInfo? plan;
   final WorkspaceInfo? workspace;
 
-  AuthUser withPlan(PlanInfo? plan, WorkspaceInfo? workspace) => AuthUser(
+  AuthUser withPlan(PlanInfo? plan, WorkspaceInfo? workspace, {bool? isAdministrator}) => AuthUser(
         userId: userId,
         userName: userName,
         displayName: displayName,
@@ -214,7 +218,7 @@ class AuthUser {
         shardKey: shardKey,
         canSeeCost: canSeeCost,
         canCloseShift: canCloseShift,
-        isAdministrator: isAdministrator,
+        isAdministrator: isAdministrator ?? this.isAdministrator,
         positionName: positionName,
         departmentName: departmentName,
         plan: plan,

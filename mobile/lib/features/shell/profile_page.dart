@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../api/client.dart';
 import '../../app/routes.dart';
+import '../../core/app_version.dart';
 import '../../core/roles.dart';
 import '../../core/tokens.dart';
 import '../../models/auth.dart';
@@ -189,6 +190,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
             ),
           ),
+          const SizedBox(height: T.s16),
+          // ระหว่างโหลด/อ่านไม่ได้ (เช่นในเทสต์ที่ไม่มี plugin) ไม่แสดงอะไรเลย — ข้อมูลประกอบ ไม่ใช่สิ่งที่ผู้ใช้ต้องทำต่อ
+          ref.watch(appVersionProvider).maybeWhen(
+                data: (version) => Text(
+                  'ServicePro เวอร์ชัน $version',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13, color: T.muted, height: 1.6),
+                ),
+                orElse: () => const SizedBox.shrink(),
+              ),
         ],
       ),
     );

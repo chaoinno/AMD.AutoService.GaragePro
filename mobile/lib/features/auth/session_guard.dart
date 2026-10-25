@@ -83,7 +83,7 @@ class _SessionGuardState extends ConsumerState<SessionGuard> {
       if (!mounted) return;
       await ref
           .read(sessionProvider.notifier)
-          .updatePlan(me.plan, me.workspace, expectedToken: token);
+          .updatePlan(me.plan, me.workspace, expectedToken: token, isAdministrator: me.isAdministrator);
     } catch (_) {
       // ดูคอมเมนต์ของคลาส — 401 ถูกจัดการที่ ApiClient แล้ว ที่เหลือไม่ใช่เหตุให้ออกจากระบบ
     } finally {

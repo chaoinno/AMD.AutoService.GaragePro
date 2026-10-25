@@ -1502,7 +1502,7 @@ class _PackagePageState extends ConsumerState<PackagePage> {
     try {
       final me = await ref.read(authApiProvider).ping();
       if (!mounted) return;
-      await ref.read(sessionProvider.notifier).updatePlan(me.plan, me.workspace, expectedToken: token);
+      await ref.read(sessionProvider.notifier).updatePlan(me.plan, me.workspace, expectedToken: token, isAdministrator: me.isAdministrator);
     } catch (_) {
       // 401 ถูก ApiClient จัดการแล้ว อย่างอื่นไม่ใช่เหตุให้ขวางหน้านี้
     }

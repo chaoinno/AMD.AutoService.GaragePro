@@ -64,19 +64,22 @@ class SessionNotifier extends Notifier<Session?> {
   }
 
   /// แทนแพ็กเกจ/อู่ด้วยค่าล่าสุดจาก `/auth/me` โดยไม่ต้องเข้าสู่ระบบใหม่ (แถบทดลองใช้เปลี่ยนตามทันที)
+  /// · [isAdministrator] ด้วย — เซสชันที่บันทึกจากแอปรุ่นก่อน 1.3.0 ไม่มีฟิลด์นี้ (อ่านเป็น false)
+  ///   ผู้ดูแลระบบจะไม่เห็นปุ่มสลับสาขาจนกว่าจะออกแล้วเข้าระบบใหม่ ถ้าไม่เติมจากตรงนี้
   ///
   /// [expectedToken] กันคำตอบที่มาช้าเขียนทับเซสชันของคนถัดไป (ออกจากระบบ/สลับบัญชีระหว่างรอ)
   /// · ค่าเดิมทุกตัว = ไม่บันทึก ไม่แจ้ง listener (ถูกเรียกทุก 5 นาที)
   Future<void> updatePlan(PlanInfo? plan, WorkspaceInfo? workspace,
-      {required String expectedToken}) async {
+      {required String expectedToken, bool? isAdministrator}) async {
     final current = state;
     if (current == null || current.accessToken != expectedToken) return;
 
     final unchanged = jsonEncode(current.user.plan?.toJson()) == jsonEncode(plan?.toJson()) &&
-        jsonEncode(current.user.workspace?.toJson()) == jsonEncode(workspace?.toJson());
+        jsonEncode(current.user.workspace?.toJson()) == jsonEncode(workspace?.toJson()) &&
+        (isAdministrator == null || isAdministrator == current.user.isAdministrator);
     if (unchanged) return;
 
-    await save(current.withUser(current.user.withPlan(plan, workspace)));
+    await save(current.withUser(current.user.withPlan(plan, workspace, isAdministrator: isAdministrator)));
   }
 
   /// server เพิ่งตอบ TRIAL_EXPIRED กับคำขอเขียน = อู่อยู่ในช่วงอ่านอย่างเดียวแล้ว

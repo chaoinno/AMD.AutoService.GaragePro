@@ -85,6 +85,29 @@ void main() {
     expect(AuthUser.fromJson(old).isAdministrator, isFalse);
   });
 
+  test('/auth/me เติม isAdministrator ให้เซสชันรุ่นเก่า โดยไม่ต้องเข้าระบบใหม่', () async {
+    expect(MeResult.fromJson({'user': {'isAdministrator': true}}).isAdministrator, isTrue);
+    expect(MeResult.fromJson({'user': <String, dynamic>{}}).isAdministrator, isNull);
+
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(overrides: [sharedPrefsProvider.overrideWithValue(prefs)]);
+    addTearDown(container.dispose);
+
+    // เซสชันที่บันทึกจากแอปรุ่นก่อน 1.3.0 — ไม่มีฟิลด์ isAdministrator จึงอ่านได้ false
+    final json = _session().toJson();
+    (json['user'] as Map<String, dynamic>).remove('isAdministrator');
+    final old = Session.fromJson(json);
+    await container.read(sessionProvider.notifier).save(old);
+    expect(branchSwitchAvailability(container.read(sessionProvider)!), BranchSwitchAvailability.hidden);
+
+    final me = MeResult.fromJson({'user': {'isAdministrator': true}});
+    await container.read(sessionProvider.notifier).updatePlan(me.plan, me.workspace,
+        expectedToken: old.accessToken, isAdministrator: me.isAdministrator);
+    expect(container.read(sessionProvider)!.user.isAdministrator, isTrue);
+    expect(branchSwitchAvailability(container.read(sessionProvider)!), isNot(BranchSwitchAvailability.hidden));
+  });
+
   test('filterBranches กรองตามชื่อ ไม่สนตัวพิมพ์', () {
     const all = [
       SwitchableBranch(branchId: 1, name: 'Service Center'),
