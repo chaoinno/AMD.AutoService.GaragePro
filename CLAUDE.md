@@ -2056,6 +2056,13 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
         แล้วทำงานต่อ (sp1 ใช้ไม่ได้) · ตั้ง `SelfServe:Jobs:Enabled=false` บนเครื่องนี้แล้ว
     · **[RISK] production ยังเป็นโค้ดเก่า**: ใบส่งมอบที่เซ็นหลัง 2026-10-25 จนถึงวัน deploy เก็บนัดในคอลัมน์เดิมเท่านั้น ไม่มีแถวใน `svc_HandoverServiceItem`
       → ตอน deploy ต้องรัน SQL backfill ใน `AddHandoverServiceItems` ซ้ำ (มี `NOT EXISTS` จึงรันซ้ำได้) ไม่งั้นรถเหล่านั้นหายจากรายงานใกล้ครบรอบ
+  · **[ตัดสินใจ 2026-10-25] deploy รอบแรกปิดงานแจ้งเตือนรถใกล้ครบรอบ**: `deploy/production/docker-compose.yml` ตั้ง `ServiceDue__Jobs__Enabled: "false"`
+    · เปิดใช้: ตรวจ `/reports/service-due` บน production ก่อน แล้วแก้เป็น `"true"` + deploy ใหม่ · ตัวเลขที่เมนูและรายงานใช้ได้ตั้งแต่รอบแรก (ไม่ขึ้นกับงานนี้)
+  · **[เพิ่ม 2026-10-25] เลขเวอร์ชันเว็บที่ท้าย side nav แทน "ช่วยเหลือ"** (เดิมเป็นข้อความเฉยๆ กดไม่ได้) — `v{version}` จาก `web/package.json` ที่เดียว
+    (ใส่ตอน build ผ่าน `define: __APP_VERSION__` ใน `vite.config.ts`) · **กติกาเลข (ผู้ใช้เลือก): `1.<เลข plan ใน docs>.<แก้บั๊ก>`** — งานนี้ docs/18 = `1.18.0` ·
+    แก้บั๊กในรอบเดียวกันขยับเลขท้าย · plan ถัดไปเป็น `1.19.0` · เลขเวอร์ชันแอปมือถือ (`pubspec.yaml`) แยกกัน ไม่ได้ผูกกติกานี้
+    · ตรวจแล้ว: `npm run build` (tsc · vite · ssr) ผ่าน · prerender ต้องใช้ Node 24 (Node 22.2 ของเครื่องนี้ import `.ts` ไม่ได้ — ปัญหาเดิม) · `node --test` 95 ·
+      เบราว์เซอร์เห็น `v1.18.0` พร้อม tooltip
   · **[ต้องรู้] `ServiceDueDailyJob` เริ่ม 1 นาทีหลัง API สตาร์ต** — API บนเครื่อง dev ชี้ฐานร่วม production จะส่งแจ้งเตือนจริงถึงทุกสาขา ·
     `appsettings.Development.json` ตั้ง `ServiceDue:Jobs:Enabled=false` แล้ว (ไฟล์นี้ไม่เข้า image production)
   · **ทดสอบกับ API local (branch นี้) + GarageService จริงแล้ว 2026-10-25** ด้วยบัญชีผู้จัดการสาขา 227 (Service Center Demo): ทุก endpoint ใหม่รันบน SQL Server ได้ ·

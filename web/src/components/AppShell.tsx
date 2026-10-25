@@ -8,7 +8,7 @@ import {
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
-  CircleHelp,
+  Info,
   ClipboardList,
   Clock3,
   FileStack,
@@ -270,9 +270,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
             : <ChevronsLeft className="sidebar__icon" aria-hidden="true" />}
           <span className="sidebar__label">ย่อเมนู</span>
         </button>
-        <div className="sidebar__footer" title={sidebarCollapsed ? 'ช่วยเหลือ' : undefined}>
-          <CircleHelp className="sidebar__icon" aria-hidden="true" />
-          <span className="sidebar__label">ช่วยเหลือ</span>
+        <div className="sidebar__footer" title={`${BRAND_NAME} เวอร์ชัน ${__APP_VERSION__}`} aria-label={`เวอร์ชัน ${__APP_VERSION__}`}>
+          <Info className="sidebar__icon" aria-hidden="true" />
+          <span className="sidebar__label">v{__APP_VERSION__}</span>
         </div>
       </aside>
 

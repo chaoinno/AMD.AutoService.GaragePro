@@ -10,3 +10,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** เวอร์ชันจาก package.json (ใส่ตอน build ด้วย `define` ใน vite.config.ts) */
+declare const __APP_VERSION__: string
