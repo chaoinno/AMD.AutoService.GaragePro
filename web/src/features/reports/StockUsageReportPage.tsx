@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Download, PackageMinus, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
@@ -12,6 +12,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Select } from '../../components/ui/select'
 import { formatDateOnly, formatDateTime, formatNumber } from '../../lib/format'
+import { JobCardModal } from '../jobs/JobCardModal'
 import { QueryState } from '../master-data/MasterDataCommon'
 import { PlanLockNote } from '../plan/PlanLockNote'
 import { useFeatureLock } from '../plan/usePlan'
@@ -54,6 +55,14 @@ export function StockUsageReportPage() {
   })
   const [withdrawalDoc, setWithdrawalDoc] = useState<string | null>(null)
   const [returnDoc, setReturnDoc] = useState<string | null>(null)
+  // เปิดการ์ดจ๊อบบนหน้ารายงานเลย ไม่พาไป /jobs — ปิดแล้วต้องกลับมาที่รายงานเดิมพร้อมตัวกรองเดิม
+  const [jobId, setJobId] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const closeJob = () => {
+    setJobId(null)
+    // ในการ์ดจ๊อบเบิก/คืนของได้ ยอดในรายงานอาจเปลี่ยน
+    void queryClient.invalidateQueries({ queryKey: ['reports', 'stock-usage'] })
+  }
 
   return (
     <AppShell title="การเบิกอะไหล่">
@@ -81,15 +90,16 @@ export function StockUsageReportPage() {
       </div>
 
       <QueryState query={query} loadingTitle="กำลังโหลดรายงานการเบิกอะไหล่" emptyTitle="ยังไม่มีข้อมูล" emptyReason="ไม่พบข้อมูลในช่วงนี้" onRetry={() => void query.refetch()}>
-        {query.data ? <Body report={query.data} onWithdrawal={setWithdrawalDoc} onReturn={setReturnDoc} /> : null}
+        {query.data ? <Body report={query.data} onWithdrawal={setWithdrawalDoc} onReturn={setReturnDoc} onJob={setJobId} /> : null}
       </QueryState>
       <StockWithdrawalDocumentModal operationId={withdrawalDoc} onClose={() => setWithdrawalDoc(null)} />
       <StockReturnDocumentModal operationId={returnDoc} onClose={() => setReturnDoc(null)} />
+      <JobCardModal jobId={jobId} onClose={closeJob} />
     </AppShell>
   )
 }
 
-function Body({ report, onWithdrawal, onReturn }: { report: StockUsageReport; onWithdrawal: (id: string) => void; onReturn: (id: string) => void }) {
+function Body({ report, onWithdrawal, onReturn, onJob }: { report: StockUsageReport; onWithdrawal: (id: string) => void; onReturn: (id: string) => void; onJob: (id: string) => void }) {
   const [exporting, setExporting] = useState(false)
   const exportLock = useFeatureLock('export')
   const showCost = report.netCost != null
@@ -118,14 +128,14 @@ function Body({ report, onWithdrawal, onReturn }: { report: StockUsageReport; on
         </span>
       </div>
       {!rows ? <p className="purchase-empty">ไม่มีรายการในช่วงนี้ ลองขยายช่วงวันที่หรือเปลี่ยนแหล่งที่มา</p>
-        : report.documents ? <DocumentsTable report={report} showCost={showCost} onWithdrawal={onWithdrawal} onReturn={onReturn} />
-        : report.items ? <ItemsTable items={report.items} showCost={showCost} onWithdrawal={onWithdrawal} onReturn={onReturn} />
+        : report.documents ? <DocumentsTable report={report} showCost={showCost} onWithdrawal={onWithdrawal} onReturn={onReturn} onJob={onJob} />
+        : report.items ? <ItemsTable items={report.items} showCost={showCost} onWithdrawal={onWithdrawal} onReturn={onReturn} onJob={onJob} />
         : <RequestersTable report={report} showCost={showCost} />}
     </>
   )
 }
 
-function DocumentsTable({ report, showCost, onWithdrawal, onReturn }: { report: StockUsageReport; showCost: boolean; onWithdrawal: (id: string) => void; onReturn: (id: string) => void }) {
+function DocumentsTable({ report, showCost, onWithdrawal, onReturn, onJob }: { report: StockUsageReport; showCost: boolean; onWithdrawal: (id: string) => void; onReturn: (id: string) => void; onJob: (id: string) => void }) {
   return (
     <Card className="management-table-card">
       <ManagementTable data={report.documents ?? []} sortScope="loaded" columns={[
@@ -134,7 +144,7 @@ function DocumentsTable({ report, showCost, onWithdrawal, onReturn }: { report: 
           ? (x.saleId ? <Link className="report-link" to={`/sales/${x.saleId}`}>{x.documentNumber}</Link> : <>{x.documentNumber}</>)
           : <button type="button" className="link-button" onClick={() => onWithdrawal(x.operationId)}>{x.documentNumber}</button> },
         { id: 'source', header: 'แหล่งที่มา', size: 150, value: x => SOURCE_LABEL[x.source], render: x => <>{SOURCE_LABEL[x.source]}</> },
-        { id: 'job', header: 'งาน / ทะเบียน', size: 170, value: x => x.jobNo, render: x => x.jobId ? <><Link className="report-link" to={`/jobs?job=${x.jobId}`}>{x.jobNo}</Link><small className="purchase-sub">{x.vehicleRegistration ?? ''}</small></> : <>-</> },
+        { id: 'job', header: 'งาน / ทะเบียน', size: 170, value: x => x.jobNo, render: x => x.jobId ? <><button type="button" className="link-button report-link" onClick={() => onJob(x.jobId!)}>{x.jobNo}</button><small className="purchase-sub">{x.vehicleRegistration ?? ''}</small></> : <>-</> },
         { id: 'requester', header: 'ผู้เบิก / ผู้จ่าย', size: 190, value: x => x.requesterName, render: x => <>{x.requesterName || '-'}<small className="purchase-sub">{x.performedByName}</small></> },
         { id: 'lines', header: 'รายการ', size: 90, value: x => x.lineCount, render: x => <span className="report-num">{x.lineCount}</span> },
         { id: 'issued', header: 'เบิก', size: 90, value: x => x.issuedQuantity, render: x => <span className="report-num">{x.issuedQuantity}</span> },
@@ -148,7 +158,7 @@ function DocumentsTable({ report, showCost, onWithdrawal, onReturn }: { report: 
   )
 }
 
-function ItemsTable({ items, showCost, onWithdrawal, onReturn }: { items: StockUsageItem[]; showCost: boolean; onWithdrawal: (id: string) => void; onReturn: (id: string) => void }) {
+function ItemsTable({ items, showCost, onWithdrawal, onReturn, onJob }: { items: StockUsageItem[]; showCost: boolean; onWithdrawal: (id: string) => void; onReturn: (id: string) => void; onJob: (id: string) => void }) {
   const [open, setOpen] = useState<Set<string>>(new Set())
   const toggle = (id: string) => setOpen(old => { const next = new Set(old); if (next.has(id)) next.delete(id); else next.add(id); return next })
   return (
@@ -161,7 +171,7 @@ function ItemsTable({ items, showCost, onWithdrawal, onReturn }: { items: StockU
             {items.map(item => {
               const expanded = open.has(item.catalogItemId)
               return (
-                <ItemRows key={item.catalogItemId} item={item} expanded={expanded} showCost={showCost} onToggle={() => toggle(item.catalogItemId)} onWithdrawal={onWithdrawal} onReturn={onReturn} />
+                <ItemRows key={item.catalogItemId} item={item} expanded={expanded} showCost={showCost} onToggle={() => toggle(item.catalogItemId)} onWithdrawal={onWithdrawal} onReturn={onReturn} onJob={onJob} />
               )
             })}
           </tbody>
@@ -171,7 +181,7 @@ function ItemsTable({ items, showCost, onWithdrawal, onReturn }: { items: StockU
   )
 }
 
-function ItemRows({ item, expanded, showCost, onToggle, onWithdrawal, onReturn }: { item: StockUsageItem; expanded: boolean; showCost: boolean; onToggle: () => void; onWithdrawal: (id: string) => void; onReturn: (id: string) => void }) {
+function ItemRows({ item, expanded, showCost, onToggle, onWithdrawal, onReturn, onJob }: { item: StockUsageItem; expanded: boolean; showCost: boolean; onToggle: () => void; onWithdrawal: (id: string) => void; onReturn: (id: string) => void; onJob: (id: string) => void }) {
   const Chevron = expanded ? ChevronDown : ChevronRight
   return (
     <>
@@ -198,7 +208,7 @@ function ItemRows({ item, expanded, showCost, onToggle, onWithdrawal, onReturn }
                       ? <button type="button" className="link-button" onClick={() => onWithdrawal(d.operationId)}>{d.documentNumber}</button>
                       : d.kind === 'job-return' ? <button type="button" className="link-button" onClick={() => onReturn(d.operationId)}>{d.documentNumber}</button>
                       : <>{d.documentNumber}</>}</td>
-                    <td>{d.jobId ? <><Link className="report-link" to={`/jobs?job=${d.jobId}`}>{d.jobNo}</Link> · {d.vehicleRegistration ?? '-'}</>
+                    <td>{d.jobId ? <><button type="button" className="link-button report-link" onClick={() => onJob(d.jobId!)}>{d.jobNo}</button> · {d.vehicleRegistration ?? '-'}</>
                       : d.saleId ? <Link className="report-link" to={`/sales/${d.saleId}`}>{d.receiptNo ?? d.documentNumber}</Link> : '-'}</td>
                     <td className="report-num">{d.quantity > 0 ? d.quantity : `${d.quantity} (คืน)`}</td>
                     {showCost ? <td><span className="money">{money(d.cost)}</span></td> : null}
