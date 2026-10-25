@@ -1,5 +1,5 @@
 import type { ServiceDueItem } from '../../api/reports'
-import { formatDateOnly, formatDateTime } from '../../lib/format'
+import { formatDateOnly, formatDateTime, formatKm } from '../../lib/format'
 
 /// รายชื่อโทรตามรถใกล้ครบรอบบริการ — ไม่มีตัวเงิน ใช้รูปแบบหัวตารางเดียวกับ inventoryExport.ts
 export async function exportServiceDue(items: ServiceDueItem[], fromDate: string, toDate: string) {
@@ -11,6 +11,7 @@ export async function exportServiceDue(items: ServiceDueItem[], fromDate: string
   const columns: [string, number][] = [
     ['ทะเบียน', 16], ['รุ่น', 24], ['ลูกค้า', 26], ['เบอร์โทร', 16], ['เข้าครั้งล่าสุด (จ๊อบ)', 22],
     ['ส่งมอบเมื่อ', 22], ['ไมล์ตอนส่งมอบ (กม.)', 18], ['นัดที่ไมล์ (กม.)', 18], ['วันนัด', 16], ['เหลือ (วัน)', 12],
+    ['รายการนัดทั้งหมด', 60],
   ]
   sheet.columns = columns.map(([header, width]) => ({ header, width }))
   for (const x of items) {
@@ -18,6 +19,8 @@ export async function exportServiceDue(items: ServiceDueItem[], fromDate: string
       x.vehicleRegistration, x.vehicleModel ?? '', x.customerName, x.customerPhone ?? '', x.lastJobNo,
       formatDateTime(x.handedOverAt), x.mileageAtHandover ?? null, x.nextServiceMileage ?? null,
       formatDateOnly(x.nextServiceDueOn), x.daysUntilDue,
+      // แถวละคัน: ไมล์/วันนัดคอลัมน์ก่อนหน้าคือรายการที่ครบเร็วที่สุด · คอลัมน์นี้ลงทุกรายการ (บรรทัดละรายการ)
+      x.items.map((i) => `${i.name} — ${formatKm(i.nextServiceMileage)} · ${formatDateOnly(i.nextServiceDueOn)}`).join('\n'),
     ])
   }
   sheet.getColumn(7).numFmt = '#,##0'

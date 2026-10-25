@@ -15,11 +15,17 @@ public interface IPurchasingRepository
     Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct);
     Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct);
     Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct);
-    Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct);
+    // belowMinOnly = เฉพาะที่ StockLevel.IsBelowMin (กรองก่อน Take(200) เพื่อไม่ให้รายการที่ถึงจุดต่ำสุดหลุดจากเพดาน)
+    Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false);
+    // อะไหล่ที่เปิดใช้งานและ StockLevel.IsBelowMin ของสาขาปัจจุบัน (ไม่นับที่ไม่ได้ตั้ง min)
+    Task<int> CountBelowMinAsync(CancellationToken ct);
     Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct);
     Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> itemIds, CancellationToken ct);
     Task<IReadOnlyList<StockMovement>> MovementsAsync(Guid? itemId, Guid? operationId, CancellationToken ct);
+    // ใบเบิกของ job (type issue) และใบคืน (issue-return) — ผู้เรียกแยกตาม Type
     Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct);
+    // ออกใบเสร็จแล้วหรือยัง — ใบเสร็จออกแล้วห้ามคืนของ (ยอดที่เก็บเงินไปแล้วไม่ควรเปลี่ยน)
+    Task<bool> JobHasReceiptAsync(Guid jobId, CancellationToken ct);
     Task<Job?> JobAsync(Guid id, CancellationToken ct);
     // ใบเสนอราคาที่ยังไม่ถูกแทนที่ของ job พร้อมบรรทัด+การอนุมัติ — ใช้กำหนดว่าใบเบิกของ job เบิกอะไรได้บ้าง
     Task<IReadOnlyList<Quotation>> JobQuotationsAsync(Guid jobId, CancellationToken ct);

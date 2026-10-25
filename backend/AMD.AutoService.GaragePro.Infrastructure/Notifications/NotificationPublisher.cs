@@ -70,6 +70,15 @@ public sealed class NotificationPublisher(
         }
     }
 
+    public async Task ResolveByPrefixAsync(string subjectKeyPrefix, CancellationToken ct = default)
+    {
+        foreach (var n in await repository.GetOpenBySubjectPrefixAsync(user.ShardKey, user.BranchId, subjectKeyPrefix, ct))
+        {
+            n.ResolvedAt = Now;
+            n.ResolvedByName = user.UserName;
+        }
+    }
+
     public async Task<bool> HasOpenAsync(string subjectKey, CancellationToken ct = default) =>
         (await repository.GetOpenBySubjectAsync(user.ShardKey, user.BranchId, subjectKey, ct)).Count > 0;
 

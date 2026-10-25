@@ -47,6 +47,8 @@ export function StockWithdrawalModal({ jobId, jobNo, onClose, onCreated }: Stock
     mutationFn: (input: WithdrawalInput) => stockCommand(key, input, createWithdrawal),
     onSuccess: (withdrawal) => {
       void queryClient.invalidateQueries({ queryKey: ['job-withdrawal-plan', jobId] })
+      void queryClient.invalidateQueries({ queryKey: ['purchase-count', 'low-stock'] })
+      void queryClient.invalidateQueries({ queryKey: ['inventory'] })
       onCreated(withdrawal)
     },
   })

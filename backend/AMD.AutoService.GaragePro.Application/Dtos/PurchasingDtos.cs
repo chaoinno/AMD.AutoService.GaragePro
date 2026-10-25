@@ -27,7 +27,9 @@ public sealed record StockOpeningInput(Guid CatalogItemId, Guid WarehouseId, dec
     int ExpectedOnHand, int ExpectedDamaged, string Reason);
 public sealed record StockIssueInput(Guid RequestId, Guid CatalogItemId, Guid WarehouseId, int Quantity, string Reason);
 public sealed record StockItemDto(Guid Id, string Code, string Name, string Unit, bool StockManaged,
-    int OnHand, int Reserved, int Available, int OnOrder, int Damaged, decimal? Value);
+    int OnHand, int Reserved, int Available, int OnOrder, int Damaged, decimal? Value,
+    int? MinStock = null, int? MaxStock = null, bool BelowMin = false, int? SuggestedOrderQty = null, string? Version = null);
+public sealed record StockLevelsInput(int? MinStock, int? MaxStock, string? Version = null);
 public sealed record StockLotDto(Guid Id, Guid WarehouseId, string WarehouseName, string DocumentNumber,
     DateTime ReceivedAt, int ReceivedQuantity, int RemainingQuantity, decimal? UnitCost, decimal? Value);
 public sealed record StockMovementDto(Guid Id, Guid OperationId, string DocumentNumber, string Type,
@@ -41,10 +43,11 @@ public sealed record StockWithdrawalLineInput(Guid CatalogItemId, int Quantity);
 public sealed record StockWithdrawalInput(Guid RequestId, Guid WarehouseId, Guid? JobId,
     long RequesterStaffId, string Reason, IReadOnlyList<StockWithdrawalLineInput> Lines);
 public sealed record StockWithdrawalLineDto(Guid CatalogItemId, string Code, string Name, string Unit,
-    int Quantity, decimal? UnitCost);
+    int Quantity, decimal? UnitCost, int ReturnedQuantity = 0);
 public sealed record StockWithdrawalDto(Guid OperationId, string DocumentNumber, Guid WarehouseId, string WarehouseName,
     Guid? JobId, string? JobNo, long RequesterStaffId, string RequesterName, string IssuedByName, string Reason,
-    DateTime OccurredAt, IReadOnlyList<StockWithdrawalLineDto> Lines, decimal? TotalCost);
+    DateTime OccurredAt, IReadOnlyList<StockWithdrawalLineDto> Lines, decimal? TotalCost,
+    IReadOnlyList<StockReturnRefDto>? Returns = null);
 // [BIZ] ใบเบิกที่ผูก job เบิกได้เฉพาะสินค้าที่ลูกค้าอนุมัติ (ใบที่เซ็นแล้ว) ตามจำนวนที่เหลือ — เพิ่ม/ลบ/แก้จำนวนไม่ได้
 // Remaining = อนุมัติ − เบิกไปแล้วด้วยใบเบิกก่อนหน้าของ job เดียวกัน
 public sealed record StockWithdrawalPlanLineDto(Guid CatalogItemId, string Code, string Name, string Unit,
@@ -52,4 +55,14 @@ public sealed record StockWithdrawalPlanLineDto(Guid CatalogItemId, string Code,
 public sealed record StockWithdrawalPlanDto(Guid JobId, string JobNo, IReadOnlyList<StockWithdrawalPlanLineDto> Lines,
     IReadOnlyList<string> UnavailableItems, int AdHocCount);
 public sealed record StockWithdrawalSummaryDto(Guid OperationId, string DocumentNumber, DateTime OccurredAt,
-    string RequesterName, string IssuedByName, int LineCount, int TotalQuantity, string Reason);
+    string RequesterName, string IssuedByName, int LineCount, int TotalQuantity, string Reason,
+    int ReturnedQuantity = 0, IReadOnlyList<StockReturnRefDto>? Returns = null);
+
+// ---- คืนอะไหล่จากใบเบิกของ job (RT-) — กลับเข้าล็อตเดิมที่ต้นทุนเดิม ----
+public sealed record StockReturnLineInput(Guid CatalogItemId, int Quantity);
+public sealed record StockReturnInput(Guid RequestId, string ReasonCode, string? Note, IReadOnlyList<StockReturnLineInput> Lines);
+public sealed record StockReturnRefDto(Guid OperationId, string DocumentNumber, DateTime OccurredAt);
+public sealed record StockReturnDto(Guid OperationId, string DocumentNumber, Guid WithdrawalOperationId, string WithdrawalNumber,
+    Guid WarehouseId, string WarehouseName, Guid? JobId, string? JobNo, string RequesterName, string ReturnedByName,
+    string ReasonCode, string ReasonLabelTh, string? Note, DateTime OccurredAt,
+    IReadOnlyList<StockWithdrawalLineDto> Lines, decimal? TotalCost);

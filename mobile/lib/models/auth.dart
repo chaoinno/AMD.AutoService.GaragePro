@@ -174,6 +174,7 @@ class AuthUser {
     required this.shardKey,
     required this.canSeeCost,
     required this.canCloseShift,
+    this.isAdministrator = false,
     this.positionName,
     this.departmentName,
     this.plan,
@@ -193,6 +194,10 @@ class AuthUser {
   /// [BIZ] ช่างไม่มีสิทธิ์ปิดกะ
   final bool canCloseShift;
 
+  /// ผู้ดูแลระบบสลับสาขาได้ (`/auth/switch-branch`) — server ตรวจซ้ำเสมอ ค่านี้แค่ซ่อน/แสดงเมนู
+  /// เซสชันที่บันทึกจากแอปรุ่นก่อนไม่มีฟิลด์นี้ = false
+  final bool isAdministrator;
+
   final String? positionName;
   final String? departmentName;
 
@@ -209,6 +214,7 @@ class AuthUser {
         shardKey: shardKey,
         canSeeCost: canSeeCost,
         canCloseShift: canCloseShift,
+        isAdministrator: isAdministrator,
         positionName: positionName,
         departmentName: departmentName,
         plan: plan,
@@ -224,6 +230,7 @@ class AuthUser {
         shardKey: j['shardKey'] as String,
         canSeeCost: j['canSeeCost'] as bool? ?? false,
         canCloseShift: j['canCloseShift'] as bool? ?? false,
+        isAdministrator: j['isAdministrator'] as bool? ?? false,
         positionName: j['positionName'] as String?,
         departmentName: j['departmentName'] as String?,
         // เซสชันที่บันทึกจากแอปรุ่นก่อนไม่มีสองฟิลด์นี้ — ได้ null และยังโหลดได้ตามปกติ
@@ -240,11 +247,34 @@ class AuthUser {
         'shardKey': shardKey,
         'canSeeCost': canSeeCost,
         'canCloseShift': canCloseShift,
+        'isAdministrator': isAdministrator,
         'positionName': positionName,
         'departmentName': departmentName,
         'plan': ?plan?.toJson(),
         'workspace': ?workspace?.toJson(),
       };
+}
+
+/// สาขาที่ผู้ดูแลระบบสลับไปได้ (`GET /auth/switchable-branches`) — ไม่มี UserId ปลายทาง server หาเอง
+class SwitchableBranch {
+  const SwitchableBranch({
+    required this.branchId,
+    required this.name,
+    this.address,
+    this.isCurrent = false,
+  });
+
+  final int branchId;
+  final String name;
+  final String? address;
+  final bool isCurrent;
+
+  factory SwitchableBranch.fromJson(Map<String, dynamic> j) => SwitchableBranch(
+        branchId: j['branchId'] as int,
+        name: j['name'] as String,
+        address: j['address'] as String?,
+        isCurrent: j['isCurrent'] as bool? ?? false,
+      );
 }
 
 /// ผลการ login — [BIZ] token ผูกสาขาตาม `Staff.BranchId` แล้ว ใช้เรียก API งานได้ทันที

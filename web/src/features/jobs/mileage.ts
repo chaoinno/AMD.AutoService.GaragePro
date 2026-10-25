@@ -1,4 +1,4 @@
-import { formatKm, MAX_ODOMETER_KM, parseKmInput } from '../../lib/format'
+import { formatKm, MAX_ODOMETER_KM, parseKmInput } from '../../lib/format.ts'
 
 /// ตรวจช่องกรอกเลขไมล์ — ว่างคืน km=null ไม่มี error (ให้ปุ่มบอกเหตุผลเอง) · กรอกผิดคืนข้อความบอกวิธีแก้
 /// API ตรวจซ้ำเสมอ (Odometer.IsValid) ที่นี่แค่ให้ผู้ใช้รู้ก่อนกดบันทึก

@@ -101,6 +101,7 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/quotations/{id}/lines` · DELETE | `catalogCode` ว่าง = รายการนอกแคตตาล็อก (ad-hoc) — ต้องส่ง `name`+`type`+`unitPrice` แทน (2026-09-15, [docs/07-quotation-adhoc-line.md](07-quotation-adhoc-line.md)) |
 | POST | `/api/v1/quotations/{id}/lines/from-template` | **[เพิ่ม 2026-09-16]** `{ templateId, source? }` เพิ่มหลายบรรทัดจากเทมเพลตในครั้งเดียว — [docs/08-quotation-template.md](08-quotation-template.md) |
 | GET/POST | `/api/v1/quotation-templates` · GET/PUT `/{id}` · PATCH `/{id}/status` | **[เพิ่ม 2026-09-16]** ข้อมูลหลักเทมเพลตใบเสนอราคา — อ่านเปิดทุก role, เขียนเฉพาะผู้จัดการ |
+| GET/POST | `/api/v1/service-reminder-templates` · PUT `/{id}` · PATCH `/{id}/status` | **[เพิ่ม 2026-10-25]** รายการนัดบริการตั้งต้น (ตอนส่งมอบรถ) — อ่านเปิดทุก role (seed ชุดตั้งต้นให้สาขาเอง), เขียนเฉพาะผู้จัดการ · ดูหัวข้อส่งมอบรถ |
 | POST | `/quotations/{id}/lock` · `/unlock` | **[UI]** ขอสิทธิ์แก้คนเดียว |
 | GET | `/quotations/{id}/warnings` | ของไม่พอ / ซ้ำ / margin ต่ำ / หมดอายุ |
 | POST | `/quotations/{id}/send` | ✅ validate ทุก line มี price+tech, ไม่ซ้ำ → `waitapprove` |
@@ -158,6 +159,31 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 | POST | `/inventory/issues` | เบิกให้งาน → `ISS-xxxx` |
 | GET | `/inventory/counts` · POST | ตรวจนับ `CNT-xxxx` |
 
+### 8.2 คืนอะไหล่จากใบเบิกของ job **[เพิ่ม 2026-10-25 · รายละเอียดที่ [docs/06 ข้อ 8](06-purchasing-fifo.md)]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| POST | `/api/v1/inventory/withdrawals/{operationId}/returns` | body `{ requestId, reasonCode: over-issued\|not-used\|wrong-item\|other, note?, lines:[{catalogItemId, quantity}] }` → 201 `StockReturnDto { operationId, documentNumber (RT-…), withdrawalOperationId, withdrawalNumber, warehouse*, jobId, jobNo, requesterName, returnedByName, reasonCode, reasonLabelTh, note, occurredAt, lines, totalCost (Manager) }` |
+| GET | `/api/v1/inventory/returns/{operationId}` | อ่านใบคืนเพื่อพิมพ์ซ้ำ |
+
+- error: `WITHDRAWAL_RETURN_EXCEEDS` 422 · `WITHDRAWAL_RETURN_NOT_JOB` 422 · `WITHDRAWAL_RETURN_RECEIPT_ISSUED` 409 · `PURCHASING_VALIDATION` (เหตุผลไม่ถูกต้อง/`other` ไม่มี note/จำนวนผิด) · `PURCHASING_FORBIDDEN` 403 · `PURCHASING_NOT_FOUND` 404 · `PURCHASING_CONFLICT` 409 (RequestId ซ้ำกับเนื้อหาอื่น)
+- `StockWithdrawalLineDto.returnedQuantity` · `StockWithdrawalDto.returns[]` · `StockWithdrawalSummaryDto.returnedQuantity`/`returns[]` — `{ operationId, documentNumber, occurredAt }` ของใบคืน · `WithdrawalPlan` นับ เบิกแล้ว = เบิก − คืน
+
+### 8.1 min-max สต็อก (ที่ implement จริง `/api/v1/inventory`) **[เพิ่ม 2026-10-25]**
+
+| Method | Endpoint | หมายเหตุ |
+|---|---|---|
+| GET | `/api/v1/inventory/items?q=&belowMin=true` | `belowMin=true` = เฉพาะอะไหล่ที่เปิดใช้งานและ **พร้อมใช้ ≤ min** · ไม่ส่ง = ทุกรายการเหมือนเดิม |
+| GET | `/api/v1/inventory/low-stock/count` | `data` = จำนวนอะไหล่ที่ถึงจุดต่ำสุดของสาขา (เปิดใช้งาน + ตั้ง min แล้ว) — ตัวเลขที่เมนู "สต็อก FIFO" · Manager/Office (`PURCHASING_FORBIDDEN` 403 ถ้าไม่ใช่) · อยู่ใต้ `[RequireFeature(Inventory)]` |
+| GET | `/api/v1/catalog/manage?belowMinOnly=true` | ตัวกรองเดียวกันของรายการสินค้า · **`lowStockOnly` เดิม (พร้อมใช้ ≤ 0) ความหมายไม่เปลี่ยน** |
+| PUT/POST | `/api/v1/catalog/manage[/{id}]` | body เพิ่ม `minStock` `maxStock` (int? · ไม่ส่ง = ล้างค่า) |
+
+- ฟิลด์ใหม่ใน `StockItemDto` (`/inventory/items` · `/inventory/items/{id}`) และ `CatalogManagementItemDto`: `minStock` · `maxStock` (ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง) · `belowMin` (bool) · `suggestedOrderQty` (= max − พร้อมใช้ − รอรับ ไม่ต่ำกว่า 0 · ไม่อยู่ใน JSON เมื่อไม่ได้ตั้ง max)
+- กฎอยู่ที่ `Domain/Common/StockLevel.cs` ที่เดียว: พร้อมใช้ = OnHand − Reserved (ไม่รวม OnOrder/Damaged) · ไม่ตั้ง min = ไม่เตือน/ไม่ถูกนับ · max ใช้คำนวณจำนวนแนะนำเท่านั้น ไม่เตือนเมื่อเกิน max
+- ตั้งค่าได้เฉพาะอะไหล่ที่คุมสต็อก FIFO แล้ว (`StockManaged`) · `0 ≤ min ≤ max` (กติกาเดียว `StockLevel.Validate`) · ผิดกติกา = 422 `CATALOG_VALIDATION` (ฟอร์มสินค้า · field `minStock`/`maxStock`) หรือ `PURCHASING_VALIDATION` (endpoint ด้านล่าง)
+- **ผู้จัดการและธุรการตั้งได้** ผ่าน `PUT /api/v1/inventory/items/{catalogItemId}/stock-levels` body `{ minStock: int?, maxStock: int?, version?: string }` (null = ล้างค่า · `version` = ฟิลด์ `version` ของ `StockItemDto` กันแก้ชนกัน → 409 `PURCHASING_CONFLICT`) → `StockItemDto` · เขียน ActivityEvent `purchasing.stock.levels` · role อื่น 403 `PURCHASING_FORBIDDEN` · การแก้ผ่านฟอร์มสินค้า (`/catalog/manage`) ยังเป็นผู้จัดการเท่านั้นตามสิทธิ์แก้สินค้าเดิม
+- `CatalogManagementItemDto.stockManaged` บอกว่าฟอร์มสินค้าเปิดช่อง min/max ได้หรือไม่ (`stockLocked` รวม PurchasingLocked จึงใช้แทนไม่ได้)
+
 ---
 
 ## 9 · Purchasing
@@ -212,6 +238,23 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 · `submit` ปฏิเสธ `HANDOVER_SERVICE_INFO_REQUIRED` ถ้ายังไม่บันทึก · `HandoverDto` เพิ่ม `mileageAtIntake`/`mileageAtHandover`/
 `nextServiceMileage`/`nextServiceMonths`/`nextServiceDueOn` (yyyy-MM-dd ตามปฏิทินไทย = วันส่งมอบจริง + N เดือน — ก่อนเซ็นเป็นพรีวิว)
 
+**[เปลี่ยน 2026-10-25] นัดครั้งถัดไปได้หลายรายการ** (น้ำมันเครื่อง/กรอง/เบรก…) — ตาราง `svc_HandoverServiceItem` (migration `AddHandoverServiceItems`)
+· body ใหม่ `PUT .../handover/service-info`:
+`{ mileageAtHandover, items: [{ templateId?, name, nextServiceMileage, nextServiceMonths }] }` — ส่งชุดเต็มทุกครั้ง แทนที่ของเดิมทั้งชุด · `items: []` บันทึกร่างได้ (เฉพาะไมล์)
+· **body เดิม (นัดเดียว) ยังรับอยู่** — แปลงเป็น 1 รายการชื่อ "เช็คระยะ" (แอปรุ่นที่อยู่บน store ต้องส่งมอบรถได้) · ถ้าส่ง `items` มาด้วย ใช้ `items` และไม่สนฟิลด์เดิม
+· กฎต่อรายการ (`HANDOVER_VALIDATION` · `field` = `items[i].name|nextServiceMileage|nextServiceMonths`, รูปเดิมนัดเดียวคงชื่อ field เดิม):
+ชื่อไม่ว่าง/ไม่เกิน 100/ไม่ซ้ำในใบเดียว (ตัดช่องว่าง ไม่สนตัวพิมพ์) · ไมล์นัด > ไมล์ส่งมอบ · เดือน 1–24 · ไม่เกิน 10 รายการ (`field` = `items`)
+· `submit` ต้องมีไมล์ส่งมอบ + **อย่างน้อย 1 รายการ** (`HANDOVER_SERVICE_INFO_REQUIRED`) แล้วคำนวณ `nextServiceDueOn` **ทุกรายการ** ใหม่จากวันส่งมอบจริง (`ServiceSchedule`) · ล็อกพร้อมใบส่งมอบ
+· `HandoverDto` เพิ่ม `serviceItems: [{ id, templateId?, name, nextServiceMileage, nextServiceMonths, nextServiceDueOn }]` —
+ฟิลด์เดี่ยวเดิม (`nextServiceMileage`/`nextServiceMonths`/`nextServiceDueOn`) เติมจากรายการที่ครบเร็วที่สุดให้แอปรุ่นเก่า ·
+คอลัมน์เดิมใน `svc_HandoverRecord` คงไว้แต่เลิกใช้ (backfill เป็นรายการ "เช็คระยะ" แล้ว)
+
+รายการตั้งต้นของสาขา: `GET /api/v1/service-reminder-templates?includeInactive=` (**ทุกบทบาทอ่านได้** — สาขาที่ยังไม่เคยมีรายการได้ชุดตั้งต้น 6 รายการให้เองตอนเรียกครั้งแรก:
+น้ำมันเครื่อง 10,000 กม./6 · กรองน้ำมันเครื่อง 10,000/6 · น้ำมันเกียร์ 40,000/24 · น้ำมันเบรก 40,000/24 · กรองอากาศ 20,000/12 · เช็คระยะ 10,000/6) ·
+`POST` · `PUT /{id}` `{ name, defaultMileageInterval, defaultMonths, sortOrder }` · `PATCH /{id}/status` `{ isActive }` — **เขียนเฉพาะผู้จัดการ** (`MASTER_DATA_MANAGE_FORBIDDEN` 403) ·
+ไม่มีลบ (ปิดใช้งานแทน) · error: `SERVICE_TEMPLATE_NOT_FOUND` 404 · `SERVICE_TEMPLATE_NAME_DUPLICATE` 409 (ชื่อไม่ซ้ำต่อสาขา) · `SERVICE_TEMPLATE_VALIDATION` 422
+· `templateId` ในรายการนัดเป็นแค่อ้างอิง ไม่มี FK — ชื่อเก็บเป็นสำเนา ณ ตอนบันทึก
+
 ---
 
 ## 12 · Reports
@@ -230,7 +273,16 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 ของจริงเพิ่ม 2026-10-08:
 | GET | `/api/v1/reports/vehicle-history/search?q=` | ค้นรถจากทะเบียน/เบอร์โทร (ตัดช่องว่าง/ขีด ≥3 ตัว) ใน snapshot ของ `svc_Job` สาขาปัจจุบัน — **ทุกบทบาท** · คืน `{ items, truncated }` สูงสุด 50 คัน |
 | GET | `/api/v1/reports/vehicle-history/{vehicleId}` | timeline งานของรถ (ใหม่สุดก่อน): ไมล์รับ/ส่ง · บรรทัดที่ลูกค้าอนุมัติของทุกใบที่ไม่ Superseded · ใบเสร็จ · นัดครั้งถัดไป — **ทุกบทบาท แต่ Technician/Lead ได้ยอดเงินเป็น null** (`showAmounts=false`) · ไม่มีงาน → 404 `VEHICLE_HISTORY_NOT_FOUND` |
-| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+| GET | `/api/v1/reports/service-due?fromDate=&toDate=` | รถใกล้ครบรอบบริการ (Manager/Office/FrontDesk) — ใบส่งมอบล่าสุดของรถแต่ละคันที่วันนัดอยู่ในช่วง ตัดคันที่กลับมาเปิดจ๊อบใหม่ (ไม่นับที่ยกเลิก) หรือยังมีจ๊อบอื่นที่ยังไม่ปิด · ค่าเริ่มต้น −30..+30 วัน ช่วงสูงสุด 366 วัน |
+| GET | `/api/v1/reports/stock-usage?fromDate=&toDate=&view=&source=&warehouseId=&catalogItemId=&requesterStaffId=` | **[เพิ่ม 2026-10-25]** การเบิกอะไหล่ (Manager/Office · `[RequireFeature(AdvancedReports)]`) · `view` = `documents` (ค่าเริ่มต้น รายใบเบิก/ใบขาย: เลขเอกสาร · แหล่งที่มา · งาน+ทะเบียน · ผู้เบิก/ผู้จ่าย · เบิก/คืน/สุทธิ · ใบคืนที่เกี่ยวข้อง) · `items` (ต่อสินค้า: เบิกเข้างาน · เบิกหน้าสต็อก · ขาย POS · คืน · ยกเลิกบิล · สุทธิ + `details[]` วันที่/เลขเอกสาร/เลขจ๊อบ+ทะเบียน หรือเลขใบเสร็จ SL- — ขาย POS ที่ยกเลิกแสดงคู่รายการยกเลิก) · `requesters` (ต่อช่างผู้เบิก: ใบ · งาน · ชิ้นสุทธิ · ไม่รวม POS) · `source` = `job` (WD-/ใบคืน) · `manual` (ISS-) · `pos` · แหล่งข้อมูล `StockMovement` ประเภท issue/issue-return/sale/sale-void · วันตามปฏิทินไทย ค่าเริ่มต้นวันที่ 1 ของเดือน–วันนี้ ช่วงสูงสุด 366 วัน (`REPORTS_VALIDATION`) · ต้นทุน (`netCost`/`cost`) เป็น null ที่ server เมื่อไม่ใช่ผู้จัดการ · ใบเบิก/ใบขายนับคืนทุกครั้งแม้ต่างช่วงวัน ส่วนสรุปตามสินค้า/ช่างนับเฉพาะรายการที่เกิดในช่วง · เกินเพดาน 50,000 movement = `truncated: true` |
+
+**[เพิ่ม 2026-10-25] `GET /api/v1/reports/service-due/count`** → `{ count, overdueCount, fromDate, toDate }` — จำนวนรถที่วันนัดอยู่ระหว่าง **วันนี้−30 ถึงวันนี้+7** (วันไทย)
+สำหรับตัวเลขข้างเมนู "รถใกล้ครบรอบบริการ" · กติกาเดียวกับรายงานทุกข้อ (`ServiceDueRows`: 1 แถวต่อรถ · วันนัด = รายการที่ครบเร็วสุด · ตัดคันที่กลับมาเปิดจ๊อบ/มีจ๊อบค้าง) จึงนับตรงกับแถวในรายงานช่วงเดียวกัน ·
+**`service-due` และ `/count` เปิดให้ Manager/Office/FrontDesk** (เดิม Manager/Office) — หน้าร้านเป็นผู้รับแจ้งเตือน กดแล้วต้องเปิดได้ · role อื่น 403 `REPORTS_FORBIDDEN` · รายงานอื่นยังเป็น Manager/Office เท่านั้น
+
+**[เปลี่ยน 2026-10-25] นัดหลายรายการ**: `service-due` — **1 แถวต่อรถ** วันนัดของแถว (`nextServiceDueOn`/`nextServiceMileage`/`daysUntilDue`) = รายการที่ครบเร็วที่สุด
+และกรองช่วงวันด้วยรายการนั้น (ไม่ใช่ "มีรายการใดในช่วง") · แถวมี `items: [{ name, nextServiceMileage, nextServiceDueOn, daysUntilDue }]` ทุกรายการเรียงครบเร็วสุดก่อน ·
+`vehicle-history` — แต่ละครั้งที่เข้ามี `serviceItems: [{ name, nextServiceMileage, nextServiceDueOn }]` (ฟิลด์เดี่ยวเดิม = รายการที่ครบเร็วสุด) และ `nextService` เพิ่ม `items`
 
 ---
 
@@ -247,6 +299,15 @@ Base: `/api/v1` · Auth: JWT Bearer · ทุก response ห่อด้วย 
 ผู้รับเป็น **รายบุคคล (Staff.Id)** หรือ **กลุ่มบทบาท (bitmask ของ UserRole)** — ไม่มีทางดึงรายชื่อพนักงานตามบทบาท
 จาก legacy จึงคัดตอนอ่านด้วย role ใน JWT · สถานะอ่านแยกต่อคน (`svc_NotificationRead`) · ชนิด/ผู้รับ/การปิดเรื่อง
 ดูที่ `CLAUDE.md` หัวข้อ "แจ้งเตือนบนเว็บ" · client poll `unread-count` ทุก 30 วิ จนกว่าจะมี realtime
+
+**[เพิ่ม 2026-10-25] ชนิด `service.due` — รถใกล้ครบรอบบริการ**: ผู้รับ = กลุ่มบทบาท **FrontDesk + Manager** (ไม่มี role "SA" ใช้หน้าร้านแทน · ธุรการเปิดรายงานได้แต่ไม่ได้รับแจ้งเตือน) ·
+แจ้ง **ครั้งเดียวต่อรถต่อรอบนัด** เมื่อวันนัดของรถ (= รายการนัดที่ครบเร็วที่สุด) อยู่ในช่วงวันนี้..วันนี้+7 (วันไทย) · **ไม่แจ้งย้อนหลัง** รถที่เลยกำหนดไปแล้ว ·
+`entityType: "ServiceDue"` · `linkHint: "service-due"` · ไม่มี `jobId`/`entityId` → เว็บเปิด `/reports/service-due` · `subjectKey` = `service-due:{vehicleId}:{yyyy-MM-dd วันนัด}` (กันซ้ำ — เคยมีแล้วแม้ปิดแล้วก็ไม่แจ้งซ้ำ ·
+วันนัดเปลี่ยน = รอบใหม่ = แจ้งใหม่) · ข้อความ: ชื่อเรื่องมีทะเบียน + "อีก N วัน/ครบกำหนดวันนี้" · เนื้อหามีชื่อลูกค้า เบอร์ และรายการที่ครบในหน้าต่าง 7 วัน ·
+**ปิด (`resolvedAt`) เมื่อรถคันนั้นถูกเปิดจ๊อบใหม่** (`JobService.CreateAsync` ใน SaveChanges เดียวกับจ๊อบ — ปิดด้วย prefix `service-due:{vehicleId}:`) ·
+สร้างโดยงานรายวัน `ServiceDueDailyJob` (hosted service ใน API · ตอนสตาร์ท 1 นาทีหลังขึ้นแล้วทุกวัน 08:00 เวลาไทย · ปิดได้ด้วย `ServiceDue:Jobs:Enabled=false`) —
+ไล่ทุกสาขาที่มีรายการนัดครบกำหนดภายใน 7 วัน ทั้งฐานหลัก (`GarageService`) และฐาน self-serve (ถ้าตั้ง `SelfServe:ConnectionString`) ทีละสาขาใน scope ของ shard/สาขานั้น (`IShardScopeFactory`) ·
+idempotent ด้วย subjectKey จึงรันซ้ำ/restart/หลาย instance ได้ (หลาย instance ที่ทำงานพร้อมกันเป๊ะอาจสร้างซ้ำได้ — ไม่มี unique key โดยตั้งใจ ดู `Notification.SubjectKey`)
 
 **Realtime (Open Question #2)** — แนะนำ **SignalR** เพราะทีมใช้ .NET อยู่แล้ว
 ```

@@ -1,4 +1,5 @@
 using AMD.AutoService.GaragePro.Application.Abstractions;
+using AMD.AutoService.GaragePro.Domain.Common;
 using AMD.AutoService.GaragePro.Domain.Entities;
 using AMD.AutoService.GaragePro.Domain.Enums;
 using Microsoft.Data.SqlClient;
@@ -64,9 +65,15 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => db.Warehouses.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     // Suppliers are branch master data (ScopeMasterDataByBranch) — another branch's id behaves as not found.
     public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => db.Suppliers.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
-    public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct) => await Items.AsNoTracking()
-        .Where(x => x.Type == LineType.Part && (q == null || x.Code.Contains(q) || x.Name.Contains(q)))
-        .OrderBy(x => x.Code).Take(200).ToListAsync(ct);
+    public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false)
+    {
+        var query = Items.AsNoTracking()
+            .Where(x => x.Type == LineType.Part && (q == null || x.Code.Contains(q) || x.Name.Contains(q)));
+        // ตัวกรองนี้ต้องให้ผลเท่ากับ CountBelowMinAsync (ตัวเลขที่เมนู) จึงตัดสินค้าที่ปิดใช้งานออกเหมือนกัน
+        if (belowMinOnly) query = query.Where(x => x.IsActive).Where(StockLevel.BelowMin);
+        return await query.OrderBy(x => x.Code).Take(200).ToListAsync(ct);
+    }
+    public Task<int> CountBelowMinAsync(CancellationToken ct) => Items.Where(x => x.IsActive).Where(StockLevel.BelowMin).CountAsync(ct);
     public async Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct) => await Lots.Where(x => x.CatalogItemId == itemId).ToListAsync(ct);
     public async Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> itemIds, CancellationToken ct) =>
         await Lots.AsNoTracking().Where(x => itemIds.Contains(x.CatalogItemId)).GroupBy(x => x.CatalogItemId)
@@ -79,7 +86,9 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
         return await query.OrderByDescending(x => x.OccurredAt).ThenBy(x => x.Id).Take(200).ToListAsync(ct);
     }
     public async Task<IReadOnlyList<StockMovement>> MovementsByJobAsync(Guid jobId, CancellationToken ct) =>
-        await Movements.Where(x => x.JobId == jobId && x.Type == "issue").OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
+        await Movements.Where(x => x.JobId == jobId && (x.Type == "issue" || x.Type == "issue-return")).OrderByDescending(x => x.OccurredAt).ToListAsync(ct);
+    public Task<bool> JobHasReceiptAsync(Guid jobId, CancellationToken ct) => db.Set<Receipt>()
+        .AnyAsync(x => x.JobId == jobId && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     public Task<Job?> JobAsync(Guid id, CancellationToken ct) => db.Set<Job>()
         .SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.BranchId == user.BranchId, ct);
     // Caller resolves the job through JobAsync (shard/branch scoped) first — quotations hang off that job.

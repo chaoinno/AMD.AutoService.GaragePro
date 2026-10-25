@@ -7,6 +7,7 @@ import 'package:garage_pro_service_ops/api/api_client.dart';
 import 'package:garage_pro_service_ops/api/notifications_api.dart';
 import 'package:garage_pro_service_ops/app/routes.dart';
 import 'package:garage_pro_service_ops/features/notifications/data/notification_providers.dart';
+import 'package:garage_pro_service_ops/features/notifications/notifications_page.dart';
 import 'package:garage_pro_service_ops/models/app_notification.dart';
 
 /// อะแดปเตอร์ปลอม — จดคำขอที่ได้รับ แล้วตอบ envelope ตามที่กำหนด
@@ -107,6 +108,20 @@ void main() {
             _json(kind: kind, entityType: 'Quotation', linkHint: 'quote'));
         expect(notificationTarget(n), Routes.job('job-1'), reason: kind);
       }
+    });
+
+    test('รถใกล้ครบรอบบริการ: ไม่มีหน้าในแอป บอกว่าเปิดได้บนเว็บ และมีสไตล์ของตัวเอง (ไม่ใช่ข้อความเอกสารจัดซื้อ)', () {
+      final n = AppNotification.fromJson(_json(
+          kind: NotificationKind.serviceDue, entityType: 'ServiceDue', jobId: null, linkHint: 'service-due'));
+
+      expect(notificationTarget(n), isNull);
+      expect(notificationWebOnlyMessage(n), contains('รถใกล้ครบรอบบริการ'));
+      expect(notificationWebOnlyMessage(n), isNot(contains('จัดซื้อ')));
+      expect(notificationKindStyle(NotificationKind.serviceDue).label, 'รถใกล้ครบรอบบริการ');
+      // PR/PO ยังใช้ข้อความเดิม
+      final po = AppNotification.fromJson(
+          _json(kind: NotificationKind.purchasePending, entityType: 'PO', jobId: null, linkHint: null));
+      expect(notificationWebOnlyMessage(po), contains('จัดซื้อ'));
     });
 
     test('เอกสารจัดซื้อไม่มีหน้าในแอป', () {

@@ -13,6 +13,7 @@ import { SupplierPage } from './features/master-data/SupplierPage'
 import { WarehousePage } from './features/master-data/WarehousePage'
 import { CatalogCategoryPage } from './features/master-data/CatalogCategoryPage'
 import { QuotationTemplatePage } from './features/master-data/QuotationTemplatePage'
+import { ServiceReminderTemplatePage } from './features/master-data/ServiceReminderTemplatePage'
 import { PurchasingPage } from './features/purchasing/PurchasingPage'
 import { InventoryPage } from './features/purchasing/InventoryPage'
 import { DashboardReportPage } from './features/reports/DashboardReportPage'
@@ -21,6 +22,7 @@ import { SalesMarginReportPage } from './features/reports/SalesMarginReportPage'
 import { StockReportPage } from './features/reports/StockReportPage'
 import { RetailSalesReportPage } from './features/reports/RetailSalesReportPage'
 import { ServiceDueReportPage } from './features/reports/ServiceDueReportPage'
+import { StockUsageReportPage } from './features/reports/StockUsageReportPage'
 import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { SalesPage } from './features/sales/SalesPage'
@@ -51,6 +53,7 @@ export default function AppRoutes() {
           <Route path="/warehouses" element={<ProtectedRoute><FeatureGate><WarehousePage /></FeatureGate></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
           <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
+          <Route path="/service-reminder-templates" element={<ProtectedRoute><ServiceReminderTemplatePage /></ProtectedRoute>} />
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><FeatureGate><PurchasingPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/inventory" element={<ProtectedRoute><FeatureGate><InventoryPage /></FeatureGate></ProtectedRoute>} />
@@ -63,6 +66,7 @@ export default function AppRoutes() {
           <Route path="/reports/sales-margin" element={<ProtectedRoute><FeatureGate><SalesMarginReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/retail-sales" element={<ProtectedRoute><FeatureGate><RetailSalesReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
+          <Route path="/reports/stock-usage" element={<ProtectedRoute><StockUsageReportPage /></ProtectedRoute>} />
           <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><FeatureGate><StockReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><FeatureGate><WorkIntervalsPage /></FeatureGate></ProtectedRoute>} />

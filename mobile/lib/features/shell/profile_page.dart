@@ -10,6 +10,7 @@ import '../../models/auth.dart';
 import '../../widgets/common.dart';
 import '../notifications/widgets/notification_bell.dart';
 import '../package/package_rules.dart' show packageEntrySummary;
+import 'branch_switcher.dart';
 
 /// แถวข้อมูล: ไอคอน · ป้ายกำกับคอลัมน์เดียวกันทุกแถว · ค่าชิดซ้าย
 ///
@@ -60,7 +61,9 @@ class _NavRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+
+  /// null = กดไม่ได้ (ต้องบอกเหตุผลใน [subtitle] เสมอ)
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -78,7 +81,7 @@ class _NavRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: T.s16, vertical: T.s12),
               child: Row(
                 children: [
-                  Icon(icon, size: 22, color: T.blue600),
+                  Icon(icon, size: 22, color: onTap == null ? T.faint : T.blue600),
                   const SizedBox(width: T.s12),
                   Expanded(
                     child: Column(
@@ -141,6 +144,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             if (user.positionName != null)
               _row(Icons.work_outline, 'ตำแหน่ง', user.positionName!),
           ]),
+          if (branchSwitchAvailability(session) != BranchSwitchAvailability.hidden) ...[
+            const SizedBox(height: T.s8),
+            _NavRow(
+              icon: Icons.swap_horiz,
+              title: 'สลับสาขา',
+              subtitle: branchSwitchAvailability(session) == BranchSwitchAvailability.locked
+                  ? branchSwitchLockedReason
+                  : 'เข้าใช้งานสาขาอื่นด้วยบัญชีผู้ดูแลระบบของสาขานั้น',
+              onTap: branchSwitchAvailability(session) == BranchSwitchAvailability.locked
+                  ? null
+                  : () => showBranchSwitcher(context),
+            ),
+          ],
           const SizedBox(height: T.s24),
 
           // ทุกบัญชีของ ServicePro: อู่ที่สมัครเอง (sp1) และสาขา GaragePro กลุ่ม Service ใน db2 (docs/17 D9)

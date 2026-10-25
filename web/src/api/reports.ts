@@ -192,10 +192,13 @@ export type VehicleHistoryVisit = {
   lines: VehicleHistoryLine[]
   receiptDocumentNo?: string | null
   receiptTotal?: number | null
+  /** รายการที่ครบเร็วที่สุด (ฟิลด์เดี่ยวเดิม) — รายการทั้งหมดอยู่ใน serviceItems */
   nextServiceMileage?: number | null
   /** yyyy-MM-dd */
   nextServiceDueOn?: string | null
+  serviceItems: VehicleServiceItem[]
 }
+export type VehicleServiceItem = { name: string; nextServiceMileage: number; nextServiceDueOn: string }
 export type VehicleHistory = {
   vehicleId: number
   vehicleRegistration: string
@@ -204,7 +207,7 @@ export type VehicleHistory = {
   customerName: string
   customerPhone?: string | null
   showAmounts: boolean
-  nextService?: { fromJobNo: string; mileage?: number | null; dueOn: string } | null
+  nextService?: { fromJobNo: string; mileage?: number | null; dueOn: string; items: VehicleServiceItem[] } | null
   visits: VehicleHistoryVisit[]
 }
 
@@ -226,10 +229,19 @@ export type ServiceDueItem = {
   lastJobNo: string
   handedOverAt: string
   mileageAtHandover?: number | null
+  /** 1 แถวต่อรถ — ไมล์/วันนัดของแถวคือรายการที่ครบเร็วที่สุด · รายการทั้งหมดอยู่ใน items */
   nextServiceMileage?: number | null
   /** yyyy-MM-dd */
   nextServiceDueOn: string
   /** ติดลบ = เลยกำหนดมาแล้วกี่วัน */
+  daysUntilDue: number
+  /** ทุกรายการนัดของการส่งมอบล่าสุด เรียงครบเร็วสุดก่อน */
+  items: ServiceDueLine[]
+}
+export type ServiceDueLine = {
+  name: string
+  nextServiceMileage: number
+  nextServiceDueOn: string
   daysUntilDue: number
 }
 export type ServiceDueReport = {
@@ -242,5 +254,45 @@ export type ServiceDueReport = {
   items: ServiceDueItem[]
 }
 
+/// ตัวเลขข้างเมนู — รถที่วันนัดอยู่ระหว่างวันนี้−30 ถึงวันนี้+7 (วันไทย) กติกาเดียวกับรายงาน · เปิดให้ผู้จัดการ/ธุรการ/หน้าร้าน
+export type ServiceDueCount = { count: number; overdueCount: number; fromDate: string; toDate: string }
+
+export const getServiceDueCount = () => apiRequest<ServiceDueCount>('/api/v1/reports/service-due/count')
+
 export const getServiceDueReport = (fromDate: string, toDate: string) =>
   apiRequest<ServiceDueReport>(`/api/v1/reports/service-due?fromDate=${fromDate}&toDate=${toDate}`)
+
+// ---------- การเบิกอะไหล่ (stock-usage) ----------
+export type StockUsageView = 'documents' | 'items' | 'requesters'
+export type StockUsageSource = 'job' | 'manual' | 'pos'
+export type StockUsageReturnRef = { operationId: string; documentNumber: string; quantity: number }
+export type StockUsageDocument = {
+  operationId: string; documentNumber: string; source: StockUsageSource; occurredAt: string
+  jobId?: string | null; jobNo?: string | null; vehicleRegistration?: string | null; saleId?: string | null
+  requesterStaffId?: number | null; requesterName?: string | null; performedByName: string
+  lineCount: number; issuedQuantity: number; returnedQuantity: number; netQuantity: number; netCost?: number | null
+  returns: StockUsageReturnRef[]
+}
+export type StockUsageDetail = {
+  kind: 'job-issue' | 'manual-issue' | 'job-return' | 'pos-sale' | 'pos-void'
+  occurredAt: string; operationId: string; documentNumber: string
+  jobId?: string | null; jobNo?: string | null; vehicleRegistration?: string | null
+  saleId?: string | null; receiptNo?: string | null; quantity: number; cost?: number | null
+}
+export type StockUsageItem = {
+  catalogItemId: string; code: string; name: string; unit: string
+  jobQuantity: number; manualQuantity: number; posQuantity: number; returnedQuantity: number; posVoidQuantity: number; netQuantity: number
+  netCost?: number | null; details: StockUsageDetail[]
+}
+export type StockUsageRequester = {
+  requesterStaffId: number; requesterName: string; documentCount: number; jobCount: number
+  issuedQuantity: number; returnedQuantity: number; netQuantity: number; netCost?: number | null
+}
+// API ตัดฟิลด์ null ทิ้ง — netCost เป็น undefined เมื่อ role ไม่เห็นต้นทุน (เช็คแบบ == null)
+export type StockUsageReport = {
+  fromDate: string; toDate: string; view: StockUsageView; source?: StockUsageSource | null; truncated: boolean
+  netQuantity: number; netCost?: number | null
+  documents?: StockUsageDocument[]; items?: StockUsageItem[]; requesters?: StockUsageRequester[]
+}
+export const getStockUsageReport = (q: { view: StockUsageView; source?: StockUsageSource; fromDate: string; toDate: string }) =>
+  apiRequest<StockUsageReport>(`/api/v1/reports/stock-usage?view=${q.view}&fromDate=${q.fromDate}&toDate=${q.toDate}${q.source ? `&source=${q.source}` : ''}`)

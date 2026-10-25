@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { formatDate, formatDateOnly, formatKm, formatNumber } from '../../lib/format'
+import { JobCardModal } from '../jobs/JobCardModal'
 import { QueryState } from '../master-data/MasterDataCommon'
 import { PlanLockNote } from '../plan/PlanLockNote'
 import { useFeatureLock } from '../plan/usePlan'
@@ -90,6 +91,8 @@ function DueStatus({ item }: { item: ServiceDueItem }) {
 
 function ReportBody({ report }: { report: ServiceDueReport }) {
   const [exporting, setExporting] = useState(false)
+  // เปิดการ์ดจ๊อบบนหน้ารายงานเลย ไม่พาไป /jobs — ปิดแล้วต้องกลับมาที่รายชื่อเดิม
+  const [jobId, setJobId] = useState<string | null>(null)
   // ส่งออกทำฝั่งเว็บล้วน (ไม่มีคำขอ API ให้ server ล็อก) — แพ็กเกจทดลองใช้ปิดปุ่มที่นี่พร้อมเหตุผล
   const exportLock = useFeatureLock('export')
   const exportExcel = async () => {
@@ -137,10 +140,21 @@ function ReportBody({ report }: { report: ServiceDueReport }) {
             { id: 'status', header: 'สถานะ', size: 170, value: (x) => x.daysUntilDue, render: (x) => <DueStatus item={x} /> },
             { id: 'plate', header: 'ทะเบียน', size: 140, value: (x) => x.vehicleRegistration, render: (x) => <>{x.vehicleRegistration}<small className="purchase-sub">{x.vehicleModel ?? ''}</small></> },
             { id: 'customer', header: 'ลูกค้า', size: 200, value: (x) => x.customerName, render: (x) => <>{x.customerName}<small className="purchase-sub">{x.customerPhone ?? 'ไม่มีเบอร์โทร'}</small></> },
-            { id: 'nextKm', header: 'นัดที่ไมล์', size: 150, value: (x) => x.nextServiceMileage ?? 0, render: (x) => <span className="report-num">{formatKm(x.nextServiceMileage)}</span> },
+            // 1 แถวต่อรถ — วันนัดของแถวคือรายการที่ครบเร็วที่สุด · รายการทั้งหมดแสดงใต้แถว (เร็วสุดก่อน)
+            { id: 'items', header: 'รายการนัด', size: 300, value: (x) => x.nextServiceMileage ?? 0, render: (x) => (
+              <ul className="service-due-items">
+                {x.items.map((i) => (
+                  <li key={i.name} className={i.daysUntilDue < 0 ? 'service-due-items__overdue' : undefined}>
+                    <strong>{i.name}</strong>
+                    <span className="report-num"> {formatKm(i.nextServiceMileage)}</span>
+                    <small> · {formatDateOnly(i.nextServiceDueOn)}{i.daysUntilDue < 0 ? ' (เลยกำหนด)' : ''}</small>
+                  </li>
+                ))}
+              </ul>
+            ) },
             { id: 'handoverKm', header: 'ไมล์ส่งมอบ', size: 150, value: (x) => x.mileageAtHandover ?? 0, render: (x) => <span className="report-num">{formatKm(x.mileageAtHandover)}</span> },
             { id: 'last', header: 'เข้าครั้งล่าสุด', size: 190, value: (x) => new Date(x.handedOverAt).getTime(), render: (x) => (
-              <>{formatDate(x.handedOverAt)}<small className="purchase-sub"><Link className="report-link" to={`/jobs?job=${x.lastJobId}`}>{x.lastJobNo}</Link></small></>
+              <>{formatDate(x.handedOverAt)}<small className="purchase-sub"><button type="button" className="link-button report-link" onClick={() => setJobId(x.lastJobId)}>{x.lastJobNo}</button></small></>
             ) },
             { id: 'history', header: '', size: 140, render: (x) => (
               <Link className="report-link" to={`/reports/vehicle-history?vehicle=${x.vehicleId}`}>ดูประวัติรถ</Link>
@@ -148,6 +162,7 @@ function ReportBody({ report }: { report: ServiceDueReport }) {
           ]} />
         </Card>
       )}
+      <JobCardModal jobId={jobId} onClose={() => setJobId(null)} />
     </>
   )
 }

@@ -22,9 +22,10 @@ type DataTableProps<T> = {
   sortScope?: 'page' | 'loaded'
   getSubRows?: (row: T) => T[] | undefined
   getRowId?: (row: T) => string
+  getRowClassName?: (row: T) => string | undefined
 }
 
-export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable = false, sortScope, getSubRows, getRowId }: DataTableProps<T>) {
+export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable = false, sortScope, getSubRows, getRowId, getRowClassName }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [expanded, setExpanded] = useState<ExpandedState>({})
   const table = useReactTable({
@@ -88,7 +89,7 @@ export function DataTable<T>({ data, columns, onRowClick, getRowLabel, sortable 
           {table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className={onRowClick ? 'data-table__clickable-row' : undefined}
+              className={[onRowClick ? 'data-table__clickable-row' : '', getRowClassName?.(row.original) ?? ''].filter(Boolean).join(' ') || undefined}
               tabIndex={onRowClick ? 0 : undefined}
               aria-label={getRowLabel?.(row.original)}
               onClick={() => onRowClick?.(row.original)}

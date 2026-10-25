@@ -82,6 +82,52 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
             .AsSplitQuery()
             .ToListReadOnlyAsync(ct);
 
+    private const int StockUsageMaxRows = 50_000;
+    private static readonly string[] StockUsageTypes = ["issue", "issue-return", "sale", "sale-void"];
+
+    public async Task<StockUsageData> GetStockUsageAsync(
+        string shardKey, int branchId, DateTime fromUtc, DateTime toUtc, StockUsageFilter filter, CancellationToken ct)
+    {
+        IQueryable<StockMovement> Scoped() => db.Set<StockMovement>().AsNoTracking()
+            .Where(x => x.LegacyShardKey == shardKey && x.LegacyBranchId == branchId && StockUsageTypes.Contains(x.Type)
+                && (filter.WarehouseId == null || x.WarehouseId == filter.WarehouseId)
+                && (filter.CatalogItemId == null || x.CatalogItemId == filter.CatalogItemId)
+                && (filter.RequesterStaffId == null || x.RequesterStaffId == filter.RequesterStaffId));
+
+        var movements = await Scoped().Where(x => x.OccurredAt >= fromUtc && x.OccurredAt < toUtc)
+            .OrderBy(x => x.OccurredAt).ThenBy(x => x.Id).Take(StockUsageMaxRows + 1).ToListAsync(ct);
+        var truncated = movements.Count > StockUsageMaxRows;
+        if (truncated) movements.RemoveAt(movements.Count - 1);
+
+        // ใบคืน/ยกเลิกบิลที่เกิดนอกช่วงแต่เป็นของใบที่อยู่ในช่วง — ไว้คิดจำนวนสุทธิของใบนั้น
+        var issueIds = movements.Where(x => x.Type == "issue").Select(x => x.Id).ToList();
+        var saleIds = movements.Where(x => x.Type == "sale" && x.SaleId != null).Select(x => x.SaleId!.Value).Distinct().ToList();
+        if (issueIds.Count > 0 || saleIds.Count > 0)
+        {
+            var late = await Scoped().Where(x => (x.OccurredAt < fromUtc || x.OccurredAt >= toUtc)
+                    && ((x.Type == "issue-return" && x.SourceMovementId != null && issueIds.Contains(x.SourceMovementId.Value))
+                        || (x.Type == "sale-void" && x.SaleId != null && saleIds.Contains(x.SaleId.Value))))
+                .ToListAsync(ct);
+            movements.AddRange(late);
+        }
+
+        var itemIds = movements.Select(x => x.CatalogItemId).Distinct().ToList();
+        var jobIds = movements.Where(x => x.JobId != null).Select(x => x.JobId!.Value).Distinct().ToList();
+        var allSaleIds = movements.Where(x => x.SaleId != null).Select(x => x.SaleId!.Value).Distinct().ToList();
+        var items = await db.CatalogItems.AsNoTracking().Where(x => itemIds.Contains(x.Id))
+            .Select(x => new { x.Id, x.Code, x.Name, x.Unit }).ToListAsync(ct);
+        var jobs = await db.Jobs.AsNoTracking().Where(x => jobIds.Contains(x.Id))
+            .Select(x => new { x.Id, x.JobNo, x.VehicleRegistration }).ToListAsync(ct);
+        var sales = await db.Sales.AsNoTracking().Where(x => allSaleIds.Contains(x.Id))
+            .Select(x => new { x.Id, x.ReceiptNo }).ToListAsync(ct);
+        return new StockUsageData(
+            movements,
+            items.ToDictionary(x => x.Id, x => (x.Code, x.Name, x.Unit)),
+            jobs.ToDictionary(x => x.Id, x => (x.JobNo, (string?)x.VehicleRegistration)),
+            sales.ToDictionary(x => x.Id, x => x.ReceiptNo),
+            truncated);
+    }
+
     public Task<int> CountRetailDraftsAsync(string shardKey, int branchId, CancellationToken ct) =>
         db.Sales.CountAsync(s => s.LegacyShardKey == shardKey && s.LegacyBranchId == branchId
             && s.Status == Domain.Enums.SaleStatus.Draft, ct);
@@ -114,7 +160,11 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
             .AsSplitQuery()
             .ToListAsync(ct);
         var receipts = await db.Receipts.AsNoTracking().Where(r => jobIds.Contains(r.JobId)).ToListAsync(ct);
-        var handovers = await db.HandoverRecords.AsNoTracking().Where(h => jobIds.Contains(h.JobId)).ToListAsync(ct);
+        var handovers = await db.HandoverRecords.AsNoTracking()
+            .Include(h => h.ServiceItems)
+            .Where(h => jobIds.Contains(h.JobId))
+            .AsSplitQuery()
+            .ToListAsync(ct);
 
         return new VehicleHistoryData(jobs, quotations, receipts, handovers);
     }
@@ -124,9 +174,14 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
     {
         var candidates = await db.HandoverRecords.AsNoTracking()
             .Include(h => h.Job)
-            .Where(h => h.SubmittedAt != null && h.NextServiceDueOn != null
-                && h.NextServiceDueOn >= from && h.NextServiceDueOn <= to
+            .Include(h => h.ServiceItems)
+            // วันนัดของรถ = รายการที่ครบเร็วที่สุด — กรองช่วงวันด้วยค่าต่ำสุด ไม่ใช่ "มีรายการใดรายการหนึ่งในช่วง"
+            // (ไม่งั้นรถที่น้ำมันเครื่องเลยกำหนดไปนานแล้วแต่กรองอากาศเพิ่งใกล้ครบ จะโผล่ในช่วงที่ไม่ใช่วันนัดของแถว)
+            .Where(h => h.SubmittedAt != null
+                && h.ServiceItems.Min(i => (DateOnly?)i.NextServiceDueOn) >= from
+                && h.ServiceItems.Min(i => (DateOnly?)i.NextServiceDueOn) <= to
                 && h.Job!.LegacyShardKey == shardKey && h.Job.BranchId == branchId)
+            .AsSplitQuery()
             .ToListAsync(ct);
         if (candidates.Count == 0)
             return new ServiceDueData([], [], []);
@@ -143,6 +198,18 @@ public sealed class ReportsRepository(ServiceDbContext db) : IReportsRepository
             .ToListAsync(ct);
 
         return new ServiceDueData(candidates, visits, handovers);
+    }
+
+    public async Task<IReadOnlyList<ServiceDueBranch>> GetBranchesWithServiceDueAsync(
+        DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        var rows = await db.HandoverServiceItems.AsNoTracking()
+            .Where(i => i.NextServiceDueOn >= from && i.NextServiceDueOn <= to
+                        && i.HandoverRecord!.SubmittedAt != null)
+            .Select(i => new { i.HandoverRecord!.Job!.LegacyShardKey, i.HandoverRecord.Job.BranchId })
+            .Distinct()
+            .ToListAsync(ct);
+        return rows.Select(r => new ServiceDueBranch(r.LegacyShardKey, r.BranchId)).ToList();
     }
 
     private static IQueryable<Job> Scope(IQueryable<Job> jobs, string shardKey, int branchId) =>

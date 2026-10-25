@@ -93,10 +93,12 @@ public sealed class HandoverServiceTests
 
     private static HandoverRecord SeedRecord(FakeHandoverRepository repo)
     {
-        var record = new HandoverRecord
+        var record = new HandoverRecord { JobId = TestJobId, MileageAtHandover = 10_500 };
+        record.ServiceItems.Add(new HandoverServiceItem
         {
-            JobId = TestJobId, MileageAtHandover = 10_500, NextServiceMileage = 15_500, NextServiceMonths = 6
-        };
+            HandoverRecordId = record.Id, Name = "เช็คระยะ", NextServiceMileage = 15_500, NextServiceMonths = 6,
+            NextServiceDueOn = new DateOnly(2000, 1, 1) // ค่าพรีวิวเก่า — SubmitAsync ต้องคำนวณใหม่
+        });
         record.Items.Add(new HandoverChecklistItem
         {
             HandoverRecordId = record.Id, ItemCode = "key", Name = "กุญแจรถ"
@@ -177,8 +179,7 @@ public sealed class HandoverServiceTests
         var record = SeedRecord(repo);
         DecideEveryItem(record);
         record.MileageAtHandover = null;
-        record.NextServiceMileage = null;
-        record.NextServiceMonths = null;
+        record.ServiceItems.Clear();
 
         var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
 
@@ -192,13 +193,52 @@ public sealed class HandoverServiceTests
         var repo = new FakeHandoverRepository();
         var record = SeedRecord(repo);
         DecideEveryItem(record);
-        record.NextServiceDueOn = new DateOnly(2000, 1, 1); // ค่าพรีวิวเก่าจากวันที่บันทึก ต้องถูกคำนวณใหม่
 
         var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
 
         result.Success.Should().BeTrue();
         result.Data!.NextServiceDueOn.Should().Be(ServiceSchedule.ThaiDate(DateTime.UtcNow).AddMonths(6));
+        result.Data.ServiceItems!.Single().NextServiceDueOn.Should().Be(ServiceSchedule.ThaiDate(DateTime.UtcNow).AddMonths(6));
         result.Data.MileageAtIntake.Should().Be(10_000);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_recomputes_every_service_item_from_the_handover_day_and_keeps_old_fields_on_the_earliest()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        DecideEveryItem(record);
+        record.ServiceItems.Clear();
+        record.ServiceItems.Add(ServiceItem(record, "กรองอากาศ", 30_000, 12, 1));
+        record.ServiceItems.Add(ServiceItem(record, "น้ำมันเครื่อง", 20_000, 6, 0));
+
+        var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+
+        var today = ServiceSchedule.ThaiDate(DateTime.UtcNow);
+        result.Success.Should().BeTrue();
+        result.Data!.ServiceItems!.Select(i => (i.Name, i.NextServiceDueOn)).Should().BeEquivalentTo(
+            [("น้ำมันเครื่อง", today.AddMonths(6)), ("กรองอากาศ", today.AddMonths(12))]);
+        // แอปรุ่นเก่าอ่านฟิลด์นัดเดี่ยว → ต้องเป็นรายการที่ครบเร็วที่สุด
+        result.Data.NextServiceMileage.Should().Be(20_000);
+        result.Data.NextServiceMonths.Should().Be(6);
+        result.Data.NextServiceDueOn.Should().Be(today.AddMonths(6));
+    }
+
+    [Fact]
+    public async Task SubmitAsync_ignores_the_deprecated_single_columns_and_needs_at_least_one_item()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        DecideEveryItem(record);
+        record.ServiceItems.Clear();
+        // ใบส่งมอบเก่าที่ยังไม่ผ่าน backfill — คอลัมน์เดิมมีค่าแต่ไม่มีรายการ ต้องไม่ถือว่ามีนัดแล้ว
+        record.NextServiceMileage = 15_500;
+        record.NextServiceMonths = 6;
+        record.NextServiceDueOn = new DateOnly(2027, 1, 1);
+
+        var result = await CreateService(repo).SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+
+        result.Error!.Code.Should().Be("HANDOVER_SERVICE_INFO_REQUIRED");
     }
 
     [Fact]
@@ -215,6 +255,154 @@ public sealed class HandoverServiceTests
         result.Data.NextServiceMileage.Should().Be(17_000);
         result.Data.NextServiceMonths.Should().Be(3);
         result.Data.NextServiceDueOn.Should().Be(ServiceSchedule.ThaiDate(DateTime.UtcNow).AddMonths(3));
+    }
+
+    /// <summary>แอปรุ่นที่อยู่บน store ยังส่ง body เดิม (นัดเดียว) — ต้องบันทึกเป็น 1 รายการ "เช็คระยะ" และแทนที่ของเดิม</summary>
+    [Fact]
+    public async Task SaveServiceInfoAsync_still_accepts_the_old_single_value_body_as_one_item_named_check_up()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        record.ServiceItems.Add(ServiceItem(record, "น้ำมันเครื่อง", 20_000, 6, 1));
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(12_000, 17_000, 3));
+
+        result.Success.Should().BeTrue();
+        var item = result.Data!.ServiceItems!.Single();
+        item.Name.Should().Be("เช็คระยะ");
+        item.NextServiceMileage.Should().Be(17_000);
+        item.NextServiceMonths.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_old_body_with_only_one_of_the_two_values_is_rejected_on_the_missing_field()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(
+            TestJobId, new SaveHandoverServiceInfoRequest(12_000, 17_000, null));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be("nextServiceMonths");
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_saves_several_items_in_order_with_their_own_due_dates()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+        var templateId = KnownTemplateId;
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items:
+            [
+                new(templateId, "  น้ำมันเครื่อง ", 22_000, 6),
+                new(null, "ลูกปืนล้อหน้า", 50_000, 24)
+            ]));
+
+        var today = ServiceSchedule.ThaiDate(DateTime.UtcNow);
+        result.Success.Should().BeTrue();
+        result.Data!.ServiceItems!.Select(i => (i.Name, i.NextServiceMileage, i.NextServiceDueOn)).Should().Equal(
+            ("น้ำมันเครื่อง", 22_000, today.AddMonths(6)),
+            ("ลูกปืนล้อหน้า", 50_000, today.AddMonths(24)));
+        result.Data.ServiceItems![0].TemplateId.Should().Be(templateId);
+        result.Data.NextServiceMileage.Should().Be(22_000);
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_rejects_a_template_id_that_is_not_a_template_of_this_branch()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items: [new(KnownTemplateId, "ดี", 20_000, 6), new(Guid.NewGuid(), "ปลอม", 21_000, 6)]));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be("items[1].templateId");
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_replaces_the_whole_set_so_a_removed_row_disappears()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        var svc = CreateService(repo);
+        await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(12_000, Items:
+            [new(null, "ก", 20_000, 6), new(null, "ข", 30_000, 12)]));
+
+        var result = await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(12_000, Items:
+            [new(null, "ข", 31_000, 12)]));
+
+        result.Data!.ServiceItems!.Select(i => i.Name).Should().Equal("ข");
+        record.ServiceItems.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_allows_an_empty_list_as_a_draft_but_submit_then_demands_an_item()
+    {
+        var repo = new FakeHandoverRepository();
+        var record = SeedRecord(repo);
+        DecideEveryItem(record);
+        var svc = CreateService(repo);
+
+        var saved = await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(12_000, Items: []));
+        saved.Success.Should().BeTrue();
+        saved.Data!.ServiceItems.Should().BeEmpty();
+
+        var submitted = await svc.SubmitAsync(TestJobId, new SubmitHandoverRequest("attachments/handover/sig.png"));
+        submitted.Error!.Code.Should().Be("HANDOVER_SERVICE_INFO_REQUIRED");
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_rejects_duplicate_names_ignoring_spaces_and_case()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items: [new(null, "Oil Filter", 20_000, 6), new(null, " oil filter ", 21_000, 6)]));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be("items[1].name");
+    }
+
+    [Fact]
+    public async Task SaveServiceInfoAsync_rejects_a_blank_name_and_more_than_ten_items()
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+        var svc = CreateService(repo);
+
+        var blank = await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items: [new(null, "   ", 20_000, 6)]));
+        blank.Error!.Field.Should().Be("items[0].name");
+
+        var eleven = Enumerable.Range(1, 11).Select(i => new HandoverServiceItemRequest(null, $"รายการ {i}", 20_000, 6)).ToList();
+        var tooMany = await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(12_000, Items: eleven));
+        tooMany.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        tooMany.Error.Field.Should().Be("items");
+
+        var ten = await svc.SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(12_000, Items: eleven.Take(10).ToList()));
+        ten.Success.Should().BeTrue();
+    }
+
+    [Theory]
+    [InlineData(12_000, 6, "items[1].nextServiceMileage")] // ไมล์นัดต้องมากกว่าไมล์ส่งมอบ
+    [InlineData(17_000, 0, "items[1].nextServiceMonths")]
+    [InlineData(17_000, 25, "items[1].nextServiceMonths")]
+    public async Task SaveServiceInfoAsync_validates_each_item_and_points_at_the_bad_row(int next, int months, string field)
+    {
+        var repo = new FakeHandoverRepository();
+        SeedRecord(repo);
+
+        var result = await CreateService(repo).SaveServiceInfoAsync(TestJobId, new SaveHandoverServiceInfoRequest(
+            12_000, Items: [new(null, "ดี", 20_000, 6), new(null, "เสีย", next, months)]));
+
+        result.Error!.Code.Should().Be("HANDOVER_VALIDATION");
+        result.Error.Field.Should().Be(field);
     }
 
     [Theory]
@@ -272,6 +460,13 @@ public sealed class HandoverServiceTests
         ServiceSchedule.NextDueOn(utc, months).Should().Be(DateOnly.ParseExact(expected, "yyyy-MM-dd", inv));
     }
 
+    private static HandoverServiceItem ServiceItem(HandoverRecord record, string name, int mileage, int months, int order) =>
+        new()
+        {
+            HandoverRecordId = record.Id, Name = name, NextServiceMileage = mileage, NextServiceMonths = months,
+            NextServiceDueOn = new DateOnly(2000, 1, 1), SortOrder = order
+        };
+
     private static void DecideEveryItem(HandoverRecord record)
     {
         foreach (var item in record.Items)
@@ -292,7 +487,25 @@ public sealed class HandoverServiceTests
         bool receiptIssued = true,
         int? intakeMileage = 10_000) =>
         new(repo, new FakeJobRepository(intakeMileage), new FakePosRepository(receiptIssued ? IssuedReceipt : null),
-            new StubCurrentUser(role), TimeProvider.System);
+            new FakeTemplateRepository(KnownTemplateIds), new StubCurrentUser(role), TimeProvider.System);
+
+    private static readonly Guid KnownTemplateId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    private static readonly Guid[] KnownTemplateIds = [KnownTemplateId];
+
+    private sealed class FakeTemplateRepository(Guid[] known) : IServiceReminderTemplateRepository
+    {
+        public Task<ServiceReminderTemplate?> GetAsync(string shardKey, int branchId, Guid id, CancellationToken ct = default) =>
+            Task.FromResult(shardKey == "db2" && branchId == 105 && known.Contains(id)
+                ? new ServiceReminderTemplate { Id = id, LegacyShardKey = shardKey, LegacyBranchId = branchId }
+                : null);
+        public Task<bool> AnyAsync(string shardKey, int branchId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<IReadOnlyList<ServiceReminderTemplate>> SearchAsync(string shardKey, int branchId, bool includeInactive, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<bool> NameExistsAsync(string shardKey, int branchId, string name, Guid? excludingId, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task AddAsync(ServiceReminderTemplate template, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task AddEventAsync(ActivityEvent activityEvent, CancellationToken ct = default) => throw new NotImplementedException();
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => throw new NotImplementedException();
+        public void DiscardPending() { }
+    }
 
     /// <summary>ออกใบเสร็จแล้วหรือยัง — เป็นเงื่อนไขเดียวที่ HandoverService อ่านจากฝั่ง POS</summary>
     private sealed class FakePosRepository(Receipt? receipt) : IPosRepository

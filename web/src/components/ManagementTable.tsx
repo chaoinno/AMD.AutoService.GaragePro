@@ -12,12 +12,13 @@ type ManagementColumn<T> = {
 }
 
 /** Use the Jobs table's keyboard-accessible sorting for management lists. */
-export function ManagementTable<T>({ data, columns, sortScope }: {
+export function ManagementTable<T>({ data, columns, sortScope, getRowClassName }: {
   data: T[]
   columns: ManagementColumn<T>[]
   sortScope?: 'page' | 'loaded'
+  getRowClassName?: (item: T) => string | undefined
 }) {
-  return <DataTable<T> sortable sortScope={sortScope} data={data} columns={columns.filter(column => !column.hidden).map<ColumnDef<T, unknown>>(column => ({
+  return <DataTable<T> sortable sortScope={sortScope} getRowClassName={getRowClassName} data={data} columns={columns.filter(column => !column.hidden).map<ColumnDef<T, unknown>>(column => ({
     id: column.id, header: column.header, accessorFn: column.value,
     enableSorting: Boolean(column.value), size: column.size ?? 180,
     cell: ({ row }) => column.render(row.original),

@@ -38,6 +38,7 @@ public sealed class HandoverService(
     IHandoverRepository repository,
     IJobRepository jobs,
     IPosRepository pos,
+    IServiceReminderTemplateRepository templates,
     ICurrentUser user,
     TimeProvider clock) : IHandoverService
 {
@@ -85,7 +86,8 @@ public sealed class HandoverService(
     }
 
     /// <summary>[BIZ] เพิ่ม 2026-10-08 — เลขไมล์ส่งมอบ + นัดครั้งถัดไป บันทึกแยกก่อนเซ็นได้ (แบบผลทดลองขับของ QC)
-    /// เพื่อให้ใบส่งมอบที่พิมพ์ก่อนเซ็นมีค่าครบ · วันนัดตอนนี้เป็นพรีวิวจากวันนี้ — SubmitAsync คำนวณใหม่จากวันส่งมอบจริง</summary>
+    /// เพื่อให้ใบส่งมอบที่พิมพ์ก่อนเซ็นมีค่าครบ · วันนัดตอนนี้เป็นพรีวิวจากวันนี้ — SubmitAsync คำนวณใหม่จากวันส่งมอบจริง
+    /// (2026-10-25: นัดได้หลายรายการ — ส่งชุดเต็มทุกครั้ง แทนที่ของเดิมทั้งชุด)</summary>
     public async Task<Result<HandoverDto>> SaveServiceInfoAsync(
         Guid jobId, SaveHandoverServiceInfoRequest request, CancellationToken ct = default)
     {
@@ -93,9 +95,21 @@ public sealed class HandoverService(
         if (!jobResult.Success) return Result<HandoverDto>.Fail(jobResult.Error!);
         var job = jobResult.Data!;
 
-        var validation = ValidateServiceInfo(
-            job, request.MileageAtHandover, request.NextServiceMileage, request.NextServiceMonths);
+        var normalized = NormalizeItems(request);
+        if (!normalized.Success) return Result<HandoverDto>.Fail(normalized.Error!);
+
+        var validation = ValidateServiceInfo(job, request.MileageAtHandover, normalized.Data!);
         if (!validation.Success) return Result<HandoverDto>.Fail(validation.Error!);
+
+        // templateId ที่ส่งมาต้องเป็นรายการตั้งต้นของสาขานี้จริง (รวมที่ปิดใช้งานแล้ว — แถวที่บันทึกไว้เดิมยังส่งซ้ำได้)
+        for (var i = 0; i < normalized.Data!.Count; i++)
+        {
+            var templateId = normalized.Data[i].TemplateId;
+            if (templateId is null) continue;
+            if (await templates.GetAsync(user.ShardKey, user.BranchId, templateId.Value, ct) is null)
+                return Result<HandoverDto>.Fail(
+                    "HANDOVER_VALIDATION", "ไม่พบรายการนัดบริการตั้งต้นนี้ในสาขาปัจจุบัน", $"items[{i}].templateId");
+        }
 
         var record = await repository.GetByJobAsync(jobId, ct);
         if (record is null)
@@ -106,9 +120,23 @@ public sealed class HandoverService(
             return Result<HandoverDto>.Fail("HANDOVER_LOCKED", "งานนี้ส่งมอบไปแล้ว แก้ไขไม่ได้");
 
         record.MileageAtHandover = request.MileageAtHandover;
-        record.NextServiceMileage = request.NextServiceMileage;
-        record.NextServiceMonths = request.NextServiceMonths;
-        record.NextServiceDueOn = ServiceSchedule.NextDueOn(Now, request.NextServiceMonths);
+
+        // แทนที่ทั้งชุด (ผู้ใช้เห็นเป็นรายการเดียวที่แก้/ลบแถวได้) — แถวเดิมที่หายไปถูก EF ลบเป็น orphan
+        record.ServiceItems.Clear();
+        for (var i = 0; i < normalized.Data!.Count; i++)
+        {
+            var item = normalized.Data[i];
+            record.ServiceItems.Add(new HandoverServiceItem
+            {
+                HandoverRecordId = record.Id,
+                TemplateId = item.TemplateId,
+                Name = item.Name,
+                NextServiceMileage = item.NextServiceMileage,
+                NextServiceMonths = item.NextServiceMonths,
+                NextServiceDueOn = ServiceSchedule.NextDueOn(Now, item.NextServiceMonths),
+                SortOrder = i
+            });
+        }
         record.ServiceInfoUpdatedAt = Now;
         record.ServiceInfoUpdatedByUserName = user.UserName;
 
@@ -118,8 +146,36 @@ public sealed class HandoverService(
             HandoverMapper.ToDto(record, await pos.GetReceiptByJobAsync(jobId, ct), job));
     }
 
+    /// <summary>
+    /// รวม body รูปใหม่ (Items) กับรูปเดิม (นัดเดียว) ให้เป็นรายการเดียว — รูปเดิมแปลงเป็น "เช็คระยะ" 1 รายการ
+    /// ตัดช่องว่างชื่อที่นี่ที่เดียว เพื่อให้การตรวจชื่อซ้ำและสิ่งที่บันทึกเป็นค่าเดียวกัน
+    /// </summary>
+    private static Result<List<HandoverServiceItemRequest>> NormalizeItems(SaveHandoverServiceInfoRequest request)
+    {
+        if (request.Items is not null)
+            return Result<List<HandoverServiceItemRequest>>.Ok(
+                request.Items.Select(i => i with { Name = (i.Name ?? "").Trim() }).ToList());
+
+        if (request.NextServiceMileage is null && request.NextServiceMonths is null)
+            return Result<List<HandoverServiceItemRequest>>.Ok([]);
+        if (request.NextServiceMileage is null)
+            return Result<List<HandoverServiceItemRequest>>.Fail(
+                "HANDOVER_VALIDATION", "กรุณาระบุเลขไมล์ที่นัดครั้งถัดไป", "nextServiceMileage");
+        if (request.NextServiceMonths is null)
+            return Result<List<HandoverServiceItemRequest>>.Fail(
+                "HANDOVER_VALIDATION", "กรุณาระบุระยะเวลานัดครั้งถัดไป (เดือน)", "nextServiceMonths");
+
+        return Result<List<HandoverServiceItemRequest>>.Ok(
+        [
+            new HandoverServiceItemRequest(
+                null, ServiceSchedule.LegacySingleItemName,
+                request.NextServiceMileage.Value, request.NextServiceMonths.Value)
+        ]);
+    }
+
     /// <summary>กติกาไมล์ส่งมอบ/นัดครั้งถัดไป — ใช้ทั้งตอนบันทึกและตรวจซ้ำตอนเซ็น (ไมล์รับรถอาจถูกแก้หลังบันทึก)</summary>
-    private static Result<bool> ValidateServiceInfo(Job job, int mileageAtHandover, int nextServiceMileage, int months)
+    private static Result<bool> ValidateServiceInfo(
+        Job job, int mileageAtHandover, IReadOnlyList<HandoverServiceItemRequest> items)
     {
         if (job.MileageAtIntake is null)
             return Result<bool>.Fail(
@@ -135,16 +191,43 @@ public sealed class HandoverService(
                 "HANDOVER_VALIDATION",
                 $"เลขไมล์ตอนส่งมอบต้องไม่น้อยกว่าเลขไมล์ขณะรับรถ ({job.MileageAtIntake:N0} กม.)", "mileageAtHandover");
 
-        if (!Odometer.IsValid(nextServiceMileage) || nextServiceMileage <= mileageAtHandover)
+        if (items.Count > ServiceSchedule.MaxItemsPerHandover)
             return Result<bool>.Fail(
                 "HANDOVER_VALIDATION",
-                $"เลขไมล์ที่นัดครั้งถัดไปต้องมากกว่าเลขไมล์ตอนส่งมอบ ({mileageAtHandover:N0} กม.)", "nextServiceMileage");
+                $"นัดครั้งถัดไปได้ไม่เกิน {ServiceSchedule.MaxItemsPerHandover} รายการต่อการส่งมอบ", "items");
 
-        if (months is < ServiceSchedule.MinMonths or > ServiceSchedule.MaxMonths)
-            return Result<bool>.Fail(
-                "HANDOVER_VALIDATION",
-                $"ระยะเวลานัดครั้งถัดไปต้องอยู่ระหว่าง {ServiceSchedule.MinMonths}–{ServiceSchedule.MaxMonths} เดือน",
-                "nextServiceMonths");
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            var at = $"items[{i}]";
+
+            if (string.IsNullOrWhiteSpace(item.Name))
+                return Result<bool>.Fail("HANDOVER_VALIDATION", "กรุณาระบุชื่อรายการนัดบริการ", $"{at}.name");
+            if (item.Name.Length > ServiceSchedule.ItemNameMaxLength)
+                return Result<bool>.Fail(
+                    "HANDOVER_VALIDATION",
+                    $"ชื่อรายการนัดบริการต้องยาวไม่เกิน {ServiceSchedule.ItemNameMaxLength} ตัวอักษร", $"{at}.name");
+            if (!seen.Add(item.Name))
+                return Result<bool>.Fail(
+                    "HANDOVER_VALIDATION", $"มีรายการ \"{item.Name}\" ซ้ำกัน", $"{at}.name");
+
+            // field ของรูปเดิม (นัดเดียว) ต้องคงชื่อเดิม ไม่งั้นแอปรุ่นเก่าที่ผูกข้อความ error กับช่องกรอกจะหลงช่อง
+            var legacyShape = items.Count == 1 && item.Name == ServiceSchedule.LegacySingleItemName;
+            var mileageField = legacyShape ? "nextServiceMileage" : $"{at}.nextServiceMileage";
+            var monthsField = legacyShape ? "nextServiceMonths" : $"{at}.nextServiceMonths";
+
+            if (!Odometer.IsValid(item.NextServiceMileage) || item.NextServiceMileage <= mileageAtHandover)
+                return Result<bool>.Fail(
+                    "HANDOVER_VALIDATION",
+                    $"เลขไมล์ที่นัด \"{item.Name}\" ต้องมากกว่าเลขไมล์ตอนส่งมอบ ({mileageAtHandover:N0} กม.)", mileageField);
+
+            if (item.NextServiceMonths is < ServiceSchedule.MinMonths or > ServiceSchedule.MaxMonths)
+                return Result<bool>.Fail(
+                    "HANDOVER_VALIDATION",
+                    $"ระยะเวลานัด \"{item.Name}\" ต้องอยู่ระหว่าง {ServiceSchedule.MinMonths}–{ServiceSchedule.MaxMonths} เดือน",
+                    monthsField);
+        }
 
         return Result<bool>.Ok(true);
     }
@@ -213,20 +296,25 @@ public sealed class HandoverService(
                 "HANDOVER_INCOMPLETE", "กรุณาตรวจสอบของในรถให้ครบทุกรายการก่อนยืนยันส่งมอบ");
 
         // [BIZ] เพิ่ม 2026-10-08 — ต้องบันทึกไมล์ส่งมอบ + นัดครั้งถัดไปก่อนเซ็น
-        if (record.MileageAtHandover is null || record.NextServiceMileage is null || record.NextServiceMonths is null)
+        // [BIZ] อย่างน้อย 1 รายการนัด (ยืนยัน 2026-10-25) — ไมล์ส่งมอบยังบังคับเหมือนเดิม
+        if (record.MileageAtHandover is null || record.ServiceItems.Count == 0)
             return Result<HandoverDto>.Fail(
                 "HANDOVER_SERVICE_INFO_REQUIRED",
-                "กรุณาบันทึกเลขไมล์ตอนส่งมอบและนัดเข้ารับบริการครั้งถัดไปก่อนยืนยันส่งมอบ");
+                "กรุณาบันทึกเลขไมล์ตอนส่งมอบและนัดเข้ารับบริการครั้งถัดไปอย่างน้อย 1 รายการก่อนยืนยันส่งมอบ");
 
         var job = jobResult.Data!;
         var serviceInfo = ValidateServiceInfo(
-            job, record.MileageAtHandover.Value, record.NextServiceMileage.Value, record.NextServiceMonths.Value);
+            job, record.MileageAtHandover.Value,
+            record.ServiceItems.OrderBy(i => i.SortOrder).Select(i => new HandoverServiceItemRequest(
+                i.TemplateId, i.Name, i.NextServiceMileage, i.NextServiceMonths)).ToList());
         if (!serviceInfo.Success) return Result<HandoverDto>.Fail(serviceInfo.Error!);
 
         record.SignatureImagePath = request.SignatureAttachmentPath.Trim();
         record.SubmittedAt = Now;
-        // วันนัดนับจากวันที่ส่งมอบจริง ไม่ใช่วันที่กดบันทึก (บันทึกไว้เมื่อวาน เซ็นวันนี้ วันนัดต้องเลื่อนตาม)
-        record.NextServiceDueOn = ServiceSchedule.NextDueOn(Now, record.NextServiceMonths.Value);
+        // วันนัดนับจากวันที่ส่งมอบจริง ไม่ใช่วันที่กดบันทึก (บันทึกไว้เมื่อวาน เซ็นวันนี้ วันนัดต้องเลื่อนตาม) — ทุกรายการ
+        foreach (var item in record.ServiceItems)
+            item.NextServiceDueOn = ServiceSchedule.NextDueOn(Now, item.NextServiceMonths);
+        var earliest = HandoverMapper.Earliest(record)!;
         record.SubmittedByUserId = user.UserId;
         record.SubmittedByUserName = user.UserName;
 
@@ -237,7 +325,8 @@ public sealed class HandoverService(
             EntityType = nameof(HandoverRecord),
             EventType = "job.handover.submitted",
             DescriptionTh = $"ยืนยันส่งมอบรถแล้ว (หลังออกใบเสร็จ {receipt.DocumentNo}) · เลขไมล์ {record.MileageAtHandover:N0} กม." +
-                $" · นัดครั้งถัดไป {record.NextServiceMileage:N0} กม. หรือ {record.NextServiceDueOn:dd/MM/yyyy}",
+                $" · นัดครั้งถัดไป {record.ServiceItems.Count} รายการ (เร็วสุด {earliest.Name} {earliest.NextServiceMileage:N0} กม." +
+                $" หรือ {earliest.NextServiceDueOn.ToString("dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture)})",
             PerformedByUserId = user.UserId,
             PerformedByName = user.UserName,
             Source = user.Source,
@@ -245,9 +334,13 @@ public sealed class HandoverService(
             PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
             {
                 mileageAtHandover = record.MileageAtHandover,
-                nextServiceMileage = record.NextServiceMileage,
-                nextServiceMonths = record.NextServiceMonths,
-                nextServiceDueOn = record.NextServiceDueOn?.ToString("yyyy-MM-dd")
+                serviceItems = record.ServiceItems.OrderBy(i => i.SortOrder).Select(i => new
+                {
+                    name = i.Name,
+                    nextServiceMileage = i.NextServiceMileage,
+                    nextServiceMonths = i.NextServiceMonths,
+                    nextServiceDueOn = i.NextServiceDueOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+                })
             })
         }, ct);
         await repository.SaveChangesAsync(ct);

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { CalendarClock, CarFront, Gauge, History, ReceiptText, Search } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { useSearchParams } from 'react-router'
 import {
   getVehicleHistory,
   searchVehicleHistory,
@@ -19,6 +19,7 @@ import { Input } from '../../components/ui/input'
 import { formatDateTime, formatKm, formatNumber } from '../../lib/format'
 import { QueryState } from '../master-data/MasterDataCommon'
 import { nextServiceText } from '../jobs/HandoverServiceInfoSection'
+import { JobCardModal } from '../jobs/JobCardModal'
 import './reports.css'
 
 const MIN_TERM = 3
@@ -123,6 +124,8 @@ function VehicleHistoryPanel({ vehicleId, onBack }: { vehicleId: number; onBack?
 }
 
 function HistoryBody({ history }: { history: VehicleHistory }) {
+  // เปิดการ์ดจ๊อบบนหน้าประวัติรถเลย ไม่พาไป /jobs — ปิดแล้วต้องกลับมาที่รถคันเดิม
+  const [jobId, setJobId] = useState<string | null>(null)
   return (
     <>
       <Card className="vehicle-history-head">
@@ -137,7 +140,14 @@ function HistoryBody({ history }: { history: VehicleHistory }) {
           {history.nextService ? (
             <>
               <strong>{nextServiceText(history.nextService.mileage, history.nextService.dueOn)}</strong>
-              <small>จากการส่งมอบงาน {history.nextService.fromJobNo}</small>
+              {history.nextService.items.length > 1 ? (
+                <ul className="vehicle-history-next__items">
+                  {history.nextService.items.map((i) => (
+                    <li key={i.name}><strong>{i.name}</strong> — {nextServiceText(i.nextServiceMileage, i.nextServiceDueOn)}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <small>จากการส่งมอบงาน {history.nextService.fromJobNo}{history.nextService.items.length > 1 ? ' · แถวบนคือรายการที่ครบเร็วที่สุด' : ''}</small>
             </>
           ) : (
             <strong>ยังไม่มีนัด (ไม่มีการส่งมอบที่บันทึกนัดไว้)</strong>
@@ -151,20 +161,21 @@ function HistoryBody({ history }: { history: VehicleHistory }) {
 
       <ol className="vehicle-history-timeline">
         {history.visits.map((visit) => (
-          <li key={visit.jobId}><VisitCard visit={visit} showAmounts={history.showAmounts} /></li>
+          <li key={visit.jobId}><VisitCard visit={visit} showAmounts={history.showAmounts} onJob={setJobId} /></li>
         ))}
       </ol>
+      <JobCardModal jobId={jobId} onClose={() => setJobId(null)} />
     </>
   )
 }
 
-function VisitCard({ visit, showAmounts }: { visit: VehicleHistoryVisit; showAmounts: boolean }) {
+function VisitCard({ visit, showAmounts, onJob }: { visit: VehicleHistoryVisit; showAmounts: boolean; onJob: (id: string) => void }) {
   return (
     <Card className="vehicle-history-visit">
       <header>
         <div>
           <strong>{formatDateTime(visit.openedAt)}</strong>
-          <Link className="report-link" to={`/jobs?job=${visit.jobId}`}>{visit.jobNo}</Link>
+          <button type="button" className="link-button report-link" onClick={() => onJob(visit.jobId)}>{visit.jobNo}</button>
           {visit.jobTypeName ? <span className="job-type-chip">{visit.jobTypeName}</span> : null}
         </div>
         <JobStatusChip status={visit.status as JobStatusToken} label={visit.statusLabelTh} />
@@ -176,8 +187,17 @@ function VisitCard({ visit, showAmounts }: { visit: VehicleHistoryVisit; showAmo
         <div><dt><Gauge aria-hidden="true" /> ไมล์รับรถ</dt><dd className="report-num">{formatKm(visit.mileageAtIntake)}</dd></div>
         <div><dt><Gauge aria-hidden="true" /> ไมล์ส่งมอบ</dt><dd className="report-num">{visit.mileageAtHandover != null ? formatKm(visit.mileageAtHandover) : 'ยังไม่ส่งมอบ'}</dd></div>
         {visit.handedOverAt ? <div><dt>ส่งมอบเมื่อ</dt><dd>{formatDateTime(visit.handedOverAt)}</dd></div> : null}
-        {visit.nextServiceDueOn ? (
-          <div><dt><CalendarClock aria-hidden="true" /> นัดครั้งถัดไป</dt><dd>{nextServiceText(visit.nextServiceMileage, visit.nextServiceDueOn)}</dd></div>
+        {visit.serviceItems.length > 0 ? (
+          <div>
+            <dt><CalendarClock aria-hidden="true" /> นัดครั้งถัดไป</dt>
+            <dd>
+              <ul className="vehicle-history-next__items">
+                {visit.serviceItems.map((i) => (
+                  <li key={i.name}><strong>{i.name}</strong> — {nextServiceText(i.nextServiceMileage, i.nextServiceDueOn)}</li>
+                ))}
+              </ul>
+            </dd>
+          </div>
         ) : null}
         {visit.receiptDocumentNo ? (
           <div>

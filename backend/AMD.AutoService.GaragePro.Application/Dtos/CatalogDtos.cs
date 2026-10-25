@@ -8,7 +8,9 @@ public sealed record CatalogManagementQuery(
     bool IncludeInactive = false,
     bool LowStockOnly = false,
     int Page = 1,
-    int PageSize = 25);
+    int PageSize = 25,
+    // ถึงจุดต่ำสุด (พร้อมใช้ ≤ min) — คนละความหมายกับ LowStockOnly (พร้อมใช้ ≤ 0) ที่คงไว้ตามเดิม
+    bool BelowMinOnly = false);
 
 public sealed record CatalogManagementItemDto(
     Guid Id,
@@ -30,7 +32,13 @@ public sealed record CatalogManagementItemDto(
     bool IsActive,
     Guid? CategoryId = null,
     Guid? WarehouseId = null,
-    bool StockLocked = false);
+    bool StockLocked = false,
+    int? MinStock = null,
+    int? MaxStock = null,
+    bool BelowMin = false,
+    int? SuggestedOrderQty = null,
+    // min-max ตั้งได้เมื่อ StockManaged เท่านั้น (StockLocked รวม PurchasingLocked ด้วย จึงใช้แทนไม่ได้)
+    bool StockManaged = false);
 
 public sealed record CatalogUpsertRequest(
     string Code,
@@ -47,7 +55,9 @@ public sealed record CatalogUpsertRequest(
     int Damaged,
     string? EtaNote,
     Guid? CategoryId = null,
-    Guid? WarehouseId = null);
+    Guid? WarehouseId = null,
+    int? MinStock = null,
+    int? MaxStock = null);
 
 public sealed record CatalogStatusRequest(bool IsActive);
 

@@ -58,6 +58,11 @@ public class PackagePaymentNotifierTests
         public void Add(Notification notification) { }
         public Task<IReadOnlyList<Notification>> GetOpenBySubjectAsync(string shardKey, int branchId, string subjectKey,
             CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Notification>>([]);
+        public Task<IReadOnlyList<Notification>> GetOpenBySubjectPrefixAsync(string shardKey, int branchId,
+            string subjectKeyPrefix, CancellationToken ct = default) => Task.FromResult<IReadOnlyList<Notification>>([]);
+        public Task<IReadOnlySet<string>> GetExistingSubjectKeysAsync(string shardKey, int branchId,
+            IReadOnlyCollection<string> subjectKeys, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlySet<string>>(new HashSet<string>());
         public Task<IReadOnlyList<NotificationRow>> PageAsync(NotificationViewer viewer, DateTime since, bool unreadOnly,
             DateTime? beforeAt, Guid? beforeId, int take, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<int> CountUnreadAsync(NotificationViewer viewer, DateTime since, CancellationToken ct = default) =>

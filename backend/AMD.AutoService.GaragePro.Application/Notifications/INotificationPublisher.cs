@@ -31,6 +31,10 @@ public interface INotificationPublisher
     /// <summary>ปิดทุกแถวที่ยังเปิดของเรื่องนี้เป็น "ดำเนินการแล้วโดย {ผู้ใช้ปัจจุบัน}"</summary>
     Task ResolveAsync(string subjectKey, CancellationToken ct = default);
 
+    /// <summary>ปิดทุกแถวที่ยังเปิดซึ่ง SubjectKey ขึ้นต้นด้วยข้อความนี้ — ใช้เมื่อผู้เรียกไม่รู้ส่วนท้ายของกุญแจ
+    /// (เช่นเปิดจ๊อบใหม่ให้รถ: รู้แค่ vehicleId ไม่รู้วันนัดของรอบที่แจ้งไป)</summary>
+    Task ResolveByPrefixAsync(string subjectKeyPrefix, CancellationToken ct = default);
+
     Task<bool> HasOpenAsync(string subjectKey, CancellationToken ct = default);
 }
 
@@ -38,4 +42,11 @@ public static class NotificationSubjects
 {
     public static string PurchasePending(string kind, Guid documentId) => $"{kind}:{documentId:N}:pending";
     public static string QuotationAllRejected(Guid quotationId) => $"QT:{quotationId:N}:all_rejected";
+
+    /// <summary>รอบนัดของรถหนึ่งคัน — dueOn คือวันนัดของรายการที่ครบเร็วที่สุดตอนแจ้ง</summary>
+    public static string ServiceDue(long vehicleId, DateOnly dueOn) =>
+        $"{ServiceDuePrefix(vehicleId)}{dueOn.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)}";
+
+    /// <summary>ลงท้ายด้วย ":" เพื่อไม่ให้ vehicle 12 ไปชน 123</summary>
+    public static string ServiceDuePrefix(long vehicleId) => $"service-due:{vehicleId}:";
 }

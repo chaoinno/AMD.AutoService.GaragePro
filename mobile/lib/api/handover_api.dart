@@ -21,13 +21,14 @@ class HandoverApi {
     return HandoverChecklistItem.fromJson(data);
   }
 
-  /// เลขไมล์ตอนส่งมอบ + นัดครั้งถัดไป (ไมล์ + จำนวนเดือน — server คำนวณวันที่ให้) — ต้องบันทึกก่อนเซ็น
+  /// เลขไมล์ตอนส่งมอบ + นัดครั้งถัดไปหลายรายการ (แต่ละรายการ: ไมล์ + จำนวนเดือน — server คำนวณวันที่ให้)
+  /// ต้องบันทึกก่อนเซ็น · ส่งชุดเต็มทุกครั้ง แทนที่ของเดิมทั้งชุด
+  /// body รูปเดิม (nextServiceMileage/nextServiceMonths ตัวเดียว) server ยังรับอยู่ แต่แอปรุ่นนี้ไม่ใช้แล้ว
   Future<Handover> saveServiceInfo(String jobId,
-      {required int mileageAtHandover, required int nextServiceMileage, required int nextServiceMonths}) async {
+      {required int mileageAtHandover, required List<Map<String, dynamic>> items}) async {
     final data = await _c.put<Map<String, dynamic>>('/jobs/$jobId/handover/service-info', body: {
       'mileageAtHandover': mileageAtHandover,
-      'nextServiceMileage': nextServiceMileage,
-      'nextServiceMonths': nextServiceMonths,
+      'items': items,
     });
     return Handover.fromJson(data);
   }

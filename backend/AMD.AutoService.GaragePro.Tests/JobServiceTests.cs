@@ -66,6 +66,32 @@ public sealed class JobServiceTests
         policy.LimitChecks.Should().Equal(PlanLimitKind.Jobs);
     }
 
+    /// <summary>รถถูกเปิดจ๊อบใหม่ = ไม่ต้องตามให้เข้ารับบริการอีก → ปิดแจ้งเตือน service.due ของรถคันนี้ (prefix ลงท้าย ":" กัน vehicle 1 ชน 12)</summary>
+    [Fact]
+    public async Task CreateAsync_resolves_the_service_due_notifications_of_that_vehicle()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var service = CreateService(new FakeJobRepository(), customer: SampleCustomer(), vehicle: SampleVehicle(),
+            notifications: notifications);
+
+        var result = await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345));
+
+        result.Success.Should().BeTrue();
+        notifications.ResolvedPrefixes.Should().Equal("service-due:1:");
+    }
+
+    [Fact]
+    public async Task CreateAsync_does_not_resolve_service_due_when_the_job_is_rejected()
+    {
+        var notifications = new FakeNotificationPublisher();
+        var service = CreateService(new FakeJobRepository(), customer: null, vehicle: SampleVehicle(),
+            notifications: notifications);
+
+        (await service.CreateAsync(new CreateJobRequest(1, 1, 9, null, null, null, MileageAtIntake: 12345)))
+            .Success.Should().BeFalse();
+        notifications.ResolvedPrefixes.Should().BeEmpty();
+    }
+
     [Fact]
     public async Task CreateAsync_allows_a_second_job_on_a_vehicle_that_still_has_an_open_job()
     {
@@ -1523,12 +1549,13 @@ public sealed class JobServiceTests
         UserRole role = UserRole.Manager,
         EventSource source = EventSource.Web,
         FakeWorkIntervalHook? workHook = null,
-        IWorkspacePolicy? policy = null) =>
+        IWorkspacePolicy? policy = null,
+        AMD.AutoService.GaragePro.Application.Notifications.INotificationPublisher? notifications = null) =>
         new(jobs, quotations ?? new FakeQuotationRepository(null), qcChecklists ?? new FakeQcChecklistRepository(null),
             posRepo ?? new FakePosRepository(), handoverRepo ?? new FakeHandoverRepository(null),
             new FakeJobNumberGenerator(), new FakeCustomerVehicleService(customer, vehicle),
             new FakeLegacyReader(), workHook ?? new FakeWorkIntervalHook(),
-            new StubCurrentUser(role, source), TimeProvider.System, policy);
+            new StubCurrentUser(role, source), TimeProvider.System, policy, notifications);
 
     private sealed class StubCurrentUser(UserRole role, EventSource source) : ICurrentUser
     {

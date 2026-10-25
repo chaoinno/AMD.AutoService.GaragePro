@@ -14,6 +14,7 @@ export type CatalogFilters = {
   type?: 'part' | 'labor'
   includeInactive?: boolean
   lowStockOnly?: boolean
+  belowMinOnly?: boolean
   page?: number
   pageSize?: number
 }

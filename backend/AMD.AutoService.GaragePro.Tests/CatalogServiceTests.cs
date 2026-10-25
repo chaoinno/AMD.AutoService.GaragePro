@@ -178,6 +178,74 @@ public sealed class CatalogServiceTests
         Assert.Null(repository.Added);
     }
 
+    [Theory]
+    [InlineData(-1, 5, "minStock")]
+    [InlineData(2, -1, "maxStock")]
+    [InlineData(8, 5, "minStock")]
+    public void Min_max_must_be_non_negative_and_min_not_above_max(int min, int max, string field)
+    {
+        var error = CatalogValidator.Validate(ValidInput() with { MinStock = min, MaxStock = max });
+        Assert.Equal("CATALOG_VALIDATION", error?.Code);
+        Assert.Equal(field, error?.Field);
+    }
+
+    [Fact]
+    public void Min_max_are_rejected_for_labor()
+    {
+        var error = CatalogValidator.Validate(ValidInput() with { Type = LineType.Labor, StandardHours = 1, MinStock = 1 });
+        Assert.Equal("CATALOG_VALIDATION", error?.Code);
+    }
+
+    [Fact]
+    public async Task Min_max_cannot_be_set_before_the_item_is_stock_managed()
+    {
+        var repository = new StubRepository { Existing = Entity() };
+        var service = new CatalogService(repository, new StubUser(UserRole.Manager));
+
+        var created = await service.CreateAsync(ValidInput() with { Code = "NEW-1", MinStock = 2, MaxStock = 6 });
+        Assert.Equal("CATALOG_VALIDATION", created.Error?.Code);
+
+        var updated = await service.UpdateAsync(repository.Existing!.Id, ValidInput() with { OnHand = 10, Reserved = 2, OnOrder = 0, MinStock = 2 });
+        Assert.Equal("CATALOG_VALIDATION", updated.Error?.Code);
+    }
+
+    [Fact]
+    public async Task Stock_managed_part_saves_min_max_and_reports_warning_fields()
+    {
+        var entity = Entity();
+        entity.StockManaged = true;
+        entity.OnOrder = 3;
+        var repository = new StubRepository { Existing = entity };
+        var service = new CatalogService(repository, new StubUser(UserRole.Manager));
+
+        var result = await service.UpdateAsync(entity.Id, ValidInput() with
+        { OnHand = 10, Reserved = 2, OnOrder = 3, Code = entity.Code, MinStock = 8, MaxStock = 20 });
+
+        Assert.True(result.Success, result.Error?.MessageTh);
+        Assert.Equal(8, entity.MinStock);
+        Assert.Equal(20, entity.MaxStock);
+        Assert.True(result.Data!.BelowMin);               // พร้อมใช้ 10 − 2 = 8 ≤ 8
+        Assert.Equal(9, result.Data.SuggestedOrderQty);   // 20 − 8 − 3
+
+        var cleared = await service.UpdateAsync(entity.Id, ValidInput() with
+        { OnHand = 10, Reserved = 2, OnOrder = 3, Code = entity.Code });
+        Assert.True(cleared.Success);
+        Assert.Null(entity.MinStock);
+        Assert.False(cleared.Data!.BelowMin);
+    }
+
+    [Fact]
+    public async Task Office_cannot_set_min_max()
+    {
+        var entity = Entity();
+        entity.StockManaged = true;
+        var repository = new StubRepository { Existing = entity };
+        var result = await new CatalogService(repository, new StubUser(UserRole.Office))
+            .UpdateAsync(entity.Id, ValidInput() with { OnHand = 10, Reserved = 2, OnOrder = 0, Code = entity.Code, MinStock = 1 });
+        Assert.Equal("CATALOG_MANAGE_FORBIDDEN", result.Error?.Code);
+        Assert.Null(entity.MinStock);
+    }
+
     private static CatalogItem Entity() => new()
     {
         Code = "P-OIL-1", Type = LineType.Part, Name = "น้ำมันเครื่อง", Unit = "ขวด",

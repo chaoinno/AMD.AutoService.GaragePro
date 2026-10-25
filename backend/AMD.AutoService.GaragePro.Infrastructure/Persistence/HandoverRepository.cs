@@ -9,6 +9,7 @@ public sealed class HandoverRepository(ServiceDbContext db) : IHandoverRepositor
     public Task<HandoverRecord?> GetByJobAsync(Guid jobId, CancellationToken ct = default) =>
         db.HandoverRecords
           .Include(r => r.Items)
+          .Include(r => r.ServiceItems)
           .FirstOrDefaultAsync(r => r.JobId == jobId, ct);
 
     public async Task AddAsync(HandoverRecord record, CancellationToken ct = default) =>

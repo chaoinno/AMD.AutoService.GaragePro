@@ -15,16 +15,34 @@ export type Handover = {
   /** เลขไมล์ขณะรับรถของจ๊อบ — ไว้เทียบกับไมล์ส่งมอบ (ไม่มีใน JSON ถ้ายังไม่บันทึก) */
   mileageAtIntake?: number | null
   mileageAtHandover?: number | null
+  /** นัดเข้ารับบริการครั้งถัดไปได้หลายรายการ (น้ำมันเครื่อง/กรอง/เบรก…) — ต้องมีอย่างน้อย 1 รายการก่อนเซ็น */
+  serviceItems?: HandoverServiceItem[]
+  /** ฟิลด์เดี่ยวเดิม = รายการที่ครบเร็วที่สุด (ไว้ให้แอปรุ่นเก่า) — เว็บอ่านจาก serviceItems แทน */
   nextServiceMileage?: number | null
   nextServiceMonths?: number | null
-  /** yyyy-MM-dd ตามปฏิทินไทย — ก่อนเซ็นเป็นพรีวิวจากวันที่บันทึก ตอนเซ็นระบบคำนวณใหม่จากวันส่งมอบจริง */
   nextServiceDueOn?: string | null
+}
+
+export type HandoverServiceItem = {
+  id: string
+  templateId?: string | null
+  name: string
+  nextServiceMileage: number
+  nextServiceMonths: number
+  /** yyyy-MM-dd ตามปฏิทินไทย — ก่อนเซ็นเป็นพรีวิวจากวันที่บันทึก ตอนเซ็นระบบคำนวณใหม่จากวันส่งมอบจริง */
+  nextServiceDueOn: string
+}
+
+export type HandoverServiceItemInput = {
+  templateId?: string | null
+  name: string
+  nextServiceMileage: number
+  nextServiceMonths: number
 }
 
 export type HandoverServiceInfoInput = {
   mileageAtHandover: number
-  nextServiceMileage: number
-  nextServiceMonths: number
+  items: HandoverServiceItemInput[]
 }
 
 export const getHandover = (jobId: string) => apiRequest<Handover>(`/api/v1/jobs/${jobId}/handover`)
