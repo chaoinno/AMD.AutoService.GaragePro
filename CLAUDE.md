@@ -2035,7 +2035,8 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     · **ยังค้าง**: ปล่อยแอป 1.3.0+5 ·
       migrate GarageSelfServe_Dev ·
     · **[2026-10-25] เปิดงานแจ้งเตือนรถใกล้ครบรอบแล้ว** (`ServiceDue__Jobs__Enabled: "true"` ใน compose) หลังเจ้าของตรวจรายงานสาขา 227 บน production
-      (ช่วง 90 วันเห็น จจ-1112 นัด 19 ม.ค. 2570 ตรงกับข้อมูล) · ต้อง deploy ใหม่ถึงมีผล ·
+      (ช่วง 90 วันเห็น จจ-1112 นัด 19 ม.ค. 2570 ตรงกับข้อมูล) · **deploy แล้ว (`49055b1`)** · รอบแรกหลังสตาร์ต log
+      "ตรวจ 0 สาขา สร้างแจ้งเตือนใหม่ 0 รายการ" (ยังไม่มีรถที่ครบภายใน 7 วัน) · log `fail` duplicate key ที่ `sp_JobRun` ตอนสตาร์ตเป็นเรื่องปกติของงาน self-serve ·
       ยังไม่ได้ลองใช้ฟีเจอร์ใหม่บน production ด้วยบัญชีจริง
   · **[1] min-max สต็อก**: `CatalogItem.MinStock/MaxStock` · กฎเดียว `Domain/Common/StockLevel.cs` (พร้อมใช้ ≤ min · แนะนำสั่ง = max − พร้อมใช้ − OnOrder · `BelowMin` expression ใช้กับ EF)
     · `GET /inventory/low-stock/count` · `PUT /inventory/items/{id}/stock-levels` (Manager/Office) · ฟอร์มสินค้า (Manager) ใช้ validation เดียวกัน ·
