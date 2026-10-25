@@ -2049,7 +2049,11 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     งานรายวันยังไม่เคยรันจริง · การแยกสาขาของรายงาน/ตัวเลขตรวจแค่ว่าส่ง shard/branch ถูก · Android
   · **[RISK] ลำดับ deploy**: แอป 1.3.0+5 ต้องปล่อยหลัง backend · เว็บต้อง deploy พร้อม backend
   · **migration 3 ตัวรันกับ GarageService (ฐานร่วม production) แล้ว 2026-10-25** (ผู้ใช้อนุญาต · ก่อนรันค้าง 3 ตัวนี้พอดี · หลังรันไม่เหลือ Pending)
-    · **GarageSelfServe_Dev ยังไม่ได้รัน** — Mac เครื่องนี้ไม่มี connection ของ `gp_selfserve_migrate` ใน user-secrets
+    · **GarageSelfServe_Dev ยังไม่ได้รัน — ตัดสินใจ 2026-10-25 ให้คนที่มีเครื่องที่ต่อฐานนี้ได้รันเอง** ด้วย
+      `ConnectionStrings__ServiceDb="<SelfServe:MigrationConnectionString>" dotnet ef database update --context ServiceDbContext ...` จาก branch นี้
+      · Mac เครื่องนี้ตั้ง user-secrets ของ sp1 ครบแล้ว (`Encrypt=False` ตาม connection ของ GarageService) แต่ต่อด้วย `gp_selfserve_app`/`gp_selfserve_migrate`
+        ไม่ได้: **TLS handshake failed (connection reset by peer)** ทั้งที่ login `sa` ที่เซิร์ฟเวอร์เดียวกันต่อได้ — ยังไม่รู้สาเหตุ · API ตอนสตาร์ต log warning
+        แล้วทำงานต่อ (sp1 ใช้ไม่ได้) · ตั้ง `SelfServe:Jobs:Enabled=false` บนเครื่องนี้แล้ว
     · **[RISK] production ยังเป็นโค้ดเก่า**: ใบส่งมอบที่เซ็นหลัง 2026-10-25 จนถึงวัน deploy เก็บนัดในคอลัมน์เดิมเท่านั้น ไม่มีแถวใน `svc_HandoverServiceItem`
       → ตอน deploy ต้องรัน SQL backfill ใน `AddHandoverServiceItems` ซ้ำ (มี `NOT EXISTS` จึงรันซ้ำได้) ไม่งั้นรถเหล่านั้นหายจากรายงานใกล้ครบรอบ
   · **[ต้องรู้] `ServiceDueDailyJob` เริ่ม 1 นาทีหลัง API สตาร์ต** — API บนเครื่อง dev ชี้ฐานร่วม production จะส่งแจ้งเตือนจริงถึงทุกสาขา ·
