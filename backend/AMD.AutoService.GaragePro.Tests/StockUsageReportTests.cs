@@ -40,8 +40,9 @@ public sealed class StockUsageReportTests
         var i2 = Move("issue", OilId, -1, 120, 2, wd, "WD-1", JobA, 7, "สมชาย");
         var ret = Move("issue-return", OilId, 1, 120, 5, doc: "RT-1", jobId: JobA, requester: 7, requesterName: "สมชาย", source: i2.Id);
         var manual = Move("issue", FilterId, -4, 50, 3, doc: "ISS-1");
-        var sale = Move("sale", OilId, -2, 100, 4, doc: "SL-26-0001", saleId: SaleA);
-        var voided = Move("sale-void", OilId, 2, 100, 6, doc: "SL-26-0001", saleId: SaleA);
+        // ขายหน้าร้านจริงเก็บ DocumentNumber เป็น id ของบิล (GUID แบบ N) ไม่ใช่เลข SL- — รายงานต้องแปลงเป็นเลขใบเสร็จเอง
+        var sale = Move("sale", OilId, -2, 100, 4, doc: SaleA.ToString("N"), saleId: SaleA);
+        var voided = Move("sale-void", OilId, 2, 100, 6, doc: SaleA.ToString("N"), saleId: SaleA);
         return (Data(i1, i2, ret, manual, sale, voided), i1, i2);
     }
 

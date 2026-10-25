@@ -43,6 +43,10 @@ public static class StockUsageReport
 
         string? jobNo(Guid? id) => id.HasValue && data.Jobs.TryGetValue(id.Value, out var j) ? j.JobNo : null;
         string? plate(Guid? id) => id.HasValue && data.Jobs.TryGetValue(id.Value, out var j) ? j.Plate : null;
+        // movement ของขายหน้าร้านเก็บ DocumentNumber เป็น id ของบิล (GUID) — ผู้ใช้รู้จักบิลจากเลขใบเสร็จ SL- จึงแสดงเลขนั้นแทน
+        string docNo(StockMovement m) =>
+            m.SaleId.HasValue && data.SaleReceipts.TryGetValue(m.SaleId.Value, out var receipt) && !string.IsNullOrEmpty(receipt)
+                ? receipt : m.DocumentNumber;
         string ItemCode(Guid id) => data.Items.TryGetValue(id, out var i) ? i.Code : "";
         string ItemName(Guid id) => data.Items.TryGetValue(id, out var i) ? i.Name : "(สินค้าถูกลบ)";
         string ItemUnit(Guid id) => data.Items.TryGetValue(id, out var i) ? i.Unit : "";
@@ -72,7 +76,7 @@ public static class StockUsageReport
                     var issued = g.Sum(Qty);
                     var returnedQty = returned.Sum(Qty);
                     return new StockUsageDocumentDto(
-                        g.Key, first.DocumentNumber, SourceOf(first), g.Max(m => m.OccurredAt),
+                        g.Key, docNo(first), SourceOf(first), g.Max(m => m.OccurredAt),
                         first.JobId, jobNo(first.JobId), plate(first.JobId), first.SaleId,
                         first.RequesterStaffId, first.RequesterName, first.PerformedByName,
                         g.Select(m => m.CatalogItemId).Distinct().Count(), issued, returnedQty, issued - returnedQty,
@@ -106,7 +110,7 @@ public static class StockUsageReport
                             .Select(m => new StockUsageDetailDto(
                                 m.Type == "issue" ? (SourceOf(m) == SourceJob ? "job-issue" : "manual-issue")
                                     : m.Type == "issue-return" ? "job-return" : m.Type == "sale" ? "pos-sale" : "pos-void",
-                                m.OccurredAt, m.OperationId, m.DocumentNumber,
+                                m.OccurredAt, m.OperationId, docNo(m),
                                 m.JobId, jobNo(m.JobId), plate(m.JobId),
                                 m.SaleId, m.SaleId.HasValue && data.SaleReceipts.TryGetValue(m.SaleId.Value, out var r) ? r : null,
                                 IsReturn(m) ? -Qty(m) : Qty(m), C(IsReturn(m) ? -Cost(m) : Cost(m)))).ToList());
