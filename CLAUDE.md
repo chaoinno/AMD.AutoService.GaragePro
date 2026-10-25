@@ -2025,8 +2025,16 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
       (`ssh -t garage_amd "sudo grep 'line-commands' /var/log/nginx/access.log | tail -20"`)
     · ยังไม่ได้ทดสอบบน production: ปฏิเสธผ่าน LINE · กดซ้ำ · กดจากแชทส่วนตัว · อนุมัติจาก Admin · อีเมลเตือน paid 14/3 วันก่อนหมด · ทีมขายยังไม่มีแจ้งเตือนใน LINE เมื่ออู่ paid ใกล้หมด
 
-- ✅ **[เพิ่ม 2026-10-25 · branch `integration/backlog-6` ยังไม่ merge main/ยังไม่ deploy] 6 งานตาม [docs/18](docs/18-stock-service-backlog-plan.md)**
-  (sub agent Sonnet 3 สายใน worktree แยก แล้วรวมที่ branch นี้ · รายละเอียดการตัดสินใจอยู่ใน docs/18)
+- ✅ **[เพิ่ม 2026-10-25 · PR #19 merge แล้ว · deploy production แล้ว 2026-10-25 (`b9ffde3`) · เว็บ v1.18.0] 6 งานตาม [docs/18](docs/18-stock-service-backlog-plan.md)**
+  (sub agent Sonnet 3 สายใน worktree แยก แล้วรวมที่ branch `integration/backlog-6` · รายละเอียดการตัดสินใจอยู่ใน docs/18)
+  · **Deploy production 2026-10-25** (เจ้าของรัน `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh`): GarageService ไม่มี migration ค้าง ·
+    **GarageSelfServe (production) รัน 3 migration ใหม่แล้ว** · container healthy · public health ผ่าน · ตรวจซ้ำหลัง deploy: `/health` และ `/healthz` 200 ·
+    endpoint ใหม่ทั้งหมดตอบ 401 (route ขึ้นจริง) · bundle เว็บมี `1.18.0` · log API 10 นาทีแรกไม่มี `fail`/`crit` · `ServiceDue__Jobs__Enabled=false` ใน container
+    และ log ยืนยันว่างานแจ้งเตือนปิดอยู่
+    · **SQL backfill ของ `AddHandoverServiceItems` รันซ้ำกับ GarageService หลัง deploy แล้ว** (เจ้าของรันเอง 2026-10-25 — ครอบใบส่งมอบที่เซ็นระหว่างรัน migration ถึง deploy)
+    · **ยังค้าง**: ปล่อยแอป 1.3.0+5 ·
+      migrate GarageSelfServe_Dev · เปิดงานแจ้งเตือน (ดูรายงาน `/reports/service-due` ก่อน แล้วแก้ compose เป็น `"true"` + deploy) ·
+      ยังไม่ได้ลองใช้ฟีเจอร์ใหม่บน production ด้วยบัญชีจริง
   · **[1] min-max สต็อก**: `CatalogItem.MinStock/MaxStock` · กฎเดียว `Domain/Common/StockLevel.cs` (พร้อมใช้ ≤ min · แนะนำสั่ง = max − พร้อมใช้ − OnOrder · `BelowMin` expression ใช้กับ EF)
     · `GET /inventory/low-stock/count` · `PUT /inventory/items/{id}/stock-levels` (Manager/Office) · ฟอร์มสินค้า (Manager) ใช้ validation เดียวกัน ·
     แถวเหลือง+ไอคอน+ป้าย "ถึงจุดต่ำสุด" · ตัวเลขเมนู "สต็อก FIFO" · ตัวกรอง `LowStockOnly` เดิมความหมายเดิม · ขายหน้าร้าน/เบิกเข้าจ๊อบ invalidate query สต็อกแล้ว (เดิมไม่)
