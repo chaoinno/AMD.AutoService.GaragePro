@@ -9,6 +9,7 @@ using AMD.AutoService.GaragePro.Domain.Entities;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -30,9 +31,30 @@ public sealed class SessionVersionTests
         var passed = false;
         var middleware = new SessionRevocationMiddleware(_ => { passed = true; return Task.CompletedTask; },
             cache ?? new MemoryCache(new MemoryCacheOptions()), Options.Create(new JwtOptions()), NullLogger<SessionRevocationMiddleware>.Instance);
-        await middleware.InvokeAsync(http, auth ?? DispatchProxy.Create<IAuthService, LegacyAuth>(), store,
-            new CurrentUser(new HttpContextAccessor { HttpContext = http }));
+        http.RequestServices ??= new ServiceCollection()
+            .AddSingleton(auth ?? DispatchProxy.Create<IAuthService, LegacyAuth>()).BuildServiceProvider();
+        await middleware.InvokeAsync(http, store, new CurrentUser(new HttpContextAccessor { HttpContext = http }));
         return passed;
+    }
+    [Fact]
+    public async Task Unreachable_tenant_database_answers_503_instead_of_crashing_with_500()
+    {
+        // AuthService สร้างไม่ได้เมื่อต่อฐานของ shard ไม่ได้ (เช่น sp1 ไม่ได้ตั้งค่า) — ต้องไม่ถูกสร้างก่อนตรวจรุ่นเซสชัน
+        var constructed = false;
+        var http = Context();
+        http.RequestServices = new ServiceCollection().AddScoped<IAuthService>(_ =>
+        {
+            constructed = true;
+            throw new InvalidOperationException("shard 'sp1' is not configured");
+        }).BuildServiceProvider();
+        (await Invoke(http, new() { FailRead = true })).Should().BeFalse();
+        http.Response.StatusCode.Should().Be(503);
+        constructed.Should().BeFalse();
+
+        // รุ่นเซสชันตรวจผ่าน แต่สร้างตัวตรวจฐานเดิมไม่ได้ = กรณีเดียวกับฐานเดิมล่ม (ปล่อยผ่าน) ไม่ใช่ 500
+        var legacyDown = Context();
+        legacyDown.RequestServices = http.RequestServices;
+        (await Invoke(legacyDown, new())).Should().BeTrue();
     }
     [Fact]
     public async Task Old_tokens_default_to_zero_without_logging_out_other_accounts()

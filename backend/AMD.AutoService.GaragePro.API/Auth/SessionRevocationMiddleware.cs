@@ -24,7 +24,10 @@ public sealed class SessionRevocationMiddleware(
 {
     private readonly TimeSpan _ttl = TimeSpan.FromSeconds(Math.Clamp(options.Value.SessionCheckSeconds, 1, 60));
 
-    public async Task InvokeAsync(HttpContext context, IAuthService auth, ISessionVersionStore versions, ICurrentUser currentUser)
+    // IAuthService ไม่อยู่ในพารามิเตอร์โดยตั้งใจ — ASP.NET สร้างพารามิเตอร์ก่อนเข้าเมธอด และ AuthService ต้องการ ServiceDbContext
+    // ของ shard นั้น: ต่อฐานของ shard ไม่ได้ (เช่น sp1 ไม่ได้ตั้งค่า) = exception ก่อนถึง try ใดๆ กลายเป็น 500 ดิบ
+    // ไม่ใช่ 503 AUTH_CHECK_UNAVAILABLE ที่ client รู้จัก · ISessionVersionStore/ICurrentUser ไม่แตะฐานตอนสร้างจึงรับตรงได้
+    public async Task InvokeAsync(HttpContext context, ISessionVersionStore versions, ICurrentUser currentUser)
     {
         var principal = context.User;
         // API ภายใน (docs/17 §8.6) ยืนยันตัวด้วย X-Internal-Key ไม่ใช่ JWT · token ที่ติดมาด้วยต้องไม่ทำให้ได้ 401 AUTH_REQUIRED
@@ -77,6 +80,7 @@ public sealed class SessionRevocationMiddleware(
         {
             try
             {
+                var auth = context.RequestServices.GetRequiredService<IAuthService>();
                 reason = await auth.GetSessionRevocationReasonAsync(context.RequestAborted);
                 cache.Set(key, reason, _ttl);
             }
