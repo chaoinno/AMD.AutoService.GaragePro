@@ -1,6 +1,6 @@
 # แจ้งอัปเดตแอปและเพิกถอนเซสชัน (2026-10-28)
 
-สถานะ: implementation ใน working tree; ยังไม่ deploy / migrate ฐานจริง / ส่ง Store
+สถานะ: PR #21 merge แล้ว · deploy production 2026-10-30 (`245f65c`) · migrate ฐานจริงแล้ว · นโยบายอัปเดตยังปิดทั้งหมด · แอป 1.4.0+6 ยังไม่ส่ง Store
 
 ## การใช้งาน
 

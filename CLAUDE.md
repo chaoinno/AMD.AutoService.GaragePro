@@ -48,7 +48,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 | [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
-| [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[branch `feat/app-updates-session-revocation` · ยังไม่ deploy]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
+| [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[PR #21 · deploy production 2026-10-30 · เว็บ v1.19.0 · แอป 1.4.0+6 ยังไม่ส่ง Store]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2220,7 +2220,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
 - **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** — ฟีเจอร์ของ chao (ปฏิทิน, เทมเพลต, รายการนอกแคตตาล็อก)
   ตรวจได้แค่ระดับ build/unit test ในรอบ merge นี้ ไม่ได้เปิดใช้จริงทีละหน้า
 
-### [2026-10-28 · branch `feat/app-updates-session-revocation` · ยังไม่ deploy] แจ้งอัปเดตแอป + เพิกถอนเซสชันถาวร
+### [2026-10-28 · PR #21 merge แล้ว · deploy production 2026-10-30 (`245f65c`)] แจ้งอัปเดตแอป + เพิกถอนเซสชันถาวร
 - ดู [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) สำหรับ API, rollout, migration และ recovery ของ Staff status ที่ process ขัดข้อง
 - เพิ่ม `svc_UserSessionVersion` ทุก service shard และ `AppUpdatesDbContext` ส่วนกลาง (history แยก); ต้อง migrate ก่อน backend ใหม่
 - ปิด Staff: admin/Manager ภายในสาขา, เพิ่มรุ่น token ทุกบัญชีที่ผูกไว้ก่อนเขียนสถานะ; ไม่แตะงาน/เวลา; version-store error = 503, legacy fail-open เดิมยังอยู่
@@ -2239,3 +2239,9 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   เว็บทดสอบด้วย API จำลองในเบราว์เซอร์ (ไม่มีรหัสบัญชีทดสอบ) · **พบและแก้**: ต่อฐานของ shard ไม่ได้ได้ 500 ดิบ เพราะ
   `SessionRevocationMiddleware` รับ `IAuthService` เป็นพารามิเตอร์ (สร้างก่อนเข้า try) → สร้างตอนใช้ ได้ 503 `AUTH_CHECK_UNAVAILABLE`
   · ใน simulator ติดตั้งแอป debug ที่ชี้ `localhost:5080` ทับตัวเดิมไว้ ต้อง build ใหม่ถ้าจะใช้กับ production
+- **[Deploy production 2026-10-30 00:28]** `REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` ผ่าน (server เดิมอยู่ `d021efe`) ·
+  GarageSelfServe ใส่ `AddUserSessionVersions` · GarageService **ไม่มีอะไรค้าง เพราะตารางทั้ง 3 ชุดถูกสร้างไว้แล้วเมื่อ 2026-10-29 23:30 (เวลาไทย)**
+  จาก API ที่รันบนเครื่องโหมด Development สักตัว (ยังระบุตัวไม่ได้ · ช่วงนั้นไม่มีข้อมูลถูกเขียน ตารางใหม่ว่าง) · `migrate-selfserve-dev.sh` ใส่ให้ `_Dev` แล้ว ·
+  container healthy · public health ผ่าน · `/app-updates/ios|android` 200 `enabled:false` · admin ไม่ล็อกอิน 401 · bundle เว็บมี 1.19.0 ·
+  log API 10 นาทีแรกไม่มี `fail`/`crit` และไม่มี `AUTH_CHECK_UNAVAILABLE` · สวิตช์รับสมัครทดลองใช้ยังเปิดตามเดิม
+  · **ยังค้าง**: ทดสอบปิดพนักงานด้วยบัญชีจริงบน production · ส่งแอป 1.4.0+6 ขึ้น Store แล้วค่อยเปิดนโยบายแจ้งอัปเดต
