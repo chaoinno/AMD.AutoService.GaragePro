@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, Download, PackageMinus, Undo2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router'
+import { Link, NavLink, Navigate, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { getStockUsageReport, type StockUsageDetail, type StockUsageItem, type StockUsageReport, type StockUsageSource, type StockUsageView } from '../../api/reports'
 import { AppShell } from '../../components/AppShell'
@@ -25,20 +25,23 @@ import './reports.css'
 const localIso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const monthStart = () => { const n = new Date(); return localIso(new Date(n.getFullYear(), n.getMonth(), 1)) }
 
-const VIEWS: { value: StockUsageView; label: string }[] = [
-  { value: 'documents', label: 'รายใบเบิก' },
-  { value: 'items', label: 'สรุปตามสินค้า' },
-  { value: 'requesters', label: 'สรุปตามช่างผู้เบิก' },
+/// แต่ละมุมมองเป็นเมนูของตัวเองใน sidebar (หัวข้อ "สต็อก & การเบิกอะไหล่") — path ต้องตรงกับ AppRoutes/AppShell
+export const STOCK_USAGE_VIEWS: { value: StockUsageView; label: string; path: string }[] = [
+  { value: 'documents', label: 'รายใบเบิก', path: '/reports/stock-usage' },
+  { value: 'items', label: 'สรุปตามสินค้า', path: '/reports/stock-usage/items' },
+  { value: 'requesters', label: 'สรุปตามช่างผู้เบิก', path: '/reports/stock-usage/requesters' },
 ]
+const VIEWS = STOCK_USAGE_VIEWS
 export const SOURCE_LABEL: Record<string, string> = { job: 'เบิกเข้างาน', manual: 'เบิกหน้าสต็อก', pos: 'ขายหน้าร้าน (POS)' }
 const DETAIL_LABEL: Record<StockUsageDetail['kind'], string> = {
   'job-issue': 'เบิกเข้างาน', 'manual-issue': 'เบิกหน้าสต็อก', 'job-return': 'คืนจากงาน', 'pos-sale': 'ขาย POS', 'pos-void': 'ยกเลิกบิลขาย',
 }
 
 /// [BIZ] เพิ่ม 2026-10-25 — การเบิกอะไหล่ 3 มุมมอง (ธุรการ/ผู้จัดการ) · จำนวนสุทธิหลังคืน · ต้นทุนมาจากล็อตจริงและเป็น null ที่ server เมื่อ role ไม่เห็นต้นทุน
-export function StockUsageReportPage() {
+export function StockUsageReportPage({ view = 'documents' }: { view?: StockUsageView }) {
   const [params, setParams] = useSearchParams()
-  const view = (VIEWS.find(v => v.value === params.get('view'))?.value ?? 'documents') as StockUsageView
+  // ลิงก์/บุ๊กมาร์กรุ่นก่อนแยกเมนูใช้ ?view=items — พาไป path ใหม่โดยคงตัวกรองเดิม
+  const legacyView = VIEWS.find(v => v.value === params.get('view') && v.value !== view)
   const source = (['job', 'manual', 'pos'].includes(params.get('source') ?? '') ? params.get('source') : '') as StockUsageSource | ''
   const fromDate = params.get('from') || monthStart()
   const toDate = params.get('to') || localIso(new Date())
@@ -50,8 +53,9 @@ export function StockUsageReportPage() {
 
   const query = useQuery({
     queryKey: ['reports', 'stock-usage', view, source, fromDate, toDate],
+    // ไม่ยิงก่อน redirect จาก ?view= รุ่นเก่า
+    enabled: Boolean(fromDate && toDate) && !legacyView,
     queryFn: () => getStockUsageReport({ view, source: source || undefined, fromDate, toDate }),
-    enabled: Boolean(fromDate && toDate),
   })
   const [withdrawalDoc, setWithdrawalDoc] = useState<string | null>(null)
   const [returnDoc, setReturnDoc] = useState<string | null>(null)
@@ -63,12 +67,17 @@ export function StockUsageReportPage() {
     // ในการ์ดจ๊อบเบิก/คืนของได้ ยอดในรายงานอาจเปลี่ยน
     void queryClient.invalidateQueries({ queryKey: ['reports', 'stock-usage'] })
   }
+  const viewLabel = VIEWS.find(v => v.value === view)!.label
+  // ตัวกรองวันที่/แหล่งที่มาติดไปด้วยเมื่อสลับมุมมอง
+  const filterQuery = (() => { const q = new URLSearchParams(params); q.delete('view'); const t = q.toString(); return t ? `?${t}` : '' })()
+
+  if (legacyView) return <Navigate to={`${legacyView.path}${filterQuery}`} replace />
 
   return (
-    <AppShell title="การเบิกอะไหล่">
+    <AppShell title={`การเบิกอะไหล่ · ${viewLabel}`}>
       <section className="report-page-heading">
         <div>
-          <h2><PackageMinus aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />การเบิกอะไหล่</h2>
+          <h2><PackageMinus aria-hidden="true" style={{ width: 18, verticalAlign: -3, marginRight: 6 }} />การเบิกอะไหล่ · {viewLabel}</h2>
           <p>ใบเบิกงาน · เบิกหน้าสต็อก · ขายหน้าร้าน พร้อมจำนวนสุทธิหลังคืน · วันที่ตามปฏิทินไทย ช่วงยาวสุด 366 วัน</p>
         </div>
         <div className="report-date-filter">
@@ -83,11 +92,11 @@ export function StockUsageReportPage() {
         </div>
       </section>
 
-      <div className="report-presets" role="tablist" aria-label="มุมมองรายงาน">
+      <nav className="report-presets" aria-label="มุมมองรายงานการเบิกอะไหล่">
         {VIEWS.map(v => (
-          <button key={v.value} type="button" role="tab" aria-selected={view === v.value} className={view === v.value ? 'is-active' : undefined} onClick={() => set({ view: v.value === 'documents' ? '' : v.value })}>{v.label}</button>
+          <NavLink key={v.value} to={`${v.path}${filterQuery}`} end aria-current={view === v.value ? 'page' : undefined} className={view === v.value ? 'is-active' : undefined}>{v.label}</NavLink>
         ))}
-      </div>
+      </nav>
 
       <QueryState query={query} loadingTitle="กำลังโหลดรายงานการเบิกอะไหล่" emptyTitle="ยังไม่มีข้อมูล" emptyReason="ไม่พบข้อมูลในช่วงนี้" onRetry={() => void query.refetch()}>
         {query.data ? <Body report={query.data} onWithdrawal={setWithdrawalDoc} onReturn={setReturnDoc} onJob={setJobId} /> : null}

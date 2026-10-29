@@ -66,7 +66,9 @@ export default function AppRoutes() {
           <Route path="/reports/sales-margin" element={<ProtectedRoute><FeatureGate><SalesMarginReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/retail-sales" element={<ProtectedRoute><FeatureGate><RetailSalesReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
-          <Route path="/reports/stock-usage" element={<ProtectedRoute><StockUsageReportPage /></ProtectedRoute>} />
+          <Route path="/reports/stock-usage" element={<ProtectedRoute><StockUsageReportPage view="documents" /></ProtectedRoute>} />
+          <Route path="/reports/stock-usage/items" element={<ProtectedRoute><StockUsageReportPage key="items" view="items" /></ProtectedRoute>} />
+          <Route path="/reports/stock-usage/requesters" element={<ProtectedRoute><StockUsageReportPage key="requesters" view="requesters" /></ProtectedRoute>} />
           <Route path="/reports/service-due" element={<ProtectedRoute><ServiceDueReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock" element={<ProtectedRoute><FeatureGate><StockReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/work-intervals" element={<ProtectedRoute><FeatureGate><WorkIntervalsPage /></FeatureGate></ProtectedRoute>} />

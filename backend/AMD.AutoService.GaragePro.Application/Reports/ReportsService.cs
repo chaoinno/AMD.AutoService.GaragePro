@@ -133,10 +133,16 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
         var to = toDate ?? now;
         var from = fromDate ?? new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var quotations = await repo.GetQuotationsCreatedInRangeAsync(user.ShardKey, user.BranchId, from, to, ct);
-        var approvedLines = quotations.SelectMany(q => q.Lines)
-            .Where(l => l.ApprovalStatus == LineApprovalStatus.Approved)
+        // [BIZ] ใบที่ถูกแทนที่ (Superseded) การอนุมัติเป็นโมฆะ (กฎข้อ 1) แต่บรรทัดยังค้างสถานะ Approved —
+        // ถ้านับด้วย ยอดของงานที่ออกฉบับแก้ไขหลังลูกค้าอนุมัติจะซ้ำสองเท่า · ใช้นิยาม "ใบที่ใช้อยู่" เดียวกับ JobQuotations
+        var quotations = (await repo.GetQuotationsCreatedInRangeAsync(user.ShardKey, user.BranchId, from, to, ct))
+            .Where(q => q.Status != QuotationStatus.Superseded)
             .ToList();
+        var approved = quotations
+            .SelectMany(q => q.Lines.Select(l => (Quotation: q, Line: l)))
+            .Where(x => x.Line.ApprovalStatus == LineApprovalStatus.Approved)
+            .ToList();
+        var approvedLines = approved.Select(x => x.Line).ToList();
 
         var net = approvedLines.Sum(l => l.NetAmount);
         var cost = approvedLines.Sum(l => l.CostAmount);
@@ -144,12 +150,15 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
         var marginPercent = net == 0m ? 0m : Math.Round((net - cost) / net * 100m, 2);
         var canSeeCost = user.CanSeeCost;
 
-        var byType = approvedLines
-            .GroupBy(l => l.Type)
+        var byType = approved
+            .GroupBy(x => x.Line.Type)
+            .OrderBy(g => g.Key)
             .Select(g => new LineTypeTotalsDto(
-                g.Key.ToString(), g.Sum(l => l.NetAmount),
-                canSeeCost ? g.Sum(l => l.CostAmount) : null,
-                canSeeCost ? g.Sum(l => l.MarginAmount) : null))
+                g.Key.ToString(), g.Sum(x => x.Line.NetAmount),
+                canSeeCost ? g.Sum(x => x.Line.CostAmount) : null,
+                canSeeCost ? g.Sum(x => x.Line.MarginAmount) : null,
+                g.Count(),
+                SalesMarginItems(g, canSeeCost)))
             .ToList();
 
         // ค่าแรงเท่านั้นที่ผูกกับช่างคนเดียว — อะไหล่ไม่มีเจ้าของงาน จึงไม่รวมในรายงานนี้
@@ -162,7 +171,7 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
 
         return Result<SalesMarginReportDto>.Ok(new SalesMarginReportDto(
             FromDate: from, ToDate: to,
-            QuotationCount: quotations.Count,
+            QuotationCount: approved.Select(x => x.Quotation.Id).Distinct().Count(),
             NetAmount: net,
             CostAmount: canSeeCost ? cost : null,
             MarginAmount: canSeeCost ? margin : null,
@@ -170,6 +179,38 @@ public sealed class ReportsService(IReportsRepository repo, ICurrentUser user, T
             ByType: byType,
             ByTechnician: byTechnician));
     }
+
+    /// <summary>
+    /// drill-down ของประเภทหนึ่ง: รวมรายการเดียวกัน (แคตตาล็อกด้วยรหัส · นอกแคตตาล็อกด้วยชื่อ) แล้วแตกเป็นบรรทัดต่อจ๊อบ
+    /// เรียงยอดขายมากไปน้อย — ตอบคำถาม "ยอดค่าแรง/อะไหล่มาจากอะไรบ้าง"
+    /// </summary>
+    private static List<SalesMarginItemDto> SalesMarginItems(
+        IEnumerable<(Quotation Quotation, QuotationLine Line)> lines, bool canSeeCost) =>
+        lines
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.Line.CatalogCode)
+                ? "name:" + x.Line.Name.Trim().ToUpperInvariant()
+                : "code:" + x.Line.CatalogCode.Trim().ToUpperInvariant())
+            .Select(g =>
+            {
+                var ordered = g.OrderByDescending(x => x.Quotation.CreatedAt).ToList();
+                var latest = ordered[0].Line;   // ชื่อ/หน่วยอาจถูกแก้ในแคตตาล็อกระหว่างช่วง — แสดงตามบรรทัดล่าสุด
+                return new SalesMarginItemDto(
+                    latest.CatalogCode, latest.Name, latest.Unit, string.IsNullOrWhiteSpace(latest.CatalogCode),
+                    ordered.Count, ordered.Sum(x => x.Line.Quantity),
+                    ordered.Sum(x => x.Line.NetAmount),
+                    canSeeCost ? ordered.Sum(x => x.Line.CostAmount) : null,
+                    canSeeCost ? ordered.Sum(x => x.Line.MarginAmount) : null,
+                    ordered.Select(x => new SalesMarginLineDto(
+                        x.Quotation.JobId, x.Quotation.JobNo, x.Quotation.Id, x.Quotation.Code,
+                        x.Quotation.CustomerName, x.Quotation.VehicleRegistration, x.Quotation.CreatedAt,
+                        x.Line.Quantity, x.Line.UnitPrice, x.Line.NetAmount,
+                        canSeeCost ? x.Line.CostAmount : null,
+                        canSeeCost ? x.Line.MarginAmount : null,
+                        x.Line.AssignedTechnicianName)).ToList());
+            })
+            .OrderByDescending(i => i.NetAmount)
+            .ThenBy(i => i.Name, StringComparer.Ordinal)
+            .ToList();
 
     public async Task<Result<StockReportDto>> GetStockAsync(CancellationToken ct = default)
     {
