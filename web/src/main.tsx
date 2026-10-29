@@ -1,26 +1,25 @@
-import { QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot, hydrateRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import { ClientOnly } from './components/ClientOnly'
 import { Toaster } from './components/ui/sonner'
-import { createAppQueryClient } from './lib/queryClient'
 import { SessionProvider } from './lib/session'
+import { SessionQueryProvider } from './lib/SessionGuard'
 import './index.css'
-
-const queryClient = createAppQueryClient()
 
 const app = (
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <SessionProvider>
+    <SessionProvider>
+      <SessionQueryProvider>
         <BrowserRouter>
           <App />
-          <ClientOnly><Toaster /></ClientOnly>
         </BrowserRouter>
-      </SessionProvider>
-    </QueryClientProvider>
+      </SessionQueryProvider>
+      {/* อยู่นอก SessionQueryProvider โดยตั้งใจ — ต้นไม้ข้างในสร้างใหม่ทุกครั้งที่ token เปลี่ยน
+          toast ที่ยิงพร้อมกับเปลี่ยน token (เช่น "สลับไปสาขา … แล้ว") จะหายไปกับ Toaster ตัวเก่า */}
+      <ClientOnly><Toaster /></ClientOnly>
+    </SessionProvider>
   </StrictMode>
 )
 

@@ -108,6 +108,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { to: '/customers', icon: Users, label: 'ลูกค้า' },
       { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
       { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
+      { to: '/admin/app-updates', icon: Package, label: 'เวอร์ชันแอป' },
       { to: '/products', icon: Package, label: 'สินค้า' },
       { to: '/suppliers', icon: Truck, label: 'ซัพพลายเออร์' },
       { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
@@ -209,7 +210,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
           {navGroups.map((group) => (
             <div className="sidebar__group" key={group.label}>
               <span className="sidebar__group-label">{group.label}</span>
-              {group.items.map((item) => {
+              {group.items.filter(item => item.to !== '/admin/app-updates' || session?.user.isAdministrator).map((item) => {
                 const Icon = item.icon
                 // path ของฟีเจอร์มาจาก lib/plan.ts ที่เดียว (ชุดเดียวกับ FeatureGate ใน AppRoutes)
                 const lockedFeature = lockedFeatureForPath(plan, item.to)

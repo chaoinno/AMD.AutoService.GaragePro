@@ -46,6 +46,7 @@ public static class GarageClaims
     public const string SessionId = "sid";
     public const string ShiftId = "shift";
     public const string DisplayName = "name_th";
+    public const string SessionVersion = "session_version";
     public const string IsAdministrator = "is_admin";
 
     /// <summary>true เมื่อยังไม่ได้เลือกสาขา/กะ — endpoint งานทั้งหมดต้องปฏิเสธ</summary>
@@ -115,6 +116,7 @@ public sealed class JwtTokenIssuer(IOptions<JwtOptions> options, TimeProvider cl
         List<Claim> claims =
         [
             new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
+            new(GarageClaims.SessionVersion, user.SessionVersion.ToString(CultureInfo.InvariantCulture), ClaimValueTypes.Integer64),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new(ClaimTypes.Name, user.UserName),
             new(ClaimTypes.Role, user.Role),

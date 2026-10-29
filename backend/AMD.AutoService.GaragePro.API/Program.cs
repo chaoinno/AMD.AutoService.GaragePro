@@ -169,6 +169,7 @@ if (app.Environment.IsDevelopment())
         // ใช้ migration ไม่ใช่ EnsureCreated — EnsureCreated ไม่เพิ่มตารางให้ฐานที่มีอยู่แล้ว
         // ทำให้ตารางใหม่หายไปเงียบๆ จนกว่าจะมีคนเรียกใช้
         await db.Database.MigrateAsync();
+        await scope.ServiceProvider.GetRequiredService<AppUpdatesDbContext>().Database.MigrateAsync();
         await DevSeed.RunAsync(db);
     }
     catch (Exception ex)
@@ -212,6 +213,14 @@ app.UseCors();
 app.Use(async (context, next) =>
 {
     try { await next(context); }
+    catch (SessionVerificationException ex) when (!context.Response.HasStarted)
+    {
+        app.Logger.LogError(ex, "Persistent session verification failed");
+        context.Response.StatusCode = 503;
+        context.Response.Headers.CacheControl = "no-store";
+        await context.Response.WriteAsJsonAsync(Envelope.From(
+            Result<object>.Fail("AUTH_CHECK_UNAVAILABLE", "ไม่สามารถตรวจสอบสิทธิ์ได้ชั่วคราว กรุณาลองใหม่"), context.TraceIdentifier));
+    }
     catch (DbUpdateConcurrencyException) when (!context.Response.HasStarted)
     {
         context.Response.StatusCode = StatusCodes.Status409Conflict;

@@ -16,6 +16,9 @@ class AttachmentCache {
   final _inFlight = <String, Future<Uint8List>>{};
   int _bytes = 0;
 
+  /// เพิ่มทุกครั้งที่ล้างแคช — คำขอที่ยิงก่อนล้าง (บัญชี/สาขาเดิม) ตอบกลับมาทีหลังต้องไม่ถูกเก็บเข้าแคชใหม่
+  int _generation = 0;
+
   Future<Uint8List> load(String key) {
     final cached = _entries[key];
     if (cached != null) {
@@ -32,11 +35,13 @@ class AttachmentCache {
     // Map.remove คืน "ค่าที่ถูกลบ" ซึ่งก็คือ Future ตัวที่ whenComplete กำลังสร้างอยู่
     // และ whenComplete จะรอ Future ที่ callback คืนมาให้เสร็จก่อน = รอตัวเอง ค้างตลอดกาล
     // (รูปทุกใบในแอปหมุนไม่รู้จบโดยไม่มี error ให้เห็น) จึงต้องใช้ body ที่คืน void
+    final generation = _generation;
     return _inFlight[key] ??= _api(key).then((bytes) {
+      if (generation != _generation) throw ApiException('SESSION_CHANGED', 'บัญชีที่ใช้งานเปลี่ยนแล้ว');
       _put(key, bytes);
       return bytes;
     }).whenComplete(() {
-      _inFlight.remove(key);
+      if (generation == _generation) _inFlight.remove(key);
     });
   }
 
@@ -49,6 +54,8 @@ class AttachmentCache {
   void seed(String key, Uint8List bytes) => _put(key, bytes);
 
   void clear() {
+    _generation++;
+    _inFlight.clear();
     _entries.clear();
     _bytes = 0;
   }
@@ -71,6 +78,7 @@ typedef AttachmentsApiLoader = Future<Uint8List> Function(String key);
 final attachmentCacheProvider = Provider<AttachmentCache>((ref) {
   final api = ref.watch(attachmentsApiProvider);
   final cache = AttachmentCache(api.download);
+  ref.onDispose(cache.clear);
   // รูปผูกกับสาขา — ออกจากระบบแล้วต้องไม่เหลือให้ผู้ใช้คนถัดไปเห็น
   // สลับสาขา (ผู้ดูแลระบบ) ก็ล้างด้วย — รูปของสาขาเดิมต้องไม่ค้างในสาขาใหม่
   ref.listen(sessionProvider, (prev, next) {
@@ -83,6 +91,7 @@ final attachmentCacheProvider = Provider<AttachmentCache>((ref) {
 final vehicleImageCacheProvider = Provider<AttachmentCache>((ref) {
   final api = ref.watch(attachmentsApiProvider);
   final cache = AttachmentCache((key) => api.vehicleImage(int.parse(key)), maxBytes: 8 * 1024 * 1024);
+  ref.onDispose(cache.clear);
   // สลับสาขา (ผู้ดูแลระบบ) ก็ล้างด้วย — รูปของสาขาเดิมต้องไม่ค้างในสาขาใหม่
   ref.listen(sessionProvider, (prev, next) {
     if (next == null || (prev != null && prev.branchId != next.branchId)) cache.clear();

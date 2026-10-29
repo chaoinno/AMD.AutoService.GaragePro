@@ -71,7 +71,9 @@ async function readEnvelope<T>(response: Response): Promise<Envelope<T> | null> 
  * แล้วฝากไว้ให้หน้า login แสดง · ฝากเฉพาะตอนที่มีเซสชันอยู่จริง ไม่งั้น 401 จากการกรอกรหัสผิดบนฟอร์ม login เอง
  * จะถูกเก็บไว้แล้วโผล่ซ้ำตอนเปิดหน้า login ครั้งถัดไป
  */
-function handleUnauthorized(envelope: Envelope<unknown> | null, hadSession: boolean, redirect: boolean) {
+function handleUnauthorized(envelope: Envelope<unknown> | null, expectedToken: string | null, redirect: boolean) {
+  if (getAccessToken() !== expectedToken) return
+  const hadSession = expectedToken !== null
   if (hadSession && envelope?.error) {
     stashLoginNotice({ code: envelope.error.code, messageTh: envelope.error.messageTh, traceId: envelope.traceId })
   }
@@ -105,9 +107,10 @@ export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Pr
   }
 
   const envelope = await readEnvelope<T>(response)
+  if (getAccessToken() !== accessToken) throw makeApiError('บัญชีที่ใช้งานเปลี่ยนแล้ว', 'SESSION_CHANGED', 'session-changed')
 
   if (response.status === 401) {
-    handleUnauthorized(envelope, accessToken !== null, !skipUnauthorizedRedirect)
+    handleUnauthorized(envelope, accessToken, !skipUnauthorizedRedirect)
   }
 
   if (!envelope) {
@@ -148,7 +151,8 @@ export async function apiDownload(path: string): Promise<Blob> {
   }
   if (!response.ok) {
     const envelope = await readEnvelope<never>(response)
-    if (response.status === 401) handleUnauthorized(envelope, accessToken !== null, true)
+    if (getAccessToken() !== accessToken) throw makeApiError('บัญชีที่ใช้งานเปลี่ยนแล้ว', 'SESSION_CHANGED', 'session-changed')
+    if (response.status === 401) handleUnauthorized(envelope, accessToken, true)
     throw makeApiError(
       envelope?.error?.messageTh ?? 'ส่งออกข้อมูลไม่สำเร็จ',
       envelope?.error?.code ?? `HTTP_${response.status}`,
@@ -161,7 +165,9 @@ export async function apiDownload(path: string): Promise<Blob> {
       },
     )
   }
-  return response.blob()
+  const blob = await response.blob()
+  if (getAccessToken() !== accessToken) throw makeApiError('บัญชีที่ใช้งานเปลี่ยนแล้ว', 'SESSION_CHANGED', 'session-changed')
+  return blob
 }
 
 export function isApiError(error: unknown): error is ApiError {

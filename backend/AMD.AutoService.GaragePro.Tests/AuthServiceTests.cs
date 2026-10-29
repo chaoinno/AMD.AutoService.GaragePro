@@ -781,6 +781,49 @@ public sealed class AuthServiceTests
             RunAsAsync<object?>(user, async (sp, token) => { await work(sp, token); return null; }, ct);
     }
 
+    [Fact]
+    public async Task Fresh_login_uses_persistent_version_and_pending_changes_do_not_issue_tokens()
+    {
+        var tokens = new CapturingTokenIssuer();
+        var user = ActiveUser(105);
+        var versions = new FakeSessionVersions();
+        versions.Values[("db2", user.UserId)] = new(9);
+        var service = CreateService(new StubLegacyUserReader(user, [new(105, "อู่", null, null)]), tokens, versions: versions);
+        (await service.LoginAsync(new(user.UserName, user.StoredPassword))).Success.Should().BeTrue();
+        tokens.IssuedUser!.SessionVersion.Should().Be(9);
+        versions.Values[("db2", user.UserId)] = new(10, true);
+        (await service.LoginAsync(new(user.UserName, user.StoredPassword))).Error!.Code.Should().Be("AUTH_CHECK_UNAVAILABLE");
+        tokens.IssuedUser.SessionVersion.Should().Be(9);
+    }
+
+    [Fact]
+    public async Task Inactive_account_observed_from_legacy_is_permanently_revoked_only_once()
+    {
+        var versions = new FakeSessionVersions();
+        var service = CreateService(new StubLegacyUserReader(null, []), new CapturingTokenIssuer(),
+            new StubCurrentUser(userId: 7, branchId: 105), versions: versions);
+        await service.GetSessionRevocationReasonAsync();
+        await service.GetSessionRevocationReasonAsync();
+        (await versions.ReadAsync("db2", 7)).Version.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Branch_switch_uses_the_target_account_version_and_refuses_pending_changes()
+    {
+        var reader = new SwitchingLegacyUserReader(Admin(userId: 7, branchId: 105), Admin(userId: 8, branchId: 227));
+        reader.Accounts.Add(new LegacySwitchableAccountDto(8, 227, "อู่สาขาสอง", null));
+        var tokens = new CapturingTokenIssuer();
+        var versions = new FakeSessionVersions();
+        versions.Values[("db2", 8)] = new(12);
+        var service = CreateService(reader, tokens,
+            new StubCurrentUser(userId: 7, branchId: 105, role: UserRole.Manager), versions: versions);
+        (await service.SwitchBranchAsync(new(227))).Success.Should().BeTrue();
+        tokens.IssuedUser!.SessionVersion.Should().Be(12);
+        versions.Values[("db2", 8)] = new(13, true);
+        (await service.SwitchBranchAsync(new(227))).Error!.Code.Should().Be("AUTH_CHECK_UNAVAILABLE");
+        tokens.IssuedUser.SessionVersion.Should().Be(12);
+    }
+
     private static AuthService CreateService(
         ILegacyUserReader users,
         ITokenIssuer tokens,
@@ -792,7 +835,7 @@ public sealed class AuthServiceTests
         StubAuthRepository? repository = null,
         IWorkspacePolicy? policy = null,
         ISelfServeAccountReader? accounts = null,
-        IShardScopeFactory? shardScopes = null) =>
+        IShardScopeFactory? shardScopes = null, ISessionVersionStore? versions = null) =>
         new(users, repository ?? new StubAuthRepository(session), quotations ?? new StubQuotationRepository(), tokens,
             workHook ?? new FakeWorkIntervalHook(),
             currentUser ?? new StubCurrentUser(), TimeProvider.System,
@@ -801,7 +844,7 @@ public sealed class AuthServiceTests
             Hasher,
             policy ?? UnlimitedWorkspacePolicy.Instance,
             shardScopes,
-            accounts);
+            accounts, versions);
 
     private static MapServiceProvider Provider(ISelfServeAccountReader? accounts)
     {

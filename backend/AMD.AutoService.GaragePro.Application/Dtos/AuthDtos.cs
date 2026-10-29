@@ -70,7 +70,8 @@ public sealed record AuthUserDto(
     bool CanSeeCost,
     bool CanCloseShift,
     WorkspacePlanDto? Plan = null,
-    WorkspaceInfoDto? Workspace = null);
+    WorkspaceInfoDto? Workspace = null,
+    [property: System.Text.Json.Serialization.JsonIgnore] long SessionVersion = 0);
 
 /// <summary>
 /// แพ็กเกจของอู่ที่ login (self-serve เท่านั้น) — legacy ไม่ส่ง (null → ถูกตัดจาก JSON) เว็บ/แอปต้องอ่านแบบ optional

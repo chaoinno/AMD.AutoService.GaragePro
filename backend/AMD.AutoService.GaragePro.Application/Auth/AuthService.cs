@@ -59,7 +59,8 @@ public sealed class AuthService(
     IPasswordHasher passwordHasher,
     IWorkspacePolicy workspacePolicy,
     IShardScopeFactory? shardScopes = null,
-    ISelfServeAccountReader? selfServeAccounts = null) : IAuthService
+    ISelfServeAccountReader? selfServeAccounts = null,
+    ISessionVersionStore? sessionVersions = null) : IAuthService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -126,6 +127,15 @@ public sealed class AuthService(
     private async Task<Result<LoginResultDto>> CompleteLoginAsync(
         string shardKey, LegacyUserDto user, CancellationToken ct)
     {
+        var version = await ReadVersionAsync(shardKey, user.UserId, ct);
+        if (version.Changing)
+            return Result<LoginResultDto>.Fail("AUTH_CHECK_UNAVAILABLE", "กำลังเปลี่ยนสถานะบัญชี กรุณาลองใหม่");
+        if (sessionVersions is not null)
+        {
+            var fresh = await legacyUsers.FindByIdAsync(shardKey, user.UserId, ct);
+            if (fresh is null) return Result<LoginResultDto>.Fail("AUTH_REQUIRED", "บัญชีนี้ถูกปิดใช้งานแล้ว");
+            user = fresh;
+        }
         if (!user.IsStaff || user.StaffId is null)
             return Result<LoginResultDto>.Fail("AUTH_NOT_STAFF",
                 "บัญชีนี้ไม่ใช่พนักงานของอู่ ระบบนี้ใช้ได้เฉพาะพนักงาน");
@@ -145,7 +155,7 @@ public sealed class AuthService(
         if (plan.IsLocked)
             return Result<LoginResultDto>.Fail(PlanErrors.TrialLocked());
 
-        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name);
+        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name) with { SessionVersion = version.Version };
 
         // [SECURITY] มือถือได้ token ที่ไม่หมดอายุ (คำขอผู้ใช้ 2026-10-05) — ตัดสิทธิ์ด้วยการตรวจสถานะ
         // พนักงานทุกคำขอแทน (GetSessionRevocationReasonAsync) · เว็บยังเป็น 12 ชม. เหมือนเดิม
@@ -243,6 +253,11 @@ public sealed class AuthService(
         OpenShiftRequest request, CancellationToken ct = default)
     {
         var shardKey = currentUser.ShardKey;
+        var version = await ReadVersionAsync(shardKey, currentUser.UserId, ct);
+        if (version.Version != currentUser.SessionVersion)
+            return Result<ShiftSessionDto>.Fail("AUTH_REQUIRED", "สิทธิ์การเข้าใช้งานถูกยกเลิก กรุณาเข้าสู่ระบบใหม่");
+        if (version.Changing)
+            return Result<ShiftSessionDto>.Fail("AUTH_CHECK_UNAVAILABLE", "กำลังเปลี่ยนสถานะบัญชี กรุณาลองใหม่");
 
         var user = await legacyUsers.FindByIdAsync(shardKey, currentUser.UserId, ct);
         if (user is null)
@@ -267,7 +282,7 @@ public sealed class AuthService(
             return Result<ShiftSessionDto>.Fail(PlanErrors.TrialLocked());
 
         var role = await ResolveRoleAsync(shardKey, user, ct);
-        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name);
+        var authUser = ToAuthUser(user, role, shardKey, plan, branch.Name) with { SessionVersion = version.Version };
 
         var session = new ShiftSession
         {
@@ -427,6 +442,9 @@ public sealed class AuthService(
                 "คุณไม่มีบัญชีผู้ดูแลระบบที่เปิดใช้งานในสาขานี้");
 
         var shardKey = currentUser.ShardKey;
+        var version = await ReadVersionAsync(shardKey, target.UserId, ct);
+        if (version.Changing)
+            return Result<LoginResultDto>.Fail("AUTH_CHECK_UNAVAILABLE", "กำลังเปลี่ยนสถานะบัญชี กรุณาลองใหม่");
         var targetUser = await legacyUsers.FindByIdAsync(shardKey, target.UserId, ct);
         if (targetUser is null || !targetUser.IsStaff || targetUser.StaffId is null
             || targetUser.BranchId != target.BranchId)
@@ -438,7 +456,7 @@ public sealed class AuthService(
             return Result<LoginResultDto>.Fail(PlanErrors.TrialLocked());
 
         var role = await ResolveRoleAsync(shardKey, targetUser, ct);
-        var authUser = ToAuthUser(targetUser, role, shardKey, plan, target.Name);
+        var authUser = ToAuthUser(targetUser, role, shardKey, plan, target.Name) with { SessionVersion = version.Version };
 
         // ไม่ใช้ BuildBranchOptionsAsync — ของ admin วนนับงานค้างทุกสาขาใน shard ทั้งที่ client ใช้แค่สาขาปลายทาง
         var counts = await repository.GetBranchWorkloadAsync(shardKey, target.BranchId, ct);
@@ -514,7 +532,13 @@ public sealed class AuthService(
         var shardKey = currentUser.ShardKey;
         var user = await legacyUsers.FindByIdAsync(shardKey, currentUser.UserId, ct);
         if (user is null)
+        {
+            if (sessionVersions is not null)
+                await sessionVersions.RevokeObservedAsync(shardKey, currentUser.UserId, currentUser.SessionVersion, ct);
             return "บัญชีนี้ถูกปิดใช้งานแล้ว ติดต่อผู้จัดการสาขา";
+        }
+        if (user.IsAdministrator != currentUser.IsAdministrator)
+            return "สิทธิ์ผู้ดูแลของบัญชีนี้เปลี่ยนแล้ว กรุณาเข้าสู่ระบบใหม่";
 
         // สาขาใน token มาจาก Staff.BranchId ตอน login — ย้ายสาขาแล้วถ้ายังใช้ token เดิม
         // จะเห็น/แก้ข้อมูลของสาขาเก่าได้ตลอดไปเพราะ token ไม่หมดอายุ
@@ -533,6 +557,9 @@ public sealed class AuthService(
         var plan = await workspacePolicy.GetAsync(shardKey, branchId, ct);
         return PlanAccess.RevocationReason(plan, currentUser.Plan, currentUser.PlanExpiresAt, Now);
     }
+
+    private Task<SessionVersion> ReadVersionAsync(string shard, long userId, CancellationToken ct) =>
+        sessionVersions?.ReadAsync(shard, userId, ct) ?? Task.FromResult(new SessionVersion());
 
     // ---------- helper ----------
 

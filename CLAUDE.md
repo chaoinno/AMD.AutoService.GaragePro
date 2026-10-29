@@ -48,6 +48,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/16-cloudflare-email-setup.md](docs/16-cloudflare-email-setup.md) | **[branch `feat/cloudflare-email` 2026-10-14 · โค้ด deploy แล้ว 2026-10-15 · ส่งจริงผ่าน 2026-10-16 จาก `@service.garage-pro.net`]** ส่งอีเมลของ self-serve ผ่าน Cloudflare Email Service: checklist ให้ทีม Cloudflare (Workers Paid · onboard โดเมน · token สิทธิ์ Email Sending: Edit) · คีย์ secrets · วิธีตรวจหลัง deploy · ตาราง error code |
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 | [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
+| [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[branch `feat/app-updates-session-revocation` · ยังไม่ deploy]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2198,3 +2199,18 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ไม่ได้รัน `flutter analyze`/`flutter test` ซ้ำเพราะ merge ไม่แตะ `mobile/` แม้แต่ไฟล์เดียว
 - **ยังไม่ได้ทดสอบ end-to-end ในเบราว์เซอร์จริง** — ฟีเจอร์ของ chao (ปฏิทิน, เทมเพลต, รายการนอกแคตตาล็อก)
   ตรวจได้แค่ระดับ build/unit test ในรอบ merge นี้ ไม่ได้เปิดใช้จริงทีละหน้า
+
+### [2026-10-28 · branch `feat/app-updates-session-revocation` · ยังไม่ deploy] แจ้งอัปเดตแอป + เพิกถอนเซสชันถาวร
+- ดู [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) สำหรับ API, rollout, migration และ recovery ของ Staff status ที่ process ขัดข้อง
+- เพิ่ม `svc_UserSessionVersion` ทุก service shard และ `AppUpdatesDbContext` ส่วนกลาง (history แยก); ต้อง migrate ก่อน backend ใหม่
+- ปิด Staff: admin/Manager ภายในสาขา, เพิ่มรุ่น token ทุกบัญชีที่ผูกไว้ก่อนเขียนสถานะ; ไม่แตะงาน/เวลา; version-store error = 503, legacy fail-open เดิมยังอยู่
+- ทุก IsAdministrator จัดการนโยบายอัปเดตทุกอู่ได้ตามคำสั่งเจ้าของ; policy เริ่มปิดทั้งหมด รุ่นแอปแรกที่รองรับ `1.4.0+6`
+- Security tombstones ต้องคงอยู่แม้ purge อู่ ห้ามลบ/ย้อน version เพื่อ rollback
+- **[รีวิว 2026-10-29]** แก้ตามรีวิว: ตรวจสิทธิ์ทุกบัญชีที่ผูกกับพนักงานก่อนเพิ่มรุ่น · ธง `Changing` หมดผลเอง 120 วิ · 409 `STAFF_STATUS_BUSY` ·
+  error ฐานเดิมไม่ถูกห่อเป็น 503 · cache นโยบาย 30 วิ · Toaster อยู่นอกต้นไม้ที่สร้างใหม่ตาม token · ปุ่มสถานะพนักงานบอกเหตุผล
+- **มือถือ: Flutter 3.38 ของเครื่อง dev resolve ต่างจาก lock ใน repo** — `flutter test`/build iOS จะลดรุ่นแพ็กเกจใน `pubspec.lock` และเปลี่ยน
+  iOS project เป็น CocoaPods อย่า commit ผลพลอยได้นี้ (ดู docs/19 หัวข้อรีวิว)
+- **รัน API โหมด Development = migrate ตารางใหม่ลง GarageService (ฐานร่วม production) ทันที** — ทดสอบบนเครื่องให้ตั้ง
+  `ConnectionStrings__ServiceDb` ชี้ฐานทิ้งได้ หรือขออนุญาตก่อน
+- ตรวจแล้ว: backend 1,690 ผ่าน + SQL integration บนฐานทิ้งได้ใน Docker · เว็บ `tsc -b` + 95 · มือถือ analyze สะอาด + 241 ·
+  **ยังไม่ได้ทดสอบหลายเครื่องด้วยบัญชีจริง / ยังไม่ deploy / ยังไม่ปล่อยแอป `1.4.0+6`**

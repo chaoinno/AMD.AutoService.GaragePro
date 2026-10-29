@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
-import { getMe } from '../../api/auth'
 import {
   getSelfServeStatus,
   isExtensionAlreadyRequested,
@@ -10,17 +9,13 @@ import {
 } from '../../api/selfserve'
 import type { PlanInfo, WorkspaceInfo } from '../../api/types'
 import { FEATURES, isFeatureLocked, type FeatureKey } from '../../lib/plan'
-import { updateSessionUser, useSession } from '../../lib/session'
+import { useSession } from '../../lib/session'
 import { isExtensionRecentlyRequested, isSelfServePlan, lockedActionReason } from './trialUx'
 
 export const ME_QUERY_KEY = ['me'] as const
 export const SELFSERVE_STATUS_QUERY_KEY = ['selfserve-status'] as const
 /** ธงในแคชว่าเพิ่งส่งคำขอต่ออายุ (สำเร็จหรือ 409) — ใช้ร่วมกันระหว่างแถบ/หน้าต่าง/หน้าฟีเจอร์ที่ล็อก */
 const EXTENSION_SENT_QUERY_KEY = ['selfserve-extension-sent'] as const
-
-function sameJson(a: unknown, b: unknown): boolean {
-  return JSON.stringify(a ?? null) === JSON.stringify(b ?? null)
-}
 
 /** แพ็กเกจจากเซสชันที่เก็บไว้ (อ่านอย่างเดียว ไม่ยิง API) — undefined = ลูกค้าเดิม */
 export function useSessionPlan(): { plan: PlanInfo | undefined; workspace: WorkspaceInfo | undefined } {
@@ -36,25 +31,6 @@ export function usePlan() {
   const { session } = useSession()
   const plan = session?.user.plan
   const workspace = session?.user.workspace
-  // key ผูกกับเซสชัน (token ใหม่ทุกครั้งที่ login/สลับสาขา → expiresAt ใหม่) — ไม่งั้น /auth/me ที่แคชไว้ของบัญชีก่อนหน้า
-  // (เช่น 401 แล้ว login อู่อื่นภายใน 5 นาที) จะถูกเขียนทับ plan ของเซสชันใหม่ · prefix ['me'] ยัง invalidate ได้ทั้งชุด
-  const me = useQuery({
-    queryKey: [...ME_QUERY_KEY, session?.user.userId ?? null, session?.branchId ?? null, session?.expiresAt ?? null],
-    queryFn: getMe,
-    staleTime: 5 * 60_000,
-    enabled: Boolean(session),
-  })
-
-  useEffect(() => {
-    if (!me.data) return
-    // MeDto ส่ง plan ทั้งใน user และระดับบนสุด — ยึด user ก่อนเพราะเป็นรูปเดียวกับตอน login
-    const nextPlan = me.data.user?.plan ?? me.data.plan
-    const nextWorkspace = me.data.user?.workspace ?? me.data.workspace
-    // เขียนเฉพาะเมื่อเปลี่ยนจริง — ทุกการเขียนทำให้ทุก subscriber ของเซสชัน render ใหม่
-    if (sameJson(nextPlan, plan) && sameJson(nextWorkspace, workspace)) return
-    updateSessionUser({ plan: nextPlan, workspace: nextWorkspace })
-  }, [me.data, plan, workspace])
-
   const kind = plan?.kind ?? ''
   useEffect(() => {
     if (typeof document === 'undefined') return

@@ -64,7 +64,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('เพิ่มรายการนัดบริการอย่างน้อย 1 รายการ'), findsOneWidget);
-    final save = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'บันทึกเลขไมล์และนัดครั้งถัดไป'));
+    final save = tester.widget<FilledButton>(find.ancestor(of: find.text('บันทึกเลขไมล์และนัดครั้งถัดไป'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)));
     expect(save.onPressed, isNull);
   });
 
@@ -95,7 +95,7 @@ void main() {
     await tester.tapAt(const Offset(10, 10)); // ปิด sheet
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, 'บันทึกเลขไมล์และนัดครั้งถัดไป'));
+    await tester.tap(find.ancestor(of: find.text('บันทึกเลขไมล์และนัดครั้งถัดไป'), matching: find.byWidgetPredicate((widget) => widget is FilledButton)));
     await tester.pumpAndSettle();
 
     expect(api.saved, {
@@ -115,7 +115,7 @@ void main() {
     await tester.tap(find.text('เพิ่มรายการเอง'));
     await tester.pump();
     expect(find.text('กรอกชื่อรายการ'), findsWidgets);
-    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'บันทึกเลขไมล์และนัดครั้งถัดไป')).onPressed, isNull);
+    expect(tester.widget<FilledButton>(find.ancestor(of: find.text('บันทึกเลขไมล์และนัดครั้งถัดไป'), matching: find.byWidgetPredicate((widget) => widget is FilledButton))).onPressed, isNull);
 
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pump();

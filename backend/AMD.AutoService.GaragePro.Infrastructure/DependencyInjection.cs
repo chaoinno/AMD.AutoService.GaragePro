@@ -61,6 +61,11 @@ public static class DependencyInjection
                 sp.GetRequiredService<IServiceDbConnectionResolver>().Resolve(sp.GetRequiredService<ICurrentUser>().ShardKey),
                 sql => sql.EnableRetryOnFailure(3)));
 
+        services.AddDbContext<AppUpdatesDbContext>(options => options.UseSqlServer(
+            configuration.GetConnectionString("ServiceDb"), sql => sql.MigrationsHistoryTable("__AppUpdatesMigrationsHistory")));
+        services.AddScoped<AMD.AutoService.GaragePro.Application.AppUpdates.IAppUpdateRepository, AppUpdateRepository>();
+        services.AddScoped<AMD.AutoService.GaragePro.Application.AppUpdates.AppUpdateService>();
+        services.AddScoped<ISessionVersionStore, SessionVersionStore>();
         services.AddScoped<IQuotationRepository, QuotationRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
         services.AddScoped<ICatalogService, CatalogService>();

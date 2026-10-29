@@ -156,7 +156,7 @@ public class InternalApiKeyTests
         http.Request.Path = "/api/v1/internal/package-payments/abc/approve";
         http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("jti", "t1")], "Bearer"));
 
-        await middleware.InvokeAsync(http, DispatchProxy.Create<IAuthService, ThrowingAuth>());
+        await middleware.InvokeAsync(http, DispatchProxy.Create<IAuthService, ThrowingAuth>(), null!, null!);
 
         reached.Should().BeTrue();
         http.Response.StatusCode.Should().Be(200);

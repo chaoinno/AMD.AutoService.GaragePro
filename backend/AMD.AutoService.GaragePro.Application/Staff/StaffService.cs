@@ -30,7 +30,7 @@ public interface IStaffService
 /// </summary>
 public sealed class StaffService(IStaffRepository repository, IStaffImageStorage imageStorage,
     ICurrentUser currentUser, IWorkspacePolicy? workspacePolicy = null, IAuthRepository? authRepository = null,
-    IPasswordHasher? passwordHasher = null, TimeProvider? clock = null) : IStaffService
+    IPasswordHasher? passwordHasher = null, TimeProvider? clock = null, ISessionVersionStore? sessionVersions = null) : IStaffService
 {
     /// <summary>ชนเลขชื่อผู้ใช้ (IX_User) จากการเพิ่มพร้อมกัน — ถามเลขใหม่แล้วลองซ้ำได้เท่านี้ครั้ง</summary>
     public const int MaxUserNameAttempts = 3;
@@ -196,11 +196,29 @@ public sealed class StaffService(IStaffRepository repository, IStaffImageStorage
 
     public async Task<Result<bool>> SetStatusAsync(long id, StaffStatusRequest request, CancellationToken ct = default)
     {
+        if (!currentUser.IsAdministrator && currentUser.Role != UserRole.Manager)
+            return Result<bool>.Fail("STAFF_STATUS_FORBIDDEN", "เฉพาะผู้ดูแลระบบหรือผู้จัดการเท่านั้นที่เปลี่ยนสถานะพนักงานได้");
         var error = StaffValidator.ValidateStatus(request);
         if (error is not null) return Result<bool>.Fail(error);
-        return await repository.SetStatusAsync(Scope, currentUser.IsAdministrator, id, request, ct)
-            ? Result<bool>.Ok(true)
-            : Result<bool>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+        if (sessionVersions is null) throw new InvalidOperationException("Session version store is required for status changes");
+        var staff = await repository.GetAsync(Scope, currentUser.IsAdministrator, id, ct);
+        if (staff is null || staff.BranchId != currentUser.BranchId)
+            return Result<bool>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+        // [SECURITY] ปิดพนักงาน = เพิกถอน token ทุกบัญชีที่ผูกไว้ก่อนเขียนฐานเดิม (docs/19) · เปิดกลับไม่คืนรุ่นเดิม
+        var accounts = await repository.GetAccountIdsAsync(Scope, currentUser.IsAdministrator, id, ct);
+        if (accounts is null)
+            return Result<bool>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+        try
+        {
+            return await sessionVersions.ChangeStaffStatusAsync(currentUser.ShardKey, id, accounts, !request.IsActive,
+                () => repository.SetStatusAsync(Scope, currentUser.IsAdministrator, id, request, ct), ct)
+                ? Result<bool>.Ok(true)
+                : Result<bool>.Fail("STAFF_NOT_FOUND", "ไม่พบพนักงานหรือคุณไม่มีสิทธิ์แก้ไขข้อมูลนี้");
+        }
+        catch (StaffStatusBusyException ex)
+        {
+            return Result<bool>.Fail("STAFF_STATUS_BUSY", ex.Message);
+        }
     }
 
     public async Task<Result<StaffCodePreviewDto>> PreviewCodeAsync(int? branchId, CancellationToken ct = default)

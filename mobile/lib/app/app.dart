@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/app_updates/app_update_guard.dart';
 import '../features/auth/session_guard.dart';
 import '../features/notifications/notification_poller.dart';
 import '../features/work/widgets/work_focus_host.dart';
@@ -26,7 +27,9 @@ class GarageProApp extends ConsumerWidget {
           onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
           child: SessionGuard(
             child: NotificationPoller(
-              child: WorkFocusHost(child: child ?? const SizedBox.shrink()),
+              child: AppUpdateGuard(
+                child: WorkFocusHost(child: child ?? const SizedBox.shrink()),
+              ),
             ),
           ),
         ),
