@@ -2232,5 +2232,10 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   iOS project เป็น CocoaPods อย่า commit ผลพลอยได้นี้ (ดู docs/19 หัวข้อรีวิว)
 - **รัน API โหมด Development = migrate ตารางใหม่ลง GarageService (ฐานร่วม production) ทันที** — ทดสอบบนเครื่องให้ตั้ง
   `ConnectionStrings__ServiceDb` ชี้ฐานทิ้งได้ หรือขออนุญาตก่อน
-- ตรวจแล้ว: backend 1,690 ผ่าน + SQL integration บนฐานทิ้งได้ใน Docker · เว็บ `tsc -b` + 95 · มือถือ analyze สะอาด + 241 ·
+- ตรวจแล้ว: backend 1,693 ผ่าน + SQL integration บนฐานทิ้งได้ใน Docker · เว็บ `tsc -b` + 95 · มือถือ analyze สะอาด + 241 ·
   **ยังไม่ได้ทดสอบหลายเครื่องด้วยบัญชีจริง / ยังไม่ deploy / ยังไม่ปล่อยแอป `1.4.0+6`**
+- **[ทดสอบรัน 2026-10-29]** API บนเครื่องชี้ฐานทดสอบใน Docker (`ConnectionStrings__ServiceDb` · ปิด self-serve) + iOS simulator:
+  แจ้งอัปเดต · ไว้ภายหลัง · บังคับ (แตะนอกกรอบ/ปัดย้อนกลับปิดไม่ได้) · ปิดนโยบายแล้วหลุดจากหน้าบังคับ ผ่านครบ ·
+  เว็บทดสอบด้วย API จำลองในเบราว์เซอร์ (ไม่มีรหัสบัญชีทดสอบ) · **พบและแก้**: ต่อฐานของ shard ไม่ได้ได้ 500 ดิบ เพราะ
+  `SessionRevocationMiddleware` รับ `IAuthService` เป็นพารามิเตอร์ (สร้างก่อนเข้า try) → สร้างตอนใช้ ได้ 503 `AUTH_CHECK_UNAVAILABLE`
+  · ใน simulator ติดตั้งแอป debug ที่ชี้ `localhost:5080` ทับตัวเดิมไว้ ต้อง build ใหม่ถ้าจะใช้กับ production

@@ -77,4 +77,5 @@
 
 - แก้: ตรวจสิทธิ์บัญชีผู้ดูแลทุกบัญชีก่อนเพิ่มรุ่น · ธง `Changing` หมดผลเอง 120 วินาที · 409 `STAFF_STATUS_BUSY` · error ฐานเดิมไม่ถูกห่อเป็น 503 · cache endpoint นโยบาย 30 วินาที · ย้าย Toaster ออกนอกต้นไม้ที่สร้างใหม่ · ปุ่มเปิด/ปิดพนักงานบอกเหตุผลเมื่อกดไม่ได้
 - มือถือ: `pubspec.lock` และ iOS project ใน repo resolve ด้วย Flutter รุ่นใหม่กว่า 3.38 ที่เครื่อง dev ใช้ รัน `flutter test`/`pub get`/build iOS ด้วย 3.38 จะลดรุ่นแพ็กเกจใน lock และเปลี่ยน iOS project กลับเป็น CocoaPods อย่า commit ผลพลอยได้นี้ (รอบนี้เพิ่มเฉพาะ `url_launcher` เข้า lock เดิม)
-- ตรวจแล้ว: backend 1,690 ผ่าน (+ SQL integration ผ่านบนฐานทิ้งได้ใน Docker) · เว็บ `tsc -b` + 95 tests · มือถือ `dart analyze` สะอาด + 241 tests
+- ทดสอบรันจริง: แจ้ง/บังคับ/ปิดนโยบายบน iOS simulator กับ API บนเครื่อง (ฐานทดสอบใน Docker) ผ่าน · พบ 500 เมื่อต่อฐานของ shard ไม่ได้ แก้ให้ middleware สร้าง `IAuthService` ตอนใช้ภายใน try ได้ 503 `AUTH_CHECK_UNAVAILABLE`
+- ตรวจแล้ว: backend 1,693 ผ่าน (+ SQL integration ผ่านบนฐานทิ้งได้ใน Docker) · เว็บ `tsc -b` + 95 tests · มือถือ `dart analyze` สะอาด + 241 tests
