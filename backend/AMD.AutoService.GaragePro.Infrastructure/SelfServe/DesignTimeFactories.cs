@@ -46,6 +46,14 @@ public sealed class SelfServeDbContextDesignTimeFactory : IDesignTimeDbContextFa
     }
 }
 
+/// <summary>migration ของนโยบายอัปเดตแอป — history แยก และชี้ฐานกลาง (GarageService) เสมอ ไม่รันกับฐานของ shard อื่น</summary>
+public sealed class AppUpdatesDbContextDesignTimeFactory : IDesignTimeDbContextFactory<AppUpdatesDbContext>
+{
+    public AppUpdatesDbContext CreateDbContext(string[] args) => new(new DbContextOptionsBuilder<AppUpdatesDbContext>()
+        .UseSqlServer(DesignTimeConnection.Resolve("ConnectionStrings__ServiceDb", "ConnectionStrings:ServiceDb", "GarageService"),
+            sql => sql.MigrationsHistoryTable("__AppUpdatesMigrationsHistory")).Options);
+}
+
 internal static class DesignTimeConnection
 {
     /// <summary>UserSecretsId ของโปรเจกต์ API (ต้องตรงกับ AMD.AutoService.GaragePro.API.csproj)</summary>

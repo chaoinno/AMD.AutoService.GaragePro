@@ -26,6 +26,11 @@ public static class ServicePurgePlan
 {
     public static readonly IReadOnlyList<ServicePurgeStep> Steps =
     [
+        // [SECURITY] ขั้นเดียวที่ไม่ลบ: แถวรุ่นเซสชันต้องอยู่ต่อหลังลบอู่ — ลบทิ้งแล้ว token รุ่น 0 ที่ถูกเพิกถอนไปแล้ว
+        // จะกลับมาผ่านการตรวจรุ่น ระหว่างที่ยังลบแถวในฐานเดิมไม่เสร็จหรือฐานเดิมล่ม · เพิ่มรุ่นให้ token ที่ยังเหลือใช้ไม่ได้ทันที
+        Step<UserSessionVersion>("svc_UserSessionVersion", (db, s, ct) => db.UserSessionVersions
+            .Where(v => v.ShardKey == s.ShardKey && s.UserIds.Contains(v.UserId))
+            .ExecuteUpdateAsync(u => u.SetProperty(v => v.Version, v => v.Version + 1), ct)),
         Step<NotificationRead>("svc_NotificationRead", (db, s, ct) => db.NotificationReads
             .Where(r => db.Notifications.Any(n => n.Id == r.NotificationId
                                                   && n.LegacyShardKey == s.ShardKey && n.LegacyBranchId == s.BranchId))

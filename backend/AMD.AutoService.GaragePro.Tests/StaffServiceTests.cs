@@ -331,6 +331,70 @@ public sealed class StaffServiceTests
         public Task<BranchWorkload> GetBranchWorkloadAsync(string shardKey, int branchId, CancellationToken ct = default) => throw new NotSupportedException();
     }
 
+    [Theory]
+    [InlineData(false, UserRole.FrontDesk, false)]
+    [InlineData(false, UserRole.Technician, false)]
+    [InlineData(false, UserRole.Manager, true)]
+    [InlineData(true, UserRole.FrontDesk, true)]
+    public async Task Status_changes_require_manager_or_admin_and_fence_all_linked_accounts(bool admin, UserRole role, bool allowed)
+    {
+        var versions = new FakeSessionVersions();
+        var repo = new StubRepository(Detail());
+        repo.StatusChange = () => {
+            Assert.Equal(new SessionVersion(1, true), versions.Values[("db2", 20)]);
+            Assert.Equal(new SessionVersion(1, true), versions.Values[("db2", 21)]);
+            return Task.FromResult(true);
+        };
+        var service = new StaffService(repo, new StubImageStorage(), new StubUser(admin, role), sessionVersions: versions);
+        var result = await service.SetStatusAsync(10, new(false, DateTime.Today));
+        Assert.Equal(allowed, result.Success);
+        if (!allowed) { Assert.Equal("STAFF_STATUS_FORBIDDEN", result.Error?.Code); Assert.Empty(versions.ChangedAccounts); }
+        else { Assert.Equal(new SessionVersion(1, false), versions.Values[("db2", 20)]); Assert.False(repo.UpdateCalled); }
+    }
+
+    [Fact]
+    public async Task Failed_staff_write_keeps_revocation_but_does_not_leave_account_changing()
+    {
+        var versions = new FakeSessionVersions();
+        var repo = new StubRepository(Detail()) { StatusChange = () => throw new IOException("legacy unavailable") };
+        var service = new StaffService(repo, new StubImageStorage(), new StubUser(true), sessionVersions: versions);
+        await Assert.ThrowsAsync<IOException>(() => service.SetStatusAsync(10, new(false, DateTime.Today)));
+        Assert.Equal(new SessionVersion(1, false), versions.Values[("db2", 20)]);
+        repo.StatusChange = () => Task.FromResult(true);
+        Assert.True((await service.SetStatusAsync(10, new(true, null))).Success);
+        Assert.Equal(new SessionVersion(1, false), versions.Values[("db2", 20)]);
+    }
+
+    [Fact]
+    public async Task Manager_cannot_revoke_sessions_of_staff_linked_to_an_administrator_account()
+    {
+        // บัญชีแรกของพนักงานไม่ใช่ผู้ดูแล (GetAsync ผ่าน) แต่บัญชีอื่นเป็นผู้ดูแล — ต้องปฏิเสธก่อนเพิ่มรุ่นเซสชัน
+        var versions = new FakeSessionVersions();
+        var repo = new StubRepository(Detail()) { HasAdministratorAccount = true, StatusChange = () => Task.FromResult(false) };
+        var service = new StaffService(repo, new StubImageStorage(), new StubUser(false, UserRole.Manager), sessionVersions: versions);
+        Assert.Equal("STAFF_NOT_FOUND", (await service.SetStatusAsync(10, new(false, DateTime.Today))).Error?.Code);
+        Assert.Empty(versions.ChangedAccounts);
+    }
+
+    [Fact]
+    public async Task Concurrent_status_change_of_the_same_staff_reports_busy_instead_of_auth_failure()
+    {
+        var versions = new FakeSessionVersions { Busy = true };
+        var repo = new StubRepository(Detail()) { StatusChange = () => Task.FromResult(true) };
+        var service = new StaffService(repo, new StubImageStorage(), new StubUser(true), sessionVersions: versions);
+        Assert.Equal("STAFF_STATUS_BUSY", (await service.SetStatusAsync(10, new(false, DateTime.Today))).Error?.Code);
+    }
+
+    [Fact]
+    public async Task Foreign_staff_status_does_not_revoke_any_accounts()
+    {
+        var versions = new FakeSessionVersions();
+        var repo = new StubRepository(Detail() with { BranchId = 2 });
+        var service = new StaffService(repo, new StubImageStorage(), new StubUser(true), sessionVersions: versions);
+        Assert.Equal("STAFF_NOT_FOUND", (await service.SetStatusAsync(10, new(false, DateTime.Today))).Error?.Code);
+        Assert.Empty(versions.ChangedAccounts);
+    }
+
     private static StaffUpsertRequest Input() => new(1,"สมชาย","ใจดี",1,null,null,null,null,null,null,null,
         "0812345678",null,null,null,10000,null,1,0,DateTime.Today,null,null,2,3,[],"staff",null);
 
@@ -344,9 +408,9 @@ public sealed class StaffServiceTests
         Account: new(20,"staff",false,true), SectorPositions: [new(30,1,"ฝ่าย",2,"แผนก",3,"ตำแหน่ง",true)],
         CreatedDate: DateTime.Today, LastUpdated: DateTime.Today);
 
-    private sealed class StubUser(bool admin) : ICurrentUser
+    private sealed class StubUser(bool admin, UserRole role = UserRole.FrontDesk) : ICurrentUser
     {
-        public long UserId => 1; public string UserName => "ผู้ทดสอบ"; public UserRole Role => UserRole.FrontDesk;
+        public long UserId => 1; public string UserName => "ผู้ทดสอบ"; public UserRole Role => role;
         public string ShardKey => "db2"; public int BranchId => 1; public EventSource Source => EventSource.Web;
         public Guid? SessionId => null; public bool IsAdministrator => admin;
     }
@@ -394,7 +458,11 @@ public sealed class StaffServiceTests
                 ? detail
                 : detail with { Account = detail.Account with { Id = 77, UserName = account.UserName } });
         }
-        public Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffStatusRequest request, CancellationToken ct = default) => throw new NotSupportedException();
+        public Func<Task<bool>>? StatusChange { get; set; }
+        public bool HasAdministratorAccount { get; set; }
+        public Task<IReadOnlyList<long>?> GetAccountIdsAsync(LegacyRequestScope scope, bool isAdministrator, long staffId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<long>?>(HasAdministratorAccount && !isAdministrator ? null : [20, 21]);
+        public Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id, StaffStatusRequest request, CancellationToken ct = default) => StatusChange?.Invoke() ?? throw new NotSupportedException();
         public Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId, CancellationToken ct = default) { PreviewBranch = branchId; return Task.FromResult(new StaffCodePreviewDto("test", "test", "test")); }
         public Task<string?> GetImagePathAsync(LegacyRequestScope scope, bool isAdministrator, long id, CancellationToken ct = default) => throw new NotSupportedException();
         public Task<StaffReferenceDataDto> GetReferenceDataAsync(LegacyRequestScope scope, bool isAdministrator, CancellationToken ct = default) => throw new NotSupportedException();

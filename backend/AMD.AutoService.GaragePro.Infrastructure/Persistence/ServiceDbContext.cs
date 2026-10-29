@@ -9,6 +9,7 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence;
 /// </summary>
 public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbContext(options)
 {
+    public DbSet<UserSessionVersion> UserSessionVersions => Set<UserSessionVersion>();
     public DbSet<Job> Jobs => Set<Job>();
     public DbSet<JobNumberCounter> JobNumberCounters => Set<JobNumberCounter>();
     public DbSet<Quotation> Quotations => Set<Quotation>();
@@ -74,6 +75,12 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
 
     protected override void OnModelCreating(ModelBuilder b)
     {
+        b.Entity<UserSessionVersion>(e =>
+        {
+            e.ToTable("svc_UserSessionVersion");
+            e.HasKey(x => new { x.ShardKey, x.UserId });
+            e.Property(x => x.ShardKey).HasMaxLength(20);
+        });
         b.Entity<Job>(e =>
         {
             e.ToTable("svc_Job");

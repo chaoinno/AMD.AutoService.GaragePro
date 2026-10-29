@@ -92,9 +92,10 @@ export function saveSession(result: LoginResult): StoredSession {
  * อัปเดตเฉพาะข้อมูลผู้ใช้ในเซสชัน (เช่น plan/workspace ที่อ่านสดจาก /auth/me) โดยไม่ต้อง login ใหม่
  * ไม่มีเซสชันคืน null และไม่เขียนอะไร
  */
-export function updateSessionUser(patch: Partial<AuthUser>): StoredSession | null {
+export function updateSessionUser(patch: Partial<AuthUser>, expectedToken?: string): StoredSession | null {
   const current = readSession()
-  if (!current) return null
+  if (!current || (expectedToken !== undefined && current.accessToken !== expectedToken)) return null
+  if (Object.entries(patch).every(([key, value]) => JSON.stringify(current.user[key as keyof AuthUser]) === JSON.stringify(value))) return current
   const next: StoredSession = { ...current, user: { ...current.user, ...patch } }
   writeSession(next)
   return next

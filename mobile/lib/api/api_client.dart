@@ -61,7 +61,8 @@ class ApiClient {
     void Function(ApiException error)? onAuthFailure,
     String baseUrl = defaultBaseUrl,
     Dio? dio,
-  })  : _onAuthFailure = onAuthFailure,
+  })  : _readToken = readToken,
+        _onAuthFailure = onAuthFailure,
         dio = dio ??
             Dio(BaseOptions(
               baseUrl: '$baseUrl/api/v1',
@@ -88,6 +89,7 @@ class ApiClient {
         ));
   }
 
+  final String? Function() _readToken;
   final Dio dio;
   final void Function(ApiException error)? _onAuthFailure;
 
@@ -110,6 +112,7 @@ class ApiClient {
   Future<T> unwrap<T>(Future<Response<dynamic>> Function() send) async {
     try {
       final response = await send();
+      _ensureCurrent(response.requestOptions);
       final body = response.data as Map<String, dynamic>;
 
       if (body['success'] == true) return body['data'] as T;
@@ -135,6 +138,7 @@ class ApiClient {
           sendTimeout: const Duration(seconds: 12),
         ),
       );
+      _ensureCurrent(response.requestOptions);
       return Uint8List.fromList(response.data ?? const []);
     } on DioException catch (e) {
       throw _fromDio(e, bytesResponse: true);
@@ -155,6 +159,7 @@ class ApiClient {
   }
 
   ApiException _fromDio(DioException e, {bool bytesResponse = false}) {
+    _ensureCurrent(e.requestOptions);
     var body = e.response?.data;
 
     // responseType: bytes ทำให้ error envelope กลับมาเป็นไบต์ด้วย ต้องถอดเป็น JSON ก่อน
@@ -201,7 +206,18 @@ class ApiClient {
     }
   }
 
+  /// คำตอบของคำขอที่ยิงด้วย token อื่น (ออกจากระบบ/สลับบัญชี/สลับสาขาระหว่างรอ) ห้ามถูกใช้ต่อ —
+  /// ทั้งข้อมูลที่ได้และ 401 ของบัญชีเก่า (ไม่งั้น 401 ที่มาช้าจะล้างเซสชันของบัญชีใหม่) · docs/19
+  void _ensureCurrent(RequestOptions request) {
+    final token = _readToken();
+    final expected = token == null ? null : 'Bearer $token';
+    if (request.headers['Authorization'] != expected) {
+      throw ApiException('SESSION_CHANGED', 'บัญชีที่ใช้งานเปลี่ยนแล้ว');
+    }
+  }
+
   void _notifyAuthFailure(ApiException ex, RequestOptions request) {
+    _ensureCurrent(request);
     if (!ex.isUnauthorized && !ex.requiresShift) return;
     if (_authPaths.any(request.path.startsWith)) return;
     if (_handlingAuthFailure) return;

@@ -9,6 +9,7 @@ namespace AMD.AutoService.GaragePro.Application.Abstractions;
 public interface ICurrentUser
 {
     long UserId { get; }
+    long SessionVersion => 0;
     string UserName { get; }
     UserRole Role { get; }
     string ShardKey { get; }

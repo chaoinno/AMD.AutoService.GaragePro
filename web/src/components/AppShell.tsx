@@ -20,6 +20,7 @@ import {
   LogOut,
   Package,
   Search,
+  Smartphone,
   ShoppingCart,
   Timer,
   TrendingUp,
@@ -146,6 +147,7 @@ const navGroups: { label: string; items?: NavItem[]; sections?: NavSection[] }[]
       { to: '/customers', icon: Users, label: 'ลูกค้า' },
       { to: '/vehicles', icon: CarFront, label: 'รถลูกค้า' },
       { to: '/staffs', icon: UserCog, label: 'พนักงาน' },
+      { to: '/admin/app-updates', icon: Smartphone, label: 'เวอร์ชันแอป' },
       { to: '/products', icon: Package, label: 'สินค้า' },
       { to: '/suppliers', icon: Truck, label: 'ซัพพลายเออร์' },
       { to: '/warehouses', icon: Warehouse, label: 'คลัง' },
@@ -267,6 +269,9 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
 
   const displayName = session?.user.displayName ?? 'ผู้ใช้งาน'
 
+  // เวอร์ชันแอปมีผลทุกอู่ — เมนูโชว์เฉพาะผู้ดูแลระบบ (API ตรวจสถานะผู้ดูแลจากฐานเดิมซ้ำอีกชั้น)
+  const canSeeItem = (item: NavItem) => item.to !== '/admin/app-updates' || Boolean(session?.user.isAdministrator)
+
   const renderLink = (item: NavItem) => {
     const Icon = item.icon
     // path ของฟีเจอร์มาจาก lib/plan.ts ที่เดียว (ชุดเดียวกับ FeatureGate ใน AppRoutes)
@@ -331,7 +336,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
           {navGroups.map((group) => (
             <div className="sidebar__group" key={group.label}>
               <span className="sidebar__group-label">{group.label}</span>
-              {group.items?.map(renderLink)}
+              {group.items?.filter(canSeeItem).map(renderLink)}
               {group.sections?.map((section) => {
                 const open = !closedSections.has(section.key)
                 const listId = `sidebar-section-${section.key}`
@@ -349,7 +354,7 @@ export function AppShell({ children, title = 'จ๊อบ', documentMode = fals
                       <span>{section.label}</span>
                     </button>
                     <div className="sidebar__section-items" id={listId}>
-                      {section.items.map(renderLink)}
+                      {section.items.filter(canSeeItem).map(renderLink)}
                     </div>
                   </div>
                 )

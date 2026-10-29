@@ -29,6 +29,14 @@ public interface IStaffRepository
 
     Task<StaffDetailDto?> UpdateAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffUpsertRequest request, StaffImageUpload? image, CancellationToken ct = default);
+    /// <summary>
+    /// [User].Id ทุกบัญชีที่ผูกกับพนักงานคนนี้ในสาขาของ scope — ใช้เพิกถอนเซสชันก่อนเปลี่ยนสถานะ
+    /// · null = ไม่มีสิทธิ์ (พนักงานมีบัญชีผู้ดูแลระบบสักบัญชี แต่ผู้เรียกไม่ใช่ผู้ดูแล) กฎเดียวกับ <see cref="SetStatusAsync"/>
+    ///   ต้องตรวจตรงนี้ด้วย เพราะรุ่นเซสชันถูกเพิ่มก่อน SetStatusAsync จะได้ปฏิเสธ
+    /// </summary>
+    Task<IReadOnlyList<long>?> GetAccountIdsAsync(LegacyRequestScope scope, bool isAdministrator, long staffId,
+        CancellationToken ct = default) =>
+        throw new NotSupportedException("Account enumeration is required for session revocation");
     Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffStatusRequest request, CancellationToken ct = default);
     Task<StaffCodePreviewDto> PreviewCodeAsync(LegacyRequestScope scope, int branchId,

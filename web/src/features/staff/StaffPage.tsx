@@ -65,13 +65,18 @@ function useDebounced(value: string, delay = 350) {
   return result
 }
 
+// [UI] ปุ่มที่ปิดใช้งานต้องบอกเหตุผล — กฎเดียวกับ API (StaffService.SetStatusAsync → STAFF_STATUS_FORBIDDEN)
+const STATUS_FORBIDDEN_REASON = 'เปิด/ปิดใช้งานพนักงานได้เฉพาะผู้ดูแลระบบหรือผู้จัดการ'
+
 export function StaffPage() {
   const [keyword, setKeyword] = useState('')
   const [filters, setFilters] = useState<StaffFilters>({ page: 1, pageSize: 25 })
   const [formId, setFormId] = useState<number | 'new' | null>(null)
   const [statusTarget, setStatusTarget] = useState<StaffSummary | null>(null)
   // อู่ที่สมัครเอง: เพิ่มพนักงานด้วยฟอร์มง่าย แล้วโชว์รหัสเข้าแอปครั้งเดียว · ลูกค้าเดิมใช้ฟอร์มเต็มเหมือนเดิม
-  const simpleCreate = isSelfServePlan(useSession().session?.user.plan)
+  const { session } = useSession()
+  const canSetStatus = Boolean(session?.user.isAdministrator || session?.user.role.toLowerCase() === 'manager')
+  const simpleCreate = isSelfServePlan(session?.user.plan)
   const [credentials, setCredentials] = useState<StaffCredentials | null>(null)
   const showCredentials = (detail: StaffDetail) => {
     const initialPassword = detail.account?.initialPassword
@@ -92,8 +97,8 @@ export function StaffPage() {
     { id: 'organization', accessorFn: (x) => [x.departmentName, x.sectorName, x.positionName].filter(Boolean).join(' '), header: 'ฝ่าย / แผนก / ตำแหน่ง', size: 280, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.departmentName || 'ไม่ระบุฝ่าย'} · {row.original.sectorName || 'ไม่ระบุแผนก'}</strong><span>{row.original.positionName || 'ไม่ระบุตำแหน่ง'}</span></div> },
     { id: 'contact', accessorFn: (x) => [x.phoneNumber1, x.email].filter(Boolean).join(' '), header: 'การติดต่อ', size: 210, cell: ({ row }) => <div className="two-line-cell"><strong>{row.original.phoneNumber1 || 'ไม่ระบุเบอร์'}</strong><span>{row.original.email || 'ไม่ระบุอีเมล'}</span></div> },
     { id: 'status', accessorFn: (x) => x.isActive ? 'ใช้งาน' : 'ปิดใช้งาน', header: 'สถานะ', size: 130, cell: ({ row }) => row.original.isActive ? <Badge className="active-badge"><CheckCircle2 /> ใช้งาน</Badge> : <Badge variant="outline"><Ban /> ปิดใช้งาน</Badge> },
-    { id: 'actions', enableSorting: false, header: '', size: 110, cell: ({ row }) => <div className="row-actions"><Button size="icon" variant="ghost" aria-label={`แก้ไข ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setFormId(row.original.id) }}><Pencil /></Button><Button size="icon" variant="ghost" aria-label={`${row.original.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${row.original.fullName}`} title={row.original.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={(e) => { e.stopPropagation(); setStatusTarget(row.original) }}>{row.original.isActive ? <Ban /> : <CheckCircle2 />}</Button></div> },
-  ], [])
+    { id: 'actions', enableSorting: false, header: '', size: 110, cell: ({ row }) => <div className="row-actions"><Button size="icon" variant="ghost" aria-label={`แก้ไข ${row.original.fullName}`} onClick={(e) => { e.stopPropagation(); setFormId(row.original.id) }}><Pencil /></Button><Button size="icon" variant="ghost" disabled={!canSetStatus} aria-label={`${row.original.isActive ? 'ปิด' : 'เปิด'}ใช้งาน ${row.original.fullName}`} title={!canSetStatus ? STATUS_FORBIDDEN_REASON : row.original.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'} onClick={(e) => { e.stopPropagation(); setStatusTarget(row.original) }}>{row.original.isActive ? <Ban /> : <CheckCircle2 />}</Button></div> },
+  ], [canSetStatus])
 
   let content
   if (query.isPending) content = <StateBlock variant="loading" title="กำลังโหลดรายชื่อพนักงาน" reason="ระบบกำลังค้นหาข้อมูลในสาขาปัจจุบัน" actionLabel="โหลดใหม่" onAction={() => void query.refetch()}><SkeletonRows /></StateBlock>
@@ -103,7 +108,7 @@ export function StaffPage() {
   else content = <Card className="management-table-card"><DataTable sortable sortScope="page" data={query.data.items} columns={columns} onRowClick={(x) => setFormId(x.id)} getRowLabel={(x) => `เปิดข้อมูลพนักงาน ${x.fullName}`} /><Pagination page={query.data.page} totalPages={query.data.totalPages} totalItems={query.data.totalItems} onPageChange={(page) => setFilters((f) => ({ ...f, page }))} /></Card>
 
   return <AppShell title="พนักงาน">
-    <section className="page-heading"><div><p className="eyebrow">บุคลากรและบัญชีผู้ใช้</p><h2>จัดการพนักงาน</h2><p>ข้อมูลพนักงาน ตำแหน่ง ระดับฝีมือ และสถานะการใช้งาน</p></div><Button onClick={() => setFormId('new')}><Plus /> เพิ่มพนักงาน</Button></section>
+    <section className="page-heading"><div><p className="eyebrow">บุคลากรและบัญชีผู้ใช้</p><h2>จัดการพนักงาน</h2><p>ข้อมูลพนักงาน ตำแหน่ง ระดับฝีมือ และสถานะการใช้งาน</p>{canSetStatus ? null : <p className="section-help">{STATUS_FORBIDDEN_REASON}</p>}</div><Button onClick={() => setFormId('new')}><Plus /> เพิ่มพนักงาน</Button></section>
     <Card className="management-filters management-filters--staff">
       <div className="filter-search input-with-icon"><Search /><Input value={keyword} onChange={(e) => { setKeyword(e.target.value); setFilters((f) => ({ ...f, page: 1 })) }} placeholder="ค้นหารหัส ชื่อ เลขบัตร หรือเบอร์โทร" /></div>
       <Select value={filters.departmentId ?? ''} onChange={(e) => setFilters((f) => ({ ...f, departmentId: Number(e.target.value) || undefined, sectorId: undefined, page: 1 }))}><option value="">ทุกฝ่าย</option>{refs.data?.departments.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</Select>
@@ -209,7 +214,7 @@ function StatusDialog({ target, onClose }: { target: StaffSummary | null; onClos
   const queryClient = useQueryClient(); const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10))
   useEffect(() => { if (target) setEndDate(new Date().toISOString().slice(0, 10)) }, [target])
   const mutation = useMutation({ mutationFn: () => setStaffStatus(target!.id, !target!.isActive, target!.isActive ? endDate : undefined), onSuccess: () => { toast.success(target?.isActive ? 'ปิดใช้งานพนักงานแล้ว' : 'เปิดใช้งานพนักงานแล้ว'); void queryClient.invalidateQueries({ queryKey: ['staffs'] }); onClose() } })
-  return <ConfirmModal open={Boolean(target)} title={target?.isActive ? 'ปิดใช้งานพนักงาน' : 'เปิดใช้งานพนักงาน'} description="เป็นการเปลี่ยนสถานะแบบ soft-disable ข้อมูลจะไม่ถูกลบ" onClose={onClose} size="small" footer={<><Button variant="ghost" onClick={onClose}>ยกเลิก</Button><Button variant={target?.isActive ? 'destructive' : 'default'} disabled={mutation.isPending || (Boolean(target?.isActive) && !endDate)} title={target?.isActive && !endDate ? 'กรุณาระบุวันสิ้นสุดงาน' : undefined} onClick={() => mutation.mutate()}>{mutation.isPending ? 'กำลังบันทึก…' : target?.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</Button></>}><p>พนักงาน: <strong>{target?.fullName}</strong></p>{target?.isActive ? <Field label="วันสิ้นสุดงาน *"><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></Field> : <p>ระบบจะล้างวันสิ้นสุดงานและกลับมาแสดงในรายการปกติ</p>}{mutation.isError ? <InlineError error={mutation.error} /> : null}</ConfirmModal>
+  return <ConfirmModal open={Boolean(target)} title={target?.isActive ? 'ปิดใช้งานพนักงาน' : 'เปิดใช้งานพนักงาน'} description="ปิดใช้งานแล้วจะตัดสิทธิ์เว็บและแอปทุกเครื่อง งานค้างและเวลาทำงานจะไม่ถูกส่งต่อหรือหยุดให้อัตโนมัติ ประวัติเดิมยังอยู่" onClose={onClose} size="small" footer={<><Button variant="ghost" onClick={onClose}>ยกเลิก</Button><Button variant={target?.isActive ? 'destructive' : 'default'} disabled={mutation.isPending || (Boolean(target?.isActive) && !endDate)} title={target?.isActive && !endDate ? 'กรุณาระบุวันสิ้นสุดงาน' : undefined} onClick={() => mutation.mutate()}>{mutation.isPending ? 'กำลังบันทึก…' : target?.isActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'}</Button></>}><p>พนักงาน: <strong>{target?.fullName}</strong></p>{target?.isActive ? <Field label="วันสิ้นสุดงาน *"><Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} /></Field> : <p>ระบบจะล้างวันสิ้นสุดงานและกลับมาแสดงในรายการปกติ</p>}{mutation.isError ? <InlineError error={mutation.error} /> : null}</ConfirmModal>
 }
 
 function StaffPhoto({ staffId, name }: { staffId: number; name?: string }) {

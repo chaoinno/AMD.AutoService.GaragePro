@@ -18,7 +18,7 @@ import '../../api/client.dart';
 /// ล้างเซสชัน + แสดงเหตุผลจาก server · error อื่น (เน็ตหลุด/server ล่ม) เงียบไว้ — ไม่ใช่เหตุให้ออกจากระบบ
 ///
 /// ตอบสำเร็จ = เก็บแพ็กเกจ/อู่ล่าสุดลงเซสชัน (อู่ที่สมัครเอง) — แถบทดลองใช้จึงเปลี่ยนเป็น "อ่านอย่างเดียว"
-/// ภายใน 5 นาที/ทันทีที่กลับมาจาก background โดยไม่ต้องเข้าสู่ระบบใหม่ · ลูกค้าเดิมไม่มีแพ็กเกจ = null ตามเดิม
+/// ภายใน 60 วินาที/ทันทีที่กลับมาจาก background โดยไม่ต้องเข้าสู่ระบบใหม่ · ลูกค้าเดิมไม่มีแพ็กเกจ = null ตามเดิม
 class SessionGuard extends ConsumerStatefulWidget {
   const SessionGuard({super.key, required this.child});
 
@@ -29,8 +29,8 @@ class SessionGuard extends ConsumerStatefulWidget {
 }
 
 class _SessionGuardState extends ConsumerState<SessionGuard> {
-  /// server cache ผลตรวจไว้ 60 วิอยู่แล้ว (Jwt:SessionCheckSeconds) — ถี่กว่านี้ไม่ได้ข้อมูลสดขึ้น
-  static const _interval = Duration(minutes: 5);
+  /// server ตรวจรุ่นเซสชันสดทุกคำขอ (docs/19) — heartbeat ทุก 60 วิทำให้หน้าจอที่เปิดค้างไว้รู้ว่าถูกตัดสิทธิ์ภายในหนึ่งนาที
+  static const _interval = Duration(seconds: 60);
 
   Timer? _timer;
   AppLifecycleListener? _lifecycle;
@@ -42,9 +42,15 @@ class _SessionGuardState extends ConsumerState<SessionGuard> {
     _lifecycle = AppLifecycleListener(onResume: _onResume, onPause: _stopTimer);
     // เปิดแอปมาพร้อมเซสชันเดิม = จังหวะแรกที่ต้องตรวจ · เข้าสู่ระบบใหม่/ออกจากระบบ = เริ่ม/หยุดนับ
     ref.listenManual(sessionProvider, (previous, next) {
+      // รูปที่ decode แล้วของบัญชีเดิมต้องไม่โผล่ให้บัญชีถัดไปเห็น (imageCache ของ Flutter ไม่รู้จักเซสชัน)
+      if (previous != null && previous.accessToken != next?.accessToken) {
+        PaintingBinding.instance.imageCache
+          ..clear()
+          ..clearLiveImages();
+      }
       if (next == null) {
         _stopTimer();
-      } else if (previous == null) {
+      } else if (previous?.accessToken != next.accessToken) {
         _startTimer();
         unawaited(_check());
       }

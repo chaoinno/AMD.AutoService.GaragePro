@@ -80,9 +80,9 @@ public sealed class StaffsController(IStaffService service) : ControllerBase
             ?? result.Error.Code switch
         {
             "STAFF_NOT_FOUND" or "STAFF_IMAGE_NOT_FOUND" => StatusCodes.Status404NotFound,
-            "STAFF_BRANCH_FORBIDDEN" or "STAFF_ORGANIZATION_FORBIDDEN" => StatusCodes.Status403Forbidden,
+            "STAFF_STATUS_FORBIDDEN" or "STAFF_BRANCH_FORBIDDEN" or "STAFF_ORGANIZATION_FORBIDDEN" => StatusCodes.Status403Forbidden,
             "STAFF_IMAGE_TOO_LARGE" => StatusCodes.Status413PayloadTooLarge,
-            "STAFF_UPDATE_CONFLICT" => StatusCodes.Status409Conflict,
+            "STAFF_UPDATE_CONFLICT" or "STAFF_STATUS_BUSY" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status422UnprocessableEntity
         };
         return StatusCode(status, Envelope.From(result, HttpContext.TraceIdentifier));

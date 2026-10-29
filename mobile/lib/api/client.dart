@@ -68,7 +68,7 @@ class SessionNotifier extends Notifier<Session?> {
   ///   ผู้ดูแลระบบจะไม่เห็นปุ่มสลับสาขาจนกว่าจะออกแล้วเข้าระบบใหม่ ถ้าไม่เติมจากตรงนี้
   ///
   /// [expectedToken] กันคำตอบที่มาช้าเขียนทับเซสชันของคนถัดไป (ออกจากระบบ/สลับบัญชีระหว่างรอ)
-  /// · ค่าเดิมทุกตัว = ไม่บันทึก ไม่แจ้ง listener (ถูกเรียกทุก 5 นาที)
+  /// · ค่าเดิมทุกตัว = ไม่บันทึก ไม่แจ้ง listener (ถูกเรียกทุก 60 วินาที)
   Future<void> updatePlan(PlanInfo? plan, WorkspaceInfo? workspace,
       {required String expectedToken, bool? isAdministrator}) async {
     final current = state;
@@ -92,16 +92,29 @@ class SessionNotifier extends Notifier<Session?> {
   }
 }
 
-/// client เดียวของทั้งแอป — ไม่สร้าง Dio ใหม่ทุกครั้งที่เซสชันเปลี่ยน เพราะอ่าน token ตอนยิงคำขอ
+/// client ร่วมกันภายในหนึ่งเซสชัน — สร้างใหม่เมื่อ token เปลี่ยน (ล็อกอิน/ออก/สลับสาขา) provider ข้อมูลทุกตัวที่
+/// watch client นี้จึงรีเซ็ตตาม และคำขอค้างของบัญชีเดิมถูกตัดทิ้ง (docs/19)
+/// · watch เฉพาะ token ไม่ใช่ทั้งเซสชัน — heartbeat เติม plan ทุก 60 วิ ต้องไม่ทำให้ข้อมูลทั้งแอปโหลดใหม่
 final apiClientProvider = Provider<ApiClient>((ref) {
+  ref.watch(sessionProvider.select((s) => s?.accessToken));
   final client = ApiClient(
-    readToken: () => ref.read(sessionProvider)?.accessToken,
-    onAuthFailure: (error) => _handleAuthFailure(ref, error),
+    readToken: () => ref.mounted ? ref.read(sessionProvider)?.accessToken : null,
+    onAuthFailure: (error) {
+      if (ref.mounted) _handleAuthFailure(ref, error);
+    },
   );
   client.dio.interceptors.add(InterceptorsWrapper(onError: (e, handler) {
-    if (_isTrialExpiredWrite(e)) unawaited(ref.read(sessionProvider.notifier).markReadOnly());
+    if (!ref.mounted) {
+      handler.next(e);
+      return;
+    }
+    // TRIAL_EXPIRED ของบัญชีเดิมที่มาช้าต้องไม่เปลี่ยนแถบของบัญชีใหม่เป็นอ่านอย่างเดียว
+    final token = ref.read(sessionProvider)?.accessToken;
+    final current = e.requestOptions.headers['Authorization'] == (token == null ? null : 'Bearer $token');
+    if (current && _isTrialExpiredWrite(e)) unawaited(ref.read(sessionProvider.notifier).markReadOnly());
     handler.next(e);
   }));
+  ref.onDispose(() => client.dio.close(force: true));
   return client;
 });
 
@@ -118,7 +131,8 @@ bool _isTrialExpiredWrite(DioException e) {
 void _handleAuthFailure(Ref ref, ApiException error) {
   // หน้าที่ถูก push แบบ imperative (เช่นหน้าเซ็นลายเซ็น) ซ้อนอยู่เหนือ stack ของ router
   // ถ้าไม่ pop ก่อน ผู้ใช้จะเห็นหน้าเซ็นค้างทับหน้า login
-  rootNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+  // · เว้นหน้าบังคับอัปเดต (app_update_guard.dart) — ต้องค้างอยู่แม้ออกจากระบบ
+  rootNavigatorKey.currentState?.popUntil((route) => route.isFirst || route.settings.name == 'app-update');
 
   ref.read(sessionProvider.notifier).clear();
 

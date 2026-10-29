@@ -7,6 +7,7 @@ import { IntakeDocumentPage } from './features/jobs/IntakeDocumentPage'
 import { JobsPage } from './features/jobs/JobsPage'
 import { CustomerPage } from './features/customers/CustomerPage'
 import { VehiclePage } from './features/customers/VehiclePage'
+import { AppUpdatesPage } from './features/app-updates/AppUpdatesPage'
 import { StaffPage } from './features/staff/StaffPage'
 import { CatalogPage } from './features/catalog/CatalogPage'
 import { SupplierPage } from './features/master-data/SupplierPage'
@@ -47,6 +48,7 @@ export default function AppRoutes() {
           <Route path="/jobs/:jobId/intake-document" element={<ProtectedRoute><IntakeDocumentPage /></ProtectedRoute>} />
           <Route path="/customers" element={<ProtectedRoute><CustomerPage /></ProtectedRoute>} />
           <Route path="/vehicles" element={<ProtectedRoute><VehiclePage /></ProtectedRoute>} />
+          <Route path="/admin/app-updates" element={<ProtectedRoute><AppUpdatesPage /></ProtectedRoute>} />
           <Route path="/staffs" element={<ProtectedRoute><StaffPage /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><CatalogPage /></ProtectedRoute>} />
           <Route path="/suppliers" element={<ProtectedRoute><FeatureGate><SupplierPage /></FeatureGate></ProtectedRoute>} />

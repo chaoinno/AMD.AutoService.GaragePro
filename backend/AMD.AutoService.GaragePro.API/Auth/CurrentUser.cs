@@ -23,6 +23,8 @@ public sealed class CurrentUser(IHttpContextAccessor accessor) : ICurrentUser
         long.TryParse(Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
                       ?? Principal?.FindFirstValue("sub"), out var v) ? v : 0;
 
+    public long SessionVersion => long.TryParse(Principal?.FindFirstValue(GarageClaims.SessionVersion), out var v) ? v : 0;
+
     public string UserName =>
         Principal?.FindFirstValue(GarageClaims.DisplayName)
         ?? Principal?.FindFirstValue(ClaimTypes.Name)

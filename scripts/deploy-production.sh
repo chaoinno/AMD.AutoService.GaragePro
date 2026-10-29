@@ -101,6 +101,8 @@ fi
 "${compose[@]}" config --quiet
 "${compose[@]}" build --pull api web
 "${compose[@]}" run --rm --no-deps --entrypoint /app/efbundle api </dev/null
+# Global policy context: run once on central ServiceDb, never against tenant databases.
+"${compose[@]}" run --rm --no-deps --entrypoint /app/efbundle-app-updates api </dev/null
 
 # Self-serve shard (sp1 -> GarageSelfServe): only when the env file configures it, so deployments without
 # self-serve keep the single migration above. Two targets in the same database:

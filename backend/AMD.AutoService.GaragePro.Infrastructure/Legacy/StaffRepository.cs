@@ -210,6 +210,19 @@ public sealed class StaffRepository(IOptions<LegacyShardOptions> options, IStaff
         }
     }
 
+    public async Task<IReadOnlyList<long>?> GetAccountIdsAsync(LegacyRequestScope scope, bool isAdministrator, long staffId,
+        CancellationToken ct = default)
+    {
+        // ไม่ใส่ READUNCOMMITTED โดยตั้งใจ — ใช้ตัดสินว่าจะเพิกถอน token ของบัญชีไหน อ่านแถวที่ยังไม่ commit ไม่ได้
+        await using var db = Open(scope.ShardKey);
+        var accounts = (await db.QueryAsync<(long Id, bool IsAdministrator)>(new CommandDefinition("""
+            SELECT u.Id, CONVERT(bit, ISNULL(u.IsAdministrator, 0)) IsAdministrator
+            FROM [User] u JOIN Staff s ON s.Id=u.StaffId WHERE s.Id=@staffId AND s.BranchId=@BranchId
+            """, new { staffId, scope.BranchId }, cancellationToken: ct))).ToList();
+        if (!isAdministrator && accounts.Any(a => a.IsAdministrator)) return null;
+        return accounts.Select(a => a.Id).ToList();
+    }
+
     public async Task<bool> SetStatusAsync(LegacyRequestScope scope, bool isAdministrator, long id,
         StaffStatusRequest request, CancellationToken ct = default)
     {

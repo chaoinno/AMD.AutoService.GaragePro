@@ -98,6 +98,8 @@ public sealed class AuthController(IAuthService service) : ControllerBase
             ?? SelfServeErrors.StatusCodeFor(result.Error.Code)
             ?? result.Error.Code switch
         {
+            "AUTH_CHECK_UNAVAILABLE" => StatusCodes.Status503ServiceUnavailable,
+            "AUTH_REQUIRED" => StatusCodes.Status401Unauthorized,
             "AUTH_INVALID_CREDENTIALS" => StatusCodes.Status401Unauthorized,
             "AUTH_RATE_LIMITED" => StatusCodes.Status429TooManyRequests,
             "AUTH_NOT_STAFF" or "AUTH_BRANCH_FORBIDDEN" or "AUTH_SWITCH_FORBIDDEN" or "SHIFT_CLOSE_FORBIDDEN"

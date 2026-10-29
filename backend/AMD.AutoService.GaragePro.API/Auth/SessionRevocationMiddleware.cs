@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using AMD.AutoService.GaragePro.Application.Abstractions;
 using AMD.AutoService.GaragePro.Application.Auth;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -21,16 +22,46 @@ public sealed class SessionRevocationMiddleware(
     IOptions<JwtOptions> options,
     ILogger<SessionRevocationMiddleware> logger)
 {
-    private readonly TimeSpan _ttl = TimeSpan.FromSeconds(Math.Max(1, options.Value.SessionCheckSeconds));
+    private readonly TimeSpan _ttl = TimeSpan.FromSeconds(Math.Clamp(options.Value.SessionCheckSeconds, 1, 60));
 
-    public async Task InvokeAsync(HttpContext context, IAuthService auth)
+    // IAuthService ไม่อยู่ในพารามิเตอร์โดยตั้งใจ — ASP.NET สร้างพารามิเตอร์ก่อนเข้าเมธอด และ AuthService ต้องการ ServiceDbContext
+    // ของ shard นั้น: ต่อฐานของ shard ไม่ได้ (เช่น sp1 ไม่ได้ตั้งค่า) = exception ก่อนถึง try ใดๆ กลายเป็น 500 ดิบ
+    // ไม่ใช่ 503 AUTH_CHECK_UNAVAILABLE ที่ client รู้จัก · ISessionVersionStore/ICurrentUser ไม่แตะฐานตอนสร้างจึงรับตรงได้
+    public async Task InvokeAsync(HttpContext context, ISessionVersionStore versions, ICurrentUser currentUser)
     {
         var principal = context.User;
         // API ภายใน (docs/17 §8.6) ยืนยันตัวด้วย X-Internal-Key ไม่ใช่ JWT · token ที่ติดมาด้วยต้องไม่ทำให้ได้ 401 AUTH_REQUIRED
         // และไม่ยิง Garage DB เพิ่ม
         if (principal.Identity?.IsAuthenticated != true
-            || principal.HasClaim(GarageClaims.PreSession, "true")
             || Internal.InternalApi.IsInternalPath(context.Request.Path))
+        {
+            await next(context);
+            return;
+        }
+
+        // [SECURITY] รุ่นเซสชัน (docs/19): ไม่ cache และอยู่นอก catch แบบ fail-open ของฐานเดิมด้านล่างโดยตั้งใจ
+        // ทุก instance อ่านค่าถาวรตัวเดียวกัน รวม token ก่อนเลือกกะ — ตรวจไม่ได้ = 503 (client ไม่ล้างเซสชัน) ไม่ใช่ปล่อยผ่าน
+        try
+        {
+            var version = await versions.ReadAsync(currentUser.ShardKey, currentUser.UserId, context.RequestAborted);
+            if (version.Version != currentUser.SessionVersion)
+            {
+                await RejectAsync(context, 401, "AUTH_REQUIRED", "สิทธิ์การเข้าใช้งานถูกยกเลิก กรุณาเข้าสู่ระบบใหม่");
+                return;
+            }
+            if (version.Changing)
+            {
+                await RejectAsync(context, 503, "AUTH_CHECK_UNAVAILABLE", "กำลังเปลี่ยนสถานะบัญชี กรุณาลองใหม่");
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Session version verification unavailable");
+            await RejectAsync(context, 503, "AUTH_CHECK_UNAVAILABLE", "ไม่สามารถตรวจสอบสิทธิ์ได้ชั่วคราว กรุณาลองใหม่");
+            return;
+        }
+        if (principal.HasClaim(GarageClaims.PreSession, "true"))
         {
             await next(context);
             return;
@@ -49,8 +80,15 @@ public sealed class SessionRevocationMiddleware(
         {
             try
             {
+                var auth = context.RequestServices.GetRequiredService<IAuthService>();
                 reason = await auth.GetSessionRevocationReasonAsync(context.RequestAborted);
                 cache.Set(key, reason, _ttl);
+            }
+            catch (SessionVerificationException ex)
+            {
+                logger.LogError(ex, "Could not persist observed session revocation");
+                await RejectAsync(context, 503, "AUTH_CHECK_UNAVAILABLE", "ไม่สามารถตรวจสอบสิทธิ์ได้ชั่วคราว กรุณาลองใหม่");
+                return;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -67,15 +105,19 @@ public sealed class SessionRevocationMiddleware(
             return;
         }
 
-        // ใช้ code AUTH_REQUIRED เดิม — client ทุกรุ่น (รวมแอปที่ยังไม่อัปเดต) ล้างเซสชันเมื่อเจอ code นี้อยู่แล้ว
-        // เหตุผลจริงอยู่ใน messageTh ให้ client แสดงตรงๆ ตามกฎ envelope
-        context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        await RejectAsync(context, 401, "AUTH_REQUIRED", reason);
+    }
+
+    private static Task RejectAsync(HttpContext context, int status, string code, string reason)
+    {
+        context.Response.StatusCode = status;
         context.Response.ContentType = "application/json; charset=utf-8";
-        await context.Response.WriteAsJsonAsync(new
+        context.Response.Headers.CacheControl = "no-store";
+        return context.Response.WriteAsJsonAsync(new
         {
             success = false,
             data = (object?)null,
-            error = new { code = "AUTH_REQUIRED", messageTh = reason },
+            error = new { code, messageTh = reason },
             traceId = context.TraceIdentifier
         });
     }
