@@ -264,6 +264,67 @@ img {
   text-transform: uppercase;
 }
 
+/* หัวข้อย่อยในกลุ่มเมนู (เช่น Reports) — พับ/กางได้ */
+.sidebar__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar__section + .sidebar__section,
+.sidebar__group > .sidebar__link + .sidebar__section {
+  margin-top: 4px;
+}
+
+.sidebar__section-toggle {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sidebar__section-toggle:hover {
+  background: rgb(255 255 255 / 6%);
+  color: #e2e8f0;
+}
+
+.sidebar__section-toggle:focus-visible {
+  outline: 2px solid var(--blue-400, #60a5fa);
+  outline-offset: 1px;
+}
+
+.sidebar__section-chevron {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  transform: rotate(90deg);
+  transition: transform 140ms ease;
+}
+
+.sidebar__section--closed .sidebar__section-chevron {
+  transform: none;
+}
+
+.sidebar__section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar__section--closed .sidebar__section-items {
+  display: none;
+}
+
 .sidebar__link,
 .sidebar__footer {
   display: flex;
@@ -377,6 +438,15 @@ img {
 .app-shell--sidebar-collapsed .sidebar__group-label,
 .app-shell--sidebar-collapsed .sidebar__count {
   display: none;
+}
+
+/* แถบไอคอน: ไม่มีที่ให้หัวข้อย่อย — ซ่อนปุ่มพับและแสดงทุกเมนูเสมอ (ไม่งั้นเมนูในหัวข้อที่พับไว้หายไปเฉยๆ) */
+.app-shell--sidebar-collapsed .sidebar__section-toggle {
+  display: none;
+}
+
+.app-shell--sidebar-collapsed .sidebar__section--closed .sidebar__section-items {
+  display: flex;
 }
 
 .app-shell--sidebar-collapsed .sidebar__nav {
@@ -4605,6 +4675,14 @@ img {
   .sidebar__group-label,
   .sidebar__count {
     display: none;
+  }
+
+  .sidebar__section-toggle {
+    display: none;
+  }
+
+  .sidebar__section--closed .sidebar__section-items {
+    display: flex;
   }
 
   .sidebar__nav {

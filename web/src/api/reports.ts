@@ -28,7 +28,44 @@ export type CycleTimeReport = {
   topStuckJobs: StuckJob[]
 }
 
-export type LineTypeTotals = { type: string; netAmount: number; costAmount: number | null; marginAmount: number | null }
+/** บรรทัดที่อนุมัติหนึ่งบรรทัด — มาจากจ๊อบ/ใบเสนอราคาไหน · ต้นทุน/กำไร null เมื่อ role ไม่เห็นต้นทุน */
+export type SalesMarginLine = {
+  jobId: string
+  jobNo: string
+  quotationId: string
+  quotationCode: string
+  customerName: string
+  vehicleRegistration: string
+  quotationCreatedAt: string
+  quantity: number
+  unitPrice: number
+  netAmount: number
+  costAmount: number | null
+  marginAmount: number | null
+  /** API ตัดฟิลด์ null ทิ้ง — อ่านแบบ optional */
+  technicianName?: string | null
+}
+/** รายการเดียวกันรวมกัน (แคตตาล็อกด้วยรหัส · นอกแคตตาล็อกด้วยชื่อ) */
+export type SalesMarginItem = {
+  catalogCode: string
+  name: string
+  unit: string
+  isAdHoc: boolean
+  lineCount: number
+  quantity: number
+  netAmount: number
+  costAmount: number | null
+  marginAmount: number | null
+  lines: SalesMarginLine[]
+}
+export type LineTypeTotals = {
+  type: string
+  netAmount: number
+  costAmount: number | null
+  marginAmount: number | null
+  lineCount: number
+  items: SalesMarginItem[]
+}
 export type TechnicianRevenue = { technicianName: string; lineCount: number; netAmount: number }
 export type SalesMarginReport = {
   fromDate: string

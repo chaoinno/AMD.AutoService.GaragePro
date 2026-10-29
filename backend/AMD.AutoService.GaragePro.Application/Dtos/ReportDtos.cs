@@ -40,8 +40,28 @@ public sealed record CycleTimeReportDto(
 
 // ---------- ยอดขาย-ต้นทุน-กำไร (Sales & Margin) ----------
 
+/// <summary>
+/// ยอดรวมต่อประเภท (ค่าแรง/อะไหล่) พร้อม drill-down ว่ามาจากรายการไหน — [BIZ] ต้นทุน/กำไรเป็น null ทุกชั้นเมื่อ role ไม่เห็นต้นทุน
+/// </summary>
 public sealed record LineTypeTotalsDto(
-    string Type, decimal NetAmount, decimal? CostAmount, decimal? MarginAmount);
+    string Type, decimal NetAmount, decimal? CostAmount, decimal? MarginAmount,
+    int LineCount, IReadOnlyList<SalesMarginItemDto> Items);
+
+/// <summary>
+/// รายการเดียวกันรวมกัน — บรรทัดจากแคตตาล็อกรวมด้วยรหัส · รายการนอกแคตตาล็อก (รหัสว่าง) รวมด้วยชื่อ
+/// </summary>
+public sealed record SalesMarginItemDto(
+    string CatalogCode, string Name, string Unit, bool IsAdHoc,
+    int LineCount, decimal Quantity,
+    decimal NetAmount, decimal? CostAmount, decimal? MarginAmount,
+    IReadOnlyList<SalesMarginLineDto> Lines);
+
+/// <summary>บรรทัดที่อนุมัติหนึ่งบรรทัด — บอกว่ามาจากจ๊อบ/ใบเสนอราคาไหน</summary>
+public sealed record SalesMarginLineDto(
+    Guid JobId, string JobNo, Guid QuotationId, string QuotationCode,
+    string CustomerName, string VehicleRegistration, DateTime QuotationCreatedAt,
+    decimal Quantity, decimal UnitPrice, decimal NetAmount, decimal? CostAmount, decimal? MarginAmount,
+    string? TechnicianName);
 
 public sealed record TechnicianRevenueDto(
     string TechnicianName, int LineCount, decimal NetAmount);

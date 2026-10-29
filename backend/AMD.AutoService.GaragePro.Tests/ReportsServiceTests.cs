@@ -91,6 +91,70 @@ public sealed class ReportsServiceTests
     }
 
     [Fact]
+    public async Task GetSalesMarginAsync_drills_down_each_type_into_items_and_the_jobs_they_came_from()
+    {
+        var jobA = Guid.NewGuid();
+        var jobB = Guid.NewGuid();
+        var qa = new Quotation { JobId = jobA, JobNo = "JB-A", Code = "QT-A-01", CreatedAt = DateTime.UtcNow.AddDays(-2), VehicleRegistration = "กข-1" };
+        var qb = new Quotation { JobId = jobB, JobNo = "JB-B", Code = "QT-B-01", CreatedAt = DateTime.UtcNow.AddDays(-1), VehicleRegistration = "กข-2" };
+        qa.Lines.Add(Line(qa, LineType.Part, "P-OIL", "น้ำมันเครื่อง", 4, 800m, 500m));
+        qb.Lines.Add(Line(qb, LineType.Part, "p-oil ", "น้ำมันเครื่อง 5W-30", 4, 820m, 500m));   // รหัสเดียวกัน (ตัวพิมพ์/ช่องว่างต่าง) ต้องรวมแถวเดียว
+        qb.Lines.Add(Line(qb, LineType.Part, "P-FLT", "กรองน้ำมัน", 1, 150m, 90m));
+        qa.Lines.Add(Line(qa, LineType.Labor, "", "ล้างหัวฉีด", 1, 600m, 0m, "ช่างเอ"));   // นอกแคตตาล็อก รวมด้วยชื่อ
+        qb.Lines.Add(Line(qb, LineType.Labor, "", " ล้างหัวฉีด", 1, 600m, 0m, "ช่างบี"));
+        var repo = new FakeReportsRepository { Quotations = [qa, qb] };
+
+        var manager = (await CreateService(repo, UserRole.Manager).GetSalesMarginAsync(null, null)).Data!;
+
+        var parts = manager.ByType.Single(t => t.Type == "Part");
+        parts.LineCount.Should().Be(3);
+        parts.Items.Select(i => i.CatalogCode.Trim().ToUpperInvariant()).Should().Equal("P-OIL", "P-FLT");   // ยอดขายมากไปน้อย
+        var oil = parts.Items[0];
+        oil.Name.Should().Be("น้ำมันเครื่อง 5W-30");   // ชื่อตามบรรทัดล่าสุด
+        oil.Quantity.Should().Be(8);
+        oil.NetAmount.Should().Be(1620m);
+        oil.CostAmount.Should().Be(1000m);
+        oil.Lines.Select(l => l.JobNo).Should().Equal("JB-B", "JB-A");
+        oil.Lines[0].JobId.Should().Be(jobB);
+
+        var labor = manager.ByType.Single(t => t.Type == "Labor");
+        labor.Items.Should().ContainSingle();
+        labor.Items[0].IsAdHoc.Should().BeTrue();
+        labor.Items[0].NetAmount.Should().Be(1200m);
+        labor.Items[0].Lines.Select(l => l.TechnicianName).Should().BeEquivalentTo("ช่างเอ", "ช่างบี");
+
+        // [BIZ] ต้นทุน/กำไรต้องถูกตัดทุกชั้นของ drill-down ไม่ใช่แค่ยอดรวม
+        var office = (await CreateService(repo, UserRole.Office).GetSalesMarginAsync(null, null)).Data!;
+        office.ByType.SelectMany(t => t.Items).Should().OnlyContain(i => i.CostAmount == null && i.MarginAmount == null);
+        office.ByType.SelectMany(t => t.Items).SelectMany(i => i.Lines)
+            .Should().OnlyContain(l => l.CostAmount == null && l.MarginAmount == null);
+    }
+
+    [Fact]
+    public async Task GetSalesMarginAsync_ignores_approved_lines_of_superseded_quotations()
+    {
+        var jobId = Guid.NewGuid();
+        var original = new Quotation { JobId = jobId, Code = "QT-1-01", Status = QuotationStatus.Superseded, CreatedAt = DateTime.UtcNow.AddHours(-2) };
+        original.Lines.Add(Line(original, LineType.Part, "P-1", "ผ้าเบรก", 1, 1000m, 600m));
+        var revision = new Quotation { JobId = jobId, Code = "QT-1-02", Status = QuotationStatus.Approved, CreatedAt = DateTime.UtcNow.AddHours(-1) };
+        revision.Lines.Add(Line(revision, LineType.Part, "P-1", "ผ้าเบรก", 1, 900m, 600m));
+        var repo = new FakeReportsRepository { Quotations = [original, revision] };
+
+        var result = (await CreateService(repo, UserRole.Manager).GetSalesMarginAsync(null, null)).Data!;
+
+        result.NetAmount.Should().Be(900m);
+        result.QuotationCount.Should().Be(1);
+        result.ByType.Single().Items.Single().Lines.Single().QuotationCode.Should().Be("QT-1-02");
+    }
+
+    private static QuotationLine Line(Quotation q, LineType type, string code, string name, decimal qty, decimal net, decimal cost, string? tech = null) => new()
+    {
+        QuotationId = q.Id, Type = type, CatalogCode = code, Name = name, Quantity = qty, Unit = "หน่วย",
+        UnitPrice = net / qty, NetAmount = net, CostAmount = cost, MarginAmount = net - cost,
+        ApprovalStatus = LineApprovalStatus.Approved, AssignedTechnicianName = tech
+    };
+
+    [Fact]
     public async Task GetCycleTimeAsync_averages_status_durations_within_range_and_ranks_stuck_jobs_outside_it()
     {
         var now = DateTime.UtcNow;
