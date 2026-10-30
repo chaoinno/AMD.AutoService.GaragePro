@@ -2252,3 +2252,6 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     → `ApiClient._notifyAuthFailure` ข้ามคำขอที่ไม่ได้แนบ token · เทสต์ 2 ข้อ · `flutter test` 243 · ทดสอบซ้ำบน production แล้วข้อความถูกต้อง ·
     **ต้องอยู่ในแอป 1.4.0+6 ที่ส่ง Store**
   · simulator ตอนนี้ลงแอป debug ที่ชี้ production และเข้าระบบด้วยบัญชีทดสอบค้างไว้
+- **[ทดสอบแจ้งอัปเดตบน Android emulator 2026-10-30] ผ่าน** (Pixel_10 Android 17 · API บนเครื่อง + ฐานทดสอบ Docker · ไม่แตะนโยบาย production):
+  แจ้งเตือนทั่วไป/ไว้ภายหลัง · ปุ่มอัปเดตเปิด Google Play หน้า ServicePro · หน้าบังคับไม่หลุดด้วย Back ของระบบ ปัดขอบ หรือแตะนอกกรอบ ·
+  กลับจาก Play ยังติดหน้าบังคับ · ปิดนโยบายแล้วหลุด · รายละเอียดใน docs/19 · ยังไม่ได้ลองเครื่องจริง/release จาก Play
