@@ -220,6 +220,9 @@ class ApiClient {
     _ensureCurrent(request);
     if (!ex.isUnauthorized && !ex.requiresShift) return;
     if (_authPaths.any(request.path.startsWith)) return;
+    // คำขอที่ไม่ได้แนบ token ไม่มีเซสชันให้ตัด — เกิดหลังเซสชันถูกล้างแล้ว หน้าที่ยังเปิดอยู่ยิงซ้ำด้วย client ใหม่
+    // (ตัวกันซ้ำข้างล่างเริ่มใหม่ตาม client) ถ้าปล่อยผ่าน ข้อความทั่วไปของ 401 จะทับเหตุผลจริงที่เพิ่งแสดง
+    if (request.headers['Authorization'] == null) return;
     if (_handlingAuthFailure) return;
 
     _handlingAuthFailure = true;

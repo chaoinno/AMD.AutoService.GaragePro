@@ -22,7 +22,63 @@ class DelayedAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// ตอบ 401 AUTH_REQUIRED ทุกคำขอ
+class UnauthorizedAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'success': false,
+        'data': null,
+        'error': {'code': 'AUTH_REQUIRED', 'messageTh': 'ข้อความจาก server'},
+      }),
+      401,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+ApiClient _unauthorizedClient(String? token, List<ApiException> failures) {
+  final dio = Dio()..httpClientAdapter = UnauthorizedAdapter();
+  return ApiClient(readToken: () => token, dio: dio, onAuthFailure: failures.add);
+}
+
 void main() {
+  test('401 of a request that carried a token ends the session with the server message', () async {
+    final failures = <ApiException>[];
+    final client = _unauthorizedClient('current', failures);
+
+    await expectLater(
+      client.get<Object?>('/jobs'),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', 'AUTH_REQUIRED')),
+    );
+
+    expect(failures.map((e) => e.messageTh), ['ข้อความจาก server']);
+  });
+
+  // เซสชันถูกล้างแล้ว client ใหม่ (ไม่มี token) ของหน้าที่ยังเปิดอยู่ยิงคำขอซ้ำ — 401 นี้ไม่ได้บอกเหตุผลอะไร
+  // ห้ามสั่งออกจากระบบซ้ำ ไม่งั้นข้อความทั่วไปทับเหตุผลจริงที่เพิ่งแสดง (พบตอนทดสอบปิดพนักงาน 2026-10-30)
+  test('401 of a request sent without a token does not end the session again', () async {
+    final failures = <ApiException>[];
+    final client = _unauthorizedClient(null, failures);
+
+    await expectLater(
+      client.get<Object?>('/jobs'),
+      throwsA(isA<ApiException>().having((e) => e.code, 'code', 'AUTH_REQUIRED')),
+    );
+
+    expect(failures, isEmpty);
+  });
+
   for (final status in [200, 401]) {
     test(
       'late HTTP $status from previous account cannot affect current account',
