@@ -469,3 +469,19 @@ Error: `PACKAGE_PAYMENT_FORBIDDEN` 403 · `PACKAGE_PAYMENT_UNAVAILABLE` 503 · `
 ระยะ B: `{id}` ต้องเป็น GUID เต็ม (ไม่ใช่ prefix แบบ spadmin · ผิดรูป = 404) · ผู้กระทำบันทึกเป็น `admin:{actorName}#{actorId}` (ชื่อ 1–100 ตัวไม่มีอักขระควบคุม · id > 0 รับ number หรือข้อความ) ·
 body อ่านเองเป็น JSON (ผิดรูป/ผิดชนิด = 422 ไม่ใช่ 400 ProblemDetails) · Error ชุดเดียวกับ §16.4.1 และ `PACKAGE_PAYMENT_VALIDATION` field เพิ่ม `actorName` · `actorId` · `status` · `take` · `body` ·
 `SPADMIN_REFUSED` 409 (อู่ purged/provisioning/ไม่มี Branch) · `SELFSERVE_WORKSPACE_NOT_FOUND` 404 · ไม่ได้ตั้ง self-serve = 404 `SELFSERVE_NOT_APPLICABLE`
+
+## 18 · ใบลดหนี้ + ค่าตั้งภาษีของสาขา **[เพิ่ม 2026-11-09 · docs/20 §2]**
+
+| Method | Path | สิทธิ์ | หมายเหตุ |
+|---|---|---|---|
+| GET | `/jobs/{jobId}/credit-notes` | Cashier/Office/Manager · ฟีเจอร์ `TaxInvoice` | บิลที่อ้างได้ (`sourceType` `taxInvoice` ถ้าจ๊อบมี IV- ไม่งั้น `receipt`) · คงเหลือต่อบรรทัด · ใบที่ออกแล้ว · `canIssue`/`blockedReasonTh`/`canRefund` |
+| POST | `/jobs/{jobId}/credit-notes` | **Manager** | `{requestId, reason, reasonText?, lines:[{sourceLineId, quantity?\|amount?}], refund?}` · requestId ซ้ำ+payload เดิม = ใบเดิม |
+| POST | `/credit-notes/{id}/refunds` | **Manager** | `{requestId, method, amount, reference?}` · รวมไม่เกินยอดใบ · requestId ซ้ำไม่บันทึกซ้ำ |
+| GET | `/reports/credit-notes?from&to` | Manager/Office | วันที่ออก (เวลาไทย) ค่าเริ่มต้นต้นเดือน–วันนี้ · ≤ 366 วัน · ไม่แบ่งหน้า |
+| GET / PUT | `/branch-tax-profile` | อ่านทุกบทบาท / แก้ Manager | `sellerBranchNo` 5 หลัก ("00000" = สำนักงานใหญ่) |
+
+`reason`: `defect` · `returned` · `service` · `overcharged` · `other` (ต้องมี `reasonText`) · ต่อบรรทัดส่ง `quantity` หรือ `amount` อย่างใดอย่างหนึ่ง (ลดจำนวนที่เหลือทั้งหมด = ยอดคงเหลือทั้งหมด)
+
+Error: `CREDIT_NOTE_FORBIDDEN` 403 · `CREDIT_NOTE_NOT_FOUND` 404 · `CREDIT_NOTE_CONFLICT` 409 · `CREDIT_NOTE_SOURCE_REQUIRED` · `CREDIT_NOTE_REASON_REQUIRED` ·
+`CREDIT_NOTE_LINES_REQUIRED` · `CREDIT_NOTE_LINE_NOT_IN_SOURCE` · `CREDIT_NOTE_EXCEEDS_LINE` · `CREDIT_NOTE_REFUND_EXCEEDS` · `CREDIT_NOTE_VALIDATION` (400)
+· ใบกำกับภาษีเพิ่ม `TAX_INVOICE_RECEIPT_CREDITED` (400 — มีใบลดหนี้อ้างใบเสร็จแล้ว ออกใบกำกับไม่ได้ · docs/20 Q9) · `TaxInvoiceDto.seller.branchNo` มีค่าแล้ว

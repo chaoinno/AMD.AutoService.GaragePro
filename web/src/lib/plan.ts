@@ -67,8 +67,9 @@ export const FEATURES: Record<FeatureKey, FeatureInfo> = {
       'เลขที่เอกสารแยกจากใบเสร็จ (IV-)',
       'ข้อมูลผู้ซื้อเติมจากลูกค้าและแก้ไขได้ตอนออก',
       'รายการและยอดคัดจากใบเสร็จ ตรวจยอดให้ตรงกันก่อนออก',
+      'ใบลดหนี้อ้างอิงรายการตามบิล พร้อมบันทึกคืนเงินและรายงาน',
     ],
-    paths: [],
+    paths: ['/reports/credit-notes'],
   },
   advancedReports: {
     key: 'advancedReports',

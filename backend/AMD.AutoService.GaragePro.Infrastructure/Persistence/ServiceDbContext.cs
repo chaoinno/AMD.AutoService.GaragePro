@@ -30,6 +30,10 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<ReceiptNumberCounter> ReceiptNumberCounters => Set<ReceiptNumberCounter>();
     public DbSet<TaxInvoice> TaxInvoices => Set<TaxInvoice>();
     public DbSet<TaxInvoiceLine> TaxInvoiceLines => Set<TaxInvoiceLine>();
+    public DbSet<CreditNote> CreditNotes => Set<CreditNote>();
+    public DbSet<CreditNoteLine> CreditNoteLines => Set<CreditNoteLine>();
+    public DbSet<CreditNoteRefund> CreditNoteRefunds => Set<CreditNoteRefund>();
+    public DbSet<BranchTaxProfile> BranchTaxProfiles => Set<BranchTaxProfile>();
     public DbSet<HandoverRecord> HandoverRecords => Set<HandoverRecord>();
     public DbSet<HandoverChecklistItem> HandoverChecklistItems => Set<HandoverChecklistItem>();
     public DbSet<HandoverServiceItem> HandoverServiceItems => Set<HandoverServiceItem>();

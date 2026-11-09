@@ -136,6 +136,33 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.ToTable("svc_Attachment", (string)null);
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.BranchTaxProfile", b =>
+                {
+                    b.Property<string>("LegacyShardKey")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SellerBranchNo")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UpdatedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("LegacyShardKey", "LegacyBranchId");
+
+                    b.ToTable("svc_BranchTaxProfile", (string)null);
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogCategory", b =>
                 {
                     b.Property<Guid>("Id")
@@ -340,6 +367,261 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("UX_svc_CatalogItemSupplier_Item_Supplier");
 
                     b.ToTable("svc_CatalogItemSupplier", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BuyerAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("BuyerBranchNo")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<string>("BuyerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("BuyerTaxId")
+                        .HasMaxLength(13)
+                        .HasColumnType("nvarchar(13)");
+
+                    b.Property<decimal>("CorrectNetAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("DiffNetAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("DocumentNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("IssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IssuedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("IssuedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("JobNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LegacyShardKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("OriginalNetAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ReasonCode")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReasonText")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ReceiptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SellerAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SellerBranchNo")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
+                    b.Property<string>("SellerName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SellerTaxId")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("SourceDocumentNo")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<DateTime>("SourceIssuedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("TaxInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("VatAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("VatRate")
+                        .HasColumnType("decimal(5,4)");
+
+                    b.Property<string>("VehicleRegistration")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobId");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.HasIndex("TaxInvoiceId");
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "DocumentNo")
+                        .IsUnique();
+
+                    b.HasIndex("LegacyShardKey", "LegacyBranchId", "IssuedAt");
+
+                    b.ToTable("svc_CreditNote", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNoteLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreditNoteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<decimal>("OriginalNetAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("OriginalQuantity")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("decimal(18,3)");
+
+                    b.Property<string>("QuotationCode")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SourceLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Unit")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditNoteId");
+
+                    b.HasIndex("SourceLineId");
+
+                    b.ToTable("svc_CreditNoteLine", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNoteNumberCounter", b =>
+                {
+                    b.Property<string>("LegacyShardKey")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("LegacyBranchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LastSequence")
+                        .HasColumnType("int");
+
+                    b.HasKey("LegacyShardKey", "LegacyBranchId", "Year");
+
+                    b.ToTable("svc_CreditNoteNumberCounter", (string)null);
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNoteRefund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("CreditNoteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Method")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("RefundedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RefundedByName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<long>("RefundedByUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditNoteId");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique();
+
+                    b.ToTable("svc_CreditNoteRefund", (string)null);
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>
@@ -2679,6 +2961,10 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<string>("SellerBranchNo")
+                        .HasMaxLength(5)
+                        .HasColumnType("nvarchar(5)");
+
                     b.Property<string>("SellerName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -3055,6 +3341,24 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
                     b.Navigation("Supplier");
                 });
 
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNoteLine", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CreditNote", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("CreditNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNoteRefund", b =>
+                {
+                    b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.CreditNote", null)
+                        .WithMany("Refunds")
+                        .HasForeignKey("CreditNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>
                 {
                     b.HasOne("AMD.AutoService.GaragePro.Domain.Entities.PurchaseDocument", null)
@@ -3368,6 +3672,13 @@ namespace AMD.AutoService.GaragePro.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CatalogItem", b =>
                 {
                     b.Navigation("Suppliers");
+                });
+
+            modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.CreditNote", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Refunds");
                 });
 
             modelBuilder.Entity("AMD.AutoService.GaragePro.Domain.Entities.GoodsReceipt", b =>

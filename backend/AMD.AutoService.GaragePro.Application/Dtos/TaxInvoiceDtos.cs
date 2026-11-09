@@ -49,7 +49,7 @@ public static class TaxInvoiceMapper
         x.Id,
         x.DocumentNo,
         receiptDocumentNo,
-        new TaxInvoicePartyDto(x.SellerName, x.SellerAddress, x.SellerTaxId, x.SellerPhone, null),
+        new TaxInvoicePartyDto(x.SellerName, x.SellerAddress, x.SellerTaxId, x.SellerPhone, x.SellerBranchNo),
         new TaxInvoicePartyDto(x.BuyerName, x.BuyerAddress, x.BuyerTaxId, null, x.BuyerBranchNo),
         x.VatRate,
         x.NetAmount,

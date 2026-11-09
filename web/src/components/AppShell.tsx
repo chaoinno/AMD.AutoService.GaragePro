@@ -31,6 +31,8 @@ import {
   Wallet,
   Warehouse,
   Wrench,
+  Building2,
+  FileMinus,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
@@ -107,6 +109,7 @@ const navGroups: { label: string; items?: NavItem[]; sections?: NavSection[] }[]
         items: [
           { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
           { to: '/reports/retail-sales', icon: ShoppingCart, label: 'ขายหน้าร้าน' },
+          { to: '/reports/credit-notes', icon: FileMinus, label: 'ใบลดหนี้' },
         ],
       },
       {
@@ -155,6 +158,7 @@ const navGroups: { label: string; items?: NavItem[]; sections?: NavSection[] }[]
       { to: '/quotation-templates', icon: FileStack, label: 'เทมเพลตใบเสนอราคา' },
       { to: '/service-reminder-templates', icon: AlarmClock, label: 'รายการนัดบริการ' },
       { to: '/promotions', icon: TrendingUp, label: 'โปรโมชัน' },
+      { to: '/branch-tax-profile', icon: Building2, label: 'ตั้งค่าภาษีสาขา' },
     ],
   },
 ]
