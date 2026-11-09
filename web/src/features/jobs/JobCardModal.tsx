@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarClock, CheckCircle2, Circle, Lock, Printer, TriangleAlert, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { CalendarClock, CheckCircle2, Circle, Printer, TriangleAlert, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { getJobAttachments, uploadAttachment } from '../../api/attachments'
 import { isApiError } from '../../api/client'
@@ -77,6 +77,8 @@ import { BillingDocumentModal } from './billing/BillingDocumentModal'
 import './billing/billing.css'
 import type { BillingKind } from './billing/BillingDocument'
 import { TaxInvoiceIssueModal } from './billing/TaxInvoiceIssueModal'
+import { BillingDocRow } from './billing/BillingDocRow'
+import { CreditNoteRows } from './billing/CreditNoteSection'
 import { QuotationDocumentModal } from '../quotations/QuotationDocumentModal'
 import { QuotationEditorModal } from '../quotations/QuotationEditorModal'
 import { QuotationTemplatePickerModal } from '../quotations/QuotationTemplatePickerModal'
@@ -1308,23 +1310,6 @@ const PAYMENT_STARTED_STATUSES: JobStatusToken[] = ['ready', 'completed']
 // [ASSUME] MVP บนเว็บ — ชำระเงินบันทึกยอดเดียวต่อครั้ง (ไม่มี split/EDC/QR gateway จริง) และส่งมอบรถยืนยันชั่วคราว
 // บนเว็บแทนมือถือที่ยังไม่ได้ออกแบบ (docs/01-workflow.md §3.9/§11) — ตัดขอบเขต reconciliation/ใบกำกับภาษี/
 // ลูกหนี้/reprint-void ออกทั้งหมดตามที่ยืนยันไว้แล้ว ดูรายละเอียดในแผนงาน
-/// แถวเอกสารในขั้นชำระเงิน — [UI] สถานะสื่อด้วย ไอคอน + ข้อความ (ไม่ใช่สีอย่างเดียว) และบอกเหตุผลเมื่อยังทำไม่ได้เสมอ
-function BillingDocRow({
-  title, status, done, locked = false, children,
-}: { title: string; status: string; done: boolean; locked?: boolean; children: ReactNode }) {
-  const Icon = locked ? Lock : done ? CheckCircle2 : Circle
-  return (
-    <li className={`billing-doc-row${done ? ' billing-doc-row--done' : ''}${locked ? ' billing-doc-row--locked' : ''}`}>
-      <Icon className="billing-doc-row__icon" aria-hidden="true" />
-      <div className="billing-doc-row__text">
-        <strong>{title}</strong>
-        <span>{status}</span>
-      </div>
-      <div className="billing-doc-row__actions">{children}</div>
-    </li>
-  )
-}
-
 function PaymentStage({ job }: { job: Job }) {
   const queryClient = useQueryClient()
   const { session } = useSession()
@@ -1748,6 +1733,8 @@ function PaymentStage({ job }: { job: Job }) {
                   </Button>
                 )}
               </BillingDocRow>}
+
+              <CreditNoteRows job={job} receiptIssued={Boolean(summary?.receipt)} locked={taxInvoiceLocked} />
 
               <BillingDocRow
                 title="ใบส่งมอบรถ"

@@ -107,6 +107,8 @@ public static class DependencyInjection
         services.AddScoped<IPosService, PosService>();
         services.AddScoped<ITaxInvoiceRepository, TaxInvoiceRepository>();
         services.AddScoped<ITaxInvoiceService, TaxInvoiceService>();
+        services.AddScoped<ICreditNoteRepository, CreditNoteRepository>();
+        services.AddScoped<ICreditNoteService, CreditNoteService>();
         services.AddScoped<IPromotionRepository, PromotionRepository>();
         services.AddScoped<IPromotionService, PromotionService>();
         services.AddScoped<ISaleRepository, SaleRepository>();

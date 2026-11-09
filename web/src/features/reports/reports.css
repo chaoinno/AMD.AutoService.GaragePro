@@ -129,3 +129,8 @@
 .sales-drill__more > td { padding-left: 34px; }
 .sales-drill__lines > td { padding: 4px 12px 12px 34px; background: #fbfcfe; }
 .sales-drill__lines .master-table { margin: 0; }
+
+/* เลขเอกสาร (CN-/IV-/RC-/JB…) ห้ามตัดกลางเลข */
+.credit-note-docno {
+  white-space: nowrap;
+}

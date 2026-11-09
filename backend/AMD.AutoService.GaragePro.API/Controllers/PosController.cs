@@ -71,7 +71,7 @@ public sealed class PosController(IPosService service, ITaxInvoiceService taxInv
                 => StatusCodes.Status409Conflict,
             "POS_VALIDATION" or "POS_NO_QUOTATION" or "POS_BALANCE_NOT_SETTLED" or "POS_CONFLICT"
                 or "POS_QUOTATION_AWAITING_CUSTOMER" or "TAX_INVOICE_VALIDATION" or "TAX_INVOICE_RECEIPT_REQUIRED"
-                or "TAX_INVOICE_NO_VAT" or "TAX_INVOICE_SELLER_TAX_ID_MISSING"
+                or "TAX_INVOICE_NO_VAT" or "TAX_INVOICE_SELLER_TAX_ID_MISSING" or "TAX_INVOICE_RECEIPT_CREDITED"
                 => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status422UnprocessableEntity
         };

@@ -71,7 +71,7 @@ export function branchLabel(branchNo: string | null | undefined): string | null 
   return branchNo === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${branchNo}`
 }
 
-function formatTaxId(taxId: string): string {
+export function formatTaxId(taxId: string): string {
   // 0-0000-00000-00-0 อ่านง่ายกว่าเลข 13 หลักติดกันตอนลูกค้าเทียบกับบัตร/ภ.พ.20
   return /^\d{13}$/.test(taxId)
     ? `${taxId[0]}-${taxId.slice(1, 5)}-${taxId.slice(5, 10)}-${taxId.slice(10, 12)}-${taxId[12]}`
@@ -102,6 +102,8 @@ export function BillingDocument({ data, copyLabel }: { data: BillingDocumentData
               {data.seller.taxId || isTaxInvoice
                 ? ` · เลขประจำตัวผู้เสียภาษี ${data.seller.taxId ? formatTaxId(data.seller.taxId) : 'ไม่ระบุ'}`
                 : null}
+              {/* docs/20 Q6: ใบกำกับภาษีเต็มรูปต้องระบุสถานประกอบการของผู้ขาย (สนญ./สาขา) */}
+              {isTaxInvoice && branchLabel(data.seller.branchNo) ? ` · ${branchLabel(data.seller.branchNo)}` : null}
             </p>
           </div>
         </div>

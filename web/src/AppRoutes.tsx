@@ -26,6 +26,8 @@ import { ServiceDueReportPage } from './features/reports/ServiceDueReportPage'
 import { StockUsageReportPage } from './features/reports/StockUsageReportPage'
 import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
+import { CreditNoteReportPage } from './features/reports/CreditNoteReportPage'
+import { BranchTaxProfilePage } from './features/master-data/BranchTaxProfilePage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
 import { FeatureGate } from './features/plan/LockedFeaturePage'
@@ -55,6 +57,7 @@ export default function AppRoutes() {
           <Route path="/warehouses" element={<ProtectedRoute><FeatureGate><WarehousePage /></FeatureGate></ProtectedRoute>} />
           <Route path="/catalog-categories" element={<ProtectedRoute><CatalogCategoryPage /></ProtectedRoute>} />
           <Route path="/quotation-templates" element={<ProtectedRoute><QuotationTemplatePage /></ProtectedRoute>} />
+          <Route path="/branch-tax-profile" element={<ProtectedRoute><BranchTaxProfilePage /></ProtectedRoute>} />
           <Route path="/service-reminder-templates" element={<ProtectedRoute><ServiceReminderTemplatePage /></ProtectedRoute>} />
           <Route path="/purchasing" element={<ProtectedRoute><Navigate to="/purchasing/pr" replace /></ProtectedRoute>} />
           <Route path="/purchasing/:kind" element={<ProtectedRoute><FeatureGate><PurchasingPage /></FeatureGate></ProtectedRoute>} />
@@ -67,6 +70,7 @@ export default function AppRoutes() {
           <Route path="/reports/cycle-time" element={<ProtectedRoute><FeatureGate><CycleTimeReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/sales-margin" element={<ProtectedRoute><FeatureGate><SalesMarginReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/retail-sales" element={<ProtectedRoute><FeatureGate><RetailSalesReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/credit-notes" element={<ProtectedRoute><FeatureGate><CreditNoteReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock-usage" element={<ProtectedRoute><StockUsageReportPage view="documents" /></ProtectedRoute>} />
           <Route path="/reports/stock-usage/items" element={<ProtectedRoute><StockUsageReportPage key="items" view="items" /></ProtectedRoute>} />

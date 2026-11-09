@@ -76,6 +76,18 @@ public static class ServicePurgePlan
         Step<HandoverRecord>("svc_HandoverRecord", (db, s, ct) => db.HandoverRecords
             .Where(h => JobIds(db, s).Contains(h.JobId)).ExecuteDeleteAsync(ct)),
 
+        // ใบลดหนี้ (docs/20) — ลูกก่อนแม่ · อ้าง TaxInvoice/Receipt ด้วย Guid ไม่มี FK จึงลบก่อนหรือหลังก็ได้
+        Step<CreditNoteLine>("svc_CreditNoteLine", (db, s, ct) => db.CreditNoteLines
+            .Where(l => db.CreditNotes.Any(n => n.Id == l.CreditNoteId
+                                                && n.LegacyShardKey == s.ShardKey && n.LegacyBranchId == s.BranchId))
+            .ExecuteDeleteAsync(ct)),
+        Step<CreditNoteRefund>("svc_CreditNoteRefund", (db, s, ct) => db.CreditNoteRefunds
+            .Where(r => db.CreditNotes.Any(n => n.Id == r.CreditNoteId
+                                                && n.LegacyShardKey == s.ShardKey && n.LegacyBranchId == s.BranchId))
+            .ExecuteDeleteAsync(ct)),
+        Step<CreditNote>("svc_CreditNote", (db, s, ct) => db.CreditNotes
+            .Where(n => n.LegacyShardKey == s.ShardKey && n.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
+
         Step<TaxInvoiceLine>("svc_TaxInvoiceLine", (db, s, ct) => db.TaxInvoiceLines
             .Where(l => db.TaxInvoices.Any(t => t.Id == l.TaxInvoiceId
                                                 && t.LegacyShardKey == s.ShardKey && t.LegacyBranchId == s.BranchId))
@@ -163,6 +175,10 @@ public static class ServicePurgePlan
         Step<JobNumberCounter>("svc_JobNumberCounter", (db, s, ct) => db.JobNumberCounters
             .Where(x => x.LegacyShardKey == s.ShardKey && x.BranchId == s.BranchId).ExecuteDeleteAsync(ct)),
         Step<ReceiptNumberCounter>("svc_ReceiptNumberCounter", (db, s, ct) => db.ReceiptNumberCounters
+            .Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
+        Step<CreditNoteNumberCounter>("svc_CreditNoteNumberCounter", (db, s, ct) => db.Set<CreditNoteNumberCounter>()
+            .Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
+        Step<BranchTaxProfile>("svc_BranchTaxProfile", (db, s, ct) => db.BranchTaxProfiles
             .Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
         Step<TaxInvoiceNumberCounter>("svc_TaxInvoiceNumberCounter", (db, s, ct) => db.Set<TaxInvoiceNumberCounter>()
             .Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),

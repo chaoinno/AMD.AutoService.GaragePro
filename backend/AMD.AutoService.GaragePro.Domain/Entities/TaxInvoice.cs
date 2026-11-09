@@ -21,6 +21,8 @@ public class TaxInvoice
     public string? SellerAddress { get; set; }
     public string SellerTaxId { get; set; } = "";
     public string? SellerPhone { get; set; }
+    /// <summary>"00000" = สำนักงานใหญ่ · จาก BranchTaxProfile ตอนออก (docs/20 Q6) · null = ใบที่ออกก่อนมีค่าตั้งนี้</summary>
+    public string? SellerBranchNo { get; set; }
 
     public string BuyerName { get; set; } = "";
     public string BuyerAddress { get; set; } = "";

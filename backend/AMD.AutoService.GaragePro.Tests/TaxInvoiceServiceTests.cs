@@ -11,13 +11,13 @@ namespace AMD.AutoService.GaragePro.Tests;
 
 public sealed class TaxInvoiceServiceTests
 {
-    private static readonly Guid TestJobId = Guid.Parse("55555555-5555-5555-5555-555555555555");
-    private const string SellerTaxId = "0105551234567";
+    internal static readonly Guid TestJobId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+    internal const string SellerTaxId = "0105551234567";
 
     private static readonly IssueTaxInvoiceRequest Buyer =
         new("บริษัท ทดสอบ จำกัด", "99 ถ.สุขุมวิท กรุงเทพฯ 10110", "0105559999999", "00000");
 
-    private static Quotation Signed(string code, int version, params (string Name, decimal Price, LineApprovalStatus Status)[] lines)
+    internal static Quotation Signed(string code, int version, params (string Name, decimal Price, LineApprovalStatus Status)[] lines)
     {
         var q = new Quotation
         {
@@ -35,13 +35,13 @@ public sealed class TaxInvoiceServiceTests
     }
 
     // QT-1: 900 (+ บรรทัดที่ไม่อนุมัติ) · QT-2: 100 → สุทธิ 1,000 VAT 70 รวม 1,070 (คิด VAT ต่อใบแล้วรวม)
-    private static Quotation[] TwoQuotations() =>
+    internal static Quotation[] TwoQuotations() =>
     [
         Signed("QT-1", 1, ("ผ้าเบรกหน้า", 900m, LineApprovalStatus.Approved), ("ใบปัดน้ำฝน", 300m, LineApprovalStatus.Rejected)),
         Signed("QT-2", 2, ("น้ำมันเครื่อง", 100m, LineApprovalStatus.Approved)),
     ];
 
-    private static Receipt PaidReceipt(decimal net = 1000m, decimal vat = 70m) => new()
+    internal static Receipt PaidReceipt(decimal net = 1000m, decimal vat = 70m) => new()
     {
         JobId = TestJobId, DocumentNo = "RC-26-0007", NetAmount = net, VatAmount = vat, TotalAmount = net + vat,
     };
@@ -220,7 +220,8 @@ public sealed class TaxInvoiceServiceTests
 
     private static (TaxInvoiceService Service, FakeTaxInvoiceRepository Repo) Create(
         Receipt? receipt, bool vatIncluded = true, string? branchTaxId = SellerTaxId,
-        CustomerDetailDto? customer = null, UserRole role = UserRole.Cashier, Quotation[]? quotations = null)
+        CustomerDetailDto? customer = null, UserRole role = UserRole.Cashier, Quotation[]? quotations = null,
+        ICreditNoteRepository? creditNotes = null)
     {
         var repo = new FakeTaxInvoiceRepository();
         var service = new TaxInvoiceService(
@@ -231,11 +232,12 @@ public sealed class TaxInvoiceServiceTests
             new FakeLegacyReader(branchTaxId),
             new FakeCustomerService(customer),
             new StubCurrentUser(role),
-            TimeProvider.System);
+            TimeProvider.System,
+            creditNotes);
         return (service, repo);
     }
 
-    private sealed class StubCurrentUser(UserRole role) : ICurrentUser
+    internal sealed class StubCurrentUser(UserRole role) : ICurrentUser
     {
         public long UserId => 7;
         public string UserName => "แคชเชียร์ ทดสอบ";
@@ -247,7 +249,7 @@ public sealed class TaxInvoiceServiceTests
         public bool IsAdministrator => false;
     }
 
-    private sealed class FakeTaxInvoiceRepository : ITaxInvoiceRepository
+    internal sealed class FakeTaxInvoiceRepository : ITaxInvoiceRepository
     {
         private int _sequence;
         public List<TaxInvoice> Invoices { get; } = [];
@@ -265,7 +267,7 @@ public sealed class TaxInvoiceServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
-    private sealed class FakePosRepository(Receipt? receipt) : IPosRepository
+    internal sealed class FakePosRepository(Receipt? receipt) : IPosRepository
     {
         public Task<IReadOnlyList<Payment>> GetPaymentsByJobAsync(Guid jobId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<Payment>>([]);
@@ -281,7 +283,7 @@ public sealed class TaxInvoiceServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
-    private sealed class FakeJobRepository(bool vatIncluded) : IJobRepository
+    internal sealed class FakeJobRepository(bool vatIncluded) : IJobRepository
     {
         private readonly Job _job = new()
         {
@@ -307,7 +309,7 @@ public sealed class TaxInvoiceServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
-    private sealed class FakeQuotationRepository(IReadOnlyList<Quotation> quotations) : IQuotationRepository
+    internal sealed class FakeQuotationRepository(IReadOnlyList<Quotation> quotations) : IQuotationRepository
     {
         public Task<Quotation?> GetAsync(Guid id, CancellationToken ct = default) =>
             Task.FromResult(quotations.FirstOrDefault(q => q.Id == id));
@@ -324,7 +326,7 @@ public sealed class TaxInvoiceServiceTests
         public Task<int> SaveChangesAsync(CancellationToken ct = default) => Task.FromResult(0);
     }
 
-    private sealed class FakeLegacyReader(string? taxId) : ILegacyReader
+    internal sealed class FakeLegacyReader(string? taxId) : ILegacyReader
     {
         public Task<LegacyBranchDto?> GetBranchAsync(string shardKey, int branchId, CancellationToken ct = default) =>
             Task.FromResult<LegacyBranchDto?>(new LegacyBranchDto(branchId, "อู่ทดสอบ", "1 ถ.มิตรภาพ ขอนแก่น", taxId, "043000000"));
@@ -333,7 +335,7 @@ public sealed class TaxInvoiceServiceTests
             Task.FromResult<IReadOnlyList<LegacyTechnicianDto>>([]);
     }
 
-    private sealed class FakeCustomerService(CustomerDetailDto? customer) : ICustomerVehicleService
+    internal sealed class FakeCustomerService(CustomerDetailDto? customer) : ICustomerVehicleService
     {
         public Task<Result<CustomerDetailDto>> GetCustomerAsync(long id, CancellationToken ct = default) =>
             Task.FromResult(customer is null

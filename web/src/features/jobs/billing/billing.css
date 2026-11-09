@@ -137,3 +137,73 @@
   color: var(--muted);
   font-size: 14px;
 }
+
+/* ---------- ใบลดหนี้ (docs/20) ---------- */
+.credit-note-lines {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-input);
+}
+
+.credit-note-lines table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.credit-note-lines th,
+.credit-note-lines td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.credit-note-lines th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.credit-note-lines .document-number {
+  text-align: right;
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.credit-note-lines td strong,
+.credit-note-lines td small {
+  display: block;
+}
+
+.credit-note-lines td small {
+  color: var(--muted);
+}
+
+.credit-note-lines__done td {
+  color: var(--faint);
+}
+
+.credit-note-lines__input {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) minmax(100px, 120px);
+  gap: 6px;
+}
+
+.credit-note-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.credit-note-refund {
+  display: grid;
+  gap: 8px;
+}
+
+.billing-line-ref {
+  color: var(--muted);
+}

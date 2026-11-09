@@ -49,7 +49,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 | [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
 | [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[PR #21 · deploy production 2026-10-30 · เว็บ v1.19.0 · แอป 1.4.0+6 ยังไม่ส่ง Store]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
-| [docs/20-vat-reports-credit-note-plan.md](docs/20-vat-reports-credit-note-plan.md) | **[แผน 2026-11-09 · ยังไม่เขียนโค้ด · รอคำตอบ Q1–Q8]** รายงานภาษีขาย/ภาษีซื้อ · ใบลดหนี้ `CN-` (ผู้จัดการเท่านั้น · ต้องอ้างบรรทัดของใบกำกับ `IV-`) + รายงานใบลดหนี้ · ภาษีซื้อต้องเก็บข้อมูลใบกำกับของผู้ขายใหม่ (ระบบยังไม่มีเลย) |
+| [docs/20-vat-reports-credit-note-plan.md](docs/20-vat-reports-credit-note-plan.md) · [docs/03](docs/03-api-contract.md) §18 | **[แผน 2026-11-09 · ใบลดหนี้เขียนโค้ดแล้วบน branch `feat/credit-note` · migration `AddCreditNote` ยังไม่รัน · ยังไม่ deploy]** ใบลดหนี้ `CN-` (ผู้จัดการ · อ้างบรรทัดของ IV- หรือ RC- · คืนเงิน · รายงาน) + ค่าตั้งภาษีสาขา · รายงานภาษีขายรอ Q1 · ภาษีซื้อรอ Q4 Q5 (ต้องเก็บใบกำกับของผู้ขายใหม่) |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2117,7 +2117,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
     self-serve ยังเปิดรับสมัคร · container healthy · public health ผ่าน · `/reports/sales-margin` ไม่ล็อกอินตอบ 401 · หน้า `/reports/stock-usage/{items,requesters}` 200 ·
     bundle มี `1.18.1` และโค้ดเมนูใหม่/drill-down · log API 5 นาทีแรกไม่มี `fail`/`crit` · **ยังไม่ได้เปิดรายงานด้วยบัญชีจริงบน production**
 
-- ✅ **[แก้ 2026-11-09 · weekly meeting 2026-11-06 · เว็บ v1.19.1 · ยังไม่ commit/deploy] ส่งออก Excel ของตารางต้องได้ทุกแถวตาม query ไม่ใช่แค่ที่แสดง**
+- ✅ **[แก้ 2026-11-09 · weekly meeting 2026-11-06 · เว็บ v1.19.1 · PR #23 · deploy production 2026-11-09 (`934168f`)] ส่งออก Excel ของตารางต้องได้ทุกแถวตาม query ไม่ใช่แค่ที่แสดง**
   · สำรวจทุกปุ่มส่งออกบนเว็บ (6 จุด): **สต็อก FIFO เป็นจุดเดียวที่ส่งออกเฉพาะที่หน้าจอโหลดไว้** (`exportInventory(query.data)` ซึ่ง API ตัดที่ 200 แถว) ·
     PR/PO ไล่ทุกหน้าอยู่แล้ว (`exportPurchases` วน `totalPages` ที่ 100/หน้า) · ลูกค้า/รถส่งออกฝั่ง server หน้าเดียว 10,000 แถว (`ExportCustomersAsync`/`ExportVehiclesAsync` ไม่สน page/pageSize ของหน้าจอ) ·
     รายงานรถใกล้ครบรอบ/การเบิกอะไหล่ส่งออกจากผลรายงานทั้งก้อน (เบิกอะไหล่มี `truncated` ที่ 50,000) · หน้าแบ่งหน้าอื่น (จ๊อบ/ขาย/สินค้า/พนักงาน/ซัพพลายเออร์/เทมเพลต) ไม่มีปุ่มส่งออก
@@ -2126,6 +2126,24 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **ข้อจำกัด**: ลูกค้า/รถยังตัดเงียบที่ 10,000 แถวต่อสาขา (ไม่ได้แก้ — ไม่น่าเกินในสาขาเดียว)
   · ตรวจแล้ว: `dotnet test` **1694 ผ่าน / 24 ข้าม** (เพิ่ม `Stock_list_is_capped_for_the_screen_but_export_gets_every_matching_row`) · Web `tsc -b`/`vite build` ผ่าน ·
     **ยังไม่ได้กดส่งออกในเบราว์เซอร์กับ API จริง**
+  · **Deploy 2026-11-09**: ไม่มี migration ค้างทั้ง 3 ฐาน · container healthy · public health ผ่าน · self-serve ยังเปิดรับสมัคร · `inventory/items?all=true` ไม่ล็อกอินตอบ 401 ·
+    chunk `AppRoutes` ของ service.garage-pro.net มี `1.19.1` และ `all=true` · log API 5 นาทีแรกไม่มี `fail`/`crit` · **ยังไม่ได้กดส่งออกด้วยบัญชีจริงบน production**
+
+- ✅ **[เพิ่ม 2026-11-09 · branch `feat/credit-note` · เว็บ v1.20.0 · ยังไม่ merge/deploy · migration ยังไม่รัน] ใบลดหนี้ `CN-{yy}-NNNN` + คืนเงิน + รายงาน + ค่าตั้งภาษีสาขา**
+  (weekly meeting 2026-11-06 · ผู้ใช้ตอบ Q2 Q3 Q6 Q8 Q9 · รายละเอียด [docs/20](docs/20-vat-reports-credit-note-plan.md) §2/§7 · API docs/03 §18)
+  · **กฎ (API)**: ออก/คืนเงิน = **Manager เท่านั้น** (`CREDIT_NOTE_FORBIDDEN`) · ดูสถานะ = Cashier/Office/Manager · ต้องเลือกบรรทัดของบิลที่อ้าง ≥ 1 รายการ ห้ามบรรทัดนอกบิล ·
+    **จ๊อบที่มีใบกำกับ `IV-` ต้องอ้าง IV-** (ใบลดหนี้ทางภาษี) ไม่งั้นอ้างใบเสร็จ `RC-` (บรรทัด = รายการอนุมัติของทุกใบเสนอราคาที่ใช้อยู่ · พิมพ์ว่าไม่ใช่เอกสารทางภาษี) ·
+    ลดเป็นจำนวน (ปันส่วน · ลดจำนวนที่เหลือทั้งหมด = ยอดคงเหลือพอดี) หรือยอดเงิน ไม่เกินคงเหลือสะสมข้ามหลายใบ · เหตุผล 5 แบบ (อื่นๆ ต้องมีข้อความ) ·
+    VAT ตามอัตราของ IV / `VatIncluded` ของงาน · ยกเลิก/แก้ไม่ได้ · RequestId กันออกซ้ำ · คืนเงินหลายครั้งรวมไม่เกินยอดใบ ลบไม่ได้ · **ไม่แตะ Payment/Receipt/สต็อก** ·
+    **Q9: มีใบลดหนี้อ้างใบเสร็จแล้ว ออกใบกำกับไม่ได้ (`TAX_INVOICE_RECEIPT_CREDITED`)** · สนญ./สาขาผู้ขายจาก `svc_BranchTaxProfile` (ไม่มีแถว = 00000) สำเนาลงใบกำกับ/ใบลดหนี้ตอนออก
+  · Backend: `CreditNote.cs` · `CreditNoteService` · `CreditNoteRepository` (เลข `MERGE…HOLDLOCK` + `.ToListAsync()`) · `CreditNotesController` · `TaxInvoiceService` รับ `ICreditNoteRepository?` (optional) ·
+    `ServicePurgePlan` ลบตารางใหม่ด้วย (เทสต์ `WorkspacePurgerTests` จับได้ว่าลืม) · migration `AddCreditNote` = 5 ตารางใหม่ + `svc_TaxInvoice.SellerBranchNo` nullable — ต้องรันทั้ง GarageService และ GarageSelfServe(+_Dev)
+  · เว็บ: การ์ดจ๊อบ "เอกสาร & ส่งมอบรถ" แถวใบลดหนี้ + แถวต่อใบ (`billing/CreditNoteSection.tsx` · `CreditNoteIssueModal` · `CreditNoteDocument`) · `BillingDocRow` แยกไฟล์ ·
+    `/reports/credit-notes` (เมนู Reports > ยอดขาย · ล็อกแพ็กเกจ `taxInvoice` · Excel 2 แผ่น) · `/branch-tax-profile` (Master Data > ตั้งค่าภาษีสาขา)
+  · **ข้อจำกัด**: รายงานยอดขาย/แดชบอร์ดยังไม่หักใบลดหนี้ · มือถือไม่มี · ActivityEvent ของการแก้ค่าตั้งภาษีไม่มี JobId/EntityId จึงค้างหลังลบอู่ self-serve
+  · ตรวจแล้ว: `dotnet test` **1709 ผ่าน / 24 ข้าม** (เพิ่ม `CreditNoteServiceTests.cs` 16) · Web `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) 95 ·
+    เบราว์เซอร์ด้วย API จำลอง (ไม่รัน API จริงเพราะโหมด Development migrate ฐานร่วม production) — ออกใบลดหนี้/คืนเงิน/พิมพ์/รายงาน/ตั้งค่าภาษีสาขาทำงาน payload ถูก ·
+    **ยังไม่ได้ทดสอบกับ API/ฐานจริง**
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

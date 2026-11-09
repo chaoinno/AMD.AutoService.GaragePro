@@ -20,6 +20,7 @@ public sealed class TaxInvoiceConfiguration :
         e.Property(x => x.SellerAddress).HasMaxLength(500);
         e.Property(x => x.SellerTaxId).HasMaxLength(20).IsRequired();
         e.Property(x => x.SellerPhone).HasMaxLength(40);
+        e.Property(x => x.SellerBranchNo).HasMaxLength(5);
         e.Property(x => x.BuyerName).HasMaxLength(200).IsRequired();
         e.Property(x => x.BuyerAddress).HasMaxLength(500).IsRequired();
         e.Property(x => x.BuyerTaxId).HasMaxLength(13);

@@ -31,7 +31,8 @@ public sealed class TaxInvoiceService(
     ILegacyReader legacy,
     ICustomerVehicleService customers,
     ICurrentUser user,
-    TimeProvider clock) : ITaxInvoiceService
+    TimeProvider clock,
+    ICreditNoteRepository? creditNotes = null) : ITaxInvoiceService
 {
     private DateTime Now => clock.GetUtcNow().UtcDateTime;
 
@@ -52,7 +53,7 @@ public sealed class TaxInvoiceService(
                 BlockedReasonTh: null));
 
         var seller = await SellerAsync(ct);
-        var blocked = BlockedReason(job, receipt, seller);
+        var blocked = BlockedReason(job, receipt, seller, await ReceiptCreditedAsync(jobId, ct));
 
         return Result<TaxInvoiceStateDto>.Ok(new TaxInvoiceStateDto(
             Issued: null,
@@ -77,9 +78,10 @@ public sealed class TaxInvoiceService(
             return Result<TaxInvoiceDto>.Ok(TaxInvoiceMapper.ToDto(existing, receipt?.DocumentNo ?? ""));
 
         var seller = await SellerAsync(ct);
-        var blocked = BlockedReason(job, receipt, seller);
+        var receiptCredited = await ReceiptCreditedAsync(jobId, ct);
+        var blocked = BlockedReason(job, receipt, seller, receiptCredited);
         if (blocked is not null)
-            return Result<TaxInvoiceDto>.Fail(BlockedCode(job, receipt), blocked);
+            return Result<TaxInvoiceDto>.Fail(BlockedCode(job, receipt, receiptCredited), blocked);
 
         var buyer = NormalizeBuyer(request);
         var invalid = ValidateBuyer(buyer);
@@ -126,6 +128,7 @@ public sealed class TaxInvoiceService(
             SellerAddress = seller.Address,
             SellerTaxId = seller.TaxId!,
             SellerPhone = seller.Phone,
+            SellerBranchNo = seller.BranchNo,
             BuyerName = buyer.BuyerName,
             BuyerAddress = buyer.BuyerAddress,
             BuyerTaxId = buyer.BuyerTaxId,
@@ -162,21 +165,33 @@ public sealed class TaxInvoiceService(
 
     // ---------- helper ----------
 
-    private static string? BlockedReason(Job job, Receipt? receipt, TaxInvoicePartyDto? seller) =>
+    private static string? BlockedReason(Job job, Receipt? receipt, TaxInvoicePartyDto? seller, bool receiptCredited) =>
         receipt is null
             ? "ต้องรับชำระเงินให้ครบและออกใบเสร็จก่อน จึงจะออกใบกำกับภาษีได้"
             : !job.VatIncluded || receipt.VatAmount <= 0m
                 ? "งานนี้ไม่ได้คิดภาษีมูลค่าเพิ่ม ออกใบกำกับภาษีไม่ได้"
-                : seller?.TaxId is null
-                    ? "สาขานี้ยังไม่มีเลขประจำตัวผู้เสียภาษี 13 หลักในข้อมูลสาขาของ GaragePro ให้ผู้ดูแลระบบเพิ่มก่อนออกใบกำกับภาษี"
-                    : null;
+                : receiptCredited
+                    ? "งานนี้ออกใบลดหนี้อ้างอิงใบเสร็จไปแล้ว ออกใบกำกับภาษีไม่ได้ (ยอดในใบเสร็จไม่ตรงกับยอดที่ลูกค้าจ่ายจริงแล้ว)"
+                    : seller?.TaxId is null
+                        ? "สาขานี้ยังไม่มีเลขประจำตัวผู้เสียภาษี 13 หลักในข้อมูลสาขาของ GaragePro ให้ผู้ดูแลระบบเพิ่มก่อนออกใบกำกับภาษี"
+                        : null;
 
-    private static string BlockedCode(Job job, Receipt? receipt) =>
+    private static string BlockedCode(Job job, Receipt? receipt, bool receiptCredited) =>
         receipt is null
             ? "TAX_INVOICE_RECEIPT_REQUIRED"
             : !job.VatIncluded || receipt.VatAmount <= 0m
                 ? "TAX_INVOICE_NO_VAT"
-                : "TAX_INVOICE_SELLER_TAX_ID_MISSING";
+                : receiptCredited
+                    ? "TAX_INVOICE_RECEIPT_CREDITED"
+                    : "TAX_INVOICE_SELLER_TAX_ID_MISSING";
+
+    /// <summary>
+    /// [BIZ] docs/20 Q9 (ผู้ใช้เลือก 2026-11-09): มีใบลดหนี้อ้างใบเสร็จแล้ว ห้ามออกใบกำกับ — ใบกำกับคัดยอดเต็มจากใบเสร็จ
+    /// ถ้าออกได้จะมีภาษีขายเกินยอดที่ลูกค้าจ่ายจริง
+    /// </summary>
+    private async Task<bool> ReceiptCreditedAsync(Guid jobId, CancellationToken ct) =>
+        creditNotes is not null
+        && (await creditNotes.GetByJobAsync(jobId, ct)).Any(n => n.SourceType == CreditNoteSourceType.Receipt);
 
     /// <summary>ข้อมูลผู้ขายจาก Branch เดิม — TaxId เป็น null ถ้าไม่ใช่เลข 13 หลัก (ห้ามพิมพ์เลขที่ไม่ครบลงเอกสารภาษี)</summary>
     private async Task<TaxInvoicePartyDto?> SellerAsync(CancellationToken ct)
@@ -184,12 +199,14 @@ public sealed class TaxInvoiceService(
         var branch = await legacy.GetBranchAsync(user.ShardKey, user.BranchId, ct);
         if (branch is null) return null;
         var taxId = DigitsOnly(branch.TaxId);
+        // docs/20 Q6: สนญ./สาขาของผู้ขายมาจากค่าตั้งของสาขา — ไม่มีแถว = สำนักงานใหญ่
+        var profile = creditNotes is null ? null : await creditNotes.GetProfileAsync(user.ShardKey, user.BranchId, ct);
         return new TaxInvoicePartyDto(
             branch.Name,
             string.IsNullOrWhiteSpace(branch.Address) ? null : branch.Address.Trim(),
             taxId?.Length == 13 ? taxId : null,
             string.IsNullOrWhiteSpace(branch.Phone) ? null : branch.Phone.Trim(),
-            null);
+            profile?.SellerBranchNo ?? CreditNoteService.HeadOfficeBranchNo);
     }
 
     /// <summary>เติมจากข้อมูลลูกค้า — ดึงไม่ได้ (นอกสโคป/ถูกลบ) ใช้ชื่อที่ snapshot ไว้ในจ๊อบแทน ให้แคชเชียร์กรอกที่อยู่เอง</summary>
