@@ -49,6 +49,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 | [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
 | [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[PR #21 · deploy production 2026-10-30 · เว็บ v1.19.0 · แอป 1.4.0+6 ยังไม่ส่ง Store]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
+| [docs/20-vat-reports-credit-note-plan.md](docs/20-vat-reports-credit-note-plan.md) | **[แผน 2026-11-09 · ยังไม่เขียนโค้ด · รอคำตอบ Q1–Q8]** รายงานภาษีขาย/ภาษีซื้อ · ใบลดหนี้ `CN-` (ผู้จัดการเท่านั้น · ต้องอ้างบรรทัดของใบกำกับ `IV-`) + รายงานใบลดหนี้ · ภาษีซื้อต้องเก็บข้อมูลใบกำกับของผู้ขายใหม่ (ระบบยังไม่มีเลย) |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2115,6 +2116,16 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **Deploy production 2026-10-29** (`REMOTE_HOST=deployment@10.10.3.13 ./scripts/deploy-production.sh` · server เดิมอยู่ `49055b1`): ไม่มี migration ค้างทั้ง 3 ฐาน ·
     self-serve ยังเปิดรับสมัคร · container healthy · public health ผ่าน · `/reports/sales-margin` ไม่ล็อกอินตอบ 401 · หน้า `/reports/stock-usage/{items,requesters}` 200 ·
     bundle มี `1.18.1` และโค้ดเมนูใหม่/drill-down · log API 5 นาทีแรกไม่มี `fail`/`crit` · **ยังไม่ได้เปิดรายงานด้วยบัญชีจริงบน production**
+
+- ✅ **[แก้ 2026-11-09 · weekly meeting 2026-11-06 · เว็บ v1.19.1 · ยังไม่ commit/deploy] ส่งออก Excel ของตารางต้องได้ทุกแถวตาม query ไม่ใช่แค่ที่แสดง**
+  · สำรวจทุกปุ่มส่งออกบนเว็บ (6 จุด): **สต็อก FIFO เป็นจุดเดียวที่ส่งออกเฉพาะที่หน้าจอโหลดไว้** (`exportInventory(query.data)` ซึ่ง API ตัดที่ 200 แถว) ·
+    PR/PO ไล่ทุกหน้าอยู่แล้ว (`exportPurchases` วน `totalPages` ที่ 100/หน้า) · ลูกค้า/รถส่งออกฝั่ง server หน้าเดียว 10,000 แถว (`ExportCustomersAsync`/`ExportVehiclesAsync` ไม่สน page/pageSize ของหน้าจอ) ·
+    รายงานรถใกล้ครบรอบ/การเบิกอะไหล่ส่งออกจากผลรายงานทั้งก้อน (เบิกอะไหล่มี `truncated` ที่ 50,000) · หน้าแบ่งหน้าอื่น (จ๊อบ/ขาย/สินค้า/พนักงาน/ซัพพลายเออร์/เทมเพลต) ไม่มีปุ่มส่งออก
+  · แก้: `GET /inventory/items?all=true` ยกเพดานเป็น `PurchasingService.StockExportMaxRows` (10,000 · หน้าจอยัง 200 `StockListMaxRows`) · `IPurchasingRepository.ItemsAsync(…, take)` ·
+    เว็บ `exportInventory(q, belowMinOnly, canSeeCost)` ดึงใหม่ด้วย `all=true` ตามคำค้น+ตัวกรองเดียวกับหน้าจอ · toast บอกจำนวนแถว และเตือนเมื่อถึงเพดาน (`STOCK_EXPORT_MAX_ROWS` ต้องตรงกับ backend)
+  · **ข้อจำกัด**: ลูกค้า/รถยังตัดเงียบที่ 10,000 แถวต่อสาขา (ไม่ได้แก้ — ไม่น่าเกินในสาขาเดียว)
+  · ตรวจแล้ว: `dotnet test` **1694 ผ่าน / 24 ข้าม** (เพิ่ม `Stock_list_is_capped_for_the_screen_but_export_gets_every_matching_row`) · Web `tsc -b`/`vite build` ผ่าน ·
+    **ยังไม่ได้กดส่งออกในเบราว์เซอร์กับ API จริง**
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

@@ -400,9 +400,17 @@ public sealed class PurchasingService(IPurchasingRepository repo, ICurrentUser u
     /// <summary>จำนวนอะไหล่ที่ถึงจุดต่ำสุดในสาขา — ตัวเลขที่เมนู "สต็อก FIFO" (นับเฉพาะที่ตั้ง min และเปิดใช้งาน)</summary>
     public Task<Result<int>> CountLowStockAsync(CancellationToken ct) => Run(() => repo.CountBelowMinAsync(ct));
 
-    public Task<Result<IReadOnlyList<StockItemDto>>> StockAsync(string? q, CancellationToken ct, bool belowMinOnly = false) => Run<IReadOnlyList<StockItemDto>>(async () =>
+    /// <summary>หน้าจอแสดงสูงสุดเท่านี้ต่อการค้นหา</summary>
+    public const int StockListMaxRows = 200;
+    /// <summary>
+    /// เพดานของการส่งออก Excel (<c>all=true</c>) — ส่งออกต้องได้ทุกแถวตามคำค้น ไม่ใช่แค่ที่หน้าจอโหลดไว้
+    /// (เดิมส่งออกจากข้อมูลบนหน้าจอจึงได้ไม่เกิน 200) · เพดานนี้กันคำขอเดียวดึงทั้งตารางแบบไม่มีขอบ
+    /// </summary>
+    public const int StockExportMaxRows = 10_000;
+
+    public Task<Result<IReadOnlyList<StockItemDto>>> StockAsync(string? q, CancellationToken ct, bool belowMinOnly = false, bool all = false) => Run<IReadOnlyList<StockItemDto>>(async () =>
     {
-        var items = await repo.ItemsAsync(Clean(q), ct, belowMinOnly);
+        var items = await repo.ItemsAsync(Clean(q), ct, belowMinOnly, all ? StockExportMaxRows : StockListMaxRows);
         var values = Manager ? await repo.StockValuesAsync(items.Select(x => x.Id).ToList(), ct) : null;
         return items.Select(item => MapStock(item, values is null ? null : values.GetValueOrDefault(item.Id))).ToList();
     });

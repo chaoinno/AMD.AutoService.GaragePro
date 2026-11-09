@@ -166,9 +166,9 @@ public sealed class PurchaseOrdersController(PurchasingService service) : Purcha
 public sealed class StockFIFOController(PurchasingService service) : PurchasingApiController
 {
     /// <summary>ค้นหาสต็อกอะไหล่ของสาขาปัจจุบัน — พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</summary>
-    /// <remarks>สูงสุด 200 รายการต่อการค้นหา มูลค่า FIFO แสดงเฉพาะผู้จัดการ สินค้าที่ยังไม่ตั้งยอดยกมาจะไม่มีมูลค่า FIFO</remarks>
+    /// <remarks>สูงสุด 200 รายการต่อการค้นหา (ส่ง <c>all=true</c> สำหรับส่งออก ได้สูงสุด 10,000 รายการ) มูลค่า FIFO แสดงเฉพาะผู้จัดการ สินค้าที่ยังไม่ตั้งยอดยกมาจะไม่มีมูลค่า FIFO</remarks>
     [HttpGet("items")]
-    public async Task<IActionResult> Items(string? q, bool belowMin, CancellationToken ct) => Render(await service.StockAsync(q, ct, belowMin));
+    public async Task<IActionResult> Items(string? q, bool belowMin, bool all, CancellationToken ct) => Render(await service.StockAsync(q, ct, belowMin, all));
 
     /// <summary>นับอะไหล่ที่ถึงจุดต่ำสุด (พร้อมใช้ ≤ min) ของสาขาที่เข้าสู่ระบบ — ใช้กับตัวเลขในเมนู "สต็อก FIFO"</summary>
     /// <remarks>นับเฉพาะอะไหล่ที่เปิดใช้งานและตั้ง min ไว้แล้ว พร้อมใช้ = คงเหลือ − จอง (ไม่รวมรอรับและชำรุด)</remarks>
