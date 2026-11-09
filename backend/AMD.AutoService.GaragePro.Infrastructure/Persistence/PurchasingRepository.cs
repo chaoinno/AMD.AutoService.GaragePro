@@ -65,13 +65,13 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => db.Warehouses.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
     // Suppliers are branch master data (ScopeMasterDataByBranch) — another branch's id behaves as not found.
     public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => db.Suppliers.SingleOrDefaultAsync(x => x.Id == id && x.LegacyShardKey == user.ShardKey && x.LegacyBranchId == user.BranchId, ct);
-    public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false)
+    public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false, int take = 200)
     {
         var query = Items.AsNoTracking()
             .Where(x => x.Type == LineType.Part && (q == null || x.Code.Contains(q) || x.Name.Contains(q)));
         // ตัวกรองนี้ต้องให้ผลเท่ากับ CountBelowMinAsync (ตัวเลขที่เมนู) จึงตัดสินค้าที่ปิดใช้งานออกเหมือนกัน
         if (belowMinOnly) query = query.Where(x => x.IsActive).Where(StockLevel.BelowMin);
-        return await query.OrderBy(x => x.Code).Take(200).ToListAsync(ct);
+        return await query.OrderBy(x => x.Code).Take(take).ToListAsync(ct);
     }
     public Task<int> CountBelowMinAsync(CancellationToken ct) => Items.Where(x => x.IsActive).Where(StockLevel.BelowMin).CountAsync(ct);
     public async Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct) => await Lots.Where(x => x.CatalogItemId == itemId).ToListAsync(ct);

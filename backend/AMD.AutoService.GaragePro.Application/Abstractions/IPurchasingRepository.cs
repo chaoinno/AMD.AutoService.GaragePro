@@ -16,7 +16,7 @@ public interface IPurchasingRepository
     Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct);
     Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct);
     // belowMinOnly = เฉพาะที่ StockLevel.IsBelowMin (กรองก่อน Take(200) เพื่อไม่ให้รายการที่ถึงจุดต่ำสุดหลุดจากเพดาน)
-    Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false);
+    Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false, int take = 200);
     // อะไหล่ที่เปิดใช้งานและ StockLevel.IsBelowMin ของสาขาปัจจุบัน (ไม่นับที่ไม่ได้ตั้ง min)
     Task<int> CountBelowMinAsync(CancellationToken ct);
     Task<IReadOnlyList<StockLot>> LotsAsync(Guid itemId, CancellationToken ct);

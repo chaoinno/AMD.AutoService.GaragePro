@@ -668,6 +668,20 @@ public class PurchasingServiceTests
         Assert.Contains(f.Item.Code, (await f.Service.StockAsync(null, default)).Data!.Select(x => x.Code));
     }
 
+    [Fact]
+    public async Task Stock_list_is_capped_for_the_screen_but_export_gets_every_matching_row()
+    {
+        // ส่งออก Excel เคยใช้ข้อมูลบนหน้าจอ (สูงสุด 200) — all=true ต้องได้ครบตามคำค้น
+        var f = new Fixture();
+        for (var i = 0; i < 250; i++)
+            f.Repo.Add(new CatalogItem { Code = $"P{i:D3}", Name = $"P{i:D3}", Unit = "ชิ้น", Type = LineType.Part, LegacyBranchId = 105, LegacyShardKey = "db2" });
+
+        Assert.Equal(PurchasingService.StockListMaxRows, (await f.Service.StockAsync(null, default)).Data!.Count);
+        var branchItems = f.Repo.All<CatalogItem>().Count(x => x.LegacyShardKey == "db2" && x.LegacyBranchId == 105);
+        Assert.True(branchItems > PurchasingService.StockListMaxRows);
+        Assert.Equal(branchItems, (await f.Service.StockAsync(null, default, all: true)).Data!.Count);
+    }
+
     [Theory]
     [InlineData(UserRole.Office)]
     [InlineData(UserRole.Manager)]
@@ -829,7 +843,7 @@ public class PurchasingServiceTests
         public Task<CatalogItem?> ItemAsync(Guid id, CancellationToken ct) => Task.FromResult(All<CatalogItem>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Warehouse?> WarehouseAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Warehouse>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
         public Task<Supplier?> SupplierAsync(Guid id, CancellationToken ct) => Task.FromResult(All<Supplier>().SingleOrDefault(x => x.Id == id && Scope(x.LegacyShardKey, x.LegacyBranchId)));
-        public Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => Scope(x.LegacyShardKey, x.LegacyBranchId) && (!belowMinOnly || x.IsActive && StockLevel.IsBelowMin(x))).ToList());
+        public Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false, int take = 200) => Task.FromResult<IReadOnlyList<CatalogItem>>(All<CatalogItem>().Where(x => Scope(x.LegacyShardKey, x.LegacyBranchId) && (!belowMinOnly || x.IsActive && StockLevel.IsBelowMin(x))).OrderBy(x => x.Code).Take(take).ToList());
         public Task<int> CountBelowMinAsync(CancellationToken ct) => Task.FromResult(All<CatalogItem>().Count(x => Scope(x.LegacyShardKey, x.LegacyBranchId) && x.IsActive && StockLevel.IsBelowMin(x)));
         public Task<IReadOnlyList<StockLot>> LotsAsync(Guid id, CancellationToken ct) => Task.FromResult<IReadOnlyList<StockLot>>(All<StockLot>().Where(x => x.CatalogItemId == id && Scope(x.LegacyShardKey, x.LegacyBranchId)).ToList());
         public Task<IReadOnlyDictionary<Guid, decimal>> StockValuesAsync(IReadOnlyList<Guid> ids, CancellationToken ct) => Task.FromResult<IReadOnlyDictionary<Guid, decimal>>(All<StockLot>().Where(x => ids.Contains(x.CatalogItemId) && Scope(x.LegacyShardKey, x.LegacyBranchId)).GroupBy(x => x.CatalogItemId).ToDictionary(x => x.Key, x => x.Sum(l => l.RemainingQuantity * l.UnitCost)));

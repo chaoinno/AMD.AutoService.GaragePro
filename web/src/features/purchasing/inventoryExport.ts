@@ -1,4 +1,4 @@
-import type { StockItem } from '../../api/purchasing'
+import { STOCK_EXPORT_MAX_ROWS, stockItems, type StockItem } from '../../api/purchasing'
 
 export async function createInventoryWorkbook(items: StockItem[], canSeeCost: boolean) {
   const { default: ExcelJS } = await import('exceljs')
@@ -25,8 +25,13 @@ export async function createInventoryWorkbook(items: StockItem[], canSeeCost: bo
   return workbook
 }
 
-export async function exportInventory(items: StockItem[], canSeeCost: boolean) {
-  if (!items.length) throw new Error('ไม่มีรายการสำหรับส่งออก')
+/**
+ * ส่งออกทุกแถวตามคำค้น/ตัวกรอง — ดึงใหม่ด้วย `all=true` ไม่ใช้ข้อมูลบนหน้าจอ (หน้าจอแสดงสูงสุด 200)
+ * คืน `capped` = ถึงเพดานต่อครั้งแล้ว อาจมีรายการมากกว่านี้ (ให้ผู้ใช้ค้นให้แคบลง)
+ */
+export async function exportInventory(q: string, belowMinOnly: boolean, canSeeCost: boolean) {
+  const items = await stockItems(q, belowMinOnly, true)
+  if (!items.length) throw new Error('ไม่มีรายการสำหรับส่งออกตามตัวกรองนี้')
   const workbook = await createInventoryWorkbook(items, canSeeCost)
   const buffer = await workbook.xlsx.writeBuffer()
   const url = URL.createObjectURL(new Blob([new Uint8Array(buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
@@ -35,4 +40,5 @@ export async function exportInventory(items: StockItem[], canSeeCost: boolean) {
   link.download = `FIFO-${new Date().toISOString().slice(0, 10)}.xlsx`
   link.click()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return { count: items.length, capped: items.length >= STOCK_EXPORT_MAX_ROWS }
 }

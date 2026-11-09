@@ -35,7 +35,9 @@ export const approvalThreshold = () => apiRequest<number>('/api/v1/purchase-orde
 export const countOpenPurchaseOrders = () => apiRequest<number>('/api/v1/purchase-orders/count-open')
 export const receipts = (id: string) => apiRequest<Receipt[]>(`${path('PO')}/${id}/receipts`)
 export const receive = (id: string, input: ReceiptInput) => apiRequest<Receipt>(`${path('PO')}/${id}/receipts`, { method: 'POST', body: JSON.stringify(input) })
-export const stockItems = (q: string, belowMin = false) => apiRequest<StockItem[]>(`/api/v1/inventory/items?q=${encodeURIComponent(q)}${belowMin ? '&belowMin=true' : ''}`)
+export const stockItems = (q: string, belowMin = false, all = false) => apiRequest<StockItem[]>(`/api/v1/inventory/items?q=${encodeURIComponent(q)}${belowMin ? '&belowMin=true' : ''}${all ? '&all=true' : ''}`)
+/** เพดานแถวที่ส่งออกได้ต่อครั้ง — ต้องตรงกับ `PurchasingService.StockExportMaxRows` */
+export const STOCK_EXPORT_MAX_ROWS = 10_000
 /** จำนวนอะไหล่ที่ถึงจุดต่ำสุด (พร้อมใช้ ≤ min) ของสาขา — ตัวเลขที่เมนู "สต็อก FIFO" */
 export const setStockLevels = (id: string, input: { minStock: number | null; maxStock: number | null; version?: string }) =>
   apiRequest<StockItem>(`/api/v1/inventory/items/${id}/stock-levels`, { method: 'PUT', body: JSON.stringify(input) })

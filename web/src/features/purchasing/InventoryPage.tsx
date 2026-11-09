@@ -24,11 +24,13 @@ export function InventoryPage() {
   const query = useQuery({ queryKey: ['inventory', q, belowMinOnly], queryFn: () => stockItems(q, belowMinOnly) })
   const { session } = useSession(); const manager = Boolean(session?.user.canSeeCost)
   const excel = useMutation({
-    mutationFn: () => exportInventory(query.data ?? [], manager),
-    onSuccess: () => toast.success('ส่งออก Excel เรียบร้อยแล้ว'),
+    mutationFn: () => exportInventory(q, belowMinOnly, manager),
+    onSuccess: ({ count, capped }) => capped
+      ? toast.warning(`ส่งออก ${count.toLocaleString('th-TH')} รายการ (สูงสุดต่อครั้ง) — อาจมีรายการมากกว่านี้ กรุณาค้นหาให้แคบลงแล้วส่งออกอีกครั้ง`)
+      : toast.success(`ส่งออก Excel ${count.toLocaleString('th-TH')} รายการเรียบร้อยแล้ว`),
     onError: (error: Error) => toast.error(error.message || 'ส่งออกไม่สำเร็จ กรุณาลองใหม่'),
   })
-  return <AppShell title="สต็อก FIFO"><section className="management-heading"><div><span className="page-eyebrow">INVENTORY</span><h2>สต็อกและต้นทุน FIFO</h2><p>รับล็อตเก่าก่อน เบิกล็อตเก่าก่อน · จำนวนพร้อมใช้ = คงเหลือ − จองแล้ว</p></div><div className="purchase-list-actions"><Button variant="outline" disabled={excel.isPending || query.isFetching || query.isError || !query.data?.length} title="ส่งออกรายการที่แสดงตามคำค้นหา สูงสุด 200 รายการ" onClick={() => excel.mutate()}><FileSpreadsheet aria-hidden="true" />{excel.isPending ? 'กำลังส่งออก…' : 'ส่งออก Excel'}</Button><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></div></section>
+  return <AppShell title="สต็อก FIFO"><section className="management-heading"><div><span className="page-eyebrow">INVENTORY</span><h2>สต็อกและต้นทุน FIFO</h2><p>รับล็อตเก่าก่อน เบิกล็อตเก่าก่อน · จำนวนพร้อมใช้ = คงเหลือ − จองแล้ว</p></div><div className="purchase-list-actions"><Button variant="outline" disabled={excel.isPending || query.isFetching || query.isError || !query.data?.length} title="ส่งออกทุกรายการตามคำค้นหาและตัวกรอง (ไม่จำกัดแค่ที่แสดงบนหน้าจอ)" onClick={() => excel.mutate()}><FileSpreadsheet aria-hidden="true" />{excel.isPending ? 'กำลังส่งออก…' : 'ส่งออก Excel'}</Button><Button variant="outline" onClick={() => void query.refetch()}><RefreshCw />โหลดใหม่</Button></div></section>
     <Card className="purchase-filters"><div className="input-with-icon"><Search /><Input aria-label="ค้นหาสต็อก" placeholder="ค้นหารหัส / ชื่อสินค้า" value={q} onChange={e => setQ(e.target.value)} /></div><label className="filter-check"><input type="checkbox" checked={belowMinOnly} onChange={e => setBelowMinOnly(e.target.checked)} /> เฉพาะที่ถึงจุดต่ำสุด</label><span className="section-help">สูงสุด 200 ผลค้นหา · กดรายละเอียดเพื่อดูล็อตและประวัติ</span></Card>
     <QueryState query={query} loadingTitle="กำลังโหลดสต็อก" emptyTitle={belowMinOnly ? 'ไม่มีอะไหล่ที่ถึงจุดต่ำสุด' : 'ยังไม่มีสินค้าอะไหล่ที่ตรงกับการค้นหา'} emptyReason={belowMinOnly ? 'ตั้งจุดต่ำสุดได้ที่หน้าสินค้า หรือยกเลิกตัวกรองเพื่อดูสต็อกทั้งหมด' : 'เพิ่มสินค้าจากเมนูสินค้า หรือลองเปลี่ยนคำค้น'} onRetry={() => void query.refetch()}>
       <Card className="management-table-card"><ManagementTable data={query.data ?? []} sortScope="loaded" getRowClassName={(item) => item.belowMin ? BELOW_MIN_ROW_CLASS : undefined} columns={[
