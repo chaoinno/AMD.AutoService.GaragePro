@@ -34,8 +34,9 @@ export const FEATURES: Record<FeatureKey, FeatureInfo> = {
       'ใบขอซื้อ (PR) → ใบสั่งซื้อ (PO) → รับสินค้า (GRN) พร้อมด่านอนุมัติตามวงเงิน',
       'ทะเบียนซัพพลายเออร์และซัพพลายเออร์ประจำของแต่ละสินค้า',
       'แจ้งเตือนเอกสารรออนุมัติถึงผู้จัดการทั้งบนเว็บและแอป',
+      'บันทึกใบกำกับภาษีซื้อจากใบรับสินค้าหรือค่าใช้จ่ายอื่น พร้อมรายงานภาษีซื้อ',
     ],
-    paths: ['/purchasing', '/purchasing/pr', '/purchasing/po', '/suppliers'],
+    paths: ['/purchasing', '/purchasing/pr', '/purchasing/po', '/suppliers', '/reports/input-vat'],
   },
   inventory: {
     key: 'inventory',
@@ -68,8 +69,9 @@ export const FEATURES: Record<FeatureKey, FeatureInfo> = {
       'ข้อมูลผู้ซื้อเติมจากลูกค้าและแก้ไขได้ตอนออก',
       'รายการและยอดคัดจากใบเสร็จ ตรวจยอดให้ตรงกันก่อนออก',
       'ใบลดหนี้อ้างอิงรายการตามบิล พร้อมบันทึกคืนเงินและรายงาน',
+      'รายงานภาษีขายรายเดือน ส่งออก Excel',
     ],
-    paths: ['/reports/credit-notes'],
+    paths: ['/reports/credit-notes', '/reports/output-vat'],
   },
   advancedReports: {
     key: 'advancedReports',

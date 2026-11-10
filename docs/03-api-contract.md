@@ -485,3 +485,20 @@ body อ่านเองเป็น JSON (ผิดรูป/ผิดชน�
 Error: `CREDIT_NOTE_FORBIDDEN` 403 · `CREDIT_NOTE_NOT_FOUND` 404 · `CREDIT_NOTE_CONFLICT` 409 · `CREDIT_NOTE_SOURCE_REQUIRED` · `CREDIT_NOTE_REASON_REQUIRED` ·
 `CREDIT_NOTE_LINES_REQUIRED` · `CREDIT_NOTE_LINE_NOT_IN_SOURCE` · `CREDIT_NOTE_EXCEEDS_LINE` · `CREDIT_NOTE_REFUND_EXCEEDS` · `CREDIT_NOTE_VALIDATION` (400)
 · ใบกำกับภาษีเพิ่ม `TAX_INVOICE_RECEIPT_CREDITED` (400 — มีใบลดหนี้อ้างใบเสร็จแล้ว ออกใบกำกับไม่ได้ · docs/20 Q9) · `TaxInvoiceDto.seller.branchNo` มีค่าแล้ว
+
+## 19 · รายงานภาษีขาย/ภาษีซื้อ + ใบกำกับภาษีซื้อ **[เพิ่ม 2026-11-09 · docs/20 §3–4 · §8]**
+
+| Method | Path | สิทธิ์ | หมายเหตุ |
+|---|---|---|---|
+| GET | `/reports/output-vat?year&month` | Manager/Office · ฟีเจอร์ `TaxInvoice` | เดือนตามวันที่เอกสาร (เวลาไทย) · ไม่ส่ง = เดือนนี้ · `rows` = IV- + ใบลดหนี้ที่อ้าง IV- (ยอดติดลบ) · `uninvoiced` = RC- ของจ๊อบที่ไม่มี IV- · SL- ที่ไม่ยกเลิก · ใบลดหนี้ที่อ้าง RC- · `seller` = หัวรายงาน |
+| GET | `/reports/input-vat?year&month` | Manager/Office · ฟีเจอร์ `Purchasing` | ตามเดือนที่ใช้สิทธิ์ · `rows` ใบที่ใช้อยู่ · `voided` · `pendingGoodsReceipts` = ใบรับสินค้าของ PO ที่มี VAT ย้อนหลัง 6 เดือนที่ยังไม่บันทึกใบกำกับ |
+| GET | `/purchase-tax-invoices/prefill?goodsReceiptId` | Manager/Office | ผู้ขาย · ยอดก่อนภาษี Σ(รับดี+ชำรุด)×ราคาในใบรับ · VAT ปัดครั้งเดียวตามอัตราของ PO |
+| POST | `/purchase-tax-invoices` | Manager/Office | `{requestId, supplierId?, supplierName, supplierTaxId, supplierBranchNo?, invoiceNo, invoiceDate, claimYear?, claimMonth?, netAmount, vatAmount, goodsReceiptId?, note?}` · ไม่ส่งเดือน = เดือนของใบกำกับ · requestId ซ้ำ+payload เดิม = ใบเดิม |
+| POST | `/purchase-tax-invoices/{id}/void` | Manager/Office | `{reason}` บังคับ · ไม่ลบ · ยกเลิกแล้วบันทึกเลขเดิมใหม่ได้ |
+
+กติกาใบกำกับภาษีซื้อ: เลขผู้เสียภาษีผู้ขาย 13 หลัก (ตัดขีดให้) · สาขา 5 หลัก (ค่าเริ่มต้น `00000`) · วันที่ใบกำกับไม่เป็นอนาคต ·
+เดือนที่ใช้สิทธิ์ = เดือนของใบกำกับ ถึง +6 เดือน · มูลค่าและ VAT > 0 ทศนิยมไม่เกิน 2 ตำแหน่ง VAT < มูลค่า · เลขผู้เสียภาษี + เลขที่ใบกำกับซ้ำในสาขาไม่ได้ (ใบที่ยกเลิกไม่นับ — unique index แบบมีเงื่อนไข)
+
+Error: `TAX_REPORT_FORBIDDEN` 403 · `TAX_REPORT_VALIDATION` 400 (เดือนผิด) · `PURCHASE_TAX_INVOICE_VALIDATION` 400 (มี `field`) ·
+`PURCHASE_TAX_INVOICE_DUPLICATE` · `PURCHASE_TAX_INVOICE_CONFLICT` · `PURCHASE_TAX_INVOICE_VOIDED` (409) ·
+`PURCHASE_TAX_INVOICE_NOT_FOUND` · `GOODS_RECEIPT_NOT_FOUND` · `SUPPLIER_NOT_FOUND` (404)

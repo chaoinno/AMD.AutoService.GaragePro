@@ -33,6 +33,7 @@ import {
   Wrench,
   Building2,
   FileMinus,
+  ReceiptText,
 } from 'lucide-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router'
@@ -109,6 +110,14 @@ const navGroups: { label: string; items?: NavItem[]; sections?: NavSection[] }[]
         items: [
           { to: '/reports/sales-margin', icon: TrendingUp, label: 'ยอดขาย-ต้นทุน-กำไร' },
           { to: '/reports/retail-sales', icon: ShoppingCart, label: 'ขายหน้าร้าน' },
+        ],
+      },
+      {
+        key: 'tax',
+        label: 'ภาษี',
+        items: [
+          { to: '/reports/output-vat', icon: FileText, label: 'รายงานภาษีขาย' },
+          { to: '/reports/input-vat', icon: ReceiptText, label: 'ภาษีซื้อ', fullLabel: 'ภาษีซื้อ (บันทึกใบกำกับ + รายงาน)' },
           { to: '/reports/credit-notes', icon: FileMinus, label: 'ใบลดหนี้' },
         ],
       },
