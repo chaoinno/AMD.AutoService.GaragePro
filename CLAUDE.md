@@ -49,7 +49,7 @@ GaragePro Service Ops Design/  prototype ต้นฉบับ (read-only — �
 | [docs/17-package-renewal.md](docs/17-package-renewal.md) | **[deploy production 2026-10-24 · สาขา db2 ยังไม่เปิด · สัญญา API หัวข้อ 5 · 8.6 · 8.7]** แจ้งชำระเงิน + ต่ออายุแพ็กเกจของอู่ sp1 (เว็บ + แอป · `sp_PackagePayment` · อนุมัติด้วย `spadmin` แล้วค่อยย้ายไป Admin) · สูตรวัน `End.AddMonths(N)` ไม่บวก 1 วัน · หน้า `/branches` ของ GaragePro Admin แสดงสถานะทุก site ผ่าน API ภายใน · **ไฟล์ `docs/Package-Renewal-Flow*.md` (เอกสารภายในทีม) ห้าม commit เพราะ repo นี้เป็น public** |
 | [docs/18-stock-service-backlog-plan.md](docs/18-stock-service-backlog-plan.md) | **[แผน 2026-10-24 · เขียนโค้ดครบแล้ว 2026-10-25 บน branch `integration/backlog-6` · migration ยังไม่ได้รัน · ยังไม่ deploy]** 6 งานพร้อมคำตอบของผู้ใช้: min-max สต็อก + ตัวเลขเมนู · นัดบริการหลายรายการ · รายงานการเบิกอะไหล่ · คืนอะไหล่ในจ๊อบ · ตัวเลข + แจ้งเตือนรถใกล้ครบรอบ (FrontDesk/Manager) · มือถือสลับสาขา (backend พร้อมแล้ว) · ลำดับที่แนะนำ · ค่า `[ASSUME]` ยืนยันครบแล้ว 2026-10-25 |
 | [docs/19-app-updates-session-revocation.md](docs/19-app-updates-session-revocation.md) | **[PR #21 · deploy production 2026-10-30 · เว็บ v1.19.0 · แอป 1.4.0+6 ยังไม่ส่ง Store]** แจ้ง/บังคับอัปเดตแอปจากหน้า "เวอร์ชันแอป" (ผู้ดูแลระบบ · มีผลทุกอู่) · ปิดพนักงานแล้วตัดเซสชันทุกเครื่องถาวรด้วย `svc_UserSessionVersion` · migration 2 ชุด · ลำดับ rollout |
-| [docs/20-vat-reports-credit-note-plan.md](docs/20-vat-reports-credit-note-plan.md) · [docs/03](docs/03-api-contract.md) §18 | **[แผน 2026-11-09 · ใบลดหนี้เขียนโค้ดแล้วบน branch `feat/credit-note` · migration `AddCreditNote` ยังไม่รัน · ยังไม่ deploy]** ใบลดหนี้ `CN-` (ผู้จัดการ · อ้างบรรทัดของ IV- หรือ RC- · คืนเงิน · รายงาน) + ค่าตั้งภาษีสาขา · รายงานภาษีขายรอ Q1 · ภาษีซื้อรอ Q4 Q5 (ต้องเก็บใบกำกับของผู้ขายใหม่) |
+| [docs/20-vat-reports-credit-note-plan.md](docs/20-vat-reports-credit-note-plan.md) · [docs/03](docs/03-api-contract.md) §18 | **[แผน 2026-11-09 · ใบลดหนี้ PR #24 · deploy production 2026-11-09 (`096a329`) · เว็บ v1.20.0]** ใบลดหนี้ `CN-` (ผู้จัดการ · อ้างบรรทัดของ IV- หรือ RC- · คืนเงิน · รายงาน) + ค่าตั้งภาษีสาขา · รายงานภาษีขาย `/reports/output-vat` + ภาษีซื้อ `/reports/input-vat` (บันทึกใบกำกับของผู้ขาย) เขียนโค้ดแล้ว 2026-11-09 · เว็บ v1.20.1 · ยังไม่ commit/deploy · migration `AddPurchaseTaxInvoice` ยังไม่รัน · API docs/03 §19 · สิ่งที่ทำจริง docs/20 §8 |
 
 > Design เขียนไว้ชัด: *"ห้ามตีความจากหน้าจอเพียงอย่างเดียว เพราะต้นแบบเลือกทางที่เดินเรื่องได้ ไม่ใช่ทางที่องค์กรอนุมัติแล้ว"*
 
@@ -2129,7 +2129,7 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · **Deploy 2026-11-09**: ไม่มี migration ค้างทั้ง 3 ฐาน · container healthy · public health ผ่าน · self-serve ยังเปิดรับสมัคร · `inventory/items?all=true` ไม่ล็อกอินตอบ 401 ·
     chunk `AppRoutes` ของ service.garage-pro.net มี `1.19.1` และ `all=true` · log API 5 นาทีแรกไม่มี `fail`/`crit` · **ยังไม่ได้กดส่งออกด้วยบัญชีจริงบน production**
 
-- ✅ **[เพิ่ม 2026-11-09 · branch `feat/credit-note` · เว็บ v1.20.0 · ยังไม่ merge/deploy · migration ยังไม่รัน] ใบลดหนี้ `CN-{yy}-NNNN` + คืนเงิน + รายงาน + ค่าตั้งภาษีสาขา**
+- ✅ **[เพิ่ม 2026-11-09 · PR #24 · deploy production 2026-11-09 (`096a329`) · เว็บ v1.20.0] ใบลดหนี้ `CN-{yy}-NNNN` + คืนเงิน + รายงาน + ค่าตั้งภาษีสาขา**
   (weekly meeting 2026-11-06 · ผู้ใช้ตอบ Q2 Q3 Q6 Q8 Q9 · รายละเอียด [docs/20](docs/20-vat-reports-credit-note-plan.md) §2/§7 · API docs/03 §18)
   · **กฎ (API)**: ออก/คืนเงิน = **Manager เท่านั้น** (`CREDIT_NOTE_FORBIDDEN`) · ดูสถานะ = Cashier/Office/Manager · ต้องเลือกบรรทัดของบิลที่อ้าง ≥ 1 รายการ ห้ามบรรทัดนอกบิล ·
     **จ๊อบที่มีใบกำกับ `IV-` ต้องอ้าง IV-** (ใบลดหนี้ทางภาษี) ไม่งั้นอ้างใบเสร็จ `RC-` (บรรทัด = รายการอนุมัติของทุกใบเสนอราคาที่ใช้อยู่ · พิมพ์ว่าไม่ใช่เอกสารทางภาษี) ·
@@ -2144,6 +2144,15 @@ Design token อยู่ที่ `mobile/lib/core/tokens.dart` และ `web/
   · ตรวจแล้ว: `dotnet test` **1709 ผ่าน / 24 ข้าม** (เพิ่ม `CreditNoteServiceTests.cs` 16) · Web `tsc -b`/`vite build` ผ่าน · `node --test` (Node 24) 95 ·
     เบราว์เซอร์ด้วย API จำลอง (ไม่รัน API จริงเพราะโหมด Development migrate ฐานร่วม production) — ออกใบลดหนี้/คืนเงิน/พิมพ์/รายงาน/ตั้งค่าภาษีสาขาทำงาน payload ถูก ·
     **ยังไม่ได้ทดสอบกับ API/ฐานจริง**
+  · **Deploy 2026-11-09**: รอบแรก SSH timeout ตั้งแต่ขั้นแรก (ไม่มีอะไรเปลี่ยน) รอบสองผ่าน · `AddCreditNote` ลง GarageService + GarageSelfServe ตอน deploy และ `_Dev` ด้วย
+    `migrate-selfserve-dev.sh` · container healthy · public health ผ่าน · self-serve ยังเปิดรับสมัคร · endpoint ใหม่ 3 ตัวไม่ล็อกอินตอบ 401 · bundle มี 1.20.0 ·
+    log API 10 นาทีแรกไม่มี `fail`/`crit` (นอกจาก sp_JobRun ที่เป็นปกติ) · **ยังไม่ได้ออกใบลดหนี้ด้วยบัญชีจริงบน production**
+
+- ✅ **[เพิ่ม 2026-11-09 · ยังไม่ commit/deploy · เว็บ v1.20.1] รายงานภาษีขาย + บันทึกใบกำกับภาษีซื้อ + รายงานภาษีซื้อ** (docs/20 §3–4 · ตอบ Q1 Q4 Q5 Q7 ตามค่าแนะนำ · สิ่งที่ทำจริง docs/20 §8 · API docs/03 §19)
+  · ผู้จัดการ/ธุรการ · เดือนภาษีตามเวลาไทย · ภาษีขาย = IV- + ใบลดหนี้ที่อ้าง IV- (ติดลบ) และส่วนแยก "รับเงินที่คิด VAT แต่ยังไม่ออกใบกำกับ" (RC-/SL-/ใบลดหนี้อ้าง RC-)
+  · ภาษีซื้อ `svc_PurchaseTaxInvoice` (migration `AddPurchaseTaxInvoice` ตารางใหม่ล้วน **ยังไม่ได้รันกับฐานใด**) · เดือนที่ใช้สิทธิ์ = เดือนใบกำกับ..+6 · ซ้ำ (เลขผู้เสียภาษี+เลขที่) ไม่ได้ · ยกเลิกพร้อมเหตุผล
+  · เมนู Reports > หัวข้อใหม่ "ภาษี" (ภาษีขาย · ภาษีซื้อ · ใบลดหนี้) · ล็อกแพ็กเกจ: ภาษีขาย = `taxInvoice` · ภาษีซื้อ = `purchasing`
+  · ตรวจแล้ว: `dotnet test` 1726 ผ่าน / 24 ข้าม · เว็บ `tsc -b`/`vite build` · เบราว์เซอร์ด้วย API จำลอง · **ยังไม่ได้ทดสอบกับ API/ฐานจริง · รูปแบบรายงานยังไม่ผ่านฝ่ายบัญชี**
 
 ### ยังไม่ได้ทำ
 - รับรถ **6 ขั้นเต็มรูปแบบ**บนมือถือ (ยืนยันนัดหมาย/รูป 5 มุมบังคับ/QR ติดรถ — มือถือทำได้แล้วแบบย่อ: ค้นหา/สร้าง

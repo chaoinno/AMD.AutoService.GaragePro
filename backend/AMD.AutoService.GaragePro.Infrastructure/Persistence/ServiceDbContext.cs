@@ -33,6 +33,7 @@ public class ServiceDbContext(DbContextOptions<ServiceDbContext> options) : DbCo
     public DbSet<CreditNote> CreditNotes => Set<CreditNote>();
     public DbSet<CreditNoteLine> CreditNoteLines => Set<CreditNoteLine>();
     public DbSet<CreditNoteRefund> CreditNoteRefunds => Set<CreditNoteRefund>();
+    public DbSet<PurchaseTaxInvoice> PurchaseTaxInvoices => Set<PurchaseTaxInvoice>();
     public DbSet<BranchTaxProfile> BranchTaxProfiles => Set<BranchTaxProfile>();
     public DbSet<HandoverRecord> HandoverRecords => Set<HandoverRecord>();
     public DbSet<HandoverChecklistItem> HandoverChecklistItems => Set<HandoverChecklistItem>();

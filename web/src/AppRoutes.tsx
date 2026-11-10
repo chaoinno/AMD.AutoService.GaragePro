@@ -27,6 +27,8 @@ import { StockUsageReportPage } from './features/reports/StockUsageReportPage'
 import { VehicleHistoryReportPage } from './features/reports/VehicleHistoryReportPage'
 import { WorkIntervalsPage } from './features/reports/WorkIntervalsPage'
 import { CreditNoteReportPage } from './features/reports/CreditNoteReportPage'
+import { InputVatReportPage } from './features/reports/tax/InputVatReportPage'
+import { OutputVatReportPage } from './features/reports/tax/OutputVatReportPage'
 import { BranchTaxProfilePage } from './features/master-data/BranchTaxProfilePage'
 import { SalesPage } from './features/sales/SalesPage'
 import { PromotionPage } from './features/master-data/PromotionPage'
@@ -71,6 +73,8 @@ export default function AppRoutes() {
           <Route path="/reports/sales-margin" element={<ProtectedRoute><FeatureGate><SalesMarginReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/retail-sales" element={<ProtectedRoute><FeatureGate><RetailSalesReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/credit-notes" element={<ProtectedRoute><FeatureGate><CreditNoteReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/output-vat" element={<ProtectedRoute><FeatureGate><OutputVatReportPage /></FeatureGate></ProtectedRoute>} />
+          <Route path="/reports/input-vat" element={<ProtectedRoute><FeatureGate><InputVatReportPage /></FeatureGate></ProtectedRoute>} />
           <Route path="/reports/vehicle-history" element={<ProtectedRoute><VehicleHistoryReportPage /></ProtectedRoute>} />
           <Route path="/reports/stock-usage" element={<ProtectedRoute><StockUsageReportPage view="documents" /></ProtectedRoute>} />
           <Route path="/reports/stock-usage/items" element={<ProtectedRoute><StockUsageReportPage key="items" view="items" /></ProtectedRoute>} />

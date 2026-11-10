@@ -134,3 +134,42 @@
 .credit-note-docno {
   white-space: nowrap;
 }
+
+/* ---------- รายงานภาษีขาย/ภาษีซื้อ (docs/20 §3–4) ---------- */
+.tax-report-header {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px 20px;
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+}
+.tax-report-header div { min-width: 0; }
+.tax-report-header dt { color: var(--muted); font-size: 13px; }
+.tax-report-header dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.tax-report-header__wide { grid-column: 1 / -1; }
+.tax-report-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning-foreground);
+  font-weight: 600;
+}
+.tax-report-warning svg { width: 16px; height: 16px; flex: none; }
+.tax-report-totals {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 15px;
+}
+.tax-report-totals > span:first-child { margin-right: auto; font-weight: 700; }
+.tax-negative { color: var(--red-600); }
+.tax-kind { display: inline-flex; align-items: center; gap: 4px; }
+.tax-voided { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); text-decoration: line-through; }
+.tax-suggest { display: inline-block; margin-top: 4px; font-size: 13px; }
+.tax-modal-total { margin: 0; text-align: right; }

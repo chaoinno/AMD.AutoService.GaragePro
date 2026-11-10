@@ -107,6 +107,10 @@ public static class ServicePurgePlan
         // · event ที่ไม่ผูกจ๊อบของผู้ใช้สาขานี้ (กะ ฯลฯ) — ต้องลบก่อนจ๊อบ (FK JobId) และก่อนแถวที่ EntityId อ้างถึง
         Step<ActivityEvent>("svc_ActivityEvent", DeleteActivityEventsAsync),
 
+        // ใบกำกับภาษีซื้อ (docs/20 §4) — อ้าง GRN/PO/Supplier ด้วย Guid ไม่มี FK
+        Step<PurchaseTaxInvoice>("svc_PurchaseTaxInvoice", (db, s, ct) => db.PurchaseTaxInvoices
+            .Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
+
         Step<StockMovement>("svc_StockMovement", (db, s, ct) => db.Set<StockMovement>()
             .Where(m => m.LegacyShardKey == s.ShardKey && m.LegacyBranchId == s.BranchId).ExecuteDeleteAsync(ct)),
         Step<StockLot>("svc_StockLot", (db, s, ct) => db.Set<StockLot>()
@@ -247,6 +251,7 @@ public static class ServicePurgePlan
         yield return db.Promotions.Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.Id);
         yield return db.Set<PurchaseDocument>().Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.Id);
         yield return db.Set<GoodsReceipt>().Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.Id);
+        yield return db.PurchaseTaxInvoices.Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.Id);
         yield return db.Set<StockMovement>().Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.OperationId);
         yield return db.UserRoleOverrides.Where(x => x.LegacyShardKey == s.ShardKey && x.LegacyBranchId == s.BranchId).Select(x => x.Id);
     }
