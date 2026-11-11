@@ -175,10 +175,15 @@ class _QuotationCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('${item.code} · v${item.version}',
-                        style: const TextStyle(
-                            fontFamily: T.fontMono, fontSize: 13, color: T.muted)),
-                    const Spacer(),
+                    // รหัส QT-{เลขจ๊อบ 15 หลัก}-NN ยาวเกินจอแคบเมื่ออยู่คู่ชิปสถานะ — ตัดท้ายแทนการล้นขวา
+                    Expanded(
+                      child: Text('${item.code} · v${item.version}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontFamily: T.fontMono, fontSize: 13, color: T.muted)),
+                    ),
+                    const SizedBox(width: T.s8),
                     StatusChip(item.status, compact: true),
                   ],
                 ),
@@ -189,22 +194,43 @@ class _QuotationCard extends StatelessWidget {
                 Text(item.customerName,
                     style: const TextStyle(fontSize: 14, color: T.muted, height: 1.6)),
                 const SizedBox(height: T.s12),
-                Row(
-                  children: [
-                    if (item.ageLabelTh != null) ...[
-                      const Icon(Icons.schedule, size: 14, color: T.faint),
-                      const SizedBox(width: 4),
-                      Text('ค้างมา ${item.ageLabelTh}',
-                          style: const TextStyle(fontSize: 13, color: T.faint, height: 1.6)),
+                LayoutBuilder(
+                  builder: (_, box) => Row(
+                    children: [
+                      // อายุคิวเป็นข้อมูลรอง ตัดท้ายได้ · ยอดเงินห้ามตัด จึงย่อขนาดแทนเมื่อจอแคบ/ตัวอักษรใหญ่
+                      Expanded(
+                        child: item.ageLabelTh == null
+                            ? const SizedBox.shrink()
+                            : Row(
+                                children: [
+                                  const Icon(Icons.schedule, size: 14, color: T.faint),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text('ค้างมา ${item.ageLabelTh}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            fontSize: 13, color: T.faint, height: 1.6)),
+                                  ),
+                                ],
+                              ),
+                      ),
+                      const SizedBox(width: T.s8),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: box.maxWidth * 0.65),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text('${money(item.total)} บาท',
+                              style: const TextStyle(
+                                  fontFamily: T.fontMono,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  color: T.text)),
+                        ),
+                      ),
                     ],
-                    const Spacer(),
-                    Text('${money(item.total)} บาท',
-                        style: const TextStyle(
-                            fontFamily: T.fontMono,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                            color: T.text)),
-                  ],
+                  ),
                 ),
               ],
             ),

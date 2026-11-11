@@ -116,7 +116,7 @@ const navGroups: { label: string; items?: NavItem[]; sections?: NavSection[] }[]
         key: 'tax',
         label: 'ภาษี',
         items: [
-          { to: '/reports/output-vat', icon: FileText, label: 'รายงานภาษีขาย' },
+          { to: '/reports/output-vat', icon: FileText, label: 'ภาษีขาย', fullLabel: 'รายงานภาษีขาย' },
           { to: '/reports/input-vat', icon: ReceiptText, label: 'ภาษีซื้อ', fullLabel: 'ภาษีซื้อ (บันทึกใบกำกับ + รายงาน)' },
           { to: '/reports/credit-notes', icon: FileMinus, label: 'ใบลดหนี้' },
         ],

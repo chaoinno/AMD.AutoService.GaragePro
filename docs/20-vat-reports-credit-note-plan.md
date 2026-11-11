@@ -2,7 +2,7 @@
 
 > ที่มา: weekly meeting 2026-11-06 · ผู้ใช้ตอบ Q2 Q3 Q6 Q8 Q9 แล้ว 2026-11-09 · **ตอบ Q1 Q4 Q5 Q7 ครบแล้ว 2026-11-09 (ตามค่าที่แผนแนะนำทุกข้อ)** ·
 > **หัวข้อ 2 (ใบลดหนี้ + คืนเงิน + รายงาน + ค่าตั้งภาษีสาขา) PR #24 · deploy production แล้ว 2026-11-09 (`096a329`) · migration รันครบ 3 ฐาน · ยังไม่ได้ทดสอบด้วยบัญชีจริง** ·
-> รายงานภาษีขาย (หัวข้อ 3) และภาษีซื้อ (หัวข้อ 4) **เขียนโค้ดแล้ว 2026-11-09 · ยังไม่ commit/deploy · migration `AddPurchaseTaxInvoice` ยังไม่ได้รัน** — ดูหัวข้อ 8
+> รายงานภาษีขาย (หัวข้อ 3) และภาษีซื้อ (หัวข้อ 4) **PR #25 · deploy production 2026-11-10 (`a9fd90d`) · migration `AddPurchaseTaxInvoice` รันครบ 3 ฐาน · ยังไม่ได้ทดสอบด้วยบัญชีจริง** — ดูหัวข้อ 8
 > งานที่ 3 ของ meeting เดียวกัน (export ตารางแบ่งหน้าได้ไม่ครบ) แก้แล้ว ดู CLAUDE.md
 
 ---
@@ -161,3 +161,5 @@ API ดู docs/03 §19
   เหตุผลปุ่มปิด · ปุ่ม "ใช้ 7%" · ยกเลิกพร้อมเหตุผล
 - **ยังไม่ได้ทดสอบกับ API/ฐานจริง** — query ใหม่ (join Receipt–Job + `NOT EXISTS` TaxInvoice · ยอดใบรับสินค้าแบบ subquery `SUM` · unique index แบบมีเงื่อนไข) ยังไม่เคยรันบน SQL Server
 - **[RISK]** รูปแบบรายงานยังไม่ผ่านฝ่ายบัญชี · หัวรายงานต้องมีเลขผู้เสียภาษีในข้อมูลสาขาเดิม (ไม่มี = ขึ้นเตือนบนหน้า)
+- **Deploy 2026-11-10** (PR #25 · `a9fd90d`): `AddPurchaseTaxInvoice` ลง GarageService + GarageSelfServe ตอน deploy และ `_Dev` ด้วย `migrate-selfserve-dev.sh` ·
+  container healthy · public health ผ่าน · endpoint ใหม่ 4 ตัวไม่ล็อกอินตอบ 401 · bundle มี 1.20.1 · log API ไม่มี `fail`/`crit`
