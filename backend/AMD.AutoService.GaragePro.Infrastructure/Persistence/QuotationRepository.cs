@@ -115,13 +115,8 @@ public sealed class CatalogRepository(ServiceDbContext db) : ICatalogRepository
         if (query.Type is not null) source = source.Where(c => c.Type == query.Type);
         if (query.BelowMinOnly) source = source.Where(StockLevel.BelowMin);
         if (query.LowStockOnly) source = source.Where(c => c.Type == LineType.Part && c.OnHand - c.Reserved <= 0);
-        if (!string.IsNullOrWhiteSpace(query.Keyword))
-        {
-            var keyword = query.Keyword.Trim();
-            source = source.Where(c => EF.Functions.Like(c.Code, $"%{keyword}%")
-                || EF.Functions.Like(c.Name, $"%{keyword}%")
-                || (c.Compatibility != null && EF.Functions.Like(c.Compatibility, $"%{keyword}%")));
-        }
+        // หลายคำคั่นด้วยช่องว่าง = ต้องเจอทุกคำ (รหัส/ชื่อ/รุ่นรถ) — กติกาเดียวกับหน้าสต็อก FIFO
+        source = source.WhereMatchesKeywords(query.Keyword, includeCompatibility: true);
         var total = await source.CountAsync(ct);
         var items = await source.OrderBy(c => c.Type).ThenBy(c => c.Code)
             .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(ct);
