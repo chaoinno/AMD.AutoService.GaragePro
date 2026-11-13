@@ -68,7 +68,9 @@ public sealed class PurchasingRepository(ServiceDbContext db, ICurrentUser user)
     public async Task<IReadOnlyList<CatalogItem>> ItemsAsync(string? q, CancellationToken ct, bool belowMinOnly = false, int take = 200)
     {
         var query = Items.AsNoTracking()
-            .Where(x => x.Type == LineType.Part && (q == null || x.Code.Contains(q) || x.Name.Contains(q)));
+            .Where(x => x.Type == LineType.Part)
+            // หลายคำคั่นด้วยช่องว่าง = ต้องเจอทุกคำ (รหัส/ชื่อ) — กติกาเดียวกับหน้าจัดการสินค้า
+            .WhereMatchesKeywords(q, includeCompatibility: false);
         // ตัวกรองนี้ต้องให้ผลเท่ากับ CountBelowMinAsync (ตัวเลขที่เมนู) จึงตัดสินค้าที่ปิดใช้งานออกเหมือนกัน
         if (belowMinOnly) query = query.Where(x => x.IsActive).Where(StockLevel.BelowMin);
         return await query.OrderBy(x => x.Code).Take(take).ToListAsync(ct);

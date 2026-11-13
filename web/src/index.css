@@ -4527,6 +4527,18 @@ img {
 .stock-empty { color: var(--red-600); }
 .catalog-form .stock-formula { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-input); background: var(--blue-50); color: var(--blue-600); font-size: 11px; }
 .catalog-form .stock-formula svg { width: 17px; height: 17px; flex: 0 0 auto; }
+/* ตั้งยอดยกมา FIFO จากหน้าแก้ไขสินค้า — แถบเตือนสีเหลือง + ไอคอน + ข้อความ (ไม่ใช้สีอย่างเดียว) */
+.catalog-opening { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--warning-border); border-radius: var(--radius-input); background: var(--warning); color: var(--warning-foreground); }
+.catalog-opening__text { display: grid; gap: 4px; min-width: 0; }
+.catalog-opening__text strong { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; }
+.catalog-opening__text strong svg { width: 17px; height: 17px; flex: 0 0 auto; }
+.catalog-opening__text span { font-size: 14px; color: var(--text); }
+.catalog-opening > button { flex: 0 0 auto; }
+.catalog-opening-form { display: grid; gap: 14px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.catalog-opening__summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.catalog-opening__summary div { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-input); background: var(--page); }
+.catalog-opening__summary dt { font-size: 13px; color: var(--muted); }
+.catalog-opening__summary dd { margin: 2px 0 0; font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; }
 .catalog-form input.money { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
 .section-heading-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .section-help { margin: 0; color: var(--muted); font-size: 11px; font-weight: 400; }
